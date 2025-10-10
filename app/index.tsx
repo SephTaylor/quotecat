@@ -13,12 +13,33 @@ import {
   Text,
   View,
 } from 'react-native';
+
+import { useSession } from '../hooks/useSession';
 import { exportQuotesCSV } from '../lib/export';
-import { Quote, deleteQuote, getAllQuotes } from '../lib/quotes'; // ✅ fixed import path
+import { Quote, deleteQuote, getAllQuotes } from '../lib/quotes';
+import { supabase } from '../lib/supabase';
 
 const TIP_KEY = 'quotecat:floatingTipSeen:v2';
 
 export default function Home() {
+  // === Auth gate ===
+  const { session, loading: sessionLoading } = useSession();
+
+  useEffect(() => {
+    if (!session && !sessionLoading) {
+      router.replace('/auth/sign-in');
+    }
+  }, [session, sessionLoading]);
+
+  if (sessionLoading || !session) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text>Loading…</Text>
+      </View>
+    );
+  }
+  // === /Auth gate ===
+
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [tipSeen, setTipSeen] = useState<boolean>(false);
@@ -126,6 +147,7 @@ export default function Home() {
     router.push('/new-quote');
   };
 
+  // === Summary numbers ===
   const quoteCount = quotes.length;
   const totalAmount = useMemo(
     () => quotes.reduce((sum, q) => sum + (q.total || 0), 0),
@@ -141,6 +163,7 @@ export default function Home() {
     try {
       const result = await exportQuotesCSV(quotes);
       if (typeof result === 'string') {
+        // Sharing not available: show where the file is
         Alert.alert('Exported', `CSV saved here:\n${result}`);
       }
     } catch (e: any) {
@@ -148,6 +171,17 @@ export default function Home() {
     }
   };
 
+  // === Sign out handler (Supabase) ===
+  const onSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.replace('/auth/sign-in');
+    } catch (e: any) {
+      Alert.alert('Sign out failed', e?.message || 'Try again.');
+    }
+  };
+
+  // Header component for the list (shows only when there are quotes)
   const SummaryHeader = quoteCount > 0 ? (
     <View style={styles.summaryCard}>
       <View style={styles.summaryRow}>
@@ -163,13 +197,19 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
+      {/* Top bar with title + Export + Sign out */}
       <View style={styles.topBar}>
         <Text style={styles.header}>🏠 QuoteCat</Text>
-        {quoteCount > 0 && (
-          <Pressable onPress={handleExport} style={({ pressed }) => [styles.exportBtn, pressed && { opacity: 0.8 }]}>
-            <Text style={styles.exportText}>Export</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {quoteCount > 0 && (
+            <Pressable onPress={handleExport} style={({ pressed }) => [styles.exportBtn, pressed && { opacity: 0.8 }]}>
+              <Text style={styles.exportText}>Export</Text>
+            </Pressable>
+          )}
+          <Pressable onPress={onSignOut} style={({ pressed }) => [styles.exportBtn, pressed && { opacity: 0.8 }]}>
+            <Text style={styles.exportText}>Sign out</Text>
           </Pressable>
-        )}
+        </View>
       </View>
 
       {quoteCount === 0 ? (
@@ -189,6 +229,7 @@ export default function Home() {
         />
       )}
 
+      {/* Tooltip bubble (above the FAB) */}
       <Animated.View
         pointerEvents="none"
         style={[
@@ -210,6 +251,7 @@ export default function Home() {
         <View style={styles.tooltipArrow} />
       </Animated.View>
 
+      {/* Animated FAB */}
       <Animated.View style={[styles.fabWrap, { transform: [{ scale: pulse }], opacity: fabOpacity }]}>
         <Pressable style={styles.fab} onPress={onFabPress}>
           <Text style={styles.fabText}>＋</Text>
@@ -229,6 +271,8 @@ function formatMoney(n: number, currency = 'USD') {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#f7f7f7' },
+
+  // Top bar
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   header: { fontSize: 22, fontWeight: '700' },
   exportBtn: {
@@ -236,7 +280,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderWidth: StyleSheet.hairlineWidth, borderColor: '#ccc',
   },
   exportText: { fontSize: 14, fontWeight: '700', color: '#007BFF' },
+
+  // Empty state text
   empty: { textAlign: 'center', marginTop: 24, color: '#666' },
+
+  // Summary card
   summaryCard: {
     backgroundColor: '#fff',
     padding: 14,
@@ -248,6 +296,8 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 },
   summaryLabel: { fontSize: 14, color: '#666' },
   summaryValue: { fontSize: 16, fontWeight: '700' },
+
+  // List items
   item: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -261,6 +311,8 @@ const styles = StyleSheet.create({
   itemTitle: { fontSize: 16, fontWeight: '700' },
   itemSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
   itemAmount: { fontSize: 16, fontWeight: '700', marginLeft: 12 },
+
+  // FAB
   fabWrap: { position: 'absolute', right: 16, bottom: 16, zIndex: 5 },
   fab: {
     width: 56, height: 56, borderRadius: 28,
@@ -270,6 +322,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
   },
   fabText: { color: '#fff', fontSize: 30, lineHeight: 30, marginTop: -2 },
+
+  // Tooltip
   tooltipWrap: {
     position: 'absolute',
     right: 16,

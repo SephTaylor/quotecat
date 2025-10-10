@@ -1,126 +1,156 @@
 // app/new-quote.tsx
-import React, { useMemo, useRef, useState } from 'react';
+import { Stack, router } from 'expo-router';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
-  Animated, Keyboard,
+  Button,
   KeyboardAvoidingView,
-  Platform, Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
-  Text, TextInput,
-  View
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { saveQuote } from '../lib/quotes';
+
+type Errors = {
+  clientName?: string;
+  projectName?: string;
+  labor?: string;
+  material?: string;
+};
 
 export default function NewQuote() {
   const [clientName, setClientName] = useState('');
   const [projectName, setProjectName] = useState('');
-  const [laborCost, setLaborCost] = useState('');
-  const [materialCost, setMaterialCost] = useState('');
-  const [saved, setSaved] = useState(false);
+  // ⬇️ Start empty; placeholder shows "0"
+  const [labor, setLabor] = useState('');
+  const [material, setMaterial] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const colorAnim = useState(new Animated.Value(0))[0]; // 0 blue → 1 green
-  const scrollRef = useRef<ScrollView>(null);
+  // Parse with empty → 0 fallback
+  const parsedLabor = useMemo(
+    () => Number((labor || '0').replace(/[^0-9.]/g, '')),
+    [labor]
+  );
+  const parsedMaterial = useMemo(
+    () => Number((material || '0').replace(/[^0-9.]/g, '')),
+    [material]
+  );
 
-  const laborNum = useMemo(() => parseFloat(laborCost.replace(',', '.')) || 0, [laborCost]);
-  const materialNum = useMemo(() => parseFloat(materialCost.replace(',', '.')) || 0, [materialCost]);
-  const total = useMemo(() => laborNum + materialNum, [laborNum, materialNum]);
+  const errors: Errors = {};
+  if (!clientName.trim()) errors.clientName = 'Required';
+  if (!projectName.trim()) errors.projectName = 'Required';
+  if (!isFinite(parsedLabor) || parsedLabor < 0) errors.labor = 'Enter a non-negative number';
+  if (!isFinite(parsedMaterial) || parsedMaterial < 0) errors.material = 'Enter a non-negative number';
 
-  const isDisabled = !clientName || !projectName;
+  const isValid = Object.keys(errors).length === 0;
 
-  const handleSubmit = async () => {
-    if (isDisabled) return;
-    try {
-      await saveQuote({
-        clientName,
-        projectName,
-        labor: laborNum,
-        material: materialNum,
-      });
-    } catch (e) {
-      Alert.alert('Save failed', 'Please try again.');
+  const onSave = async () => {
+    if (!isValid) {
+      Alert.alert('Please fix the fields marked in red.');
       return;
     }
-
-    // Animate success + clear
-    setSaved(true);
-    Animated.timing(colorAnim, { toValue: 1, duration: 300, useNativeDriver: false }).start(() => {
-      Keyboard.dismiss();
-      setClientName('');
-      setProjectName('');
-      setLaborCost('');
-      setMaterialCost('');
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-
-      setTimeout(() => {
-        Animated.timing(colorAnim, { toValue: 0, duration: 400, useNativeDriver: false })
-          .start(() => setSaved(false));
-      }, 900);
-    });
+    try {
+      setSaving(true);
+      await saveQuote({
+        clientName: clientName.trim(),
+        projectName: projectName.trim(),
+        labor: parsedLabor || 0,
+        material: parsedMaterial || 0,
+      });
+      router.back();
+    } catch (e: any) {
+      Alert.alert('Save failed', e?.message || 'Try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const buttonBackground = colorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#007BFF', '#28a745'],
-  });
-
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>✍️ New Quote</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.select({ ios: 'padding', android: undefined })}
+      style={{ flex: 1 }}
+    >
+      <Stack.Screen options={{ title: 'New Quote' }} />
+      <ScrollView contentContainerStyle={s.container}>
+        <LabeledInput
+          label="Client"
+          placeholder="Client name"
+          value={clientName}
+          onChangeText={setClientName}
+          error={errors.clientName}
+        />
+        <LabeledInput
+          label="Project"
+          placeholder="Project name"
+          value={projectName}
+          onChangeText={setProjectName}
+          error={errors.projectName}
+        />
+        <LabeledInput
+          label="Labor"
+          placeholder="0"
+          value={labor}
+          onChangeText={setLabor}
+          keyboardType="numeric"
+          error={errors.labor}
+        />
+        <LabeledInput
+          label="Material"
+          placeholder="0"
+          value={material}
+          onChangeText={setMaterial}
+          keyboardType="numeric"
+          error={errors.material}
+        />
 
-        <Text style={styles.label}>Client Name</Text>
-        <TextInput style={styles.input} placeholder="Enter client name" value={clientName} onChangeText={setClientName} />
-
-        <Text style={styles.label}>Project Name</Text>
-        <TextInput style={styles.input} placeholder="Enter project name" value={projectName} onChangeText={setProjectName} />
-
-        <Text style={styles.label}>Labor Cost</Text>
-        <TextInput style={styles.input} placeholder="0.00" keyboardType="decimal-pad" inputMode="decimal" value={laborCost} onChangeText={setLaborCost} />
-
-        <Text style={styles.label}>Material Cost</Text>
-        <TextInput style={styles.input} placeholder="0.00" keyboardType="decimal-pad" inputMode="decimal" value={materialCost} onChangeText={setMaterialCost} />
-
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>{formatMoney(total)}</Text>
-        </View>
+        <View style={{ height: 8 }} />
+        <Button title={saving ? 'Saving…' : 'Save'} onPress={onSave} disabled={saving} />
       </ScrollView>
-
-      <View style={styles.footer}>
-        <Animated.View style={[styles.saveButton, { backgroundColor: buttonBackground }]}>
-          <Pressable
-            style={({ pressed }) => [styles.pressable, pressed && !saved && { opacity: 0.9 }, isDisabled && styles.saveButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={isDisabled}
-          >
-            <Text style={styles.saveButtonText}>{saved ? '✅ Saved!' : 'Save Quote'}</Text>
-          </Pressable>
-        </Animated.View>
-      </View>
     </KeyboardAvoidingView>
   );
 }
 
-function formatMoney(n: number, currency = 'USD') {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-  } catch {
-    return `$${n.toFixed(2)}`;
-  }
+function LabeledInput(props: {
+  label: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder?: string;
+  keyboardType?: 'default' | 'numeric';
+  error?: string;
+}) {
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={s.label}>{props.label}</Text>
+      <TextInput
+        style={[s.input, props.error && s.inputError]}
+        value={props.value}
+        onChangeText={props.onChangeText}
+        placeholder={props.placeholder}
+        keyboardType={props.keyboardType}
+        inputMode={props.keyboardType === 'numeric' ? 'numeric' : 'text'}
+        selectTextOnFocus
+        autoCapitalize="none"
+      />
+      {!!props.error && <Text style={s.errorText}>{props.error}</Text>}
+    </View>
+  );
 }
 
-const styles = StyleSheet.create({
-  scrollContainer: { padding: 20, backgroundColor: '#f9f9f9', flexGrow: 1, paddingBottom: 80 },
-  title: { fontSize: 22, fontWeight: '600', marginBottom: 12, textAlign: 'center' },
-  label: { fontSize: 14, fontWeight: '500', marginTop: 6 },
-  input: { height: 42, borderColor: '#ccc', borderWidth: 1, borderRadius: 6, paddingHorizontal: 10, backgroundColor: '#fff' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#ddd' },
-  totalLabel: { fontSize: 16, fontWeight: '600' },
-  totalValue: { fontSize: 18, fontWeight: '700' },
-  footer: { padding: 12, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#ccc', backgroundColor: '#fff' },
-  saveButton: { borderRadius: 8, overflow: 'hidden' },
-  pressable: { paddingVertical: 14, alignItems: 'center' },
-  saveButtonDisabled: { backgroundColor: '#a0c8f5' },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+const s = StyleSheet.create({
+  container: { padding: 16 },
+  label: { fontSize: 13, color: '#666', marginBottom: 6 },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#ccc',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  inputError: { borderColor: '#d33' },
+  errorText: { marginTop: 6, color: '#d33' },
 });

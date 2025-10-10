@@ -14,11 +14,10 @@ export type Quote = {
 const KEY = 'quotecat:quotes';
 
 function uid() {
-  // simple unique id
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// 🔹 Get all quotes (newest first)
+// Get all quotes (newest first)
 export async function getAllQuotes(): Promise<Quote[]> {
   const raw = await AsyncStorage.getItem(KEY);
   if (!raw) return [];
@@ -30,7 +29,7 @@ export async function getAllQuotes(): Promise<Quote[]> {
   }
 }
 
-// 🔹 Create a new quote
+// Create a new quote
 export async function saveQuote(partial: Omit<Quote, 'id' | 'createdAt' | 'total'>) {
   const existing = await getAllQuotes();
   const total = partial.labor + partial.material;
@@ -40,20 +39,20 @@ export async function saveQuote(partial: Omit<Quote, 'id' | 'createdAt' | 'total
   return q;
 }
 
-// 🔹 Get one by ID
+// Get one by ID
 export async function getQuoteById(id: string) {
   const all = await getAllQuotes();
   return all.find(q => q.id === id) || null;
 }
 
-// 🔹 Delete a quote
+// Delete a quote
 export async function deleteQuote(id: string) {
   const all = await getAllQuotes();
   const updated = all.filter(q => q.id !== id);
   await AsyncStorage.setItem(KEY, JSON.stringify(updated));
 }
 
-// ✅ UPDATED: Easier `updateQuote` API for the edit screen
+// Update by id (supports passing total directly)
 export async function updateQuote(
   id: string,
   updates: {
@@ -69,8 +68,6 @@ export async function updateQuote(
   if (idx === -1) throw new Error('Quote not found');
 
   const current = all[idx];
-
-  // Allow either labor/material or total override (edit screen uses total directly)
   const labor = updates.labor ?? current.labor;
   const material = updates.material ?? current.material;
   const total = updates.total ?? labor + material;
