@@ -2,7 +2,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Button,
   KeyboardAvoidingView,
@@ -13,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { getQuoteById, updateQuote, type Quote } from '../../../lib/quotes';
+import { Quote, getQuoteById, updateQuote } from '../../../lib/quotes';
 
 type Form = {
   clientName: string;
@@ -22,49 +21,29 @@ type Form = {
   material: string;  // keep as text for validation UX
 };
 
-type Errors = {
-  clientName?: string;
-  projectName?: string;
-  labor?: string;
-  material?: string;
-};
-
 export default function EditQuote() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
-
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [form, setForm] = useState<Form>({ clientName: '', projectName: '', labor: '', material: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [quote, setQuote] = useState<Quote | null>(null);
-
-  const [form, setForm] = useState<Form>({
-    clientName: '',
-    projectName: '',
-    labor: '',
-    material: '',
-  });
 
   useEffect(() => {
     (async () => {
-      if (!id) {
-        setQuote(null);
-        setLoading(false);
-        return;
-      }
-      const q = await getQuoteById(String(id));
-      setQuote(q ?? null);
+      if (!id) return;
+      const q: Quote | null = await getQuoteById(String(id));
       if (q) {
         setForm({
-          clientName: q.clientName ?? '',
-          projectName: q.projectName ?? '',
-          labor: String(q.labor ?? ''),
-          material: String(q.material ?? ''),
+          clientName: q.clientName || '',
+          projectName: q.projectName || '',
+          // ⬇️ empty string if zero so placeholder shows and first keypress isn’t appended to "0"
+          labor: q.labor ? String(q.labor) : '',
+          material: q.material ? String(q.material) : '',
         });
       }
       setLoading(false);
     })();
   }, [id]);
 
-  // Parse with empty → 0 fallback; allow decimals
   const parsedLabor = useMemo(
     () => Number((form.labor || '0').replace(/[^0-9.]/g, '')),
     [form.labor]
@@ -74,15 +53,15 @@ export default function EditQuote() {
     [form.material]
   );
 
-  const errors: Errors = {};
+  const errors: Partial<Record<keyof Form, string>> = {};
   if (!form.clientName.trim()) errors.clientName = 'Required';
   if (!form.projectName.trim()) errors.projectName = 'Required';
-  if (!Number.isFinite(parsedLabor) || parsedLabor < 0) errors.labor = 'Enter a non-negative number';
-  if (!Number.isFinite(parsedMaterial) || parsedMaterial < 0) errors.material = 'Enter a non-negative number';
+  if (!isFinite(parsedLabor) || parsedLabor < 0) errors.labor = 'Enter a non-negative number';
+  if (!isFinite(parsedMaterial) || parsedMaterial < 0) errors.material = 'Enter a non-negative number';
+
   const isValid = Object.keys(errors).length === 0;
 
   const onSave = async () => {
-    if (!quote || !id) return;
     if (!isValid) {
       Alert.alert('Please fix the fields marked in red.');
       return;
@@ -94,8 +73,8 @@ export default function EditQuote() {
         projectName: form.projectName.trim(),
         labor: parsedLabor || 0,
         material: parsedMaterial || 0,
-        // total omitted → updateQuote will recompute
       });
+      Alert.alert('Saved', 'Quote updated.');
       router.back();
     } catch (e: any) {
       Alert.alert('Save failed', e?.message || 'Please try again.');
@@ -104,22 +83,10 @@ export default function EditQuote() {
     }
   };
 
-  const moneyKeyboard: 'default' | 'numeric' | 'decimal-pad' =
-    Platform.OS === 'ios' ? 'decimal-pad' : 'numeric';
-
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator />
-        <Text style={{ marginTop: 8 }}>Loading…</Text>
-      </View>
-    );
-  }
-
-  if (!quote) {
-    return (
-      <View style={s.center}>
-        <Text>Quote not found.</Text>
+        <Text>Loading…</Text>
       </View>
     );
   }
@@ -129,48 +96,41 @@ export default function EditQuote() {
       behavior={Platform.select({ ios: 'padding', android: undefined })}
       style={{ flex: 1 }}
     >
-      <Stack.Screen
-        options={{
-          title: 'Edit Quote',
-          headerRight: () => (
-            <Button title={saving ? 'Saving…' : 'Save'} onPress={onSave} disabled={saving} />
-          ),
-        }}
-      />
+      <Stack.Screen options={{ title: 'Edit Quote' }} />
       <ScrollView contentContainerStyle={s.container}>
         <LabeledInput
           label="Client"
-          placeholder="Client name"
           value={form.clientName}
-          onChangeText={(t) => setForm((f) => ({ ...f, clientName: t }))}
+          onChangeText={(t) => setForm({ ...form, clientName: t })}
+          placeholder="Client name"
           error={errors.clientName}
         />
         <LabeledInput
           label="Project"
-          placeholder="Project name"
           value={form.projectName}
-          onChangeText={(t) => setForm((f) => ({ ...f, projectName: t }))}
+          onChangeText={(t) => setForm({ ...form, projectName: t })}
+          placeholder="Project name"
           error={errors.projectName}
         />
         <LabeledInput
           label="Labor"
-          placeholder="0"
           value={form.labor}
-          onChangeText={(t) => setForm((f) => ({ ...f, labor: t }))}
-          keyboardType={moneyKeyboard}
+          onChangeText={(t) => setForm({ ...form, labor: t })}
+          placeholder="0"
+          keyboardType="numeric"
           error={errors.labor}
         />
         <LabeledInput
           label="Material"
-          placeholder="0"
           value={form.material}
-          onChangeText={(t) => setForm((f) => ({ ...f, material: t }))}
-          keyboardType={moneyKeyboard}
+          onChangeText={(t) => setForm({ ...form, material: t })}
+          placeholder="0"
+          keyboardType="numeric"
           error={errors.material}
         />
 
-        <View style={{ height: 12 }} />
-        <Button title="Cancel" onPress={() => router.back()} />
+        <View style={{ height: 8 }} />
+        <Button title={saving ? 'Saving…' : 'Save'} onPress={onSave} disabled={saving} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -181,7 +141,7 @@ function LabeledInput(props: {
   value: string;
   onChangeText: (t: string) => void;
   placeholder?: string;
-  keyboardType?: 'default' | 'numeric' | 'decimal-pad';
+  keyboardType?: 'default' | 'numeric';
   error?: string;
 }) {
   return (
@@ -193,6 +153,7 @@ function LabeledInput(props: {
         onChangeText={props.onChangeText}
         placeholder={props.placeholder}
         keyboardType={props.keyboardType}
+        inputMode={props.keyboardType === 'numeric' ? 'numeric' : 'text'}
         selectTextOnFocus
         autoCapitalize="none"
       />
@@ -202,8 +163,8 @@ function LabeledInput(props: {
 }
 
 const s = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container: { padding: 16 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 13, color: '#666', marginBottom: 6 },
   input: {
     backgroundColor: '#fff',

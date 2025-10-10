@@ -1,134 +1,99 @@
 // app/auth/sign-in.tsx
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { Link, router, Stack } from 'expo-router';
+import React, { useState } from 'react';
 import {
-  Alert,
-  Button,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    Alert,
+    Button,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 
 export default function SignIn() {
-  const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  // A) On mount: if a session exists, go Home; else show form.
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      if (data.session) {
-        router.replace('/');           // already signed in
-      } else {
-        setChecking(false);            // show sign-in UI
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
-
-  // B) Only navigate when a real SIGNED_IN event fires.
-  useEffect(() => {
-    const { data: { subscription } } =
-      supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          router.replace('/');         // go Home once after sign-in
-        }
-      });
-    return () => subscription.unsubscribe();
-  }, []);
+  const [busy, setBusy] = useState(false);
 
   const onSignIn = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Missing info', 'Please enter your email and password.');
+      return;
+    }
     try {
-      setSubmitting(true);
+      setBusy(true);
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
-        password,
+        password: password.trim(),
       });
       if (error) throw error;
-      // navigation happens in onAuthStateChange above
+      router.replace('/');
     } catch (e: any) {
-      Alert.alert('Sign-in failed', e?.message || 'Please try again.');
+      Alert.alert('Sign in failed', e?.message || 'Try again.');
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   };
 
-  if (checking) {
-    return (
-      <View style={s.center}>
-        <Text>Checking session…</Text>
-      </View>
-    );
-  }
-
   return (
     <KeyboardAvoidingView
-      behavior={Platform.select({ ios: 'padding', android: undefined })}
-      style={{ flex: 1 }}
+      behavior={Platform.select({ ios: 'padding' })}
+      style={styles.container}
     >
-      <View style={s.container}>
-        <Text style={s.title}>Welcome back</Text>
+      <Stack.Screen options={{ title: 'Sign In' }} />
+      <View style={styles.form}>
+        <Text style={styles.title}>Welcome back 👋</Text>
 
-        <View style={{ height: 16 }} />
-
-        {/* Email */}
-        <Text style={s.label}>Email</Text>
+        <Text style={styles.label}>Email</Text>
         <TextInput
-          style={s.input}
           placeholder="you@example.com"
-          placeholderTextColor="#9ca3af"
           autoCapitalize="none"
-          autoComplete="email"
           keyboardType="email-address"
-          textContentType="username"
           value={email}
           onChangeText={setEmail}
+          style={styles.input}
         />
 
-        <View style={{ height: 12 }} />
-
-        {/* Password */}
-        <Text style={s.label}>Password</Text>
+        <Text style={styles.label}>Password</Text>
         <TextInput
-          style={s.input}
           placeholder="••••••••"
-          placeholderTextColor="#9ca3af"
-          autoCapitalize="none"
-          autoComplete="password"
-          textContentType="password"
           secureTextEntry
+          autoCapitalize="none"
           value={password}
           onChangeText={setPassword}
+          style={styles.input}
         />
 
-        <View style={{ height: 16 }} />
-        <Button title={submitting ? 'Signing in…' : 'Sign in'} onPress={onSignIn} disabled={submitting} />
+        <Button title={busy ? 'Signing in…' : 'Sign In'} onPress={onSignIn} />
+
+        <View style={styles.footer}>
+          <Text>Don't have an account?</Text>
+          <Link href="/auth/sign-up" style={styles.link}>
+            Create one →
+          </Link>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const s = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container: { flex: 1, padding: 16, justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  label: { fontSize: 13, color: '#4b5563', marginBottom: 6 },
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', padding: 16 },
+  form: { gap: 12 },
+  title: { fontSize: 24, fontWeight: '800', marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '600', color: '#555' },
   input: {
     backgroundColor: '#fff',
-    color: '#111827',                // ensure text is visible
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#d1d5db',
+    borderColor: '#ccc',
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
   },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 4 },
+  link: { color: '#007BFF', fontWeight: '600' },
 });

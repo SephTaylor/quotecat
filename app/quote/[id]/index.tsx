@@ -1,51 +1,32 @@
 // app/quote/[id]/index.tsx
-import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Button,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { formatMoney } from '../../../lib/money';
+import { Link, Stack, router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Button, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { shareQuotePDF } from '../../../lib/pdf';
 import { Quote, getQuoteById } from '../../../lib/quotes';
-import { getCurrency } from '../../../lib/settings';
+
+function formatMoney(n: number, currency = 'USD') {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(n);
+  } catch {
+    return `$${n.toFixed(2)}`;
+  }
+}
 
 export default function QuoteDetail() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
-
+  const { id } = useLocalSearchParams<{ id: string }>();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
-  const [currency, setCurrency] = useState<string>('USD');
 
   useEffect(() => {
-    getCurrency().then(setCurrency).catch(() => setCurrency('USD'));
-  }, []);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    if (!id) {
-      setQuote(null);
+    (async () => {
+      if (!id) return;
+      const q = await getQuoteById(String(id));
+      setQuote(q || null);
       setLoading(false);
-      return;
-    }
-    const q = await getQuoteById(String(id));
-    setQuote(q ?? null);
-    setLoading(false);
+    })();
   }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      // keep the callback sync; call the async loader inside
-      void load();
-      return;
-    }, [load])
-  );
 
   const onShare = async () => {
     if (!quote) return;
@@ -53,6 +34,7 @@ export default function QuoteDetail() {
       setSharing(true);
       const res = await shareQuotePDF(quote);
       if (typeof res === 'string' && res !== 'shared') {
+        // Web or environments without share: show file path
         Alert.alert('PDF Created', `Saved to:\n${res}`);
       }
     } catch (e: any) {
@@ -85,19 +67,21 @@ export default function QuoteDetail() {
         options={{
           title: 'Quote',
           headerRight: () => (
-            <Button title="Edit" onPress={() => router.push(`/quote/${quote.id}/edit`)} />
+            <Link href={`/quote/${quote.id}/edit`} asChild>
+              <Button title="Edit" onPress={() => router.push(`/quote/${quote.id}/edit`)} />
+            </Link>
           ),
         }}
       />
-
       <ScrollView contentContainerStyle={s.container}>
         <View style={s.card}>
-          <Row label="Client" value={quote.clientName ?? '—'} />
-          <Row label="Project" value={quote.projectName ?? '—'} />
+          <Row label="Client" value={quote.clientName} />
+          <Row label="Project" value={quote.projectName} />
           <Separator />
-          <Row label="Labor" value={formatMoney(quote.labor, currency)} />
-          <Row label="Material" value={formatMoney(quote.material, currency)} />
-          <Row label="Total" value={formatMoney(quote.total, currency)} bold big />
+          <Row label="Labor" value={formatMoney(quote.labor)} />
+          <Row label="Material" value={formatMoney(quote.material)} />
+          <Separator />
+          <Row label="Total" value={formatMoney(quote.total)} bold big />
         </View>
 
         <View style={{ height: 12 }} />
@@ -107,17 +91,7 @@ export default function QuoteDetail() {
   );
 }
 
-function Row({
-  label,
-  value,
-  bold,
-  big,
-}: {
-  label: string;
-  value: React.ReactNode; // (fix) allow string/number/elements
-  bold?: boolean;
-  big?: boolean;
-}) {
+function Row({ label, value, bold, big }: { label: string; value: string; bold?: boolean; big?: boolean }) {
   return (
     <View style={s.row}>
       <Text style={[s.label, big && s.big]}>{label}</Text>

@@ -1,81 +1,60 @@
 // app/index.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Session } from '@supabase/supabase-js';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
-import { formatMoney } from '../lib/money';
-import type { Quote as LibQuote } from '../lib/quotes';
-import { deleteQuote, getAllQuotes } from '../lib/quotes';
-import { getCurrency } from '../lib/settings';
+import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Animated,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+
+import { useSession } from '../hooks/useSession';
+import { exportQuotesCSV } from '../lib/export';
+import { Quote, deleteQuote, getAllQuotes } from '../lib/quotes';
 import { supabase } from '../lib/supabase';
 
-// Local list item type used by this screen
-type QuoteItem = {
-  id: string;
-  title: string;
-  total?: number;
-};
-
-const TIP_KEY = 'qc_tip_seen_v1';
+const TIP_KEY = 'quotecat:floatingTipSeen:v2';
 
 export default function Home() {
-  const router = useRouter();
-
-  // ---------- AUTH (unconditional hooks) ----------
-  const [session, setSession] = useState<Session | null>(null);
-  const [sessionLoading, setSessionLoading] = useState(true);
+  // === Auth gate ===
+  const { session, loading: sessionLoading } = useSession();
 
   useEffect(() => {
-    let mounted = true;
+    if (!session && !sessionLoading) {
+      router.replace('/auth/sign-in');
+    }
+  }, [session, sessionLoading]);
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session ?? null);
-      setSessionLoading(false);
-    });
+  if (sessionLoading || !session) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text>Loading…</Text>
+      </View>
+    );
+  }
+  // === /Auth gate ===
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  // ---------- STATE ----------
-  const [quotes, setQuotes] = useState<QuoteItem[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [tipSeen, setTipSeen] = useState(false);
-  const [tipLoaded, setTipLoaded] = useState(false);
-  const [currency, setCurrency] = useState<string>('USD');
-  useEffect(() => {
-    getCurrency().then(setCurrency);
-  }, []);
+  const [tipSeen, setTipSeen] = useState<boolean>(false);
+  const [tipLoaded, setTipLoaded] = useState<boolean>(false);
+
   const pulse = useRef(new Animated.Value(1)).current;
   const tipOpacity = useRef(new Animated.Value(0)).current;
-  const tipTimer = useRef<NodeJS.Timeout | null>(null);
-
-  const toItem = (q: LibQuote): QuoteItem => ({
-    id: q.id,
-    title: `${q.clientName ?? 'Client'} — ${q.projectName ?? 'Project'}`,
-    total: q.total,
-  });
+  const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
-    const data = await getAllQuotes(); // newest first (per your lib)
-    setQuotes((data as LibQuote[]).map(toItem));
+    const data = await getAllQuotes();
+    setQuotes(data);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -83,7 +62,6 @@ export default function Home() {
     setRefreshing(false);
   }, [load]);
 
-  // read one-time tip flag
   useEffect(() => {
     (async () => {
       const raw = await AsyncStorage.getItem(TIP_KEY);
@@ -92,7 +70,6 @@ export default function Home() {
     })();
   }, []);
 
-  // pulse animation when list is empty (applied to FAB below)
   useEffect(() => {
     let loop: Animated.CompositeAnimation | null = null;
     if (quotes.length === 0) {
@@ -107,12 +84,9 @@ export default function Home() {
     } else {
       pulse.stopAnimation(() => pulse.setValue(1));
     }
-    return () => {
-      if (loop) loop.stop();
-    };
+    return () => { if (loop) loop.stop(); };
   }, [quotes.length, pulse]);
 
-  // show one-time tooltip text
   useEffect(() => {
     if (!tipLoaded) return;
 
@@ -143,122 +117,226 @@ export default function Home() {
     };
   }, [tipLoaded, tipSeen, quotes.length, tipOpacity]);
 
-  // ---------- AUTH redirect AFTER hooks ----------
-  useEffect(() => {
-    if (!session && !sessionLoading) {
-      router.replace('/auth/sign-in');
-    }
-  }, [session, sessionLoading, router]);
-
-  const waitingOnAuth = sessionLoading || !session;
-
-  // ---------- ACTIONS ----------
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert('Sign out failed', error.message);
-      return;
-    }
-  // Don't navigate here. When the session becomes null, the Home auth effect
-  // will run and redirect to /auth/sign-in exactly once.
+  const confirmDelete = (id: string) => {
+    Alert.alert('Delete quote?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteQuote(id); load(); } },
+    ]);
   };
 
-  const confirmDelete = (q: QuoteItem) => {
-    Alert.alert(
-      'Delete quote?',
-      `This will remove “${q.title}”.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteQuote(q.id);
-            await load();
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
-
-  // ---------- RENDER ----------
-  if (waitingOnAuth) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text>Loading…</Text>
+  const Item = ({ item }: { item: Quote }) => (
+    <Pressable
+      onPress={() => router.push(`/quote/${item.id}`)}
+      onLongPress={() => confirmDelete(item.id)}
+      style={({ pressed }) => [styles.item, pressed && { opacity: 0.9 }]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={styles.itemTitle}>{item.clientName}</Text>
+        <Text style={styles.itemSubtitle}>{item.projectName}</Text>
       </View>
-    );
-  }
+      <Text style={styles.itemAmount}>{formatMoney(item.total)}</Text>
+    </Pressable>
+  );
+
+  const onFabPress = async () => {
+    if (!tipSeen) {
+      await AsyncStorage.setItem(TIP_KEY, '1');
+      Animated.timing(tipOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      setTipSeen(true);
+    }
+    router.push('/new-quote');
+  };
+
+  // === Summary numbers ===
+  const quoteCount = quotes.length;
+  const totalAmount = useMemo(
+    () => quotes.reduce((sum, q) => sum + (q.total || 0), 0),
+    [quotes]
+  );
+
+  const fabOpacity = pulse.interpolate({
+    inputRange: [1, 1.08],
+    outputRange: [1, 0.92],
+  });
+
+  const handleExport = async () => {
+    try {
+      const result = await exportQuotesCSV(quotes);
+      if (typeof result === 'string') {
+        // Sharing not available: show where the file is
+        Alert.alert('Exported', `CSV saved here:\n${result}`);
+      }
+    } catch (e: any) {
+      Alert.alert('Export failed', e?.message || 'Please try again.');
+    }
+  };
+
+  // === Sign out handler (Supabase) ===
+  const onSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.replace('/auth/sign-in');
+    } catch (e: any) {
+      Alert.alert('Sign out failed', e?.message || 'Try again.');
+    }
+  };
+
+  // Header component for the list (shows only when there are quotes)
+  const SummaryHeader = quoteCount > 0 ? (
+    <View style={styles.summaryCard}>
+      <View style={styles.summaryRow}>
+        <Text style={styles.summaryLabel}>Quotes</Text>
+        <Text style={styles.summaryValue}>{quoteCount}</Text>
+      </View>
+      <View style={styles.summaryRow}>
+        <Text style={styles.summaryLabel}>Total</Text>
+        <Text style={styles.summaryValue}>{formatMoney(totalAmount)}</Text>
+      </View>
+    </View>
+  ) : null;
 
   return (
-    <View style={{ flex: 1, padding: 16 }}>
-      {/* Top bar with Sign out */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <Text style={{ fontSize: 18, fontWeight: '700' }}>QuoteCat</Text>
-        <TouchableOpacity
-          onPress={signOut}
-          style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 9999, backgroundColor: '#ef4444' }}
-        >
-          <Text style={{ color: 'white', fontWeight: '700' }}>Sign out</Text>
-        </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Top bar with title + Export + Sign out */}
+      <View style={styles.topBar}>
+        <Text style={styles.header}>🏠 QuoteCat</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {quoteCount > 0 && (
+            <Pressable onPress={handleExport} style={({ pressed }) => [styles.exportBtn, pressed && { opacity: 0.8 }]}>
+              <Text style={styles.exportText}>Export</Text>
+            </Pressable>
+          )}
+          <Pressable onPress={onSignOut} style={({ pressed }) => [styles.exportBtn, pressed && { opacity: 0.8 }]}>
+            <Text style={styles.exportText}>Sign out</Text>
+          </Pressable>
+        </View>
       </View>
 
-      <FlatList
-        data={quotes}
-        keyExtractor={(q) => q.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 32 }}>
-            {/* Just the tip text now — no extra New Quote button */}
-            <Animated.View style={{ opacity: tipOpacity }}>
-              <Text style={{ color: '#6b7280', textAlign: 'center' }}>
-                Tip: Tap the blue ＋ to create your first quote. Long-press a quote to delete it.
-              </Text>
-            </Animated.View>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() =>
-              router.push({ pathname: '/quote/[id]', params: { id: item.id } })
-            }
-            onLongPress={() => confirmDelete(item)}
-            delayLongPress={350}
-            style={{
-              padding: 16,
-              marginBottom: 12,
-              borderRadius: 16,
-              backgroundColor: '#fff',
-              elevation: 2,
-            }}
-          >
-            <Text style={{ fontWeight: '700', fontSize: 16 }}>{item.title}</Text>
-            {item.total != null && (
-              <Text style={{ color: '#6b7280' }}>Total: {formatMoney(item.total, currency)}</Text>
-        )}
-            <Text style={{ color: '#9ca3af', marginTop: 4, fontSize: 12 }}>Long-press to delete</Text>
-          </TouchableOpacity>
-        )}
-      />
+      {quoteCount === 0 ? (
+        <Text style={styles.empty}>
+          No quotes yet. Tap the <Text style={{ fontWeight: '700' }}>＋</Text> to create one.
+        </Text>
+      ) : (
+        <FlatList
+          data={quotes}
+          keyExtractor={(q) => q.id}
+          renderItem={Item}
+          ListHeaderComponent={SummaryHeader}
+          contentContainerStyle={{ paddingBottom: 16 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
+      )}
 
-      {/* Floating ＋ button (only entry point to add) with pulse */}
-      <Animated.View style={{ position: 'absolute', right: 20, bottom: 28, transform: [{ scale: pulse }] }}>
-        <TouchableOpacity
-          onPress={() => router.push('/new-quote')}  // <- make sure this screen exists
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 9999,
-            backgroundColor: '#2563eb',
-            alignItems: 'center',
-            justifyContent: 'center',
-            elevation: 5,
-          }}
-        >
-          <Text style={{ color: 'white', fontSize: 32, lineHeight: 32 }}>＋</Text>
-        </TouchableOpacity>
+      {/* Tooltip bubble (above the FAB) */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.tooltipWrap,
+          {
+            opacity: tipOpacity,
+            transform: [{
+              translateY: tipOpacity.interpolate({
+                inputRange: [0, 1],
+                outputRange: [8, 0],
+              }),
+            }],
+          },
+        ]}
+      >
+        <View style={styles.tooltipBox}>
+          <Text style={styles.tooltipText}>Create Quote</Text>
+        </View>
+        <View style={styles.tooltipArrow} />
+      </Animated.View>
+
+      {/* Animated FAB */}
+      <Animated.View style={[styles.fabWrap, { transform: [{ scale: pulse }], opacity: fabOpacity }]}>
+        <Pressable style={styles.fab} onPress={onFabPress}>
+          <Text style={styles.fabText}>＋</Text>
+        </Pressable>
       </Animated.View>
     </View>
   );
 }
+
+function formatMoney(n: number, currency = 'USD') {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(n);
+  } catch {
+    return `$${n.toFixed(2)}`;
+  }
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16, backgroundColor: '#f7f7f7' },
+
+  // Top bar
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  header: { fontSize: 22, fontWeight: '700' },
+  exportBtn: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
+    backgroundColor: '#fff', borderWidth: StyleSheet.hairlineWidth, borderColor: '#ccc',
+  },
+  exportText: { fontSize: 14, fontWeight: '700', color: '#007BFF' },
+
+  // Empty state text
+  empty: { textAlign: 'center', marginTop: 24, color: '#666' },
+
+  // Summary card
+  summaryCard: {
+    backgroundColor: '#fff',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#ddd',
+    marginBottom: 12,
+  },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 },
+  summaryLabel: { fontSize: 14, color: '#666' },
+  summaryValue: { fontSize: 16, fontWeight: '700' },
+
+  // List items
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#ddd',
+  },
+  itemTitle: { fontSize: 16, fontWeight: '700' },
+  itemSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
+  itemAmount: { fontSize: 16, fontWeight: '700', marginLeft: 12 },
+
+  // FAB
+  fabWrap: { position: 'absolute', right: 16, bottom: 16, zIndex: 5 },
+  fab: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#007BFF',
+    alignItems: 'center', justifyContent: 'center',
+    elevation: 4, shadowColor: '#000', shadowOpacity: 0.2,
+    shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
+  },
+  fabText: { color: '#fff', fontSize: 30, lineHeight: 30, marginTop: -2 },
+
+  // Tooltip
+  tooltipWrap: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16 + 56 + 10,
+    alignItems: 'flex-end',
+    zIndex: 10,
+  },
+  tooltipBox: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#111', borderRadius: 8 },
+  tooltipText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  tooltipArrow: {
+    width: 0, height: 0, marginTop: 4,
+    borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 7,
+    borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    borderTopColor: '#111',
+  },
+});
