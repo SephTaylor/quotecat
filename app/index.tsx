@@ -4,9 +4,10 @@ import type { Session } from '@supabase/supabase-js';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
-
+import { formatMoney } from '../lib/money';
 import type { Quote as LibQuote } from '../lib/quotes';
 import { deleteQuote, getAllQuotes } from '../lib/quotes';
+import { getCurrency } from '../lib/settings';
 import { supabase } from '../lib/supabase';
 
 // Local list item type used by this screen
@@ -51,7 +52,10 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [tipSeen, setTipSeen] = useState(false);
   const [tipLoaded, setTipLoaded] = useState(false);
-
+  const [currency, setCurrency] = useState<string>('USD');
+  useEffect(() => {
+    getCurrency().then(setCurrency);
+  }, []);
   const pulse = useRef(new Animated.Value(1)).current;
   const tipOpacity = useRef(new Animated.Value(0)).current;
   const tipTimer = useRef<NodeJS.Timeout | null>(null);
@@ -155,7 +159,8 @@ export default function Home() {
       Alert.alert('Sign out failed', error.message);
       return;
     }
-    router.replace('/auth/sign-in');
+  // Don't navigate here. When the session becomes null, the Home auth effect
+  // will run and redirect to /auth/sign-in exactly once.
   };
 
   const confirmDelete = (q: QuoteItem) => {
@@ -229,7 +234,9 @@ export default function Home() {
             }}
           >
             <Text style={{ fontWeight: '700', fontSize: 16 }}>{item.title}</Text>
-            {item.total != null && <Text style={{ color: '#6b7280' }}>Total: {item.total}</Text>}
+            {item.total != null && (
+              <Text style={{ color: '#6b7280' }}>Total: {formatMoney(item.total, currency)}</Text>
+        )}
             <Text style={{ color: '#9ca3af', marginTop: 4, fontSize: 12 }}>Long-press to delete</Text>
           </TouchableOpacity>
         )}
