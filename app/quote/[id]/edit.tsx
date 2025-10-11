@@ -96,7 +96,7 @@ export default function EditQuote() {
         material: parsedMaterial || 0,
         // total omitted → updateQuote will recompute
       });
-      router.replace(`/quote/${id}`); // show fresh details immediately
+      router.back();
     } catch (e: any) {
       Alert.alert('Save failed', e?.message || 'Please try again.');
     } finally {

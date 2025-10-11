@@ -3,20 +3,25 @@ import { Stack } from 'expo-router';
 
 export default function RootLayout() {
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerShown: true,        // show one global header (fixes status bar overlap)
+        headerBackTitle: 'Home',  // back label when leaving quote screens
+      }}
+    >
       {/* Home list at / */}
-      <Stack.Screen name="index" options={{ title: 'QuoteCat' }} />
+      <Stack.Screen name="index"   options={{ title: 'QuoteCat' }} />
 
-      {/* Your modal, if you use it */}
-      <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-
-      {/* New quote screen at /new-quote */}
+      {/* Create form at /new-quote */}
       <Stack.Screen name="new-quote" options={{ title: 'New Quote' }} />
 
-      {/* Tabs folder, if present */}
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      {/* Quote details and edit (explicitly registered at root) */}
+      <Stack.Screen name="quote/[id]/index" options={{ title: 'Quote' }} />
+      <Stack.Screen name="quote/[id]/edit"  options={{ title: 'Edit Quote' }} />
 
-      {/* ✅ DO NOT register [id] or [id]/edit here */}
+      {/* If you actually use these, keep them; otherwise remove to avoid warnings */}
+      {/* <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} /> */}
+      {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
     </Stack>
   );
 }

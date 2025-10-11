@@ -1,6 +1,6 @@
 // app/quote/[id]/index.tsx
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,16 +10,10 @@ import {
   Text,
   View,
 } from 'react-native';
+import { formatMoney } from '../../../lib/money';
 import { shareQuotePDF } from '../../../lib/pdf';
 import { Quote, getQuoteById } from '../../../lib/quotes';
-
-function formatMoney(n: number, currency = 'USD') {
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(n);
-  } catch {
-    return `$${n.toFixed(2)}`;
-  }
-}
+import { getCurrency } from '../../../lib/settings';
 
 export default function QuoteDetail() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -27,8 +21,12 @@ export default function QuoteDetail() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [currency, setCurrency] = useState<string>('USD');
 
-  // Load on first show AND whenever this screen regains focus (after editing, etc.)
+  useEffect(() => {
+    getCurrency().then(setCurrency).catch(() => setCurrency('USD'));
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     if (!id) {
@@ -43,7 +41,9 @@ export default function QuoteDetail() {
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      // keep the callback sync; call the async loader inside
+      void load();
+      return;
     }, [load])
   );
 
@@ -92,13 +92,12 @@ export default function QuoteDetail() {
 
       <ScrollView contentContainerStyle={s.container}>
         <View style={s.card}>
-          <Row label="Client" value={quote.clientName} />
-          <Row label="Project" value={quote.projectName} />
+          <Row label="Client" value={quote.clientName ?? '—'} />
+          <Row label="Project" value={quote.projectName ?? '—'} />
           <Separator />
-          <Row label="Labor" value={formatMoney(quote.labor)} />
-          <Row label="Material" value={formatMoney(quote.material)} />
-          <Separator />
-          <Row label="Total" value={formatMoney(quote.total)} bold big />
+          <Row label="Labor" value={formatMoney(quote.labor, currency)} />
+          <Row label="Material" value={formatMoney(quote.material, currency)} />
+          <Row label="Total" value={formatMoney(quote.total, currency)} bold big />
         </View>
 
         <View style={{ height: 12 }} />
@@ -115,7 +114,7 @@ function Row({
   big,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode; // (fix) allow string/number/elements
   bold?: boolean;
   big?: boolean;
 }) {
