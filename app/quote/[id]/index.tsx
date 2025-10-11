@@ -1,7 +1,15 @@
 // app/quote/[id]/index.tsx
-import { Link, Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Button,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { shareQuotePDF } from '../../../lib/pdf';
 import { Quote, getQuoteById } from '../../../lib/quotes';
 
@@ -14,19 +22,30 @@ function formatMoney(n: number, currency = 'USD') {
 }
 
 export default function QuoteDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      if (!id) return;
-      const q = await getQuoteById(String(id));
-      setQuote(q || null);
+  // Load on first show AND whenever this screen regains focus (after editing, etc.)
+  const load = useCallback(async () => {
+    setLoading(true);
+    if (!id) {
+      setQuote(null);
       setLoading(false);
-    })();
+      return;
+    }
+    const q = await getQuoteById(String(id));
+    setQuote(q ?? null);
+    setLoading(false);
   }, [id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const onShare = async () => {
     if (!quote) return;
@@ -34,7 +53,6 @@ export default function QuoteDetail() {
       setSharing(true);
       const res = await shareQuotePDF(quote);
       if (typeof res === 'string' && res !== 'shared') {
-        // Web or environments without share: show file path
         Alert.alert('PDF Created', `Saved to:\n${res}`);
       }
     } catch (e: any) {
@@ -67,12 +85,11 @@ export default function QuoteDetail() {
         options={{
           title: 'Quote',
           headerRight: () => (
-            <Link href={`/quote/${quote.id}/edit`} asChild>
-              <Button title="Edit" onPress={() => router.push(`/quote/${quote.id}/edit`)} />
-            </Link>
+            <Button title="Edit" onPress={() => router.push(`/quote/${quote.id}/edit`)} />
           ),
         }}
       />
+
       <ScrollView contentContainerStyle={s.container}>
         <View style={s.card}>
           <Row label="Client" value={quote.clientName} />
@@ -91,7 +108,17 @@ export default function QuoteDetail() {
   );
 }
 
-function Row({ label, value, bold, big }: { label: string; value: string; bold?: boolean; big?: boolean }) {
+function Row({
+  label,
+  value,
+  bold,
+  big,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  big?: boolean;
+}) {
   return (
     <View style={s.row}>
       <Text style={[s.label, big && s.big]}>{label}</Text>

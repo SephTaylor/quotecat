@@ -24,8 +24,7 @@ type Errors = {
 export default function NewQuote() {
   const [clientName, setClientName] = useState('');
   const [projectName, setProjectName] = useState('');
-  // ⬇️ Start empty; placeholder shows "0"
-  const [labor, setLabor] = useState('');
+  const [labor, setLabor] = useState('');    // start empty; placeholder shows 0
   const [material, setMaterial] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -42,8 +41,8 @@ export default function NewQuote() {
   const errors: Errors = {};
   if (!clientName.trim()) errors.clientName = 'Required';
   if (!projectName.trim()) errors.projectName = 'Required';
-  if (!isFinite(parsedLabor) || parsedLabor < 0) errors.labor = 'Enter a non-negative number';
-  if (!isFinite(parsedMaterial) || parsedMaterial < 0) errors.material = 'Enter a non-negative number';
+  if (!Number.isFinite(parsedLabor) || parsedLabor < 0) errors.labor = 'Enter a non-negative number';
+  if (!Number.isFinite(parsedMaterial) || parsedMaterial < 0) errors.material = 'Enter a non-negative number';
 
   const isValid = Object.keys(errors).length === 0;
 
@@ -60,13 +59,17 @@ export default function NewQuote() {
         labor: parsedLabor || 0,
         material: parsedMaterial || 0,
       });
-      router.back();
+      router.back(); // return to Home
     } catch (e: any) {
       Alert.alert('Save failed', e?.message || 'Try again.');
     } finally {
       setSaving(false);
     }
   };
+
+  // iOS gets a decimal pad so you can enter ".", Android keeps numeric.
+  const moneyKeyboard: 'default' | 'numeric' | 'decimal-pad' =
+    Platform.OS === 'ios' ? 'decimal-pad' : 'numeric';
 
   return (
     <KeyboardAvoidingView
@@ -94,7 +97,7 @@ export default function NewQuote() {
           placeholder="0"
           value={labor}
           onChangeText={setLabor}
-          keyboardType="numeric"
+          keyboardType={moneyKeyboard}
           error={errors.labor}
         />
         <LabeledInput
@@ -102,7 +105,7 @@ export default function NewQuote() {
           placeholder="0"
           value={material}
           onChangeText={setMaterial}
-          keyboardType="numeric"
+          keyboardType={moneyKeyboard}
           error={errors.material}
         />
 
@@ -118,7 +121,7 @@ function LabeledInput(props: {
   value: string;
   onChangeText: (t: string) => void;
   placeholder?: string;
-  keyboardType?: 'default' | 'numeric';
+  keyboardType?: 'default' | 'numeric' | 'decimal-pad';
   error?: string;
 }) {
   return (
@@ -130,7 +133,7 @@ function LabeledInput(props: {
         onChangeText={props.onChangeText}
         placeholder={props.placeholder}
         keyboardType={props.keyboardType}
-        inputMode={props.keyboardType === 'numeric' ? 'numeric' : 'text'}
+        // inputMode is a web prop; on RN we can omit it safely
         selectTextOnFocus
         autoCapitalize="none"
       />
