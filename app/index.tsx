@@ -1,23 +1,26 @@
 // app/index.tsx
-import { supabase } from '@/lib/supabase'; // make sure this exists per our earlier setup
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 
+import { getAllQuotes } from '../lib/quotes';
+import { supabase } from '../lib/supabase';
+
+// ---------- Local types (safe even if lib/quotes uses a different shape) ----------
 type Quote = {
   id: string;
-  title: string;
+  title: string;     // we’ll normalize to ensure this is always present
   total?: number;
 };
 
+// ---------- Constants ----------
 const TIP_KEY = 'qc_tip_seen_v1';
 
-// TODO: replace with your real implementation
-import { getAllQuotes } from '@/lib/quotes';
-
 export default function Home() {
+  const router = useRouter();
+
   // ---------- AUTH (do NOT return early; just gather state) ----------
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -31,13 +34,15 @@ export default function Home() {
       setSessionLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
     });
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -49,11 +54,17 @@ export default function Home() {
 
   const pulse = useRef(new Animated.Value(1)).current;
   const tipOpacity = useRef(new Animated.Value(0)).current;
-  const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tipTimer = useRef<NodeJS.Timeout | null>(null);
 
   const load = useCallback(async () => {
     const data = await getAllQuotes();
-    setQuotes(data);
+    // Normalize to our local Quote type so "title" is guaranteed
+    const normalized: Quote[] = (data as any[]).map((q) => ({
+      id: String(q.id),
+      title: (q.title ?? q.name ?? 'Untitled Quote') as string,
+      total: q.total as number | undefined,
+    }));
+    setQuotes(normalized);
   }, []);
 
   useFocusEffect(
@@ -68,6 +79,7 @@ export default function Home() {
     setRefreshing(false);
   }, [load]);
 
+  // read tip-seen flag once
   useEffect(() => {
     (async () => {
       const raw = await AsyncStorage.getItem(TIP_KEY);
@@ -76,8 +88,10 @@ export default function Home() {
     })();
   }, []);
 
+  // pulse animation for + button when list is empty
   useEffect(() => {
     let loop: Animated.CompositeAnimation | null = null;
+
     if (quotes.length === 0) {
       loop = Animated.loop(
         Animated.sequence([
@@ -90,11 +104,13 @@ export default function Home() {
     } else {
       pulse.stopAnimation(() => pulse.setValue(1));
     }
+
     return () => {
       if (loop) loop.stop();
     };
   }, [quotes.length, pulse]);
 
+  // show one-time tooltip when empty list
   useEffect(() => {
     if (!tipLoaded) return;
 
@@ -125,12 +141,12 @@ export default function Home() {
     };
   }, [tipLoaded, tipSeen, quotes.length, tipOpacity]);
 
-  // ---------- AUTH REDIRECT (in an effect, after hooks are declared) ----------
+  // ---------- AUTH redirect AFTER all hooks are declared ----------
   useEffect(() => {
     if (!session && !sessionLoading) {
       router.replace('/auth/sign-in');
     }
-  }, [session, sessionLoading]);
+  }, [session, sessionLoading, router]);
 
   const waitingOnAuth = sessionLoading || !session;
 
@@ -145,7 +161,6 @@ export default function Home() {
 
   return (
     <View style={{ flex: 1, padding: 16 }}>
-      {/* Example list */}
       <FlatList
         data={quotes}
         keyExtractor={(q) => q.id}
@@ -182,7 +197,7 @@ export default function Home() {
               elevation: 2,
             }}
           >
-            <Text style={{ fontWeight: '700', fontSize: 16 }}>{item.title || 'Untitled Quote'}</Text>
+            <Text style={{ fontWeight: '700', fontSize: 16 }}>{item.title}</Text>
             {item.total != null && <Text style={{ color: '#6b7280' }}>Total: {item.total}</Text>}
           </TouchableOpacity>
         )}
