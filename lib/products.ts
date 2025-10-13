@@ -1,4 +1,6 @@
 // lib/products.ts
+
+// Base product used by the catalog
 export type Product = {
   id: string;            // a readable id
   name: string;
@@ -6,6 +8,11 @@ export type Product = {
   unit: "ea" | "ft" | "sheet" | "roll" | "box" | "bag" | "bucket" | "gal";
   unitPrice: number;     // price per unit in your app currency
   vendor?: string;
+};
+
+// ✅ Add this: matches what picker/screens use (qty optional on selection)
+export type MaterialItem = Product & {
+  qty?: number;
 };
 
 export const PRODUCTS_SEED: Product[] = [
@@ -37,4 +44,7 @@ export function searchProducts(q: string): Product[] {
 
 // Convenience aliases used by other screens
 export const PRODUCTS = PRODUCTS_SEED;
+// ✅ Add this: some components import `CATALOG`, point it at the seed
+export const CATALOG = PRODUCTS_SEED;
+
 export const CATEGORIES = Array.from(new Set(PRODUCTS_SEED.map(p => p.category))).sort();

@@ -7,7 +7,6 @@ import ProductQuickAdd from "../../components/ProductQuickAdd";
 import { formatMoney } from "../../lib/money";
 import { getCurrency } from "../../lib/settings";
 
-
 type QuoteItem = {
   productId: string;
   name: string;

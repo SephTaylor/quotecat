@@ -12,7 +12,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from "../../../constants/theme";
 import { getQuoteById, saveQuote } from '../../../lib/quotes';
+
 
 // Local, minimal item type (avoid cross-file type conflicts)
 type QuoteItemView = {
@@ -127,14 +129,14 @@ export default function QuoteScreen() {
 
   if (loading || !quote) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
         <ActivityIndicator />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Header actions */}
       <View style={styles.headerRow}>
         {!isEdit ? (
@@ -218,7 +220,7 @@ export default function QuoteScreen() {
           <View
             style={[
               styles.totRow,
-              { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 8, marginTop: 8 },
+              { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 8, marginTop: 8, borderTopColor: '#E6EAF2' },
             ]}
           >
             <Text style={styles.totalLabel}>Total</Text>
@@ -240,8 +242,23 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: '600', opacity: 0.7, marginTop: 8 },
   value: { fontSize: 16, fontWeight: '600', marginTop: 4 },
   valueDim: { fontSize: 16, opacity: 0.7, marginTop: 4 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginTop: 4 },
-  card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12, gap: 8 },
+  input: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 4,
+    backgroundColor: '#fff',
+    borderColor: '#E6EAF2', // subtle theme border
+  },
+  card: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    backgroundColor: '#fff',
+    borderColor: '#E6EAF2', // subtle theme border
+  },
   itemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   totRow: { flexDirection: 'row', justifyContent: 'space-between' },
   dim: { opacity: 0.75 },

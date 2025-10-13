@@ -14,16 +14,22 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import MaterialsPicker, { MaterialItem } from "../components/MaterialsPicker";
+import MaterialsPicker from "../components/MaterialsPicker";
 import { formatMoney } from "../lib/money";
 import { saveQuote } from "../lib/quotes";
 import { getCurrency } from "../lib/settings";
+// ✅ Import the SAME MaterialItem type that MaterialsPicker uses
+import type { MaterialItem as PickerMaterialItem } from "../components/seed-catalog";
 
 type Errors = {
   clientName?: string;
   projectName?: string;
   labor?: string;
+};
+
+// ✅ Locally extend the picker’s MaterialItem with qty (and keep productId)
+type WithQty = PickerMaterialItem & {
+  qty?: number;
 };
 
 export default function NewQuote() {
@@ -37,14 +43,14 @@ export default function NewQuote() {
   // Materials (picker-driven)
   const [currency, setCurrency] = useState("USD");
   const [materialsOpen, setMaterialsOpen] = useState(false);
-  const [materials, setMaterials] = useState<MaterialItem[]>([]);
+  const [materials, setMaterials] = useState<WithQty[]>([]);
 
   useEffect(() => {
     (async () => setCurrency((await getCurrency()) ?? "USD"))();
   }, []);
 
   const materialTotal = useMemo(
-    () => materials.reduce((s, it) => s + it.unitPrice * (it.qty ?? 1), 0),
+    () => materials.reduce((s, it) => s + (it.unitPrice ?? 0) * (it.qty ?? 1), 0),
     [materials]
   );
 
@@ -54,7 +60,6 @@ export default function NewQuote() {
     [labor]
   );
 
-  // ✅ Memoized validation (efficiency #1)
   const { errors, isValid } = useMemo(() => {
     const errs: Errors = {};
     if (!clientName.trim()) errs.clientName = "Required";
@@ -64,7 +69,6 @@ export default function NewQuote() {
     return { errors: errs, isValid: Object.keys(errs).length === 0 };
   }, [clientName, projectName, parsedLabor]);
 
-  // ✅ useCallback handlers (efficiency #2)
   const openMaterials = useCallback(() => setMaterialsOpen(true), []);
   const closeMaterials = useCallback(() => setMaterialsOpen(false), []);
 
@@ -173,7 +177,7 @@ export default function NewQuote() {
               >
                 {materials.map((it, i) => (
                   <View
-                    key={`${it.productId}-${i}`}
+                    key={String(it.productId ?? i)}
                     style={{
                       padding: 10,
                       borderBottomWidth: i === materials.length - 1 ? 0 : 1,
@@ -183,10 +187,10 @@ export default function NewQuote() {
                     }}
                   >
                     <Text style={{ maxWidth: "70%" }}>
-                      {it.name} × {it.qty}
+                      {it.name} × {it.qty ?? 1}
                     </Text>
                     <Text style={{ fontWeight: "700" }}>
-                      {formatMoney(it.unitPrice * (it.qty ?? 1), currency)}
+                      {formatMoney((it.unitPrice ?? 0) * (it.qty ?? 1), currency)}
                     </Text>
                   </View>
                 ))}
@@ -222,8 +226,8 @@ export default function NewQuote() {
       <MaterialsPicker
         visible={materialsOpen}
         currency={currency}
-        items={materials}
-        onChange={setMaterials}
+        items={materials}                      // ✔ matches PickerMaterialItem[]
+        onChange={(next) => setMaterials(next as WithQty[])} // keep qty typing
         onClose={closeMaterials}
       />
     </KeyboardAvoidingView>
