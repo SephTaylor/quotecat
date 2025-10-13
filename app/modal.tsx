@@ -1,9 +1,10 @@
 // app/modal.tsx
+import { colors } from '@/constants/theme';
 import { Stack, router } from "expo-router";
 import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../constants/theme";
+
 
 export default function AppModal() {
   const insets = useSafeAreaInsets();

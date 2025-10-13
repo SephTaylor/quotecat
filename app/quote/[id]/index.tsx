@@ -1,4 +1,5 @@
 // app/quote/[id]/index.tsx
+import { colors } from '@/constants/theme';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -12,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from "../../../constants/theme";
+
 import { getQuoteById, saveQuote } from '../../../lib/quotes';
 
 

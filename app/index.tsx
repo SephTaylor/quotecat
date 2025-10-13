@@ -1,9 +1,10 @@
 // app/index.tsx
+import { colors } from '@/constants/theme';
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../constants/theme";
+
 
 type Quote = {
   id: string;

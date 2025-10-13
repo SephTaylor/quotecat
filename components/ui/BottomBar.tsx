@@ -1,7 +1,8 @@
 // components/ui/BottomBar.tsx
+import { colors } from '@/constants/theme';
 import React, { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../../constants/theme";
+
 
 export function PrimaryButton({
   children,

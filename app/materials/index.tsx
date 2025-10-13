@@ -1,4 +1,5 @@
 // app/materials/index.tsx
+import { colors } from '@/constants/theme';
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -12,7 +13,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../constants/theme";
 import { CATEGORIES, Product, PRODUCTS_SEED } from "../../lib/products";
 import { QuoteItem, recalc, upsertItem } from "../../lib/quotes";
 

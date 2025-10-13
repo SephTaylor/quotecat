@@ -1,8 +1,9 @@
 // components/ui/SafeScreen.tsx
+import { colors } from '@/constants/theme';
 import React, { ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../constants/theme";
+
 
 type Props = {
   children: ReactNode;
