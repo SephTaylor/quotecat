@@ -1,5 +1,6 @@
-// app/materials/_layout.tsx
 import { Stack } from 'expo-router';
+
 export default function MaterialsLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  // Do not hide headers here—let the screen control the navbar.
+  return <Stack />;
 }

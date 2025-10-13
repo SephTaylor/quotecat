@@ -1,8 +1,9 @@
 // app/materials/index.tsx
-import { colors } from '@/constants/theme';
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import { colors as themeColors } from '@/constants/theme';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,41 +12,53 @@ import {
   Text,
   TextInput,
   View,
-} from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { CATEGORIES, Product, PRODUCTS_SEED } from "../../lib/products";
-import { QuoteItem, recalc, upsertItem } from "../../lib/quotes";
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CATEGORIES, PRODUCTS_SEED, type Product } from '../../lib/products';
+import { getQuoteById, recalc, saveQuote, upsertItem } from '../../lib/quotes';
 
-// Minimal Quote type so this screen compiles without touching other files
-type Quote = {
+// Minimal, flexible quote shape to avoid TS mismatches
+type QuoteShape = {
   id: string;
   name: string;
-  items: QuoteItem[];
+  items: any[];     // keep flexible; recalc/upsertItem know the real shape
   labor?: number;
-  materialSubtotal?: number;
-  total?: number;
+};
+
+// Theme fallbacks so missing keys won't error
+const c = {
+  bg: (themeColors as any)?.bg ?? '#F4F6FA',
+  text: (themeColors as any)?.text ?? '#0B1220',
+  border: (themeColors as any)?.border ?? '#E5E7EB',
+  brand: (themeColors as any)?.brand ?? '#111827',
 };
 
 export default function MaterialsScreen() {
-  // Hide any parent header for a true full-screen page
-  const navigation = useNavigation();
-  useEffect(() => {
-    // @ts-ignore
-    navigation.setOptions?.({ headerShown: false });
-  }, [navigation]);
-
-  const { quoteId } = useLocalSearchParams<{ quoteId?: string }>();
-
-  const [quote, setQuote] = useState<Quote>({
-    id: quoteId ?? "temp",
-    name: "",
-    items: [],
-    labor: 0,
-  });
-
-  const [search, setSearch] = useState("");
-  const [pendingQtyById, setPendingQtyById] = useState<Record<string, number>>({});
   const insets = useSafeAreaInsets();
+
+  // Normalize quoteId: string | string[] | undefined -> string | undefined
+  const params = useLocalSearchParams<{ quoteId?: string | string[] }>();
+  const qid = Array.isArray(params.quoteId) ? params.quoteId[0] : params.quoteId;
+
+  const [quote, setQuote] = useState<QuoteShape | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [pendingQtyById, setPendingQtyById] = useState<Record<string, number>>({});
+
+  // Load the current quote once
+  useEffect(() => {
+    (async () => {
+      try {
+        const existing = qid ? await getQuoteById(qid) : null;
+        setQuote(
+          (existing as any as QuoteShape) ??
+            ({ id: qid ?? 'temp', name: '', items: [], labor: 0 } as QuoteShape)
+        );
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [qid]);
 
   const sections = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -53,7 +66,7 @@ export default function MaterialsScreen() {
       ? PRODUCTS_SEED.filter(
           (p) =>
             p.name.toLowerCase().includes(term) ||
-            p.category.toLowerCase().includes(term),
+            p.category.toLowerCase().includes(term)
         )
       : PRODUCTS_SEED;
 
@@ -66,227 +79,224 @@ export default function MaterialsScreen() {
   const setQty = (id: string, n: number) =>
     setPendingQtyById((s) => ({ ...s, [id]: Math.max(1, Math.round(n || 1)) }));
 
-  const onAdd = (p: Product) => {
+  const onAdd = async (p: Product) => {
+    if (!quote) return;
     const qty = pendingQtyById[p.id] ?? 1;
-    const nextItems = upsertItem(quote.items, {
+
+    const nextItems = upsertItem(quote.items as any, {
       productId: p.id,
       name: p.name,
       unitPrice: p.unitPrice,
       qty,
-      unit: p.unit,
-      vendor: p.vendor,
-    });
+      // if your Product lacks these, casts keep TS happy and runtime safe
+      unit: (p as any).unit,
+      vendor: (p as any).vendor,
+    } as any);
+
+    const nextQuote = recalc({ ...(quote as any), items: nextItems } as any) as any as QuoteShape;
+
     setPendingQtyById((s) => ({ ...s, [p.id]: 1 })); // reset row qty
-    setQuote((q) => recalc({ ...q, items: nextItems }));
+    setQuote(nextQuote);
+    await saveQuote(nextQuote as any); // persist immediately
   };
 
-  const materialSubtotal = quote.items.reduce(
-    (sum, i) => sum + i.unitPrice * i.qty,
-    0,
-  );
+  const onDone = async () => {
+    if (quote) await saveQuote(recalc(quote as any) as any);
+    router.back();
+  };
 
-  // Footer height we keep space for
+  const materialSubtotal =
+    quote?.items?.reduce((sum: number, i: any) => sum + i.unitPrice * i.qty, 0) ?? 0;
+
   const FOOTER_H = 72;
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      edges={["top", "left", "right"]}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.select({ ios: "padding", android: undefined })}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.select({
-          ios: 0, // SafeAreaView already accounts for top
-          android: 0,
-        }) as number}
-      >
-        {/* Header (inside safe area) */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Materials</Text>
-          <TextInput
-            placeholder="Search by name or category…"
-            value={search}
-            onChangeText={setSearch}
-            style={styles.search}
-          />
-        </View>
+    <>
+      {/* Native header (below the notch) with Done on the right */}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: 'Materials',
+          headerRight: () => (
+            <Pressable onPress={onDone} style={styles.headerDoneBtn}>
+              <Text style={styles.headerDoneText}>Done</Text>
+            </Pressable>
+          ),
+        }}
+      />
 
-        {/* List (pad bottom so it never hides behind footer) */}
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => item.id}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            paddingBottom: FOOTER_H + insets.bottom + 16,
-          }}
-          renderSectionHeader={({ section }) => (
-            <Text style={styles.section}>{section.title}</Text>
-          )}
-          renderItem={({ item }) => {
-            const qty = pendingQtyById[item.id] ?? 1;
-            return (
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.price}>
-                    ${item.unitPrice.toFixed(2)} / {item.unit}
-                  </Text>
-                </View>
-
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    marginRight: 8,
-                  }}
-                >
-                  <Pressable
-                    style={styles.stepBtn}
-                    onPress={() => setQty(item.id, qty - 1)}
-                  >
-                    <Text>-</Text>
-                  </Pressable>
-                  <TextInput
-                    keyboardType="number-pad"
-                    value={String(qty)}
-                    onChangeText={(t) => setQty(item.id, parseInt(t, 10))}
-                    style={styles.qtyInput}
-                  />
-                  <Pressable
-                    style={styles.stepBtn}
-                    onPress={() => setQty(item.id, qty + 1)}
-                  >
-                    <Text>+</Text>
-                  </Pressable>
-                </View>
-
-                <Pressable style={styles.addBtn} onPress={() => onAdd(item)}>
-                  <Text style={styles.addTxt}>Add</Text>
-                </Pressable>
-              </View>
-            );
-          }}
-          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-        />
-
-        {/* Fixed bottom summary bar — always above the home indicator */}
-        <View
-          style={[
-            styles.bottomBar,
-            {
-              height: FOOTER_H + insets.bottom,
-              paddingBottom: insets.bottom,
-            },
-          ]}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.subtotalLabel}>Materials Subtotal</Text>
-            <Text style={styles.subtotalVal}>
-              ${materialSubtotal.toFixed(2)}
-            </Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['bottom', 'left', 'right']}>
+        {loading ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator />
           </View>
-          <Pressable
-            style={styles.primary}
-            onPress={() => router.back()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        ) : (
+          <KeyboardAvoidingView
+            behavior={Platform.select({ ios: 'padding', android: undefined })}
+            style={{ flex: 1 }}
           >
-            <Text style={styles.primaryTxt}>Done</Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            {/* Search (no custom top bar) */}
+            <View style={styles.header}>
+              <TextInput
+                placeholder="Search by name or category…"
+                placeholderTextColor="#9CA3AF"
+                value={search}
+                onChangeText={setSearch}
+                style={styles.search}
+              />
+            </View>
+
+            {/* List sits under native header automatically */}
+            <SectionList
+              sections={sections}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              contentInsetAdjustmentBehavior="automatic"
+              contentContainerStyle={{ paddingBottom: FOOTER_H + insets.bottom + 16 }}
+              renderSectionHeader={({ section }) => (
+                <Text style={styles.section}>{section.title}</Text>
+              )}
+              renderItem={({ item }) => {
+                const qty = pendingQtyById[item.id] ?? 1;
+                return (
+                  <View style={styles.row}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.name}>{item.name}</Text>
+                      <Text style={styles.price}>
+                        ${item.unitPrice.toFixed(2)} / {(item as any).unit}
+                      </Text>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+                      <Pressable style={styles.stepBtn} onPress={() => setQty(item.id, qty - 1)}>
+                        <Text>-</Text>
+                      </Pressable>
+                      <TextInput
+                        keyboardType="number-pad"
+                        value={String(qty)}
+                        onChangeText={(t) => setQty(item.id, parseInt(t, 10))}
+                        style={styles.qtyInput}
+                      />
+                      <Pressable style={styles.stepBtn} onPress={() => setQty(item.id, qty + 1)}>
+                        <Text>+</Text>
+                      </Pressable>
+                    </View>
+
+                    <Pressable style={styles.addBtn} onPress={() => onAdd(item)}>
+                      <Text style={styles.addTxt}>Add</Text>
+                    </Pressable>
+                  </View>
+                );
+              }}
+              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            />
+
+            {/* Bottom summary (stays above home indicator) */}
+            <View
+              style={[
+                styles.bottomBar,
+                { height: FOOTER_H + insets.bottom, paddingBottom: insets.bottom },
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.subtotalLabel}>Materials Subtotal</Text>
+                <Text style={styles.subtotalVal}>${materialSubtotal.toFixed(2)}</Text>
+              </View>
+              <Pressable style={styles.primary} onPress={onDone}>
+                <Text style={styles.primaryTxt}>Done</Text>
+              </Pressable>
+            </View>
+          </KeyboardAvoidingView>
+        )}
+      </SafeAreaView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingTop: 8, gap: 8 },
-  title: { fontSize: 24, fontWeight: "700", color: colors.text },
-
   search: {
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderColor: colors.border,   // was #E6EAF2
-    backgroundColor: "#fff",
-    color: colors.text,
+    borderColor: c.border,
+    backgroundColor: '#fff',
+    color: c.text,
   },
-
   section: {
     paddingHorizontal: 16,
     paddingTop: 16,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: '600',
     opacity: 0.6,
-    color: colors.text,
+    color: c.text,
   },
-
   row: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
   },
-
-  name: { fontSize: 16, fontWeight: "600", color: colors.text },
-  price: { fontSize: 12, opacity: 0.7, color: colors.text },
-
+  name: { fontSize: 16, fontWeight: '600', color: c.text },
+  price: { fontSize: 12, opacity: 0.7, color: c.text },
   stepBtn: {
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderColor: colors.border,   // was #E6EAF2
-    backgroundColor: "#fff",
+    borderColor: c.border,
+    backgroundColor: '#fff',
   },
-
   qtyInput: {
     minWidth: 48,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
-    textAlign: "center",
+    textAlign: 'center',
     marginHorizontal: 6,
-    borderColor: colors.border,   // was #E6EAF2
-    backgroundColor: "#fff",
-    color: colors.text,
+    borderColor: c.border,
+    backgroundColor: '#fff',
+    color: c.text,
   },
-
   addBtn: {
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderColor: colors.border,   // was #E6EAF2
-    backgroundColor: "#fff",
+    borderColor: c.border,
+    backgroundColor: '#fff',
   },
-  addTxt: { fontWeight: "700", color: colors.text },
-
+  addTxt: { fontWeight: '700', color: c.text },
   bottomBar: {
-    position: "absolute",
+    position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#fff",      // could be colors.bg if you prefer
+    backgroundColor: '#fff',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border, // was #E6EAF2
+    borderTopColor: c.border,
   },
-
-  subtotalLabel: { fontSize: 12, opacity: 0.7, color: colors.text },
-  subtotalVal: { fontSize: 18, fontWeight: "700", color: colors.text },
-
+  subtotalLabel: { fontSize: 12, opacity: 0.7, color: c.text },
+  subtotalVal: { fontSize: 18, fontWeight: '700', color: c.text },
   primary: {
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 14,
-    backgroundColor: colors.brand, // was #2563eb
+    backgroundColor: c.brand,
   },
-  primaryTxt: { color: colors.text, fontWeight: "700" },
+  primaryTxt: { color: c.text, fontWeight: '700' },
+  headerDoneBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: c.text,
+  },
+  headerDoneText: { color: '#fff', fontWeight: '700' },
 });
