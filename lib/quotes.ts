@@ -94,3 +94,54 @@ export async function upsertQuote(q: Quote) {
   const newAll = idx === -1 ? [q, ...all] : Object.assign([...all], { [idx]: q });
   await AsyncStorage.setItem(KEY, JSON.stringify(newAll));
 }
+// ---- Materials helpers ----
+
+export type QuoteItem = {
+  productId: string;
+  name: string;
+  unitPrice: number;
+  qty: number;
+  unit?: "ea" | "ft" | "sheet" | "roll" | "box" | "bag" | "bucket" | "gal";
+  vendor?: string;
+  currency?: string;
+};
+
+/** Insert-or-merge an item by productId (adds qty if it already exists). */
+export function upsertItem(
+  items: QuoteItem[],
+  incoming: QuoteItem
+) {
+  const idx = items.findIndex(i => i.productId === incoming.productId);
+  if (idx >= 0) {
+    const merged = { ...items[idx], qty: items[idx].qty + incoming.qty };
+    const next = items.slice();
+    next[idx] = merged;
+    return next;
+  }
+  return [...items, incoming];
+}
+
+/** Set an exact quantity for an item; removes it if qty <= 0. */
+export function setItemQty(
+  items: QuoteItem[],
+  productId: string,
+  qty: number
+) {
+  const q = Math.max(0, Math.round(qty || 0));
+  return items
+    .map(i => (i.productId === productId ? { ...i, qty: q } : i))
+    .filter(i => i.qty > 0);
+}
+
+/** Remove an item entirely by productId. */
+export function removeItem(items: QuoteItem[], productId: string) {
+  return items.filter(i => i.productId !== productId);
+}
+
+/** Recalculate materialSubtotal and total (labor + materials). */
+export function recalc<T extends { items: QuoteItem[]; labor?: number }>(quote: T) {
+  const materialSubtotal = quote.items.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
+  const labor = quote.labor ?? 0;
+  const total = materialSubtotal + labor;
+  return { ...quote, materialSubtotal, total } as T & { materialSubtotal: number; total: number };
+}
