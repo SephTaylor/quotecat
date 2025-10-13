@@ -34,3 +34,7 @@ export function searchProducts(q: string): Product[] {
     )
     .slice(0, 20);
 }
+
+// Convenience aliases used by other screens
+export const PRODUCTS = PRODUCTS_SEED;
+export const CATEGORIES = Array.from(new Set(PRODUCTS_SEED.map(p => p.category))).sort();
