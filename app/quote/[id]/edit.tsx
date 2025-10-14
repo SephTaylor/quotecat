@@ -1,17 +1,17 @@
 // app/quote/[id]/edit.tsx
 import { theme } from '@/constants/theme';
 import { getQuoteById, saveQuote, type Quote } from '@/lib/quotes';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,21 +22,38 @@ export default function EditQuote() {
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState('');
+  const [clientName, setClientName] = useState('');   // NEW
+  const [labor, setLabor] = useState<string>('0');    // capture as string for input
 
-  useEffect(() => {
-    (async () => {
-      if (!id) return;
-      const q = await getQuoteById(id);
-      if (q) {
-        setQuote(q);
-        setName(q.name || '');
-      }
-    })();
+  const load = useCallback(async () => {
+    if (!id) return;
+    const q = await getQuoteById(id);
+    if (q) {
+      setQuote(q);
+      setName(q.name || '');
+      setClientName(q.clientName || '');
+      setLabor(String(q.labor ?? 0));
+    }
   }, [id]);
+
+  useEffect(() => { load(); }, [load]);
+  useFocusEffect(React.useCallback(() => { load(); }, [load]));
+
+  const parseLabor = (txt: string) => {
+    // allow "12,34" or "12.34"
+    const cleaned = txt.replace(',', '.').replace(/[^\d.]/g, '');
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? 0 : n;
+  };
 
   const onDone = async () => {
     if (!id) return;
-    await saveQuote({ id, name });
+    await saveQuote({
+      id,
+      name,
+      clientName,
+      labor: parseLabor(labor),
+    });
     router.back();
   };
 
@@ -59,14 +76,38 @@ export default function EditQuote() {
             placeholderTextColor={theme.colors.muted}
           />
 
-          <View style={{ height: theme.spacing(4) }} />
+          <View style={{ height: theme.spacing(2) }} />
+
+          <Text style={styles.label}>Client name</Text>
+          <TextInput
+            placeholder="e.g., Acme LLC"
+            value={clientName}
+            onChangeText={setClientName}
+            style={styles.input}
+            placeholderTextColor={theme.colors.muted}
+            autoCapitalize="words"
+          />
+
+          <View style={{ height: theme.spacing(2) }} />
+
+          <Text style={styles.label}>Labor</Text>
+          <TextInput
+            placeholder="0.00"
+            value={labor}
+            onChangeText={setLabor}
+            style={styles.input}
+            placeholderTextColor={theme.colors.muted}
+            keyboardType="numeric"
+            inputMode="decimal"
+          />
+
+          <View style={{ height: theme.spacing(3) }} />
 
           <Text style={styles.h2}>Items</Text>
           <Text style={styles.helper}>
             Use the Materials picker to add seed-only items. Categories are collapsed by default.
           </Text>
 
-          {/* Add Materials button */}
           <View style={{ height: theme.spacing(2) }} />
           <Pressable
             onPress={() => id && router.push(`/quote/${id}/materials`)}
@@ -84,7 +125,6 @@ export default function EditQuote() {
           </Pressable>
         </ScrollView>
 
-        {/* Sticky bottom Done bar (clear of home indicator) */}
         <View style={[styles.bottomBar, { paddingBottom: bottomPad }]}>
           <Pressable style={styles.doneBtn} onPress={onDone}>
             <Text style={styles.doneText}>Done</Text>
@@ -97,14 +137,8 @@ export default function EditQuote() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: {
-    padding: theme.spacing(2),
-  },
-  label: {
-    fontSize: 12,
-    color: theme.colors.muted,
-    marginBottom: 6,
-  },
+  content: { padding: theme.spacing(2) },
+  label: { fontSize: 12, color: theme.colors.muted, marginBottom: 6 },
   input: {
     borderWidth: 1,
     borderColor: theme.colors.border,

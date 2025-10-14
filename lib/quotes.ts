@@ -1,5 +1,5 @@
 // lib/quotes.ts
-import { getJSON, setJSON } from './storage';
+import { getJSON, remove, setJSON } from './storage';
 
 export type QuoteItem = {
   id: string;
@@ -11,8 +11,9 @@ export type QuoteItem = {
 export type Quote = {
   id: string;
   name: string;
+  clientName: string;       // NEW
   items: QuoteItem[];
-  labor: number;
+  labor: number;            // already existed
   currency: string;
   materialSubtotal: number;
   total: number;
@@ -21,70 +22,28 @@ export type Quote = {
 };
 
 const INDEX_KEY = 'quotes:index';
-
 const nowISO = () => new Date().toISOString();
 
 export async function listQuotes(): Promise<Quote[]> {
   const ids = (await getJSON<string[]>(INDEX_KEY)) ?? [];
-  const quotes: Quote[] = [];
+  const out: Quote[] = [];
   for (const id of ids) {
     const q = await getJSON<Quote>(`quote:${id}`);
-    if (q) quotes.push(q);
+    if (q) out.push(q);
   }
-  return quotes.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  return out.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }
 
 export async function getQuoteById(id: string): Promise<Quote | null> {
   return (await getJSON<Quote>(`quote:${id}`)) ?? null;
 }
 
-export async function saveQuote(q: Partial<Quote> & { id: string }): Promise<Quote> {
-  const existing = (await getJSON<Quote>(`quote:${q.id}`)) ?? null;
-
-  const base: Quote = existing ?? {
-    id: q.id,
-    name: '',
-    items: [],
-    labor: 0,
-    currency: 'USD',
-    materialSubtotal: 0,
-    total: 0,
-    createdAt: nowISO(),
-    updatedAt: nowISO(),
-  };
-
-  const items = q.items ?? base.items;
-  const labor = q.labor ?? base.labor;
-
-  const materialSubtotal = items.reduce((sum, it) => sum + it.unitPrice * it.qty, 0);
-  const total = materialSubtotal + labor;
-
-  const merged: Quote = {
-    ...base,
-    ...q,
-    items,
-    labor,
-    materialSubtotal,
-    total,
-    updatedAt: nowISO(),
-  };
-
-  await setJSON(`quote:${merged.id}`, merged);
-
-  const ids = (await getJSON<string[]>(INDEX_KEY)) ?? [];
-  if (!ids.includes(merged.id)) {
-    ids.unshift(merged.id);
-    await setJSON(INDEX_KEY, ids);
-  }
-
-  return merged;
-}
-
-export async function createNewQuote(name = ''): Promise<Quote> {
+export async function createNewQuote(name = '', clientName = ''): Promise<Quote> {
   const id = Math.random().toString(36).slice(2, 10);
   const q: Quote = {
     id,
     name,
+    clientName,
     items: [],
     labor: 0,
     currency: 'USD',
@@ -98,4 +57,54 @@ export async function createNewQuote(name = ''): Promise<Quote> {
   ids.unshift(id);
   await setJSON(INDEX_KEY, ids);
   return q;
+}
+
+// Merge + recalc. Accepts partial fields.
+export async function saveQuote(patch: Partial<Quote> & { id: string }): Promise<Quote> {
+  const existing = (await getJSON<Quote>(`quote:${patch.id}`)) ?? {
+    id: patch.id,
+    name: '',
+    clientName: '',
+    items: [] as QuoteItem[],
+    labor: 0,
+    currency: 'USD',
+    materialSubtotal: 0,
+    total: 0,
+    createdAt: nowISO(),
+    updatedAt: nowISO(),
+  } satisfies Quote;
+
+  const next: Quote = {
+    ...existing,
+    ...patch,
+  };
+
+  // Recalculate derived fields
+  const materialSubtotal = (next.items ?? []).reduce(
+    (sum, it) => sum + it.unitPrice * it.qty,
+    0
+  );
+  next.materialSubtotal = materialSubtotal;
+  next.total = materialSubtotal + (next.labor || 0);
+  next.updatedAt = nowISO();
+
+  await setJSON(`quote:${next.id}`, next);
+
+  // Ensure index contains this id
+  const ids = (await getJSON<string[]>(INDEX_KEY)) ?? [];
+  if (!ids.includes(next.id)) {
+    ids.unshift(next.id);
+    await setJSON(INDEX_KEY, ids);
+  }
+
+  return next;
+}
+
+export async function deleteQuote(id: string): Promise<void> {
+  // remove the quote blob
+  await remove(`quote:${id}`);
+  // remove from index
+  const ids = (await getJSON<string[]>(INDEX_KEY)) ?? [];
+  const next = ids.filter((x) => x !== id);
+  await setJSON(INDEX_KEY, next);
 }

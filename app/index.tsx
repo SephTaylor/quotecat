@@ -1,24 +1,70 @@
 // app/index.tsx
 import { theme } from '@/constants/theme';
-import { createNewQuote, listQuotes, Quote } from '@/lib/quotes';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  createNewQuote,
+  deleteQuote,
+  listQuotes,
+  type Quote,
+} from '@/lib/quotes';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 export default function Home() {
   const router = useRouter();
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const data = await listQuotes();
-      setQuotes(data);
-    })();
+  const load = useCallback(async () => {
+    const data = await listQuotes();
+    setQuotes(data);
   }, []);
 
-  const onNew = async () => {
-    const q = await createNewQuote('Untitled project');
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const onNew = useCallback(async () => {
+    const q = await createNewQuote('Untitled project', '');
     router.push(`/quote/${q.id}/edit`);
+  }, [router]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  const confirmDelete = (id: string, name: string) => {
+    Alert.alert(
+      'Delete quote?',
+      name ? `Delete “${name}”? This can’t be undone.` : 'Delete this quote? This can’t be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteQuote(id);
+            await load();
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -27,21 +73,24 @@ export default function Home() {
         data={quotes}
         keyExtractor={(q) => q.id}
         contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
             onPress={() => router.push(`/quote/${item.id}/edit`)}
+            onLongPress={() => confirmDelete(item.id, item.name)}
           >
             <Text style={styles.title}>{item.name || 'Untitled project'}</Text>
             <Text style={styles.sub}>
-              Material: {item.materialSubtotal.toFixed(2)} • Labor: {item.labor.toFixed(2)}
+              {item.clientName ? `Client: ${item.clientName}  •  ` : ''}
+              Labor: {item.labor.toFixed(2)}
             </Text>
-            <Text style={styles.total}>Total: {item.total.toFixed(2)} {item.currency}</Text>
+            <Text style={styles.total}>
+              Total: {item.total.toFixed(2)} {item.currency}
+            </Text>
           </Pressable>
         )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>No quotes yet. Tap + to start.</Text>
-        }
+        ListEmptyComponent={<Text style={styles.empty}>No quotes yet. Tap + to start.</Text>}
       />
 
       <Pressable style={styles.fab} onPress={onNew}>
