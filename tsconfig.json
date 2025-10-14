@@ -2,8 +2,23 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": { "@/*": ["./*"] }
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
   },
-  "include": ["app", "modules", "constants"],
-  "exclude": ["_old", "node_modules", "android", "ios"]
+  "include": [
+    "app",
+    "modules",
+    "constants",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "_old",
+    "node_modules",
+    "android",
+    "ios"
+  ]
 }
