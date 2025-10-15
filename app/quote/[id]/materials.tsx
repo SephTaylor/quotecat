@@ -1,15 +1,29 @@
-// app/quote/[id]/materials.tsx
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { theme } from '@/constants/theme';
-import { BottomBar, Screen } from '@/modules/core/ui';
-import { MaterialsPicker } from '@/modules/materials/Picker';
-import type { Selection } from '@/modules/materials/types';
-import { useSelection } from '@/modules/materials/useSelection';
-
 import { getQuoteById, saveQuote, type QuoteItem } from '@/lib/quotes';
+import { CATEGORIES, PRODUCTS_SEED } from '@/modules/catalog/seed';
+
+// ⬇️ import directly — do NOT use the barrel
+import BottomBar from '@/modules/core/ui/BottomBar';
+import Screen from '@/modules/core/ui/safe-screen';
+
+import { MaterialsPicker, useSelection } from '@/modules/materials';
+
+function mergeById(existing: QuoteItem[], adds: QuoteItem[]): QuoteItem[] {
+  const map = new Map(existing.map(i => [i.id, { ...i }]));
+  for (const a of adds) {
+    const cur = map.get(a.id);
+    if (cur) {
+      map.set(a.id, { ...cur, qty: (cur.qty ?? 0) + (a.qty ?? 0) });
+    } else {
+      map.set(a.id, { ...a });
+    }
+  }
+  return Array.from(map.values());
+}
 
 export default function Materials() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -17,30 +31,29 @@ export default function Materials() {
 
   const { selection, inc, dec, units, subtotal } = useSelection();
 
-  const saveSelected = useCallback(async (goBack: boolean) => {
-    if (!id) return;
-    const q = await getQuoteById(id);
-    if (!q) return;
+  const saveSelected = useCallback(
+    async (goBack: boolean) => {
+      if (!id) return;
 
-    // Convert selection -> QuoteItem[]
-    const adds: QuoteItem[] = Array.from(selection.values()).map(({ product, qty }) => ({
-      id: product.id,
-      name: product.name,
-      unitPrice: product.unitPrice,
-      qty,
-    }));
+      const q = await getQuoteById(id);
+      if (!q) return;
 
-    // Merge: one line per product id
-    const merged = new Map<string, QuoteItem>();
-    for (const it of q.items) merged.set(it.id, { ...it });
-    for (const a of adds) {
-      const prev = merged.get(a.id);
-      merged.set(a.id, prev ? { ...prev, qty: prev.qty + a.qty, name: a.name, unitPrice: a.unitPrice } : a);
-    }
+      const adds: QuoteItem[] = Array.from(selection.values()).map(
+        ({ product, qty }) => ({
+          id: product.id,
+          name: product.name,
+          unitPrice: product.unitPrice,
+          qty,
+        })
+      );
 
-    await saveQuote({ ...q, id, items: Array.from(merged.values()) });
-    if (goBack) router.back();
-  }, [id, selection]);
+      const merged = mergeById(q.items ?? [], adds);
+
+      await saveQuote({ ...q, id, items: merged });
+      if (goBack) router.back();
+    },
+    [id, selection, router]
+  );
 
   return (
     <>
@@ -48,7 +61,9 @@ export default function Materials() {
 
       <Screen scroll>
         <MaterialsPicker
-          selection={selection as Selection}
+          categories={CATEGORIES}
+          itemsByCategory={PRODUCTS_SEED}
+          selection={selection}
           onInc={inc}
           onDec={dec}
         />
@@ -80,19 +95,27 @@ export default function Materials() {
 
 const styles = StyleSheet.create({
   secondaryBtn: {
-    flex: 1, height: 48, borderRadius: theme.radius.xl,
-    borderWidth: 1, borderColor: theme.colors.border,
-    alignItems: 'center', justifyContent: 'center',
+    flex: 1,
+    height: 48,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.colors.card,
   },
   disabled: { opacity: 0.5 },
   secondaryText: { fontWeight: '800', color: theme.colors.text },
 
   primaryBtn: {
-    flex: 1, height: 48, borderRadius: theme.radius.xl,
-    alignItems: 'center', justifyContent: 'center',
+    flex: 1,
+    height: 48,
+    borderRadius: theme.radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.colors.accent,
-    borderWidth: 1, borderColor: theme.colors.border,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   primaryIdle: { opacity: 0.95 },
   primaryText: { fontWeight: '800', color: '#000' },

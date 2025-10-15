@@ -1,4 +1,3 @@
-// app/wizard/new-quote.tsx
 import { Stack, useRouter, type Href } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
@@ -13,7 +12,11 @@ import {
 import { theme } from '@/constants/theme';
 import { saveQuote, type QuoteItem } from '@/lib/quotes';
 import { CATEGORIES, PRODUCTS_SEED } from '@/modules/catalog/seed';
-import { BottomBar, Screen } from '@/modules/core/ui';
+
+// ⬇️ import directly — do NOT use the barrel
+import BottomBar from '@/modules/core/ui/BottomBar';
+import Screen from '@/modules/core/ui/safe-screen';
+
 import { MaterialsPicker, useSelection } from '@/modules/materials';
 import { formatMoney } from '@/modules/settings/money';
 
@@ -40,9 +43,14 @@ export default function NewQuoteWizard() {
   const [step, setStep] = useState<Step>('basics');
   const [state, setState] = useState<NewQuoteState>({ title: '' });
 
-  const idx = useMemo(() => (step === 'basics' ? 0 : step === 'materials' ? 1 : 2), [step]);
-  const stepTitle = step === 'basics' ? 'Basics' : step === 'materials' ? 'Materials' : 'Review';
-  const canNext = step === 'basics' ? !!state.title.trim() : step === 'materials' ? units > 0 : true;
+  const idx = useMemo(
+    () => (step === 'basics' ? 0 : step === 'materials' ? 1 : 2),
+    [step]
+  );
+  const stepTitle =
+    step === 'basics' ? 'Basics' : step === 'materials' ? 'Materials' : 'Review';
+  const canNext =
+    step === 'basics' ? !!state.title.trim() : step === 'materials' ? units > 0 : true;
 
   const back = () => {
     if (step === 'materials') setStep('basics');
@@ -77,7 +85,7 @@ export default function NewQuoteWizard() {
       labor: 0,
     } as any);
 
-router.replace(`/quote/${id}` as Href);
+    router.replace(`/quote/${id}` as Href);
   };
 
   const nextLabel = idx + 1 < 3 ? 'Next' : 'Create Quote';
@@ -111,7 +119,6 @@ router.replace(`/quote/${id}` as Href);
 
           {step === 'materials' && (
             <View style={styles.section}>
-              {/* Align with MaterialsPicker prop types */}
               <MaterialsPicker
                 categories={CATEGORIES}
                 itemsByCategory={PRODUCTS_SEED}
@@ -154,7 +161,6 @@ router.replace(`/quote/${id}` as Href);
         </ScrollView>
       </Screen>
 
-      {/* Sticky bottom actions (matches Materials screen pattern) */}
       <BottomBar>
         <Pressable
           onPress={back}
@@ -201,7 +207,6 @@ const styles = StyleSheet.create({
   rowName: { color: theme.colors.text, flexShrink: 1, paddingRight: 12 },
   rowRight: { color: theme.colors.text, fontWeight: '600' },
 
-  // Buttons (match materials.tsx look)
   secondaryBtn: {
     flex: 1,
     height: 48,

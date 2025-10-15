@@ -1,4 +1,3 @@
-// modules/materials/useSelection.ts
 import type { Product } from '@/modules/catalog/seed';
 import { useMemo, useState } from 'react';
 import type { Selection } from './types';
@@ -16,12 +15,19 @@ export function useSelection(initial?: Selection) {
     });
   };
 
-  const inc = (product: Product, by = 1) => setQty(product, (selection.get(product.id)?.qty ?? 0) + by);
-  const dec = (product: Product, by = 1) => setQty(product, (selection.get(product.id)?.qty ?? 0) - by);
+  const inc = (product: Product, by = 1) =>
+    setQty(product, (selection.get(product.id)?.qty ?? 0) + by);
+
+  const dec = (product: Product, by = 1) =>
+    setQty(product, (selection.get(product.id)?.qty ?? 0) - by);
+
   const clear = () => setSelection(new Map());
 
   const lines = selection.size;
-  const units = useMemo(() => Array.from(selection.values()).reduce((s, v) => s + v.qty, 0), [selection]);
+  const units = useMemo(
+    () => Array.from(selection.values()).reduce((s, v) => s + v.qty, 0),
+    [selection]
+  );
   const subtotal = useMemo(
     () => Array.from(selection.values()).reduce((s, v) => s + v.qty * (v.product.unitPrice ?? 0), 0),
     [selection]

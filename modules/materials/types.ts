@@ -1,4 +1,3 @@
-// modules/materials/types.ts
 import type { Product } from '@/modules/catalog/seed';
 
 export type SelectionEntry = { product: Product; qty: number };

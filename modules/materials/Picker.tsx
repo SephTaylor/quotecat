@@ -1,54 +1,72 @@
 // modules/materials/Picker.tsx
 import { theme } from '@/constants/theme';
-import { CATEGORIES, PRODUCTS_SEED, type Product } from '@/modules/catalog/seed';
+import type { Product } from '@/modules/catalog/seed';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Selection } from './types';
 
-type Props = {
+export type Category = { id: string; name: string };
+export type MaterialsPickerProps = {
+  categories: Category[];
+  itemsByCategory: Record<string, Product[]>;
   selection: Selection;
   onInc(product: Product): void;
   onDec(product: Product): void;
 };
 
-export function MaterialsPicker({ selection, onInc, onDec }: Props) {
+function MaterialsPicker({
+  categories,
+  itemsByCategory,
+  selection,
+  onInc,
+  onDec,
+}: MaterialsPickerProps) {
   // collapsed by default
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-  const toggle = (catId: string) => setExpanded(e => ({ ...e, [catId]: !e[catId] }));
+  const toggle = (catId: string) =>
+    setExpanded(e => ({ ...e, [catId]: !e[catId] }));
 
   return (
     <View style={styles.content}>
       <Text style={styles.h1}>Add Materials</Text>
-      <Text style={styles.helper}>Seed-only catalog. Categories start collapsed.</Text>
+      <Text style={styles.helper}>
+        Seed-only catalog. Categories start collapsed.
+      </Text>
 
-      {CATEGORIES.map(cat => {
+      {categories.map(cat => {
         const open = !!expanded[cat.id];
-        const items = PRODUCTS_SEED[cat.id] ?? [];
+        const items = itemsByCategory[cat.id] ?? [];
         return (
           <View key={cat.id} style={styles.catCard}>
             <Pressable style={styles.catHeader} onPress={() => toggle(cat.id)}>
-              <Text style={styles.catTitle}>{open ? '▾' : '▸'} {cat.name}</Text>
+              <Text style={styles.catTitle}>
+                {open ? '▾' : '▸'} {cat.name}
+              </Text>
               <Text style={styles.catCount}>{items.length}</Text>
             </Pressable>
 
             {open && (
               <View style={styles.itemsWrap}>
                 {items.map(p => {
-                  const sel = selection.get(p.id)?.qty ?? 0;
-                  const active = sel > 0;
+                  const q = selection.get(p.id)?.qty ?? 0;
+                  const active = q > 0;
                   return (
-                    <View key={p.id} style={[styles.itemRow, active && styles.itemRowActive]}>
+                    <View
+                      key={p.id}
+                      style={[styles.itemRow, active && styles.itemRowActive]}
+                    >
                       <View style={styles.itemMeta}>
                         <Text style={styles.itemName}>{p.name}</Text>
-                        <Text style={styles.itemSub}>{p.unitPrice.toFixed(2)} / {p.unit}</Text>
+                        <Text style={styles.itemSub}>
+                          {p.unitPrice.toFixed(2)} / {p.unit}
+                        </Text>
                       </View>
 
                       <View style={styles.stepper}>
                         <Pressable style={styles.stepBtn} onPress={() => onDec(p)}>
                           <Text style={styles.stepText}>–</Text>
                         </Pressable>
-                        <Text style={styles.qtyText}>{sel}</Text>
+                        <Text style={styles.qtyText}>{q}</Text>
                         <Pressable style={styles.stepBtn} onPress={() => onInc(p)}>
                           <Text style={styles.stepText}>+</Text>
                         </Pressable>
@@ -66,7 +84,11 @@ export function MaterialsPicker({ selection, onInc, onDec }: Props) {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: theme.spacing(2), paddingTop: theme.spacing(2), paddingBottom: theme.spacing(8) },
+  content: {
+    paddingHorizontal: theme.spacing(2),
+    paddingTop: theme.spacing(2),
+    paddingBottom: theme.spacing(8),
+  },
   h1: { fontSize: 18, fontWeight: '800', color: theme.colors.text },
   helper: { color: theme.colors.muted, fontSize: 12, marginTop: 4, marginBottom: 12 },
 
@@ -112,3 +134,7 @@ const styles = StyleSheet.create({
   stepText: { fontSize: 18, fontWeight: '800', color: theme.colors.text },
   qtyText: { minWidth: 20, textAlign: 'center', color: theme.colors.text, fontWeight: '700' },
 });
+
+export default MaterialsPicker;           // default export (back-compat)
+export { MaterialsPicker }; // named export (barrel-friendly)
+
