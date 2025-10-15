@@ -7,8 +7,7 @@ import { getQuoteById, saveQuote, type QuoteItem } from '@/lib/quotes';
 import { CATEGORIES, PRODUCTS_SEED } from '@/modules/catalog/seed';
 
 // ⬇️ import directly — do NOT use the barrel
-import BottomBar from '@/modules/core/ui/BottomBar';
-import Screen from '@/modules/core/ui/safe-screen';
+import { BottomBar, Screen } from '@/modules/core/ui';
 
 import { MaterialsPicker, useSelection } from '@/modules/materials';
 

@@ -1,21 +1,19 @@
 import { Stack, useRouter, type Href } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
 import { theme } from '@/constants/theme';
 import { saveQuote, type QuoteItem } from '@/lib/quotes';
 import { CATEGORIES, PRODUCTS_SEED } from '@/modules/catalog/seed';
 
-// ⬇️ import directly — do NOT use the barrel
-import BottomBar from '@/modules/core/ui/BottomBar';
-import Screen from '@/modules/core/ui/safe-screen';
+import { BottomBar, Screen } from '@/modules/core/ui';
 
 import { MaterialsPicker, useSelection } from '@/modules/materials';
 import { formatMoney } from '@/modules/settings/money';

@@ -20,7 +20,9 @@ export default function EditQuote() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [quote, setQuote] = useState<Quote | null>(null);
+  // Keep the state type, silence the unused value.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_quote, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState('');
   const [clientName, setClientName] = useState('');   // NEW
   const [labor, setLabor] = useState<string>('0');    // capture as string for input
