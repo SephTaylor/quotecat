@@ -1,9 +1,9 @@
 // app/_layout.tsx
+import { ServicesProvider } from '@/modules/providers/ServicesProvider';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ServicesProvider } from './_providers/ServicesProvider';
 
 // Explicitly import index to avoid any resolver quirks.
 import catalogRepo from '../modules/catalog/index';
