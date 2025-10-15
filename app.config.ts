@@ -2,10 +2,10 @@
 import { ConfigContext, ExpoConfig } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
-  // start from whatever you already had
+  // Start from your existing config, then override
   ...config,
 
-  // ---- your app identity ----
+  // ---- identity ----
   name: 'QuoteCat',
   slug: 'quotecat',
   scheme: 'quotecat',
@@ -17,9 +17,25 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ...(config.extra as object),
   },
 
-  // ---- add Expo Router plugin ----
-  plugins: [...(config.plugins ?? []), 'expo-router'],
+  // ---- plugins (explicit, no spreading to avoid duplicates) ----
+  plugins: [
+    'expo-router',
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/images/splash-icon.png',
+        imageWidth: 200,
+        resizeMode: 'contain',
+        backgroundColor: '#ffffff',
+        dark: { backgroundColor: '#000000' },
+      },
+    ],
+    'expo-font',
+  ],
 
-  // ---- optional: typed route hints in TS ----
-  experiments: { ...((config as any).experiments ?? {}), typedRoutes: true },
+  // ---- experiments ----
+  experiments: {
+    ...(config as any).experiments,
+    typedRoutes: true,
+  },
 });
