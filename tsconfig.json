@@ -3,9 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "paths": { "@/*": ["./*"] }
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": ["app/**/*", "lib/**/*", "modules/**/*", "scripts/**/*", "expo-env.d.ts", ".expo/types/**/*.ts"],
+  "exclude": ["node_modules", "app/_old", "modules/_old"]
 }
