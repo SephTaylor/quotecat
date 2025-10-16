@@ -1,11 +1,11 @@
 // app/quote/[id]/edit.tsx
 import { theme } from '@/constants/theme';
 import { getQuoteById, saveQuote, type Quote } from '@/lib/quotes';
+import { Screen } from '@/modules/core/ui';
+import MoneyInput from '@/modules/core/ui/MoneyInput';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,19 +13,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EditQuote() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   // Keep the state type, silence the unused value.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_quote, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState('');
-  const [clientName, setClientName] = useState('');   // NEW
-  const [labor, setLabor] = useState<string>('0');    // capture as string for input
+  const [clientName, setClientName] = useState('');
+  const [labor, setLabor] = useState<number>(0); // numeric now
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -34,19 +32,12 @@ export default function EditQuote() {
       setQuote(q);
       setName(q.name || '');
       setClientName(q.clientName || '');
-      setLabor(String(q.labor ?? 0));
+      setLabor(Number.isFinite(q.labor) ? (q.labor as number) : 0);
     }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
   useFocusEffect(React.useCallback(() => { load(); }, [load]));
-
-  const parseLabor = (txt: string) => {
-    // allow "12,34" or "12.34"
-    const cleaned = txt.replace(',', '.').replace(/[^\d.]/g, '');
-    const n = parseFloat(cleaned);
-    return isNaN(n) ? 0 : n;
-  };
 
   const onDone = async () => {
     if (!id) return;
@@ -54,21 +45,19 @@ export default function EditQuote() {
       id,
       name,
       clientName,
-      labor: parseLabor(labor),
+      labor, // already numeric
     });
     router.back();
   };
 
-  const bottomPad = Math.max(insets.bottom, theme.spacing(2));
-
   return (
-    <KeyboardAvoidingView
+    <Screen
+      scroll={false}
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+      contentStyle={{ paddingTop: 0, paddingBottom: 0, paddingHorizontal: 0 }}
     >
       <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.label}>Project name</Text>
           <TextInput
             placeholder="e.g., Interior wall demo"
@@ -93,14 +82,13 @@ export default function EditQuote() {
           <View style={{ height: theme.spacing(2) }} />
 
           <Text style={styles.label}>Labor</Text>
-          <TextInput
-            placeholder="0.00"
+          <MoneyInput
             value={labor}
-            onChangeText={setLabor}
+            onChangeValue={setLabor}
+            placeholder="0.00"
+            // match your input styling
             style={styles.input}
             placeholderTextColor={theme.colors.muted}
-            keyboardType="numeric"
-            inputMode="decimal"
           />
 
           <View style={{ height: theme.spacing(3) }} />
@@ -127,13 +115,13 @@ export default function EditQuote() {
           </Pressable>
         </ScrollView>
 
-        <View style={[styles.bottomBar, { paddingBottom: bottomPad }]}>
+        <View style={styles.bottomBar}>
           <Pressable style={styles.doneBtn} onPress={onDone}>
             <Text style={styles.doneText}>Done</Text>
           </Pressable>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </Screen>
   );
 }
 
@@ -159,6 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.card,
     paddingHorizontal: theme.spacing(2),
     paddingTop: theme.spacing(1.5),
+    paddingBottom: theme.spacing(2),
   },
   doneBtn: {
     backgroundColor: theme.colors.accent,

@@ -1,12 +1,17 @@
 // app/_layout.tsx
-import { ServicesProvider } from '@/modules/providers/ServicesProvider';
 import { Stack } from 'expo-router';
-import React from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function RootLayout() {
   return (
-    <ServicesProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </ServicesProvider>
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
+      <Stack
+        screenOptions={{
+          headerShown: false, // we use our own in-screen headers
+        }}
+      />
+    </SafeAreaProvider>
   );
 }

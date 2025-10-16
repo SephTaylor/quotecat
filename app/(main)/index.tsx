@@ -1,4 +1,4 @@
-// app/index.tsx
+// app/(main)/index.tsx
 import { theme } from '@/constants/theme';
 import {
   createNewQuote,
@@ -28,18 +28,13 @@ export default function Home() {
     setQuotes(data);
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const onNew = useCallback(async () => {
-    const q = await createNewQuote('Untitled project', '');
+    // Blank fields so the edit form starts empty
+    const q = await createNewQuote('', '');
     router.push(`/quote/${q.id}/edit`);
   }, [router]);
 
