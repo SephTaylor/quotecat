@@ -1,8 +1,6 @@
-// app/quote/[id]/edit.tsx
+// app/(forms)/quote/[id]/edit.tsx
 import { theme } from '@/constants/theme';
 import { getQuoteById, saveQuote, type Quote } from '@/lib/quotes';
-import { Screen } from '@/modules/core/ui';
-import MoneyInput from '@/modules/core/ui/MoneyInput';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -23,7 +21,7 @@ export default function EditQuote() {
   const [_quote, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState('');
   const [clientName, setClientName] = useState('');
-  const [labor, setLabor] = useState<number>(0); // numeric now
+  const [labor, setLabor] = useState<string>('0'); // keep as string for now
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -32,12 +30,19 @@ export default function EditQuote() {
       setQuote(q);
       setName(q.name || '');
       setClientName(q.clientName || '');
-      setLabor(Number.isFinite(q.labor) ? (q.labor as number) : 0);
+      setLabor(String(q.labor ?? 0));
     }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
   useFocusEffect(React.useCallback(() => { load(); }, [load]));
+
+  const parseLabor = (txt: string) => {
+    // allow "12,34" or "12.34"
+    const cleaned = txt.replace(',', '.').replace(/[^\d.]/g, '');
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? 0 : n;
+  };
 
   const onDone = async () => {
     if (!id) return;
@@ -45,17 +50,13 @@ export default function EditQuote() {
       id,
       name,
       clientName,
-      labor, // already numeric
+      labor: parseLabor(labor),
     });
     router.back();
   };
 
   return (
-    <Screen
-      scroll={false}
-      style={{ flex: 1, backgroundColor: theme.colors.bg }}
-      contentStyle={{ paddingTop: 0, paddingBottom: 0, paddingHorizontal: 0 }}
-    >
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.label}>Project name</Text>
@@ -82,13 +83,14 @@ export default function EditQuote() {
           <View style={{ height: theme.spacing(2) }} />
 
           <Text style={styles.label}>Labor</Text>
-          <MoneyInput
-            value={labor}
-            onChangeValue={setLabor}
+          <TextInput
             placeholder="0.00"
-            // match your input styling
+            value={labor}
+            onChangeText={setLabor}
             style={styles.input}
             placeholderTextColor={theme.colors.muted}
+            keyboardType="numeric"
+            inputMode="decimal"
           />
 
           <View style={{ height: theme.spacing(3) }} />
@@ -121,7 +123,7 @@ export default function EditQuote() {
           </Pressable>
         </View>
       </View>
-    </Screen>
+    </View>
   );
 }
 
@@ -146,8 +148,8 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.card,
     paddingHorizontal: theme.spacing(2),
-    paddingTop: theme.spacing(1.5),
-    paddingBottom: theme.spacing(2),
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   doneBtn: {
     backgroundColor: theme.colors.accent,
