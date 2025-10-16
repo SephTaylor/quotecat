@@ -1,11 +1,11 @@
 // babel.config.js
-module.exports = function (api) {
+module.exports = function(api) {
   api.cache(true);
   return {
-    presets: ['babel-preset-expo'],
-    plugins: [
-      ['module-resolver', { alias: { '@': './' } }],
-      'react-native-reanimated/plugin', // keep LAST
+    presets: [
+      ['babel-preset-expo', { jsxRuntime: 'automatic' }],
+      'expo-router/babel' // only if still on legacy; else remove this line
     ],
+    plugins: []
   };
 };

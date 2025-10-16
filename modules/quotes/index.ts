@@ -62,3 +62,4 @@ const quotesRepo: QuotesRepo = {
 };
 
 export default quotesRepo;
+

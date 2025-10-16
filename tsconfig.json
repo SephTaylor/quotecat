@@ -1,10 +1,15 @@
 {
   "extends": "expo/tsconfig.base",
-  "compilerOptions": {
-    "strict": true,
+"compilerOptions": {
     "baseUrl": ".",
-    "paths": { "@/*": ["./*"] }
+    "paths": {
+      "@/*": ["*"],
+      "@/modules/*": ["modules/*"],
+      "@/lib/*": ["lib/*"],
+      "@/constants/*": ["constants/*"]
+    },
+    "strict": true
   },
   "include": ["app/**/*", "lib/**/*", "modules/**/*", "scripts/**/*", "expo-env.d.ts", ".expo/types/**/*.ts"],
-  "exclude": ["node_modules", "app/_old", "modules/_old"]
+  "exclude": ["_old", "node_modules", "app/_old", "modules/_old"]
 }

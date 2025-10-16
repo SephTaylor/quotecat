@@ -6,6 +6,7 @@ import {
   listQuotes,
   type Quote,
 } from '@/lib/quotes';
+import { QuoteCard } from '@/modules/quotes/ui';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -29,11 +30,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const onNew = useCallback(async () => {
-    // Blank fields so the edit form starts empty
     const q = await createNewQuote('', '');
     router.push(`/quote/${q.id}/edit`);
   }, [router]);
@@ -70,20 +69,11 @@ export default function Home() {
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
+          <QuoteCard
+            quote={item}
             onPress={() => router.push(`/quote/${item.id}/edit`)}
             onLongPress={() => confirmDelete(item.id, item.name)}
-          >
-            <Text style={styles.title}>{item.name || 'Untitled project'}</Text>
-            <Text style={styles.sub}>
-              {item.clientName ? `Client: ${item.clientName}  •  ` : ''}
-              Labor: {item.labor.toFixed(2)}
-            </Text>
-            <Text style={styles.total}>
-              Total: {item.total.toFixed(2)} {item.currency}
-            </Text>
-          </Pressable>
+          />
         )}
         ListEmptyComponent={<Text style={styles.empty}>No quotes yet. Tap + to start.</Text>}
       />
@@ -98,17 +88,6 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   listContent: { padding: theme.spacing(2) },
-  card: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  title: { fontSize: 16, fontWeight: '700', color: theme.colors.text, marginBottom: 6 },
-  sub: { fontSize: 12, color: theme.colors.muted, marginBottom: 8 },
-  total: { fontSize: 14, fontWeight: '600', color: theme.colors.text },
   empty: { textAlign: 'center', color: theme.colors.muted, marginTop: theme.spacing(4) },
   fab: {
     position: 'absolute',
