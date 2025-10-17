@@ -1,5 +1,5 @@
 // modules/quotes/merge.ts
-import type { QuoteItem } from "@/lib/quotes";
+import type { QuoteItem } from "./index";
 
 /**
  * Merge two QuoteItem arrays by id, summing quantities for duplicates.

@@ -1,4 +1,4 @@
-import type { QuoteItem } from "@/lib/quotes";
+import type { QuoteItem } from "./index";
 
 export type QuoteDraft = {
   id: string; // temp id while drafting
