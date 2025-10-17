@@ -12,6 +12,7 @@ import {
 // Use a different local name to avoid the ESLint "named-as-default" warning
 import { getQuoteById } from "@/lib/quotes";
 import FormScreenComponent from "@/modules/core/ui/FormScreen";
+import { useExportQuote } from "@/modules/quotes";
 import { QuoteItemRow } from "@/modules/quotes/ui";
 import { formatMoney } from "@/modules/settings/money";
 
@@ -36,6 +37,7 @@ export default function QuoteReviewScreen() {
 
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<StoredQuote | null>(null);
+  const { exportToCsv, isExporting } = useExportQuote();
 
   useEffect(() => {
     (async () => {
@@ -65,6 +67,11 @@ export default function QuoteReviewScreen() {
 
   const doneBar = (
     <View style={styles.footer}>
+      <Button
+        title={isExporting ? "Exporting..." : "Export CSV"}
+        onPress={() => quote && exportToCsv(quote)}
+        disabled={isExporting || !quote}
+      />
       <Button title="Done" onPress={() => router.back()} />
     </View>
   );
@@ -177,6 +184,8 @@ const styles = StyleSheet.create({
   grandValue: { fontSize: 16, fontWeight: "700" },
 
   footer: {
+    flexDirection: "row",
+    gap: 12,
     padding: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#e5e5e5",
