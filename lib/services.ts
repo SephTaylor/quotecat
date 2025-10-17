@@ -1,7 +1,7 @@
 // lib/services.ts
 
 // ---------- Core types ----------
-export type CurrencyCode = 'USD' | 'CRC';
+export type CurrencyCode = "USD" | "CRC";
 export type ID = string;
 
 export type Product = {
@@ -9,7 +9,7 @@ export type Product = {
   name: string;
   sku?: string;
   category: string;
-  unit: 'ea' | 'ft' | 'm' | 'sheet' | 'box' | string;
+  unit: "ea" | "ft" | "m" | "sheet" | "box" | string;
   price?: number;
   currency?: CurrencyCode;
 };
@@ -50,7 +50,9 @@ export interface CatalogRepo {
 export interface QuotesRepo {
   list(): Promise<Quote[]>;
   get(id: ID): Promise<Quote | null>;
-  create(input: Omit<Quote, 'id' | 'materialSubtotal' | 'total'> & { id?: ID }): Promise<Quote>;
+  create(
+    input: Omit<Quote, "id" | "materialSubtotal" | "total"> & { id?: ID },
+  ): Promise<Quote>;
   update(q: Quote): Promise<void>;
   remove(id: ID): Promise<void>;
 }
@@ -59,8 +61,16 @@ export interface QuotesRepo {
 export interface PriceFeed {
   batchLookup(
     skus: string[],
-    region?: string
-  ): Promise<Array<{ sku: string; price: number; currency: CurrencyCode; vendor: string; timestamp: string }>>;
+    region?: string,
+  ): Promise<
+    Array<{
+      sku: string;
+      price: number;
+      currency: CurrencyCode;
+      vendor: string;
+      timestamp: string;
+    }>
+  >;
 }
 
 // ---------- Assemblies ----------
@@ -85,7 +95,12 @@ export interface Optimizer {
     currency: CurrencyCode;
     vendors: Array<{
       name: string;
-      items: Array<{ skuOrId: string; unitPrice: number; qty: number; lineTotal: number }>;
+      items: Array<{
+        skuOrId: string;
+        unitPrice: number;
+        qty: number;
+        lineTotal: number;
+      }>;
       deliveryFee?: number;
       subtotal: number;
     }>;
@@ -101,7 +116,7 @@ export interface PDFService {
 export type Services = {
   settings: SettingsStore;
   catalog: CatalogRepo;
-  quotes: QuotesRepo;        // <— NEW
+  quotes: QuotesRepo; // <— NEW
   priceFeed: PriceFeed;
   assemblies: AssemblyCalculator[];
   optimizer: Optimizer;

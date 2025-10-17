@@ -1,7 +1,7 @@
-import type { QuoteItem } from '@/lib/quotes';
+import type { QuoteItem } from "@/lib/quotes";
 
 export type QuoteDraft = {
-  id: string;                 // temp id while drafting
+  id: string; // temp id while drafting
   customerId?: string;
   title?: string;
   items: QuoteItem[];
@@ -12,7 +12,12 @@ export type QuoteDraft = {
 // Pure helpers (no storage coupling)
 export function createDraft(): QuoteDraft {
   const now = Date.now();
-  return { id: 'draft-' + now.toString(36), items: [], createdAt: now, updatedAt: now };
+  return {
+    id: "draft-" + now.toString(36),
+    items: [],
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 export function touch(d: QuoteDraft): QuoteDraft {

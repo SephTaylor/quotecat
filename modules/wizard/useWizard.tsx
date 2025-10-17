@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import type { WizardStep } from './types';
+import { useCallback, useMemo, useState } from "react";
+import type { WizardStep } from "./types";
 
 export function useWizard<TState>({
   steps,
@@ -15,7 +15,7 @@ export function useWizard<TState>({
   const step = steps[index];
 
   const setState = useCallback((patch: Partial<TState>) => {
-    setStateFull(prev => ({ ...prev, ...patch }));
+    setStateFull((prev) => ({ ...prev, ...patch }));
   }, []);
 
   const canNext = useMemo(() => {
@@ -25,12 +25,12 @@ export function useWizard<TState>({
 
   const goNext = useCallback(async () => {
     if (!canNext) return;
-    if (index + 1 < steps.length) setIndex(i => i + 1);
+    if (index + 1 < steps.length) setIndex((i) => i + 1);
     else await onFinish(state);
   }, [canNext, index, steps.length, state, onFinish]);
 
   const goBack = useCallback(() => {
-    setIndex(i => Math.max(0, i - 1));
+    setIndex((i) => Math.max(0, i - 1));
   }, []);
 
   return { step, index, steps, state, setState, goNext, goBack, canNext };

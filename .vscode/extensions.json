@@ -1,1 +1,1 @@
-{ "recommendations": ["expo.vscode-expo-tools"] }
+﻿{ "recommendations": ["esbenp.prettier-vscode", "expo.vscode-expo-tools"] }
