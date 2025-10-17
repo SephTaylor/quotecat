@@ -16,7 +16,7 @@ export default function EditQuote() {
   const [_quote, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
-  const [labor, setLabor] = useState<string>("0"); // keep as string for now
+  const [labor, setLabor] = useState<string>(""); // empty string to show placeholder
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -25,7 +25,8 @@ export default function EditQuote() {
       setQuote(q);
       setName(q.name || "");
       setClientName(q.clientName || "");
-      setLabor(String(q.labor ?? 0));
+      // Only set labor if it's non-zero, otherwise leave empty to show placeholder
+      setLabor(q.labor && q.labor !== 0 ? String(q.labor) : "");
     }
   }, [id]);
 
