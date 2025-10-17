@@ -1,15 +1,16 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
 
-import { theme } from "@/constants/theme";
-import { getQuoteById, saveQuote, type QuoteItem } from "@/lib/quotes";
+import { getQuoteById, saveQuote } from "@/lib/quotes";
 import { CATEGORIES, PRODUCTS_SEED } from "@/modules/catalog/seed";
 
-// ⬇️ import directly — do NOT use the barrel
-import { BottomBar, Screen } from "@/modules/core/ui";
+import { BottomBar, Button, Screen } from "@/modules/core/ui";
 
-import { MaterialsPicker, useSelection } from "@/modules/materials";
+import {
+  MaterialsPicker,
+  transformSelectionToItems,
+  useSelection,
+} from "@/modules/materials";
 import { mergeById } from "@/modules/quotes/merge";
 
 export default function Materials() {
@@ -25,15 +26,7 @@ export default function Materials() {
       const q = await getQuoteById(id);
       if (!q) return;
 
-      const adds: QuoteItem[] = Array.from(selection.values()).map(
-        ({ product, qty }) => ({
-          id: product.id,
-          name: product.name,
-          unitPrice: product.unitPrice,
-          qty,
-        }),
-      );
-
+      const adds = transformSelectionToItems(selection);
       const merged = mergeById(q.items ?? [], adds);
 
       await saveQuote({ ...q, id, items: merged });
@@ -57,53 +50,18 @@ export default function Materials() {
       </Screen>
 
       <BottomBar>
-        <Pressable
-          style={[styles.secondaryBtn, units === 0 && styles.disabled]}
+        <Button
+          variant="secondary"
           disabled={units === 0}
           onPress={() => saveSelected(false)}
         >
-          <Text style={styles.secondaryText}>
-            Add {units > 0 ? `${units} item${units > 1 ? "s" : ""}` : "items"}
-          </Text>
-        </Pressable>
+          Add {units > 0 ? `${units} item${units > 1 ? "s" : ""}` : "items"}
+        </Button>
 
-        <Pressable
-          style={[styles.primaryBtn, units === 0 && styles.primaryIdle]}
-          onPress={() => saveSelected(true)}
-        >
-          <Text style={styles.primaryText}>
-            Done {units > 0 ? `(+${subtotal.toFixed(2)})` : ""}
-          </Text>
-        </Pressable>
+        <Button variant="primary" onPress={() => saveSelected(true)}>
+          Done {units > 0 ? `(+${subtotal.toFixed(2)})` : ""}
+        </Button>
       </BottomBar>
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  secondaryBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: theme.radius.xl,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.card,
-  },
-  disabled: { opacity: 0.5 },
-  secondaryText: { fontWeight: "800", color: theme.colors.text },
-
-  primaryBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: theme.radius.xl,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.accent,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  primaryIdle: { opacity: 0.95 },
-  primaryText: { fontWeight: "800", color: "#000" },
-});

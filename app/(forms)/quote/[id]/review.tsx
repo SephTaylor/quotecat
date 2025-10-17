@@ -12,6 +12,7 @@ import {
 // Use a different local name to avoid the ESLint "named-as-default" warning
 import { getQuoteById } from "@/lib/quotes";
 import FormScreenComponent from "@/modules/core/ui/FormScreen";
+import { QuoteItemRow } from "@/modules/quotes/ui";
 import { formatMoney } from "@/modules/settings/money";
 
 type QuoteItem = {
@@ -50,8 +51,7 @@ export default function QuoteReviewScreen() {
 
   const items: QuoteItem[] = useMemo(() => quote?.items ?? [], [quote]);
   const materialSubtotal = useMemo(
-    () =>
-      items.reduce((sum, it) => sum + (it.unitPrice || 0) * (it.qty || 0), 0),
+    () => items.reduce((s, it) => s + (it.unitPrice || 0) * (it.qty || 0), 0),
     [items],
   );
   const labor = quote?.labor ?? 0;
@@ -124,17 +124,7 @@ export default function QuoteReviewScreen() {
             <Text style={styles.muted}>No items yet.</Text>
           ) : (
             items.map((it, idx) => (
-              <View key={`${it.id ?? it.name}-${idx}`} style={styles.row}>
-                <View style={styles.rowLeft}>
-                  <Text style={styles.itemName}>{it.name}</Text>
-                  <Text style={styles.itemMeta}>
-                    {it.qty} × {formatMoney(it.unitPrice)}
-                  </Text>
-                </View>
-                <Text style={styles.itemTotal}>
-                  {formatMoney((it.unitPrice || 0) * (it.qty || 0))}
-                </Text>
-              </View>
+              <QuoteItemRow key={`${it.id ?? it.name}-${idx}`} item={it} />
             ))
           )}
 
@@ -164,18 +154,6 @@ const styles = StyleSheet.create({
   body: { padding: 16 },
   h2: { fontSize: 18, fontWeight: "600" },
   muted: { color: "#666" },
-
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e5e5",
-  },
-  rowLeft: { flex: 1 },
-  itemName: { fontSize: 16, fontWeight: "500" },
-  itemMeta: { color: "#666", marginTop: 2 },
-  itemTotal: { fontWeight: "600" },
 
   divider: { height: 16 },
 

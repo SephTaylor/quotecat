@@ -1,21 +1,18 @@
 import { Stack, useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { theme } from "@/constants/theme";
-import { saveQuote, type QuoteItem } from "@/lib/quotes";
+import { saveQuote } from "@/lib/quotes";
 import { CATEGORIES, PRODUCTS_SEED } from "@/modules/catalog/seed";
 
-import { BottomBar, Screen } from "@/modules/core/ui";
+import { BottomBar, Button, FormInput, Screen } from "@/modules/core/ui";
 
-import { MaterialsPicker, useSelection } from "@/modules/materials";
+import {
+  MaterialsPicker,
+  transformSelectionToItems,
+  useSelection,
+} from "@/modules/materials";
 import { mergeById } from "@/modules/quotes/merge";
 import { formatMoney } from "@/modules/settings/money";
 
@@ -60,17 +57,7 @@ export default function NewQuoteWizard() {
     if (step === "materials") return setStep("review");
 
     // Finish → create quote
-    const adds: QuoteItem[] = Array.from(selection.values()).map((it: any) => {
-      const { product, qty } = it;
-      const q = (qty ?? 0) as number;
-      return {
-        id: product.id,
-        name: product.name,
-        unitPrice: product.unitPrice,
-        qty: q,
-      };
-    });
-
+    const adds = transformSelectionToItems(selection);
     const merged = mergeById([], adds);
     const id = "q-" + Date.now().toString(36);
 
@@ -101,11 +88,10 @@ export default function NewQuoteWizard() {
           {step === "basics" && (
             <View style={styles.section}>
               <Text style={styles.label}>Quote title</Text>
-              <TextInput
+              <FormInput
                 placeholder="e.g., Master bedroom remodel"
                 value={state.title}
                 onChangeText={(t) => setState({ title: t })}
-                style={styles.input}
                 returnKeyType="next"
                 onSubmitEditing={() => setStep("materials")}
               />
@@ -158,21 +144,13 @@ export default function NewQuoteWizard() {
       </Screen>
 
       <BottomBar>
-        <Pressable
-          onPress={back}
-          disabled={step === "basics"}
-          style={[styles.secondaryBtn, step === "basics" && styles.disabled]}
-        >
-          <Text style={styles.secondaryText}>Back</Text>
-        </Pressable>
+        <Button variant="secondary" onPress={back} disabled={step === "basics"}>
+          Back
+        </Button>
 
-        <Pressable
-          onPress={next}
-          disabled={!canNext}
-          style={[styles.primaryBtn, !canNext && styles.primaryIdle]}
-        >
-          <Text style={styles.primaryText}>{nextLabel}</Text>
-        </Pressable>
+        <Button variant="primary" onPress={next} disabled={!canNext}>
+          {nextLabel}
+        </Button>
       </BottomBar>
     </>
   );
@@ -188,15 +166,6 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 16, paddingVertical: 16 },
 
   label: { fontWeight: "700", color: theme.colors.text, marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: theme.colors.text,
-    backgroundColor: theme.colors.card,
-  },
   helper: { color: theme.colors.muted, fontSize: 12, marginTop: 6 },
 
   row: {
@@ -206,30 +175,4 @@ const styles = StyleSheet.create({
   },
   rowName: { color: theme.colors.text, flexShrink: 1, paddingRight: 12 },
   rowRight: { color: theme.colors.text, fontWeight: "600" },
-
-  secondaryBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: theme.radius.xl,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.card,
-  },
-  disabled: { opacity: 0.5 },
-  secondaryText: { fontWeight: "800", color: theme.colors.text },
-
-  primaryBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: theme.radius.xl,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.accent,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  primaryIdle: { opacity: 0.95 },
-  primaryText: { fontWeight: "800", color: "#000" },
 });
