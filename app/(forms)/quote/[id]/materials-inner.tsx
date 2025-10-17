@@ -1,8 +1,9 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import { getQuoteById, saveQuote } from "@/lib/quotes";
-import { CATEGORIES, PRODUCTS_SEED } from "@/modules/catalog/seed";
+import { CATEGORIES } from "@/modules/catalog/seed";
+import { useProducts } from "@/modules/catalog";
 
 import { BottomBar, Button, Screen } from "@/modules/core/ui";
 
@@ -12,12 +13,28 @@ import {
   useSelection,
 } from "@/modules/materials";
 import { mergeById } from "@/modules/quotes/merge";
+import type { Product } from "@/modules/catalog/seed";
 
 export default function Materials() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
 
+  const { products, loading } = useProducts();
   const { selection, inc, dec, units, subtotal } = useSelection();
+
+  // Group products by category for MaterialsPicker
+  const productsByCategory = useMemo(() => {
+    const grouped: Record<string, Product[]> = {};
+
+    products.forEach((product) => {
+      if (!grouped[product.categoryId]) {
+        grouped[product.categoryId] = [];
+      }
+      grouped[product.categoryId].push(product);
+    });
+
+    return grouped;
+  }, [products]);
 
   const saveSelected = useCallback(
     async (goBack: boolean) => {
@@ -35,6 +52,23 @@ export default function Materials() {
     [id, selection, router],
   );
 
+  if (loading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Screen scroll>
+          <MaterialsPicker
+            categories={CATEGORIES}
+            itemsByCategory={{}}
+            selection={selection}
+            onInc={inc}
+            onDec={dec}
+          />
+        </Screen>
+      </>
+    );
+  }
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -42,7 +76,7 @@ export default function Materials() {
       <Screen scroll>
         <MaterialsPicker
           categories={CATEGORIES}
-          itemsByCategory={PRODUCTS_SEED}
+          itemsByCategory={productsByCategory}
           selection={selection}
           onInc={inc}
           onDec={dec}
