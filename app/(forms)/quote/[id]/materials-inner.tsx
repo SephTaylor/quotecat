@@ -10,19 +10,7 @@ import { CATEGORIES, PRODUCTS_SEED } from "@/modules/catalog/seed";
 import { BottomBar, Screen } from "@/modules/core/ui";
 
 import { MaterialsPicker, useSelection } from "@/modules/materials";
-
-function mergeById(existing: QuoteItem[], adds: QuoteItem[]): QuoteItem[] {
-  const map = new Map(existing.map((i) => [i.id, { ...i }]));
-  for (const a of adds) {
-    const cur = map.get(a.id);
-    if (cur) {
-      map.set(a.id, { ...cur, qty: (cur.qty ?? 0) + (a.qty ?? 0) });
-    } else {
-      map.set(a.id, { ...a });
-    }
-  }
-  return Array.from(map.values());
-}
+import { mergeById } from "@/modules/quotes/merge";
 
 export default function Materials() {
   const { id } = useLocalSearchParams<{ id?: string }>();

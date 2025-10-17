@@ -1,23 +1,24 @@
+// modules/quotes/merge.ts
 import type { QuoteItem } from "@/lib/quotes";
 
-export function mergeQuoteItems(
+/**
+ * Merge two QuoteItem arrays by id, summing quantities for duplicates.
+ * @param existing - Base items
+ * @param adds - Items to merge in
+ * @returns Merged array with summed quantities
+ */
+export function mergeById(
   existing: QuoteItem[],
   adds: QuoteItem[],
 ): QuoteItem[] {
-  const map = new Map<string, QuoteItem>(existing.map((i) => [i.id, { ...i }]));
+  const map = new Map(existing.map((i) => [i.id, { ...i }]));
   for (const a of adds) {
-    const prev = map.get(a.id);
-    map.set(
-      a.id,
-      prev
-        ? {
-            ...prev,
-            qty: (prev.qty ?? 0) + (a.qty ?? 0),
-            name: a.name,
-            unitPrice: a.unitPrice,
-          }
-        : a,
-    );
+    const cur = map.get(a.id);
+    if (cur) {
+      map.set(a.id, { ...cur, qty: (cur.qty ?? 0) + (a.qty ?? 0) });
+    } else {
+      map.set(a.id, { ...a });
+    }
   }
-  return [...map.values()];
+  return Array.from(map.values());
 }
