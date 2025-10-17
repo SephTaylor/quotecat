@@ -1,10 +1,10 @@
 // app/(forms)/quote/[id]/edit.tsx
-import { theme } from '@/constants/theme';
-import { getQuoteById, saveQuote, type Quote } from '@/lib/quotes';
-import { FormScreen } from '@/modules/core/ui';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { theme } from "@/constants/theme";
+import { getQuoteById, saveQuote, type Quote } from "@/lib/quotes";
+import { FormScreen } from "@/modules/core/ui";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 export default function EditQuote() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -13,27 +13,33 @@ export default function EditQuote() {
   // Keep the state type, silence the unused value.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_quote, setQuote] = useState<Quote | null>(null);
-  const [name, setName] = useState('');
-  const [clientName, setClientName] = useState('');
-  const [labor, setLabor] = useState<string>('0'); // keep as string for now
+  const [name, setName] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [labor, setLabor] = useState<string>("0"); // keep as string for now
 
   const load = useCallback(async () => {
     if (!id) return;
     const q = await getQuoteById(id);
     if (q) {
       setQuote(q);
-      setName(q.name || '');
-      setClientName(q.clientName || '');
+      setName(q.name || "");
+      setClientName(q.clientName || "");
       setLabor(String(q.labor ?? 0));
     }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
-  useFocusEffect(React.useCallback(() => { load(); }, [load]));
+  useEffect(() => {
+    load();
+  }, [load]);
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const parseLabor = (txt: string) => {
     // allow "12,34" or "12.34"
-    const cleaned = txt.replace(',', '.').replace(/[^\d.]/g, '');
+    const cleaned = txt.replace(",", ".").replace(/[^\d.]/g, "");
     const n = parseFloat(cleaned);
     return isNaN(n) ? 0 : n;
   };
@@ -52,7 +58,11 @@ export default function EditQuote() {
   return (
     <FormScreen
       scroll
-      contentStyle={{ paddingHorizontal: theme.spacing(2), paddingTop: theme.spacing(2), paddingBottom: theme.spacing(2) }}
+      contentStyle={{
+        paddingHorizontal: theme.spacing(2),
+        paddingTop: theme.spacing(2),
+        paddingBottom: theme.spacing(2),
+      }}
       bottomBar={
         <Pressable style={styles.doneBtn} onPress={onDone}>
           <Text style={styles.doneText}>Done</Text>
@@ -97,7 +107,8 @@ export default function EditQuote() {
 
       <Text style={styles.h2}>Items</Text>
       <Text style={styles.helper}>
-        Use the Materials picker to add seed-only items. Categories are collapsed by default.
+        Use the Materials picker to add seed-only items. Categories are
+        collapsed by default.
       </Text>
 
       <View style={{ height: theme.spacing(2) }} />
@@ -109,11 +120,13 @@ export default function EditQuote() {
           backgroundColor: theme.colors.card,
           borderRadius: theme.radius.lg,
           height: 48,
-          alignItems: 'center',
-          justifyContent: 'center',
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <Text style={{ fontWeight: '800', color: theme.colors.text }}>Add materials</Text>
+        <Text style={{ fontWeight: "800", color: theme.colors.text }}>
+          Add materials
+        </Text>
       </Pressable>
     </FormScreen>
   );
@@ -131,16 +144,21 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: 16,
   },
-  h2: { fontSize: 16, fontWeight: '700', color: theme.colors.text, marginBottom: 6 },
+  h2: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: theme.colors.text,
+    marginBottom: 6,
+  },
   helper: { fontSize: 12, color: theme.colors.muted },
   doneBtn: {
     backgroundColor: theme.colors.accent,
     borderRadius: theme.radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     height: 48,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  doneText: { fontSize: 16, fontWeight: '800', color: '#000' },
+  doneText: { fontSize: 16, fontWeight: "800", color: "#000" },
 });

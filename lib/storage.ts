@@ -1,5 +1,5 @@
 // lib/storage.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export async function getJSON<T>(key: string): Promise<T | undefined> {
   const raw = await AsyncStorage.getItem(key);

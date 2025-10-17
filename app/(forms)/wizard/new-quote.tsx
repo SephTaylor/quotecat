@@ -1,7 +1,7 @@
 // app/(forms)/wizard/new-quote.tsx
-import { FormScreen } from '@/modules/core/ui';
-import React from 'react';
-import NewQuoteInner from './new-quote-inner';
+import { FormScreen } from "@/modules/core/ui";
+import React from "react";
+import NewQuoteInner from "./new-quote-inner";
 
 /**
  * Wrapper route:

@@ -1,13 +1,13 @@
 // app/(main)/index.tsx
-import { theme } from '@/constants/theme';
+import { theme } from "@/constants/theme";
 import {
   createNewQuote,
   deleteQuote,
   listQuotes,
   type Quote,
-} from '@/lib/quotes';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+} from "@/lib/quotes";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -16,7 +16,7 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
+} from "react-native";
 
 export default function Home() {
   const router = useRouter();
@@ -28,13 +28,19 @@ export default function Home() {
     setQuotes(data);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const onNew = useCallback(async () => {
     // Blank fields so the edit form starts empty
-    const q = await createNewQuote('', '');
+    const q = await createNewQuote("", "");
     router.push(`/quote/${q.id}/edit`);
   }, [router]);
 
@@ -46,19 +52,21 @@ export default function Home() {
 
   const confirmDelete = (id: string, name: string) => {
     Alert.alert(
-      'Delete quote?',
-      name ? `Delete “${name}”? This can’t be undone.` : 'Delete this quote? This can’t be undone.',
+      "Delete quote?",
+      name
+        ? `Delete “${name}”? This can’t be undone.`
+        : "Delete this quote? This can’t be undone.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: "Delete",
+          style: "destructive",
           onPress: async () => {
             await deleteQuote(id);
             await load();
           },
         },
-      ]
+      ],
     );
   };
 
@@ -68,16 +76,18 @@ export default function Home() {
         data={quotes}
         keyExtractor={(q) => q.id}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
             onPress={() => router.push(`/quote/${item.id}/edit`)}
             onLongPress={() => confirmDelete(item.id, item.name)}
           >
-            <Text style={styles.title}>{item.name || 'Untitled project'}</Text>
+            <Text style={styles.title}>{item.name || "Untitled project"}</Text>
             <Text style={styles.sub}>
-              {item.clientName ? `Client: ${item.clientName}  •  ` : ''}
+              {item.clientName ? `Client: ${item.clientName}  •  ` : ""}
               Labor: {item.labor.toFixed(2)}
             </Text>
             <Text style={styles.total}>
@@ -85,7 +95,9 @@ export default function Home() {
             </Text>
           </Pressable>
         )}
-        ListEmptyComponent={<Text style={styles.empty}>No quotes yet. Tap + to start.</Text>}
+        ListEmptyComponent={
+          <Text style={styles.empty}>No quotes yet. Tap + to start.</Text>
+        }
       />
 
       <Pressable style={styles.fab} onPress={onNew}>
@@ -106,22 +118,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  title: { fontSize: 16, fontWeight: '700', color: theme.colors.text, marginBottom: 6 },
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: theme.colors.text,
+    marginBottom: 6,
+  },
   sub: { fontSize: 12, color: theme.colors.muted, marginBottom: 8 },
-  total: { fontSize: 14, fontWeight: '600', color: theme.colors.text },
-  empty: { textAlign: 'center', color: theme.colors.muted, marginTop: theme.spacing(4) },
+  total: { fontSize: 14, fontWeight: "600", color: theme.colors.text },
+  empty: {
+    textAlign: "center",
+    color: theme.colors.muted,
+    marginTop: theme.spacing(4),
+  },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     right: theme.spacing(2),
     bottom: theme.spacing(2),
     height: 56,
     width: 56,
     borderRadius: 28,
     backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  fabText: { fontSize: 28, lineHeight: 28, color: '#000', fontWeight: '800' },
+  fabText: { fontSize: 28, lineHeight: 28, color: "#000", fontWeight: "800" },
 });

@@ -1,7 +1,7 @@
 // modules/core/ui/FormScreen.tsx
-import { theme } from '@/constants/theme';
-import React, { PropsWithChildren, ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
+import { theme } from "@/constants/theme";
+import React, { PropsWithChildren, ReactNode } from "react";
+import { ScrollView, StyleSheet, View, ViewStyle } from "react-native";
 
 type Props = PropsWithChildren<{
   /** If true, wraps children in a ScrollView (recommended for forms) */
@@ -41,7 +41,9 @@ export default function FormScreen({
   return (
     <View style={styles.root}>
       {content}
-      {bottomBar ? <View style={[styles.bottomBar, bottomBarStyle]}>{bottomBar}</View> : null}
+      {bottomBar ? (
+        <View style={[styles.bottomBar, bottomBarStyle]}>{bottomBar}</View>
+      ) : null}
     </View>
   );
 }
@@ -66,4 +68,3 @@ const styles = StyleSheet.create({
 
 // Keep your "files export default; barrel re-exports named" convention:
 export { FormScreen };
-

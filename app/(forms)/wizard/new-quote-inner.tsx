@@ -1,5 +1,5 @@
-import { Stack, useRouter, type Href } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import { Stack, useRouter, type Href } from "expo-router";
+import React, { useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -7,20 +7,20 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { theme } from '@/constants/theme';
-import { saveQuote, type QuoteItem } from '@/lib/quotes';
-import { CATEGORIES, PRODUCTS_SEED } from '@/modules/catalog/seed';
+import { theme } from "@/constants/theme";
+import { saveQuote, type QuoteItem } from "@/lib/quotes";
+import { CATEGORIES, PRODUCTS_SEED } from "@/modules/catalog/seed";
 
-import { BottomBar, Screen } from '@/modules/core/ui';
+import { BottomBar, Screen } from "@/modules/core/ui";
 
-import { MaterialsPicker, useSelection } from '@/modules/materials';
-import { formatMoney } from '@/modules/settings/money';
+import { MaterialsPicker, useSelection } from "@/modules/materials";
+import { formatMoney } from "@/modules/settings/money";
 
 // Local merge (avoid shaky imports)
 function mergeById(existing: QuoteItem[], adds: QuoteItem[]): QuoteItem[] {
-  const map = new Map(existing.map(i => [i.id, { ...i }]));
+  const map = new Map(existing.map((i) => [i.id, { ...i }]));
   for (const a of adds) {
     const cur = map.get(a.id);
     if (cur) map.set(a.id, { ...cur, qty: (cur.qty ?? 0) + (a.qty ?? 0) });
@@ -29,7 +29,7 @@ function mergeById(existing: QuoteItem[], adds: QuoteItem[]): QuoteItem[] {
   return Array.from(map.values());
 }
 
-type Step = 'basics' | 'materials' | 'review';
+type Step = "basics" | "materials" | "review";
 type NewQuoteState = { title: string };
 
 export default function NewQuoteWizard() {
@@ -38,28 +38,36 @@ export default function NewQuoteWizard() {
   // Reused across steps
   const { selection, inc, dec, units, subtotal } = useSelection();
 
-  const [step, setStep] = useState<Step>('basics');
-  const [state, setState] = useState<NewQuoteState>({ title: '' });
+  const [step, setStep] = useState<Step>("basics");
+  const [state, setState] = useState<NewQuoteState>({ title: "" });
 
   const idx = useMemo(
-    () => (step === 'basics' ? 0 : step === 'materials' ? 1 : 2),
-    [step]
+    () => (step === "basics" ? 0 : step === "materials" ? 1 : 2),
+    [step],
   );
   const stepTitle =
-    step === 'basics' ? 'Basics' : step === 'materials' ? 'Materials' : 'Review';
+    step === "basics"
+      ? "Basics"
+      : step === "materials"
+        ? "Materials"
+        : "Review";
   const canNext =
-    step === 'basics' ? !!state.title.trim() : step === 'materials' ? units > 0 : true;
+    step === "basics"
+      ? !!state.title.trim()
+      : step === "materials"
+        ? units > 0
+        : true;
 
   const back = () => {
-    if (step === 'materials') setStep('basics');
-    else if (step === 'review') setStep('materials');
+    if (step === "materials") setStep("basics");
+    else if (step === "review") setStep("materials");
   };
 
   const next = async () => {
     if (!canNext) return;
 
-    if (step === 'basics') return setStep('materials');
-    if (step === 'materials') return setStep('review');
+    if (step === "basics") return setStep("materials");
+    if (step === "materials") return setStep("review");
 
     // Finish → create quote
     const adds: QuoteItem[] = Array.from(selection.values()).map((it: any) => {
@@ -74,11 +82,11 @@ export default function NewQuoteWizard() {
     });
 
     const merged = mergeById([], adds);
-    const id = 'q-' + Date.now().toString(36);
+    const id = "q-" + Date.now().toString(36);
 
     await saveQuote({
       id,
-      name: state.title.trim() || 'Untitled Project',
+      name: state.title.trim() || "Untitled Project",
       items: merged,
       labor: 0,
     } as any);
@@ -86,7 +94,7 @@ export default function NewQuoteWizard() {
     router.replace(`/quote/${id}` as Href);
   };
 
-  const nextLabel = idx + 1 < 3 ? 'Next' : 'Create Quote';
+  const nextLabel = idx + 1 < 3 ? "Next" : "Create Quote";
   const sub = subtotal; // number
 
   return (
@@ -100,22 +108,22 @@ export default function NewQuoteWizard() {
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
-          {step === 'basics' && (
+          {step === "basics" && (
             <View style={styles.section}>
               <Text style={styles.label}>Quote title</Text>
               <TextInput
                 placeholder="e.g., Master bedroom remodel"
                 value={state.title}
-                onChangeText={t => setState({ title: t })}
+                onChangeText={(t) => setState({ title: t })}
                 style={styles.input}
                 returnKeyType="next"
-                onSubmitEditing={() => setStep('materials')}
+                onSubmitEditing={() => setStep("materials")}
               />
               <Text style={styles.helper}>You can rename later.</Text>
             </View>
           )}
 
-          {step === 'materials' && (
+          {step === "materials" && (
             <View style={styles.section}>
               <MaterialsPicker
                 categories={CATEGORIES}
@@ -127,12 +135,12 @@ export default function NewQuoteWizard() {
             </View>
           )}
 
-          {step === 'review' && (
+          {step === "review" && (
             <View style={styles.section}>
               <Text style={styles.h2}>Review</Text>
               <Text style={styles.helper}>
-                {units} unit{units === 1 ? '' : 's'} selected — materials subtotal{' '}
-                {formatMoney ? formatMoney(sub) : sub.toFixed(2)}
+                {units} unit{units === 1 ? "" : "s"} selected — materials
+                subtotal {formatMoney ? formatMoney(sub) : sub.toFixed(2)}
               </Text>
 
               <View style={{ marginTop: 8 }}>
@@ -144,10 +152,10 @@ export default function NewQuoteWizard() {
                     <View key={product.id} style={styles.row}>
                       <Text style={styles.rowName}>{product.name}</Text>
                       <Text style={styles.rowRight}>
-                        {q} ×{' '}
+                        {q} ×{" "}
                         {formatMoney
                           ? formatMoney(product.unitPrice)
-                          : product.unitPrice.toFixed(2)}{' '}
+                          : product.unitPrice.toFixed(2)}{" "}
                         = {formatMoney ? formatMoney(line) : line.toFixed(2)}
                       </Text>
                     </View>
@@ -162,8 +170,8 @@ export default function NewQuoteWizard() {
       <BottomBar>
         <Pressable
           onPress={back}
-          disabled={step === 'basics'}
-          style={[styles.secondaryBtn, step === 'basics' && styles.disabled]}
+          disabled={step === "basics"}
+          style={[styles.secondaryBtn, step === "basics" && styles.disabled]}
         >
           <Text style={styles.secondaryText}>Back</Text>
         </Pressable>
@@ -182,14 +190,14 @@ export default function NewQuoteWizard() {
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingTop: 16 },
-  stepBadge: { color: theme.colors.muted, fontWeight: '700', marginBottom: 4 },
-  h1: { fontSize: 20, fontWeight: '800', color: theme.colors.text },
-  h2: { fontSize: 16, fontWeight: '800', color: theme.colors.text },
+  stepBadge: { color: theme.colors.muted, fontWeight: "700", marginBottom: 4 },
+  h1: { fontSize: 20, fontWeight: "800", color: theme.colors.text },
+  h2: { fontSize: 16, fontWeight: "800", color: theme.colors.text },
 
   content: { padding: 16, gap: 16, paddingBottom: 120 },
   section: { paddingHorizontal: 16, paddingVertical: 16 },
 
-  label: { fontWeight: '700', color: theme.colors.text, marginBottom: 6 },
+  label: { fontWeight: "700", color: theme.colors.text, marginBottom: 6 },
   input: {
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -201,9 +209,13 @@ const styles = StyleSheet.create({
   },
   helper: { color: theme.colors.muted, fontSize: 12, marginTop: 6 },
 
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
   rowName: { color: theme.colors.text, flexShrink: 1, paddingRight: 12 },
-  rowRight: { color: theme.colors.text, fontWeight: '600' },
+  rowRight: { color: theme.colors.text, fontWeight: "600" },
 
   secondaryBtn: {
     flex: 1,
@@ -211,23 +223,23 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.xl,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.card,
   },
   disabled: { opacity: 0.5 },
-  secondaryText: { fontWeight: '800', color: theme.colors.text },
+  secondaryText: { fontWeight: "800", color: theme.colors.text },
 
   primaryBtn: {
     flex: 1,
     height: 48,
     borderRadius: theme.radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.accent,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
   primaryIdle: { opacity: 0.95 },
-  primaryText: { fontWeight: '800', color: '#000' },
+  primaryText: { fontWeight: "800", color: "#000" },
 });

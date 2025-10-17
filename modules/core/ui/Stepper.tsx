@@ -1,6 +1,6 @@
-import { theme } from '@/constants/theme';
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { theme } from "@/constants/theme";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export function Stepper({
   value,
@@ -29,7 +29,7 @@ export function Stepper({
 
 const styles = (size: number) =>
   StyleSheet.create({
-    wrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    wrap: { flexDirection: "row", alignItems: "center", gap: 8 },
     btn: {
       height: size,
       width: size,
@@ -37,9 +37,14 @@ const styles = (size: number) =>
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
-    txt: { fontSize: 18, fontWeight: '800', color: theme.colors.text },
-    value: { minWidth: 20, textAlign: 'center', color: theme.colors.text, fontWeight: '700' },
+    txt: { fontSize: 18, fontWeight: "800", color: theme.colors.text },
+    value: {
+      minWidth: 20,
+      textAlign: "center",
+      color: theme.colors.text,
+      fontWeight: "700",
+    },
   });

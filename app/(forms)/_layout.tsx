@@ -1,7 +1,7 @@
 // app/(forms)/_layout.tsx
-import { Screen } from '@/modules/core/ui';
-import { Slot } from 'expo-router';
-import React from 'react';
+import { Screen } from "@/modules/core/ui";
+import { Slot } from "expo-router";
+import React from "react";
 
 /**
  * Forms layout:

@@ -1,18 +1,37 @@
 // app/(forms)/quote/[id]/review.tsx
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, Stack, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Button,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 // Use a different local name to avoid the ESLint "named-as-default" warning
-import { getQuoteById } from '@/lib/quotes';
-import FormScreenComponent from '@/modules/core/ui/FormScreen';
-import { formatMoney } from '@/modules/settings/money';
+import { getQuoteById } from "@/lib/quotes";
+import FormScreenComponent from "@/modules/core/ui/FormScreen";
+import { formatMoney } from "@/modules/settings/money";
 
-type QuoteItem = { id?: string; name: string; qty: number; unitPrice: number; currency?: string };
-type StoredQuote = { id: string; name: string; clientName?: string; items: QuoteItem[]; labor: number };
+type QuoteItem = {
+  id?: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  currency?: string;
+};
+type StoredQuote = {
+  id: string;
+  name: string;
+  clientName?: string;
+  items: QuoteItem[];
+  labor: number;
+};
 
 export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
-  const qid = Array.isArray(params.id) ? params.id[0] : params.id ?? null;
+  const qid = Array.isArray(params.id) ? params.id[0] : (params.id ?? null);
 
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<StoredQuote | null>(null);
@@ -31,8 +50,9 @@ export default function QuoteReviewScreen() {
 
   const items: QuoteItem[] = useMemo(() => quote?.items ?? [], [quote]);
   const materialSubtotal = useMemo(
-    () => items.reduce((sum, it) => sum + (it.unitPrice || 0) * (it.qty || 0), 0),
-    [items]
+    () =>
+      items.reduce((sum, it) => sum + (it.unitPrice || 0) * (it.qty || 0), 0),
+    [items],
   );
   const labor = quote?.labor ?? 0;
   const grandTotal = materialSubtotal + labor;
@@ -59,7 +79,11 @@ export default function QuoteReviewScreen() {
 
   if (!qid) {
     return (
-      <FormScreenComponent scroll contentStyle={styles.body} bottomBar={closeBar}>
+      <FormScreenComponent
+        scroll
+        contentStyle={styles.body}
+        bottomBar={closeBar}
+      >
         <View>
           <Text style={styles.h2}>Missing quote id</Text>
           <Text>Open a quote from Home and try again.</Text>
@@ -70,10 +94,16 @@ export default function QuoteReviewScreen() {
 
   if (!quote) {
     return (
-      <FormScreenComponent scroll contentStyle={styles.body} bottomBar={closeBar}>
+      <FormScreenComponent
+        scroll
+        contentStyle={styles.body}
+        bottomBar={closeBar}
+      >
         <View>
           <Text style={styles.h2}>Quote not found</Text>
-          <Text>We couldn’t load that quote. Try again from the Home screen.</Text>
+          <Text>
+            We couldn’t load that quote. Try again from the Home screen.
+          </Text>
         </View>
       </FormScreenComponent>
     );
@@ -81,8 +111,12 @@ export default function QuoteReviewScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Review' }} />
-      <FormScreenComponent scroll contentStyle={styles.body} bottomBar={doneBar}>
+      <Stack.Screen options={{ title: "Review" }} />
+      <FormScreenComponent
+        scroll
+        contentStyle={styles.body}
+        bottomBar={doneBar}
+      >
         <ScrollView contentContainerStyle={{ gap: 12 }}>
           <Text style={styles.h2}>Line items</Text>
 
@@ -126,48 +160,48 @@ export default function QuoteReviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   body: { padding: 16 },
-  h2: { fontSize: 18, fontWeight: '600' },
-  muted: { color: '#666' },
+  h2: { fontSize: 18, fontWeight: "600" },
+  muted: { color: "#666" },
 
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e5e5'
+    borderBottomColor: "#e5e5e5",
   },
   rowLeft: { flex: 1 },
-  itemName: { fontSize: 16, fontWeight: '500' },
-  itemMeta: { color: '#666', marginTop: 2 },
-  itemTotal: { fontWeight: '600' },
+  itemName: { fontSize: 16, fontWeight: "500" },
+  itemMeta: { color: "#666", marginTop: 2 },
+  itemTotal: { fontWeight: "600" },
 
   divider: { height: 16 },
 
   totalsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 6
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
   },
-  label: { color: '#333' },
-  value: { fontWeight: '600' },
+  label: { color: "#333" },
+  value: { fontWeight: "600" },
 
   totalsRowGrand: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e5e5e5',
-    marginTop: 6
+    borderTopColor: "#e5e5e5",
+    marginTop: 6,
   },
-  grandLabel: { fontSize: 16, fontWeight: '700' },
-  grandValue: { fontSize: 16, fontWeight: '700' },
+  grandLabel: { fontSize: 16, fontWeight: "700" },
+  grandValue: { fontSize: 16, fontWeight: "700" },
 
   footer: {
     padding: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e5e5e5',
-    backgroundColor: 'white'
-  }
+    borderTopColor: "#e5e5e5",
+    backgroundColor: "white",
+  },
 });
