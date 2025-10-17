@@ -1,10 +1,11 @@
 // app/(forms)/quote/[id]/review.tsx
-import { getQuoteById } from '@/lib/quotes';
-import FormScreen from '@/modules/core/ui/FormScreen';
-import { formatMoney } from '@/modules/settings/money';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+// Use a different local name to avoid the ESLint "named-as-default" warning
+import { getQuoteById } from '@/lib/quotes';
+import FormScreenComponent from '@/modules/core/ui/FormScreen';
+import { formatMoney } from '@/modules/settings/money';
 
 type QuoteItem = { id?: string; name: string; qty: number; unitPrice: number; currency?: string };
 type StoredQuote = { id: string; name: string; clientName?: string; items: QuoteItem[]; labor: number };
@@ -58,30 +59,30 @@ export default function QuoteReviewScreen() {
 
   if (!qid) {
     return (
-      <FormScreen scroll contentStyle={styles.body} bottomBar={closeBar}>
+      <FormScreenComponent scroll contentStyle={styles.body} bottomBar={closeBar}>
         <View>
           <Text style={styles.h2}>Missing quote id</Text>
           <Text>Open a quote from Home and try again.</Text>
         </View>
-      </FormScreen>
+      </FormScreenComponent>
     );
   }
 
   if (!quote) {
     return (
-      <FormScreen scroll contentStyle={styles.body} bottomBar={closeBar}>
+      <FormScreenComponent scroll contentStyle={styles.body} bottomBar={closeBar}>
         <View>
           <Text style={styles.h2}>Quote not found</Text>
-          <Text>We couldn't load that quote. Try again from the Home screen.</Text>
+          <Text>We couldn’t load that quote. Try again from the Home screen.</Text>
         </View>
-      </FormScreen>
+      </FormScreenComponent>
     );
   }
 
   return (
     <>
       <Stack.Screen options={{ title: 'Review' }} />
-      <FormScreen scroll contentStyle={styles.body} bottomBar={doneBar}>
+      <FormScreenComponent scroll contentStyle={styles.body} bottomBar={doneBar}>
         <ScrollView contentContainerStyle={{ gap: 12 }}>
           <Text style={styles.h2}>Line items</Text>
 
@@ -119,7 +120,7 @@ export default function QuoteReviewScreen() {
             <Text style={styles.grandValue}>{formatMoney(grandTotal)}</Text>
           </View>
         </ScrollView>
-      </FormScreen>
+      </FormScreenComponent>
     </>
   );
 }
