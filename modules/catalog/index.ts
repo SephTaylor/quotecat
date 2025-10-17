@@ -1,8 +1,8 @@
 // modules/catalog/index.ts
-import type { CatalogRepo, Product } from '../../lib/services';
+import type { CatalogRepo, Product } from "../../lib/services";
 
 // Be flexible with whatever your seed exports.
-import * as seedData from './seed';
+import * as seedData from "./seed";
 
 type RawSeed = any[] | { products?: any[] } | { default?: any[] };
 
@@ -15,12 +15,12 @@ function normalizeSeed(raw: RawSeed): Product[] {
   if (!Array.isArray(arr)) return [];
   return arr
     .map((p: any) => {
-      const id = String(p?.id ?? p?.sku ?? p?.name ?? '');
-      const name = String(p?.name ?? p?.title ?? 'Unnamed');
-      const category = String(p?.category ?? 'Uncategorized');
-      const unit = String(p?.unit ?? 'ea');
-      const price = typeof p?.price === 'number' ? p.price : undefined;
-      const currency = (p?.currency ?? 'USD') as 'USD' | 'CRC';
+      const id = String(p?.id ?? p?.sku ?? p?.name ?? "");
+      const name = String(p?.name ?? p?.title ?? "Unnamed");
+      const category = String(p?.category ?? "Uncategorized");
+      const unit = String(p?.unit ?? "ea");
+      const price = typeof p?.price === "number" ? p.price : undefined;
+      const currency = (p?.currency ?? "USD") as "USD" | "CRC";
       const sku = p?.sku ? String(p.sku) : undefined;
       if (!id || !name) return null;
       return { id, name, category, unit, price, currency, sku } as Product;
@@ -54,7 +54,7 @@ export function createCatalogFromSeed(raw: RawSeed): CatalogRepo {
       if (!q) return products.slice(0, 50);
       return products
         .filter((p) => {
-          const hay = `${p.name} ${p.sku ?? ''} ${p.category}`.toLowerCase();
+          const hay = `${p.name} ${p.sku ?? ""} ${p.category}`.toLowerCase();
           return hay.includes(q);
         })
         .slice(0, 100);

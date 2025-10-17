@@ -1,26 +1,26 @@
 // app/auth/sign-up.tsx
-import { Link, router, Stack } from 'expo-router';
-import React, { useState } from 'react';
+import { Link, router, Stack } from "expo-router";
+import React, { useState } from "react";
 import {
-    Alert,
-    Button,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
-import { supabase } from '../../lib/supabase';
+  Alert,
+  Button,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { supabase } from "../../lib/supabase";
 
 export default function SignUp() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   const onSignUp = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing info', 'Please enter your email and password.');
+      Alert.alert("Missing info", "Please enter your email and password.");
       return;
     }
     try {
@@ -30,10 +30,10 @@ export default function SignUp() {
         password: password.trim(),
       });
       if (error) throw error;
-      Alert.alert('Account created', 'You can now sign in.');
-      router.replace('/auth/sign-in');
+      Alert.alert("Account created", "You can now sign in.");
+      router.replace("/auth/sign-in");
     } catch (e: any) {
-      Alert.alert('Sign up failed', e?.message || 'Try again.');
+      Alert.alert("Sign up failed", e?.message || "Try again.");
     } finally {
       setBusy(false);
     }
@@ -41,10 +41,10 @@ export default function SignUp() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.select({ ios: 'padding' })}
+      behavior={Platform.select({ ios: "padding" })}
       style={styles.container}
     >
-      <Stack.Screen options={{ title: 'Create Account' }} />
+      <Stack.Screen options={{ title: "Create Account" }} />
       <View style={styles.form}>
         <Text style={styles.title}>Create your account ✨</Text>
 
@@ -68,7 +68,10 @@ export default function SignUp() {
           style={styles.input}
         />
 
-        <Button title={busy ? 'Creating…' : 'Create Account'} onPress={onSignUp} />
+        <Button
+          title={busy ? "Creating…" : "Create Account"}
+          onPress={onSignUp}
+        />
 
         <View style={styles.footer}>
           <Text>Already have an account?</Text>
@@ -82,19 +85,24 @@ export default function SignUp() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 16 },
+  container: { flex: 1, justifyContent: "center", padding: 16 },
   form: { gap: 12 },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 8 },
-  label: { fontSize: 14, fontWeight: '600', color: '#555' },
+  title: { fontSize: 24, fontWeight: "800", marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: "600", color: "#555" },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
   },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 4 },
-  link: { color: '#007BFF', fontWeight: '600' },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 16,
+    gap: 4,
+  },
+  link: { color: "#007BFF", fontWeight: "600" },
 });

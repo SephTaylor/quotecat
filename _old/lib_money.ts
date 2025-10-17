@@ -2,7 +2,7 @@
 export function formatMoney(
   value: unknown,
   currency: string = "USD",
-  locale?: string
+  locale?: string,
 ) {
   const n = Number(value);
   const safe = Number.isFinite(n) ? n : 0;

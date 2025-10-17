@@ -1,18 +1,18 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback } from "react";
+import { Pressable, StyleSheet, Text } from "react-native";
 
-import { theme } from '@/constants/theme';
-import { getQuoteById, saveQuote, type QuoteItem } from '@/lib/quotes';
-import { CATEGORIES, PRODUCTS_SEED } from '@/modules/catalog/seed';
+import { theme } from "@/constants/theme";
+import { getQuoteById, saveQuote, type QuoteItem } from "@/lib/quotes";
+import { CATEGORIES, PRODUCTS_SEED } from "@/modules/catalog/seed";
 
 // ⬇️ import directly — do NOT use the barrel
-import { BottomBar, Screen } from '@/modules/core/ui';
+import { BottomBar, Screen } from "@/modules/core/ui";
 
-import { MaterialsPicker, useSelection } from '@/modules/materials';
+import { MaterialsPicker, useSelection } from "@/modules/materials";
 
 function mergeById(existing: QuoteItem[], adds: QuoteItem[]): QuoteItem[] {
-  const map = new Map(existing.map(i => [i.id, { ...i }]));
+  const map = new Map(existing.map((i) => [i.id, { ...i }]));
   for (const a of adds) {
     const cur = map.get(a.id);
     if (cur) {
@@ -43,7 +43,7 @@ export default function Materials() {
           name: product.name,
           unitPrice: product.unitPrice,
           qty,
-        })
+        }),
       );
 
       const merged = mergeById(q.items ?? [], adds);
@@ -51,7 +51,7 @@ export default function Materials() {
       await saveQuote({ ...q, id, items: merged });
       if (goBack) router.back();
     },
-    [id, selection, router]
+    [id, selection, router],
   );
 
   return (
@@ -75,7 +75,7 @@ export default function Materials() {
           onPress={() => saveSelected(false)}
         >
           <Text style={styles.secondaryText}>
-            Add {units > 0 ? `${units} item${units > 1 ? 's' : ''}` : 'items'}
+            Add {units > 0 ? `${units} item${units > 1 ? "s" : ""}` : "items"}
           </Text>
         </Pressable>
 
@@ -84,7 +84,7 @@ export default function Materials() {
           onPress={() => saveSelected(true)}
         >
           <Text style={styles.primaryText}>
-            Done {units > 0 ? `(+${subtotal.toFixed(2)})` : ''}
+            Done {units > 0 ? `(+${subtotal.toFixed(2)})` : ""}
           </Text>
         </Pressable>
       </BottomBar>
@@ -99,23 +99,23 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.xl,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.card,
   },
   disabled: { opacity: 0.5 },
-  secondaryText: { fontWeight: '800', color: theme.colors.text },
+  secondaryText: { fontWeight: "800", color: theme.colors.text },
 
   primaryBtn: {
     flex: 1,
     height: 48,
     borderRadius: theme.radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.accent,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
   primaryIdle: { opacity: 0.95 },
-  primaryText: { fontWeight: '800', color: '#000' },
+  primaryText: { fontWeight: "800", color: "#000" },
 });

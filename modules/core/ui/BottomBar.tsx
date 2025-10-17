@@ -1,8 +1,8 @@
 // modules/core/ui/BottomBar.tsx
-import { theme } from '@/constants/theme';
-import React, { PropsWithChildren } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { theme } from "@/constants/theme";
+import React, { PropsWithChildren } from "react";
+import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type BottomBarProps = PropsWithChildren;
 
@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing(1.5),
     paddingHorizontal: theme.spacing(2),
   },
-  row: { flexDirection: 'row', gap: theme.spacing(1) },
+  row: { flexDirection: "row", gap: theme.spacing(1) },
 });
 
 export default BottomBar; // default export (backwards compatible)

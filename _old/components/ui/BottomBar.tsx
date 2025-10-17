@@ -1,15 +1,20 @@
 // components/ui/BottomBar.tsx
-import { colors } from '@/constants/theme';
+import { colors } from "@/constants/theme";
 import React, { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-
 
 export function PrimaryButton({
   children,
   onPress,
-}: { children: ReactNode; onPress: () => void }) {
+}: {
+  children: ReactNode;
+  onPress: () => void;
+}) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+    >
       <Text style={styles.primaryText}>{children}</Text>
     </Pressable>
   );
@@ -18,9 +23,15 @@ export function PrimaryButton({
 export function SecondaryButton({
   children,
   onPress,
-}: { children: ReactNode; onPress: () => void }) {
+}: {
+  children: ReactNode;
+  onPress: () => void;
+}) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+    >
       <Text style={styles.secondaryText}>{children}</Text>
     </Pressable>
   );

@@ -1,8 +1,8 @@
 // modules/quotes/index.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { ID, Quote, QuotesRepo } from '../../lib/services';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { ID, Quote, QuotesRepo } from "../../lib/services";
 
-const STORE_KEY = 'qc:quotes:v1';
+const STORE_KEY = "qc:quotes:v1";
 
 async function loadAll(): Promise<Quote[]> {
   const raw = await AsyncStorage.getItem(STORE_KEY);
@@ -20,7 +20,10 @@ async function saveAll(list: Quote[]) {
 }
 
 function calcTotals(q: Quote): Quote {
-  const material = q.items.reduce((s, it) => s + (it.unitPrice || 0) * (it.qty || 0), 0);
+  const material = q.items.reduce(
+    (s, it) => s + (it.unitPrice || 0) * (it.qty || 0),
+    0,
+  );
   return {
     ...q,
     materialSubtotal: material,
@@ -38,7 +41,7 @@ const quotesRepo: QuotesRepo = {
   },
   async get(id) {
     const all = await loadAll();
-    return all.find(q => q.id === id) ?? null;
+    return all.find((q) => q.id === id) ?? null;
   },
   async create(input) {
     const all = await loadAll();
@@ -50,14 +53,14 @@ const quotesRepo: QuotesRepo = {
   async update(q) {
     const all = await loadAll();
     const next = calcTotals(q);
-    const idx = all.findIndex(x => x.id === q.id);
+    const idx = all.findIndex((x) => x.id === q.id);
     if (idx >= 0) all[idx] = next;
     else all.unshift(next);
     await saveAll(all);
   },
   async remove(id) {
     const all = await loadAll();
-    await saveAll(all.filter(q => q.id !== id));
+    await saveAll(all.filter((q) => q.id !== id));
   },
 };
 

@@ -10,7 +10,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { formatMoney } from "../lib/money";
 import { CATALOG, type MaterialItem } from "./seed-catalog";
 
@@ -256,9 +259,7 @@ export default function MaterialsPicker({
                     <TextInput
                       value={String(pending)}
                       keyboardType="number-pad"
-                      onChangeText={(t) =>
-                        setPending(item.productId, toInt(t))
-                      }
+                      onChangeText={(t) => setPending(item.productId, toInt(t))}
                       style={styles.qtyInput}
                     />
                     <Pressable
@@ -269,7 +270,10 @@ export default function MaterialsPicker({
                     </Pressable>
                   </View>
 
-                  <Pressable style={styles.addBtn} onPress={() => addItem(item)}>
+                  <Pressable
+                    style={styles.addBtn}
+                    onPress={() => addItem(item)}
+                  >
                     <Text style={styles.addBtnText}>Add</Text>
                   </Pressable>
                 </View>
@@ -313,7 +317,9 @@ export default function MaterialsPicker({
                     <TextInput
                       value={String(it.qty ?? 1)}
                       keyboardType="number-pad"
-                      onChangeText={(t) => setSelectedQty(it.productId, toInt(t))}
+                      onChangeText={(t) =>
+                        setSelectedQty(it.productId, toInt(t))
+                      }
                       style={styles.qtyInputMini}
                     />
                     <Pressable
@@ -362,7 +368,12 @@ type SectionHeaderProps = {
   collapsed: boolean;
   onPress: () => void;
 };
-function SectionHeader({ title, count, collapsed, onPress }: SectionHeaderProps) {
+function SectionHeader({
+  title,
+  count,
+  collapsed,
+  onPress,
+}: SectionHeaderProps) {
   return (
     <Pressable
       onPress={onPress}

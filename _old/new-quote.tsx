@@ -50,14 +50,15 @@ export default function NewQuote() {
   }, []);
 
   const materialTotal = useMemo(
-    () => materials.reduce((s, it) => s + (it.unitPrice ?? 0) * (it.qty ?? 1), 0),
-    [materials]
+    () =>
+      materials.reduce((s, it) => s + (it.unitPrice ?? 0) * (it.qty ?? 1), 0),
+    [materials],
   );
 
   // Parse with empty → 0 fallback
   const parsedLabor = useMemo(
     () => Number((labor || "0").replace(/[^0-9.]/g, "")),
-    [labor]
+    [labor],
   );
 
   const { errors, isValid } = useMemo(() => {
@@ -190,7 +191,10 @@ export default function NewQuote() {
                       {it.name} × {it.qty ?? 1}
                     </Text>
                     <Text style={{ fontWeight: "700" }}>
-                      {formatMoney((it.unitPrice ?? 0) * (it.qty ?? 1), currency)}
+                      {formatMoney(
+                        (it.unitPrice ?? 0) * (it.qty ?? 1),
+                        currency,
+                      )}
                     </Text>
                   </View>
                 ))}
@@ -226,7 +230,7 @@ export default function NewQuote() {
       <MaterialsPicker
         visible={materialsOpen}
         currency={currency}
-        items={materials}                      // ✔ matches PickerMaterialItem[]
+        items={materials} // ✔ matches PickerMaterialItem[]
         onChange={(next) => setMaterials(next as WithQty[])} // keep qty typing
         onClose={closeMaterials}
       />

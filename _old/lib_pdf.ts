@@ -1,11 +1,14 @@
 // lib/pdf.ts
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import { Quote } from './quotes';
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import { Quote } from "./quotes";
 
-function formatMoney(n: number, currency = 'USD') {
+function formatMoney(n: number, currency = "USD") {
   try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(n);
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+    }).format(n);
   } catch {
     return `$${n.toFixed(2)}`;
   }
@@ -68,11 +71,11 @@ export async function shareQuotePDF(quote: Quote) {
   const uri = await createQuotePDF(quote);
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri, {
-      mimeType: 'application/pdf',
+      mimeType: "application/pdf",
       dialogTitle: `Quote - ${quote.clientName}`,
-      UTI: 'com.adobe.pdf',
+      UTI: "com.adobe.pdf",
     });
-    return 'shared';
+    return "shared";
   }
   // If sharing isn't available (e.g., web), return path so you can show it
   return uri;

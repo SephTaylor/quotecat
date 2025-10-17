@@ -1,7 +1,21 @@
 {
+  "files.eol": "\n",
+  "editor.insertFinalNewline": true,
+  "editor.trimAutoWhitespace": true,
+
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.useEditorConfig": true,
+
+  // Language-scoped defaults (force Prettier & quiet warnings)
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
-    "source.organizeImports": "explicit",
-    "source.sortMembers": "explicit"
+    "source.organizeImports": "explicit"
+    // keep "source.sortMembers": "explicit" if you use an extension that supports it
   }
 }

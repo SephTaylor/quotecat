@@ -1,7 +1,7 @@
 // app/(forms)/quote/[id]/materials.tsx
-import { FormScreen } from '@/modules/core/ui';
-import React from 'react';
-import MaterialsInner from './materials-inner';
+import { FormScreen } from "@/modules/core/ui";
+import React from "react";
+import MaterialsInner from "./materials-inner";
 
 /**
  * Wrapper route:

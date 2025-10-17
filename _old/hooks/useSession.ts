@@ -1,7 +1,7 @@
 // hooks/useSession.ts
-import type { Session } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import type { Session } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);

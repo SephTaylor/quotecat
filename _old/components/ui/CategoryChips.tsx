@@ -1,6 +1,6 @@
 // CategoryChips.tsx
-import React, { useEffect, useRef } from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import React, { useEffect, useRef } from "react";
+import { FlatList, Pressable, Text, View } from "react-native";
 
 type Props = {
   categories: string[];
@@ -8,7 +8,11 @@ type Props = {
   onChange: (c: string) => void;
 };
 
-export default function CategoryChips({ categories, selected, onChange }: Props) {
+export default function CategoryChips({
+  categories,
+  selected,
+  onChange,
+}: Props) {
   const listRef = useRef<FlatList<string>>(null);
 
   useEffect(() => {
@@ -17,14 +21,24 @@ export default function CategoryChips({ categories, selected, onChange }: Props)
   }, [selected, categories]);
 
   return (
-    <View style={{ borderBottomWidth: 1, borderBottomColor: '#eee', backgroundColor: '#fff' }}>
+    <View
+      style={{
+        borderBottomWidth: 1,
+        borderBottomColor: "#eee",
+        backgroundColor: "#fff",
+      }}
+    >
       <FlatList
         ref={listRef}
         data={categories}
         keyExtractor={(c) => c}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}
+        contentContainerStyle={{
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          gap: 8,
+        }}
         renderItem={({ item }) => {
           const isActive = item === selected;
           return (
@@ -33,25 +47,25 @@ export default function CategoryChips({ categories, selected, onChange }: Props)
               style={({ pressed }) => [
                 {
                   // IMPORTANT: no flex: 1 — keeps intrinsic “pill” width
-                  alignSelf: 'flex-start',
+                  alignSelf: "flex-start",
                   paddingHorizontal: 14,
                   paddingVertical: 8,
                   borderRadius: 999,
                   borderWidth: 1,
-                  backgroundColor: '#fff',
-                  borderColor: '#e5e7eb',
+                  backgroundColor: "#fff",
+                  borderColor: "#e5e7eb",
                 },
                 isActive && {
-                  backgroundColor: '#2563eb', // SELECTED color (blue)
-                  borderColor: '#2563eb',
+                  backgroundColor: "#2563eb", // SELECTED color (blue)
+                  borderColor: "#2563eb",
                 },
                 pressed && { opacity: 0.9 },
               ]}
             >
               <Text
                 style={[
-                  { fontWeight: '600', color: '#111827' },
-                  isActive && { color: '#fff' }, // white text when selected
+                  { fontWeight: "600", color: "#111827" },
+                  isActive && { color: "#fff" }, // white text when selected
                 ]}
               >
                 {item}

@@ -1,15 +1,23 @@
 // components/ui/SafeScreen.tsx
-import { colors } from '@/constants/theme';
+import { colors } from "@/constants/theme";
 import React, { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 type Props = {
   children: ReactNode;
-  scroll?: boolean;                // default true
-  bottomFixed?: ReactNode | null;  // sticky footer; space is reserved automatically
-  contentGap?: number;             // optional vertical spacing (default 16)
+  scroll?: boolean; // default true
+  bottomFixed?: ReactNode | null; // sticky footer; space is reserved automatically
+  contentGap?: number; // optional vertical spacing (default 16)
 };
 
 export default function SafeScreen({
@@ -24,12 +32,19 @@ export default function SafeScreen({
   const Content = scroll ? (
     <ScrollView
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={[styles.content, { gap: contentGap, paddingBottom: reserved }]}
+      contentContainerStyle={[
+        styles.content,
+        { gap: contentGap, paddingBottom: reserved },
+      ]}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.content, { gap: contentGap, paddingBottom: reserved }]}>{children}</View>
+    <View
+      style={[styles.content, { gap: contentGap, paddingBottom: reserved }]}
+    >
+      {children}
+    </View>
   );
 
   return (
@@ -43,7 +58,10 @@ export default function SafeScreen({
           <View
             style={[
               styles.bottom,
-              { paddingBottom: insets.bottom + 12, height: 64 + insets.bottom + 12 },
+              {
+                paddingBottom: insets.bottom + 12,
+                height: 64 + insets.bottom + 12,
+              },
             ]}
           >
             {bottomFixed}

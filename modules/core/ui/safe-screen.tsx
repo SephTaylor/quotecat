@@ -1,5 +1,5 @@
 // modules/core/ui/safe-screen.tsx
-import React, { PropsWithChildren } from 'react';
+import React, { PropsWithChildren } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -7,8 +7,8 @@ import {
   StyleSheet,
   View,
   ViewStyle,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type ScreenProps = PropsWithChildren<{
   /** If true, wraps children in a ScrollView */
@@ -46,16 +46,25 @@ export default function Screen({
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.content, withBottomBar && styles.withBottomBar, contentStyle]}>
+    <View
+      style={[
+        styles.content,
+        withBottomBar && styles.withBottomBar,
+        contentStyle,
+      ]}
+    >
       {children}
     </View>
   );
 
   return (
-    <SafeAreaView style={[styles.root, style]} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView
+      style={[styles.root, style]}
+      edges={["top", "left", "right", "bottom"]}
+    >
       <KeyboardAvoidingView
         style={styles.root}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         {content}
       </KeyboardAvoidingView>

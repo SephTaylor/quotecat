@@ -1,26 +1,26 @@
 // app/auth/sign-in.tsx
-import { Link, router, Stack } from 'expo-router';
-import React, { useState } from 'react';
+import { Link, router, Stack } from "expo-router";
+import React, { useState } from "react";
 import {
-    Alert,
-    Button,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
-import { supabase } from '../../lib/supabase';
+  Alert,
+  Button,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { supabase } from "../../lib/supabase";
 
 export default function SignIn() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   const onSignIn = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing info', 'Please enter your email and password.');
+      Alert.alert("Missing info", "Please enter your email and password.");
       return;
     }
     try {
@@ -30,9 +30,9 @@ export default function SignIn() {
         password: password.trim(),
       });
       if (error) throw error;
-      router.replace('/');
+      router.replace("/");
     } catch (e: any) {
-      Alert.alert('Sign in failed', e?.message || 'Try again.');
+      Alert.alert("Sign in failed", e?.message || "Try again.");
     } finally {
       setBusy(false);
     }
@@ -40,10 +40,10 @@ export default function SignIn() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.select({ ios: 'padding' })}
+      behavior={Platform.select({ ios: "padding" })}
       style={styles.container}
     >
-      <Stack.Screen options={{ title: 'Sign In' }} />
+      <Stack.Screen options={{ title: "Sign In" }} />
       <View style={styles.form}>
         <Text style={styles.title}>Welcome back 👋</Text>
 
@@ -67,7 +67,7 @@ export default function SignIn() {
           style={styles.input}
         />
 
-        <Button title={busy ? 'Signing in…' : 'Sign In'} onPress={onSignIn} />
+        <Button title={busy ? "Signing in…" : "Sign In"} onPress={onSignIn} />
 
         <View style={styles.footer}>
           <Text>Don't have an account?</Text>
@@ -81,19 +81,24 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 16 },
+  container: { flex: 1, justifyContent: "center", padding: 16 },
   form: { gap: 12 },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 8 },
-  label: { fontSize: 14, fontWeight: '600', color: '#555' },
+  title: { fontSize: 24, fontWeight: "800", marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: "600", color: "#555" },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
   },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 4 },
-  link: { color: '#007BFF', fontWeight: '600' },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 16,
+    gap: 4,
+  },
+  link: { color: "#007BFF", fontWeight: "600" },
 });

@@ -29,8 +29,11 @@ export default function ProductQuickAdd({ onAdd, currency = "USD" }: Props) {
         placeholder="Search products (name or category)…"
         autoCapitalize="none"
         style={{
-          borderWidth: 1, borderColor: "#ddd", borderRadius: 12,
-          paddingHorizontal: 12, paddingVertical: 10,
+          borderWidth: 1,
+          borderColor: "#ddd",
+          borderRadius: 12,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
         }}
       />
       <FlatList
@@ -48,9 +51,13 @@ export default function ProductQuickAdd({ onAdd, currency = "USD" }: Props) {
               })
             }
             style={{
-              paddingVertical: 10, paddingHorizontal: 12,
-              borderBottomWidth: 1, borderBottomColor: "#eee",
-              flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+              paddingVertical: 10,
+              paddingHorizontal: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: "#eee",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
             <View style={{ maxWidth: "70%" }}>
@@ -64,8 +71,15 @@ export default function ProductQuickAdd({ onAdd, currency = "USD" }: Props) {
             </Text>
           </Pressable>
         )}
-        style={{ borderWidth: 1, borderColor: "#eee", borderRadius: 12, maxHeight: 240 }}
-        ListEmptyComponent={<Text style={{ padding: 12, opacity: 0.6 }}>No matches.</Text>}
+        style={{
+          borderWidth: 1,
+          borderColor: "#eee",
+          borderRadius: 12,
+          maxHeight: 240,
+        }}
+        ListEmptyComponent={
+          <Text style={{ padding: 12, opacity: 0.6 }}>No matches.</Text>
+        }
       />
     </View>
   );

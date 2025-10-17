@@ -1,14 +1,14 @@
 // app.config.ts
-import { ConfigContext, ExpoConfig } from 'expo/config';
+import { ConfigContext, ExpoConfig } from "expo/config";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   // Start from your existing config, then override
   ...config,
 
   // ---- identity ----
-  name: 'QuoteCat',
-  slug: 'quotecat',
-  scheme: 'quotecat',
+  name: "QuoteCat",
+  slug: "quotecat",
+  scheme: "quotecat",
 
   // ---- env passthroughs ----
   extra: {
@@ -19,18 +19,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   // ---- plugins (explicit, no spreading to avoid duplicates) ----
   plugins: [
-    'expo-router',
+    "expo-router",
     [
-      'expo-splash-screen',
+      "expo-splash-screen",
       {
-        image: './assets/images/splash-icon.png',
+        image: "./assets/images/splash-icon.png",
         imageWidth: 200,
-        resizeMode: 'contain',
-        backgroundColor: '#ffffff',
-        dark: { backgroundColor: '#000000' },
+        resizeMode: "contain",
+        backgroundColor: "#ffffff",
+        dark: { backgroundColor: "#000000" },
       },
     ],
-    'expo-font',
+    "expo-font",
   ],
 
   // ---- experiments ----

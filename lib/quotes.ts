@@ -1,5 +1,5 @@
 // lib/quotes.ts
-import { getJSON, remove, setJSON } from './storage';
+import { getJSON, remove, setJSON } from "./storage";
 
 export type QuoteItem = {
   id: string;
@@ -11,9 +11,9 @@ export type QuoteItem = {
 export type Quote = {
   id: string;
   name: string;
-  clientName: string;       // NEW
+  clientName: string; // NEW
   items: QuoteItem[];
-  labor: number;            // already existed
+  labor: number; // already existed
   currency: string;
   materialSubtotal: number;
   total: number;
@@ -21,7 +21,7 @@ export type Quote = {
   updatedAt: string;
 };
 
-const INDEX_KEY = 'quotes:index';
+const INDEX_KEY = "quotes:index";
 const nowISO = () => new Date().toISOString();
 
 export async function listQuotes(): Promise<Quote[]> {
@@ -38,7 +38,10 @@ export async function getQuoteById(id: string): Promise<Quote | null> {
   return (await getJSON<Quote>(`quote:${id}`)) ?? null;
 }
 
-export async function createNewQuote(name = '', clientName = ''): Promise<Quote> {
+export async function createNewQuote(
+  name = "",
+  clientName = "",
+): Promise<Quote> {
   const id = Math.random().toString(36).slice(2, 10);
   const q: Quote = {
     id,
@@ -46,7 +49,7 @@ export async function createNewQuote(name = '', clientName = ''): Promise<Quote>
     clientName,
     items: [],
     labor: 0,
-    currency: 'USD',
+    currency: "USD",
     materialSubtotal: 0,
     total: 0,
     createdAt: nowISO(),
@@ -60,19 +63,23 @@ export async function createNewQuote(name = '', clientName = ''): Promise<Quote>
 }
 
 // Merge + recalc. Accepts partial fields.
-export async function saveQuote(patch: Partial<Quote> & { id: string }): Promise<Quote> {
-  const existing = (await getJSON<Quote>(`quote:${patch.id}`)) ?? {
-    id: patch.id,
-    name: '',
-    clientName: '',
-    items: [] as QuoteItem[],
-    labor: 0,
-    currency: 'USD',
-    materialSubtotal: 0,
-    total: 0,
-    createdAt: nowISO(),
-    updatedAt: nowISO(),
-  } satisfies Quote;
+export async function saveQuote(
+  patch: Partial<Quote> & { id: string },
+): Promise<Quote> {
+  const existing =
+    (await getJSON<Quote>(`quote:${patch.id}`)) ??
+    ({
+      id: patch.id,
+      name: "",
+      clientName: "",
+      items: [] as QuoteItem[],
+      labor: 0,
+      currency: "USD",
+      materialSubtotal: 0,
+      total: 0,
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    } satisfies Quote);
 
   const next: Quote = {
     ...existing,
@@ -82,7 +89,7 @@ export async function saveQuote(patch: Partial<Quote> & { id: string }): Promise
   // Recalculate derived fields
   const materialSubtotal = (next.items ?? []).reduce(
     (sum, it) => sum + it.unitPrice * it.qty,
-    0
+    0,
   );
   next.materialSubtotal = materialSubtotal;
   next.total = materialSubtotal + (next.labor || 0);
