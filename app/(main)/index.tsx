@@ -79,6 +79,17 @@ export default function Home() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        ListHeaderComponent={
+          <Pressable
+            style={styles.assembliesCard}
+            onPress={() => router.push("/(main)/assemblies" as any)}
+          >
+            <Text style={styles.assembliesTitle}>📚 Assemblies Library</Text>
+            <Text style={styles.assembliesSub}>
+              Pre-built calculators for common tasks
+            </Text>
+          </Pressable>
+        }
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
@@ -110,6 +121,24 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   listContent: { padding: theme.spacing(2) },
+  assembliesCard: {
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing(2),
+    marginBottom: theme.spacing(3),
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  assembliesTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 4,
+  },
+  assembliesSub: {
+    fontSize: 13,
+    color: "#333",
+  },
   card: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.lg,

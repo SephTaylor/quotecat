@@ -10,6 +10,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Button,
   ScrollView,
   StyleSheet,
@@ -17,7 +18,22 @@ import {
   TextInput,
   View,
 } from "react-native";
-import type { Assembly } from "@/modules/assemblies";
+import type { Assembly, PricedLine } from "@/modules/assemblies";
+import { getQuoteById, listQuotes, saveQuote } from "@/modules/quotes";
+import { mergeById } from "@/modules/quotes/merge";
+
+/**
+ * Convert PricedLine array to QuoteItem array
+ */
+function pricedLinesToQuoteItems(lines: PricedLine[]): any[] {
+  return lines.map((line) => ({
+    id: line.id, // Use product id as item id
+    productId: line.id,
+    name: line.name,
+    qty: line.qty,
+    unitPrice: line.unitPrice,
+  }));
+}
 
 export default function AssemblyCalculatorScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -58,14 +74,81 @@ export default function AssemblyCalculatorScreen() {
     </View>
   );
 
+  const handleAddToQuote = async () => {
+    if (!assembly || !calculator || calculator.lines.length === 0) {
+      Alert.alert(
+        "No materials",
+        "Calculate materials first before adding to quote",
+      );
+      return;
+    }
+
+    try {
+      // Load all quotes
+      const quotes = await listQuotes();
+
+      if (quotes.length === 0) {
+        // No quotes exist - prompt to create one
+        Alert.alert(
+          "No quotes found",
+          "Create a new quote to add these materials?",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Create Quote",
+              onPress: async () => {
+                const newQuote = {
+                  id: String(Math.random()).slice(2),
+                  name: `${assembly.name} Quote`,
+                  clientName: "",
+                  items: pricedLinesToQuoteItems(calculator.lines),
+                  labor: 0,
+                };
+                await saveQuote(newQuote);
+                Alert.alert("Success", "New quote created with materials");
+                router.back();
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      // Show quote picker
+      const quoteOptions = quotes.map((q, idx) => ({
+        text: q.name || `Quote ${idx + 1}`,
+        onPress: async () => {
+          const existing = await getQuoteById(q.id);
+          if (!existing) return;
+
+          const newItems = pricedLinesToQuoteItems(calculator.lines);
+          const merged = mergeById((existing.items as any) ?? [], newItems);
+
+          await saveQuote({ ...existing, items: merged as any });
+          Alert.alert(
+            "Success",
+            `Added ${calculator.lines.length} items to "${q.name || "quote"}"`,
+          );
+          router.back();
+        },
+      }));
+
+      Alert.alert("Add to Quote", "Select a quote to add these materials:", [
+        ...quoteOptions,
+        { text: "Cancel", style: "cancel" },
+      ]);
+    } catch (error) {
+      console.error("Failed to add to quote:", error);
+      Alert.alert("Error", "Could not add materials to quote");
+    }
+  };
+
   const actionBar = (
     <View style={styles.footer}>
       <Button
         title="Add to Quote"
-        onPress={() => {
-          // TODO: Integrate with quote workflow
-          router.back();
-        }}
+        onPress={handleAddToQuote}
+        disabled={!assembly || !calculator || calculator.lines.length === 0}
       />
       <Button title="Cancel" onPress={() => router.back()} />
     </View>

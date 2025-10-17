@@ -3,7 +3,6 @@ import type { Assembly } from "./types";
 
 /**
  * Seed assemblies for initial app setup.
- * Start with a simple interior wall assembly.
  */
 export const ASSEMBLIES_SEED: Assembly[] = [
   {
@@ -46,6 +45,32 @@ export const ASSEMBLIES_SEED: Assembly[] = [
           const sheets = Math.ceil(lengthFt / 4) * 2;
           return Math.ceil(sheets / 8);
         },
+      },
+    ],
+  },
+  {
+    id: "deck-12x16",
+    name: "12x16 Deck",
+    defaults: {
+      // No variables - fixed 12x16 size
+    },
+    items: [
+      // Deck boards: 192 sq ft (12x16) @ 5.5" coverage per board
+      // 16 ft length, need 12 ft coverage = ~27 boards
+      {
+        productId: "stud-2x4x8",
+        qty: 27, // Using stud as placeholder for deck boards
+      },
+      // Joists: 16" on center for 12 ft span
+      // (12 ft * 12") / 16" = 9 joists + 2 end = 11 joists
+      {
+        productId: "plate-2x4",
+        qty: 11, // Using plate as placeholder for 2x6 joists
+      },
+      // Hardware & fasteners (estimate)
+      {
+        productId: "screws-1-1-4",
+        qty: 3, // 3 boxes of screws
       },
     ],
   },
