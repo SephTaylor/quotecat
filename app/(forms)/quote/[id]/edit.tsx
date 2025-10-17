@@ -1,11 +1,11 @@
 // app/(forms)/quote/[id]/edit.tsx
 import { theme } from "@/constants/theme";
 import { getQuoteById, saveQuote, type Quote } from "@/lib/quotes";
-import { FormScreen } from "@/modules/core/ui";
+import { FormInput, FormScreen } from "@/modules/core/ui";
 import { parseMoney } from "@/modules/settings/money";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function EditQuote() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -64,35 +64,29 @@ export default function EditQuote() {
       }
     >
       <Text style={styles.label}>Project name</Text>
-      <TextInput
+      <FormInput
         placeholder="e.g., Interior wall demo"
         value={name}
         onChangeText={setName}
-        style={styles.input}
-        placeholderTextColor={theme.colors.muted}
       />
 
       <View style={{ height: theme.spacing(2) }} />
 
       <Text style={styles.label}>Client name</Text>
-      <TextInput
+      <FormInput
         placeholder="e.g., Acme LLC"
         value={clientName}
         onChangeText={setClientName}
-        style={styles.input}
-        placeholderTextColor={theme.colors.muted}
         autoCapitalize="words"
       />
 
       <View style={{ height: theme.spacing(2) }} />
 
       <Text style={styles.label}>Labor</Text>
-      <TextInput
+      <FormInput
         placeholder="0.00"
         value={labor}
         onChangeText={setLabor}
-        style={styles.input}
-        placeholderTextColor={theme.colors.muted}
         keyboardType="numeric"
         inputMode="decimal"
       />
@@ -128,16 +122,6 @@ export default function EditQuote() {
 
 const styles = StyleSheet.create({
   label: { fontSize: 12, color: theme.colors.muted, marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.card,
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1.5),
-    color: theme.colors.text,
-    fontSize: 16,
-  },
   h2: {
     fontSize: 16,
     fontWeight: "700",
