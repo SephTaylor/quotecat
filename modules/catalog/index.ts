@@ -65,4 +65,4 @@ export function createCatalogFromSeed(raw: RawSeed): CatalogRepo {
 // Build the default repo from whatever the seed exports.
 // If your seed exports `products`, `default`, or a raw array, this will work.
 const catalogRepo = createCatalogFromSeed(seedData as unknown as RawSeed);
-export default catalogRepo;
+export { catalogRepo };

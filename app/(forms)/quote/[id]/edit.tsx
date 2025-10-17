@@ -2,6 +2,7 @@
 import { theme } from "@/constants/theme";
 import { getQuoteById, saveQuote, type Quote } from "@/lib/quotes";
 import { FormScreen } from "@/modules/core/ui";
+import { parseMoney } from "@/modules/settings/money";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -37,20 +38,13 @@ export default function EditQuote() {
     }, [load]),
   );
 
-  const parseLabor = (txt: string) => {
-    // allow "12,34" or "12.34"
-    const cleaned = txt.replace(",", ".").replace(/[^\d.]/g, "");
-    const n = parseFloat(cleaned);
-    return isNaN(n) ? 0 : n;
-  };
-
   const onDone = async () => {
     if (!id) return;
     await saveQuote({
       id,
       name,
       clientName,
-      labor: parseLabor(labor),
+      labor: parseMoney(labor),
     });
     router.back();
   };

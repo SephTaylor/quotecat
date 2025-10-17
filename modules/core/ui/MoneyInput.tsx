@@ -37,3 +37,6 @@ export default function MoneyInput({
     />
   );
 }
+
+// Named export for barrel
+export { MoneyInput };
