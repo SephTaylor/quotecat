@@ -8,15 +8,15 @@ type Quote = { id: string; name: string; items: QuoteItem[]; labor: number };
 
 type Props = {
   quote: Quote;
-  /** Optional: override tap behavior */
-  onPress?: (quote: Quote) => void;
-  /** Optional: override long-press behavior (e.g., delete) */
-  onLongPress?: (quote: Quote) => void;
+  /** Optional: override tap behavior. Accepts zero-arg or (quote) */
+  onPress?: (quote?: Quote) => void;
+  /** Optional: override long-press behavior. Accepts zero-arg or (quote) */
+  onLongPress?: (quote?: Quote) => void;
 };
 
 export default function QuoteListItem({ quote, onPress, onLongPress }: Props) {
   const material = quote.items.reduce(
-    (s, it) => s + (it.qty || 0) * (it.unitPrice || 0),
+    (sum, it) => sum + (it.qty || 0) * (it.unitPrice || 0),
     0
   );
   const total = material + (quote.labor || 0);
@@ -28,7 +28,7 @@ export default function QuoteListItem({ quote, onPress, onLongPress }: Props) {
 
   const handleLongPress = () => {
     if (onLongPress) return onLongPress(quote);
-    // default: no-op; caller can pass a handler to show a menu/delete, etc.
+    // default no-op
   };
 
   return (
@@ -39,6 +39,7 @@ export default function QuoteListItem({ quote, onPress, onLongPress }: Props) {
       delayLongPress={300}
       accessibilityRole="button"
       accessibilityLabel={`Open quote ${quote.name || 'Untitled'}`}
+      testID={`quote-item-${quote.id}`}
     >
       <View style={{ flex: 1 }}>
         <Text style={styles.title}>{quote.name || 'Untitled quote'}</Text>
