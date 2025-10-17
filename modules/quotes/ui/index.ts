@@ -1,3 +1,2 @@
-export { default as QuoteListItem } from "./QuoteListItem";
-// compatibility alias if something imports { QuoteCard } from this barrel
-export { default as QuoteCard } from "./QuoteListItem";
+// Re-export named symbols only (no default exports in barrels)
+export * from "./QuoteListItem";

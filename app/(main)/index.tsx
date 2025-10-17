@@ -6,6 +6,7 @@ import {
   listQuotes,
   type Quote,
 } from "@/lib/quotes";
+import { Screen } from "@/modules/core/ui";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -15,7 +16,6 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  View,
 } from "react-native";
 
 export default function Home() {
@@ -71,7 +71,7 @@ export default function Home() {
   };
 
   return (
-    <View style={styles.container}>
+    <Screen scroll={false} contentStyle={styles.container}>
       <FlatList
         data={quotes}
         keyExtractor={(q) => q.id}
@@ -103,7 +103,7 @@ export default function Home() {
       <Pressable style={styles.fab} onPress={onNew}>
         <Text style={styles.fabText}>＋</Text>
       </Pressable>
-    </View>
+    </Screen>
   );
 }
 

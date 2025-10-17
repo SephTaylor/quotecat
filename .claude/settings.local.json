@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" pr merge 4 --squash --delete-branch)",
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" pr merge 6 --squash --delete-branch)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint)",
+      "Bash(npx prettier --check .)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

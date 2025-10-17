@@ -64,3 +64,6 @@ const styles = StyleSheet.create({
   sub: { color: "#666" },
   total: { fontWeight: "700" },
 });
+
+// Named export for barrel
+export { QuoteListItem };
