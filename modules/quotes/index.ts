@@ -109,3 +109,4 @@ export async function deleteQuote(id: string): Promise<void> {
 
 export * from "./calc";
 export * from "./types";
+export * from "./useQuoteData";
