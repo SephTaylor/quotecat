@@ -1,13 +1,9 @@
 // app/(forms)/assembly/[id].tsx
 import FormScreenComponent from "@/modules/core/ui/FormScreen";
-import {
-  buildProductIndex,
-  getAssemblyById,
-  useAssemblyCalculator,
-} from "@/modules/assemblies";
+import { getAssemblyById, useAssemblyCalculator } from "@/modules/assemblies";
 import { formatMoney } from "@/modules/settings/money";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,9 +14,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import type { Assembly, PricedLine } from "@/modules/assemblies";
+import type { Assembly, PricedLine, ProductIndex } from "@/modules/assemblies";
 import { getQuoteById, listQuotes, saveQuote } from "@/modules/quotes";
 import { mergeById } from "@/modules/quotes/merge";
+import { useProducts } from "@/modules/catalog";
 
 /**
  * Convert PricedLine array to QuoteItem array
@@ -42,7 +39,17 @@ export default function AssemblyCalculatorScreen() {
   const [loading, setLoading] = useState(true);
   const [assembly, setAssembly] = useState<Assembly | null>(null);
 
-  const products = buildProductIndex();
+  // Load products from Supabase/cache
+  const { products: productsList, loading: productsLoading } = useProducts();
+
+  // Build product index for assembly calculator
+  const products: ProductIndex = useMemo(() => {
+    const index: ProductIndex = {};
+    productsList.forEach((p) => {
+      index[p.id] = p;
+    });
+    return index;
+  }, [productsList]);
 
   useEffect(() => {
     (async () => {
@@ -154,7 +161,7 @@ export default function AssemblyCalculatorScreen() {
     </View>
   );
 
-  if (loading) {
+  if (loading || productsLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator />
