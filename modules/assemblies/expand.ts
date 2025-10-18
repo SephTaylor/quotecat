@@ -17,10 +17,16 @@ export function expandAssembly(
       const product = products[it.productId];
       if (!product) return undefined;
 
-      const qty =
-        "qty" in it
-          ? Math.max(0, Number(it.qty) || 0)
-          : Math.max(0, Number(it.qtyFn(env)) || 0);
+      let qty: number;
+      if ("qty" in it && it.qty !== undefined) {
+        // Fixed quantity
+        qty = Math.max(0, Number(it.qty) || 0);
+      } else if ("qtyFn" in it && typeof it.qtyFn === "function") {
+        // Computed quantity
+        qty = Math.max(0, Number(it.qtyFn(env)) || 0);
+      } else {
+        return undefined;
+      }
 
       if (qty <= 0) return undefined;
 
