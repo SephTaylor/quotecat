@@ -2,7 +2,7 @@
 import { theme } from "@/constants/theme";
 import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
@@ -27,20 +27,24 @@ export default function AssembliesScreen() {
 
   if (loading) {
     return (
-      <Screen scroll={false} contentStyle={styles.center}>
-        <ActivityIndicator size="large" />
-      </Screen>
+      <>
+        <Stack.Screen options={{ title: "Assemblies Library" }} />
+        <Screen scroll={false} contentStyle={styles.center}>
+          <ActivityIndicator size="large" />
+        </Screen>
+      </>
     );
   }
 
   return (
-    <Screen scroll={false} contentStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Assemblies Library</Text>
-        <Text style={styles.headerSub}>
-          Pre-built material calculators for common tasks
-        </Text>
-      </View>
+    <>
+      <Stack.Screen options={{ title: "Assemblies Library" }} />
+      <Screen scroll={false} contentStyle={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerSub}>
+            Pre-built material calculators for common tasks
+          </Text>
+        </View>
 
       <FlatList
         data={assemblies}
@@ -64,7 +68,8 @@ export default function AssembliesScreen() {
           <Text style={styles.empty}>No assemblies available.</Text>
         }
       />
-    </Screen>
+      </Screen>
+    </>
   );
 }
 
@@ -80,18 +85,13 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: theme.spacing(2),
+    paddingTop: theme.spacing(1),
     backgroundColor: theme.colors.card,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: theme.colors.text,
-    marginBottom: 4,
-  },
   headerSub: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.muted,
   },
   listContent: {
