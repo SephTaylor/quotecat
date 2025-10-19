@@ -1,5 +1,5 @@
 // modules/quotes/ui/QuoteItemRow.tsx
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { formatMoney } from "@/modules/settings/money";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -20,6 +20,8 @@ type QuoteItemRowProps = {
  * Used in review screens and quote displays.
  */
 export default function QuoteItemRow({ item }: QuoteItemRowProps) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const lineTotal = (item.unitPrice || 0) * (item.qty || 0);
 
   return (
@@ -35,7 +37,8 @@ export default function QuoteItemRow({ item }: QuoteItemRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -47,7 +50,8 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 16, fontWeight: "500", color: theme.colors.text },
   itemMeta: { color: theme.colors.muted, marginTop: 2 },
   itemTotal: { fontWeight: "600", color: theme.colors.text },
-});
+  });
+}
 
 // Named export for barrel
 export { QuoteItemRow };

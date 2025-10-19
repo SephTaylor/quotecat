@@ -1,5 +1,5 @@
 // modules/materials/Picker.tsx
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import type { Product } from "@/modules/catalog/seed";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -21,6 +21,8 @@ function MaterialsPicker({
   onInc,
   onDec,
 }: MaterialsPickerProps) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   // collapsed by default
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (catId: string) =>
@@ -89,7 +91,8 @@ function MaterialsPicker({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
   content: {
     paddingHorizontal: theme.spacing(2),
     paddingTop: theme.spacing(2),
@@ -160,7 +163,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontWeight: "700",
   },
-});
+  });
+}
 
 export default MaterialsPicker; // default export (back-compat)
 export { MaterialsPicker }; // named export (barrel-friendly)

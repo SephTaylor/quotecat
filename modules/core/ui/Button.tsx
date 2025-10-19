@@ -1,5 +1,5 @@
 // modules/core/ui/Button.tsx
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import React from "react";
 import { Pressable, PressableProps, StyleSheet, Text } from "react-native";
 
@@ -26,6 +26,8 @@ export default function Button({
   disabled = false,
   ...pressableProps
 }: ButtonProps) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const isPrimary = variant === "primary";
 
   return (
@@ -45,27 +47,29 @@ export default function Button({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    flex: 1,
-    height: 48,
-    borderRadius: theme.radius.xl,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primary: {
-    backgroundColor: theme.colors.accent,
-  },
-  secondary: {
-    backgroundColor: theme.colors.card,
-  },
-  disabled: { opacity: 0.5 },
-  primaryIdle: { opacity: 0.95 },
-  primaryText: { fontWeight: "800", color: "#000" },
-  secondaryText: { fontWeight: "800", color: theme.colors.text },
-});
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
+    base: {
+      flex: 1,
+      height: 48,
+      borderRadius: theme.radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    primary: {
+      backgroundColor: theme.colors.accent,
+    },
+    secondary: {
+      backgroundColor: theme.colors.card,
+    },
+    disabled: { opacity: 0.5 },
+    primaryIdle: { opacity: 0.95 },
+    primaryText: { fontWeight: "800", color: "#000" },
+    secondaryText: { fontWeight: "800", color: theme.colors.text },
+  });
+}
 
 // Named export for barrel
 export { Button };

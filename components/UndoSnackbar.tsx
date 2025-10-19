@@ -1,7 +1,7 @@
 // components/UndoSnackbar.tsx
 import React, { useEffect } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type UndoSnackbarProps = {
   visible: boolean;
@@ -18,7 +18,9 @@ export const UndoSnackbar: React.FC<UndoSnackbarProps> = ({
   onDismiss,
   duration = 4000,
 }) => {
+  const { theme } = useTheme();
   const translateY = React.useRef(new Animated.Value(100)).current;
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   useEffect(() => {
     if (visible) {
@@ -73,44 +75,46 @@ export const UndoSnackbar: React.FC<UndoSnackbarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: theme.spacing(2),
-    paddingBottom: theme.spacing(3),
-    zIndex: 1000,
-  },
-  content: {
-    backgroundColor: "#323232",
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
+    container: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      paddingHorizontal: theme.spacing(2),
+      paddingBottom: theme.spacing(3),
+      zIndex: 1000,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  message: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    flex: 1,
-  },
-  undoButton: {
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1),
-  },
-  undoText: {
-    color: theme.colors.accent,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-});
+    content: {
+      backgroundColor: "#323232",
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 4.65,
+      elevation: 8,
+    },
+    message: {
+      color: "#FFFFFF",
+      fontSize: 14,
+      flex: 1,
+    },
+    undoButton: {
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+    },
+    undoText: {
+      color: theme.colors.accent,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+  });
+}

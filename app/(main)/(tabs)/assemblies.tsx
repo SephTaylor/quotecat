@@ -1,5 +1,5 @@
 // app/(main)/assemblies.tsx
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
 import { Stack, useRouter } from "expo-router";
@@ -17,7 +17,15 @@ import type { Assembly } from "@/modules/assemblies";
 
 // Memoized assembly list item for performance
 const AssemblyListItem = memo(
-  ({ item, onPress }: { item: Assembly; onPress: () => void }) => {
+  ({
+    item,
+    onPress,
+    styles,
+  }: {
+    item: Assembly;
+    onPress: () => void;
+    styles: ReturnType<typeof createStyles>;
+  }) => {
     const materialCount = item.items.length;
     return (
       <Pressable style={styles.card} onPress={onPress}>
@@ -34,6 +42,8 @@ AssemblyListItem.displayName = "AssemblyListItem";
 
 export default function AssembliesScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const { assemblies, loading, reload } = useAssemblies();
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -75,6 +85,7 @@ export default function AssembliesScreen() {
             <AssemblyListItem
               item={item}
               onPress={() => router.push(`/(forms)/assembly/${item.id}` as any)}
+              styles={styles}
             />
           )}
           ListEmptyComponent={
@@ -86,51 +97,53 @@ export default function AssembliesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
-  header: {
-    padding: theme.spacing(2),
-    paddingTop: theme.spacing(1),
-    backgroundColor: theme.colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  headerSub: {
-    fontSize: 13,
-    color: theme.colors.muted,
-  },
-  listContent: {
-    padding: theme.spacing(2),
-  },
-  card: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.text,
-    marginBottom: 4,
-  },
-  sub: {
-    fontSize: 12,
-    color: theme.colors.muted,
-  },
-  empty: {
-    textAlign: "center",
-    color: theme.colors.muted,
-    marginTop: theme.spacing(4),
-  },
-});
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+    },
+    header: {
+      padding: theme.spacing(2),
+      paddingTop: theme.spacing(1),
+      backgroundColor: theme.colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    headerSub: {
+      fontSize: 13,
+      color: theme.colors.muted,
+    },
+    listContent: {
+      padding: theme.spacing(2),
+    },
+    card: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    title: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    sub: {
+      fontSize: 12,
+      color: theme.colors.muted,
+    },
+    empty: {
+      textAlign: "center",
+      color: theme.colors.muted,
+      marginTop: theme.spacing(4),
+    },
+  });
+}

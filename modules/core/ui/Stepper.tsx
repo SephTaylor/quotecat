@@ -1,4 +1,4 @@
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -13,22 +13,27 @@ export function Stepper({
   onInc(): void;
   size?: number;
 }) {
-  const s = styles(size);
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme, size), [theme, size]);
+
   return (
-    <View style={s.wrap}>
-      <Pressable style={s.btn} onPress={onDec}>
-        <Text style={s.txt}>–</Text>
+    <View style={styles.wrap}>
+      <Pressable style={styles.btn} onPress={onDec}>
+        <Text style={styles.txt}>–</Text>
       </Pressable>
-      <Text style={s.value}>{value}</Text>
-      <Pressable style={s.btn} onPress={onInc}>
-        <Text style={s.txt}>+</Text>
+      <Text style={styles.value}>{value}</Text>
+      <Pressable style={styles.btn} onPress={onInc}>
+        <Text style={styles.txt}>+</Text>
       </Pressable>
     </View>
   );
 }
 
-const styles = (size: number) =>
-  StyleSheet.create({
+function createStyles(
+  theme: ReturnType<typeof useTheme>["theme"],
+  size: number,
+) {
+  return StyleSheet.create({
     wrap: { flexDirection: "row", alignItems: "center", gap: 8 },
     btn: {
       height: size,
@@ -48,3 +53,4 @@ const styles = (size: number) =>
       fontWeight: "700",
     },
   });
+}

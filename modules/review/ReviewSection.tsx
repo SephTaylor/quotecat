@@ -1,5 +1,5 @@
 // modules/review/ReviewSection.tsx
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import React, { PropsWithChildren, ReactNode } from "react";
 import { StyleSheet, Text, View, ViewStyle } from "react-native";
 
@@ -20,6 +20,8 @@ export default function ReviewSection({
   style,
   children,
 }: Props) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={[styles.section, style]}>
       {(title || right) && (
@@ -33,7 +35,8 @@ export default function ReviewSection({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
   section: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.lg,
@@ -49,7 +52,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing(1),
   },
   title: { fontSize: 14, fontWeight: "700", color: theme.colors.text },
-});
+  });
+}
 
 // keep default export + named re-export for your barrel pattern
 export { ReviewSection };

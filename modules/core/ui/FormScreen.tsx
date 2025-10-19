@@ -1,5 +1,5 @@
 // modules/core/ui/FormScreen.tsx
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import React, { PropsWithChildren, ReactNode } from "react";
 import { ScrollView, StyleSheet, View, ViewStyle } from "react-native";
 
@@ -27,6 +27,9 @@ export default function FormScreen({
   bottomBar,
   bottomBarStyle,
 }: Props) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
   const content = scroll ? (
     <ScrollView
       keyboardShouldPersistTaps="handled"
@@ -48,23 +51,25 @@ export default function FormScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: theme.colors.bg },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: theme.spacing(2),
-    paddingTop: theme.spacing(2),
-    paddingBottom: theme.spacing(2),
-  },
-  bottomBar: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-    paddingHorizontal: theme.spacing(2),
-    paddingTop: theme.spacing(1.5),
-    paddingBottom: theme.spacing(2),
-  },
-});
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: theme.colors.bg },
+    content: {
+      flexGrow: 1,
+      paddingHorizontal: theme.spacing(2),
+      paddingTop: theme.spacing(2),
+      paddingBottom: theme.spacing(2),
+    },
+    bottomBar: {
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      paddingHorizontal: theme.spacing(2),
+      paddingTop: theme.spacing(1.5),
+      paddingBottom: theme.spacing(2),
+    },
+  });
+}
 
 // Keep your "files export default; barrel re-exports named" convention:
 export { FormScreen };

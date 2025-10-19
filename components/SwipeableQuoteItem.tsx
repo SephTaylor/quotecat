@@ -5,7 +5,7 @@ import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import type { Quote } from "@/lib/types";
 import { calculateTotal } from "@/lib/validation";
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type SwipeableQuoteItemProps = {
   item: Quote;
@@ -16,8 +16,10 @@ type SwipeableQuoteItemProps = {
 
 export const SwipeableQuoteItem = React.memo(
   ({ item, onEdit, onDelete, onTogglePin }: SwipeableQuoteItemProps) => {
+    const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     const total = calculateTotal(item);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     const handlePinToggle = () => {
       if (onTogglePin) {
@@ -119,65 +121,67 @@ export const SwipeableQuoteItem = React.memo(
 
 SwipeableQuoteItem.displayName = "SwipeableQuoteItem";
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: theme.colors.text,
-    flex: 1,
-  },
-  pinButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  pinIcon: {
-    fontSize: 20,
-  },
-  sub: {
-    fontSize: 12,
-    color: theme.colors.muted,
-    marginBottom: 8,
-  },
-  total: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
-  actionsContainer: {
-    flexDirection: "row",
-    marginBottom: theme.spacing(2),
-  },
-  deleteButton: {
-    backgroundColor: "#FF3B30",
-    justifyContent: "center",
-    alignItems: "center",
-    width: 100,
-    borderRadius: theme.radius.lg,
-  },
-  editButton: {
-    backgroundColor: "#007AFF",
-    justifyContent: "center",
-    alignItems: "center",
-    width: 100,
-    borderRadius: theme.radius.lg,
-  },
-  actionText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-});
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 6,
+    },
+    title: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
+      flex: 1,
+    },
+    pinButton: {
+      padding: 4,
+      marginLeft: 8,
+    },
+    pinIcon: {
+      fontSize: 20,
+    },
+    sub: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginBottom: 8,
+    },
+    total: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    actionsContainer: {
+      flexDirection: "row",
+      marginBottom: theme.spacing(2),
+    },
+    deleteButton: {
+      backgroundColor: "#FF3B30",
+      justifyContent: "center",
+      alignItems: "center",
+      width: 100,
+      borderRadius: theme.radius.lg,
+    },
+    editButton: {
+      backgroundColor: "#007AFF",
+      justifyContent: "center",
+      alignItems: "center",
+      width: 100,
+      borderRadius: theme.radius.lg,
+    },
+    actionText: {
+      color: "#FFFFFF",
+      fontSize: 14,
+      fontWeight: "600",
+    },
+  });
+}

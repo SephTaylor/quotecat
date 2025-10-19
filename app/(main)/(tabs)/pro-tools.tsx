@@ -1,6 +1,6 @@
 // app/(main)/(tabs)/pro-tools.tsx
 // Pro Tools tab - Shows locked features for free users, unlocked for pro users
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { canAccessAssemblies } from "@/lib/features";
 import { getUserState } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -17,6 +17,7 @@ import {
 
 export default function ProTools() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [isPro, setIsPro] = useState(false);
 
   const load = useCallback(async () => {
@@ -59,6 +60,8 @@ export default function ProTools() {
     }
   };
 
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
   return (
     <>
       <Stack.Screen
@@ -91,6 +94,7 @@ export default function ProTools() {
               "Exterior",
               "Custom formulas",
             ]}
+            theme={theme}
           />
 
           {/* Cloud Backup */}
@@ -106,6 +110,7 @@ export default function ProTools() {
               "Access anywhere",
               "Backup history",
             ]}
+            theme={theme}
           />
 
           {/* Branded PDFs */}
@@ -121,6 +126,7 @@ export default function ProTools() {
               "No watermarks",
               "Professional templates",
             ]}
+            theme={theme}
           />
 
           {/* Value Tracking */}
@@ -136,6 +142,7 @@ export default function ProTools() {
               "Win rate tracking",
               "Revenue forecasting",
             ]}
+            theme={theme}
           />
 
           {!isPro && (
@@ -164,6 +171,7 @@ function ProFeatureCard({
   locked,
   onPress,
   details,
+  theme,
 }: {
   icon: string;
   title: string;
@@ -171,7 +179,10 @@ function ProFeatureCard({
   locked: boolean;
   onPress: () => void;
   details: string[];
+  theme: ReturnType<typeof useTheme>['theme'];
 }) {
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
   return (
     <Pressable
       style={[styles.featureCard, locked && styles.featureCardLocked]}
@@ -201,11 +212,12 @@ function ProFeatureCard({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
+function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+    },
   scrollContent: {
     padding: theme.spacing(2),
   },
@@ -312,3 +324,4 @@ const styles = StyleSheet.create({
     color: "#000",
   },
 });
+}

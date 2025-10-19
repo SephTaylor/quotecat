@@ -9,6 +9,7 @@ import {
   ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type ScreenProps = PropsWithChildren<{
   /** If true, wraps children in a ScrollView */
@@ -34,6 +35,9 @@ export default function Screen({
   style,
   contentStyle,
 }: ScreenProps) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
   const content = scroll ? (
     <ScrollView
       keyboardShouldPersistTaps="handled"
@@ -72,18 +76,24 @@ export default function Screen({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  // Use simple, consistent spacing (adjust if you have a theme helper)
-  content: {
-    paddingTop: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    flexGrow: 1,
-  },
-  // Extra bottom room if a fixed BottomBar is present
-  withBottomBar: {
-    paddingBottom: 88,
-  },
-});
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+    },
+    // Use simple, consistent spacing (adjust if you have a theme helper)
+    content: {
+      paddingTop: 8,
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+      flexGrow: 1,
+    },
+    // Extra bottom room if a fixed BottomBar is present
+    withBottomBar: {
+      paddingBottom: 88,
+    },
+  });
+}
+
 export { Screen };

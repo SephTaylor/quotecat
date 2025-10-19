@@ -1,22 +1,29 @@
 // app/(main)/(tabs)/index.tsx
 // Dashboard screen - Overview and quick stats
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { listQuotes, type Quote } from "@/lib/quotes";
 import { QuoteStatusMeta } from "@/lib/types";
 import { calculateTotal } from "@/lib/validation";
 import {
   loadPreferences,
-  updateDashboardPreferences,
-  resetPreferences,
   type DashboardPreferences,
 } from "@/lib/preferences";
-import { DashboardSettings } from "@/components/DashboardSettings";
+import {
+  deleteQuote,
+  saveQuote,
+  updateQuote,
+} from "@/lib/quotes";
+import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
+import { UndoSnackbar } from "@/components/UndoSnackbar";
+import { Ionicons } from "@expo/vector-icons";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function Dashboard() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [preferences, setPreferences] = useState<DashboardPreferences>({
@@ -27,7 +34,8 @@ export default function Dashboard() {
     showQuickActions: true,
     recentQuotesCount: 5,
   });
-  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
+  const [showUndo, setShowUndo] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,18 +83,55 @@ export default function Dashboard() {
     return quotes.slice(0, preferences.recentQuotesCount);
   }, [quotes, preferences.recentQuotesCount]);
 
-  const handleSavePreferences = async (newPrefs: DashboardPreferences) => {
-    await updateDashboardPreferences(newPrefs);
-    setPreferences(newPrefs);
-  };
+  const handleDelete = useCallback(async (quote: Quote) => {
+    // Store deleted quote for undo
+    setDeletedQuote(quote);
 
-  const handleResetPreferences = async () => {
-    const defaults = await resetPreferences();
-    setPreferences(defaults.dashboard);
-  };
+    // Optimistically remove from list
+    setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
+
+    // Delete from storage
+    await deleteQuote(quote.id);
+
+    // Show undo snackbar
+    setShowUndo(true);
+  }, []);
+
+  const handleUndo = useCallback(async () => {
+    if (!deletedQuote) return;
+
+    // Restore the quote
+    await saveQuote(deletedQuote);
+
+    // Reload list
+    await load();
+
+    // Clear deleted quote
+    setDeletedQuote(null);
+  }, [deletedQuote, load]);
+
+  const handleDismissUndo = useCallback(() => {
+    setShowUndo(false);
+    setDeletedQuote(null);
+  }, []);
+
+  const handleTogglePin = useCallback(async (quote: Quote) => {
+    // Optimistically update UI
+    setQuotes((prev) =>
+      prev.map((q) => (q.id === quote.id ? { ...q, pinned: !q.pinned } : q)),
+    );
+
+    // Update in storage
+    await updateQuote(quote.id, { pinned: !quote.pinned });
+  }, []);
+
+  const styles = React.useMemo(
+    () => createStyles(theme),
+    [theme],
+  );
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen
         options={{ title: "Dashboard", headerBackVisible: false }}
       />
@@ -94,12 +139,16 @@ export default function Dashboard() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* App Title with Settings Button */}
           <View style={styles.titleRow}>
-            <Text style={styles.appTitle}>🐱 QuoteCat</Text>
+            <Text style={styles.appTitle}>QuoteCat</Text>
             <Pressable
               style={styles.settingsButton}
-              onPress={() => setSettingsVisible(true)}
+              onPress={() => router.push("/settings" as any)}
             >
-              <Text style={styles.settingsIcon}>⚙️</Text>
+              <Ionicons
+                name="settings-outline"
+                size={24}
+                color={theme.colors.text}
+              />
             </Pressable>
           </View>
 
@@ -110,21 +159,25 @@ export default function Dashboard() {
                 label="Total Quotes"
                 value={stats.total}
                 color={theme.colors.text}
+                theme={theme}
               />
               <StatCard
                 label="Active"
                 value={stats.active}
                 color={QuoteStatusMeta.active.color}
+                theme={theme}
               />
               <StatCard
                 label="Drafts"
                 value={stats.draft}
                 color={QuoteStatusMeta.draft.color}
+                theme={theme}
               />
               <StatCard
                 label="Sent"
                 value={stats.sent}
                 color={QuoteStatusMeta.sent.color}
+                theme={theme}
               />
             </View>
           )}
@@ -152,40 +205,15 @@ export default function Dashboard() {
           {/* Pinned Quotes */}
           {preferences.showPinnedQuotes && stats.pinnedQuotes.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>⭐ Pinned Quotes</Text>
+              <Text style={styles.sectionTitle}>Pinned Quotes</Text>
               {stats.pinnedQuotes.map((quote) => (
-                <Pressable
+                <SwipeableQuoteItem
                   key={quote.id}
-                  style={styles.quoteCard}
-                  onPress={() => router.push(`/quote/${quote.id}/edit`)}
-                >
-                  <View style={styles.quoteHeader}>
-                    <Text style={styles.quoteName}>
-                      {quote.name || "Untitled"}
-                    </Text>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        {
-                          backgroundColor:
-                            QuoteStatusMeta[quote.status].color + "20",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusText,
-                          { color: QuoteStatusMeta[quote.status].color },
-                        ]}
-                      >
-                        {QuoteStatusMeta[quote.status].label}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.quoteValue}>
-                    ${calculateTotal(quote).toFixed(2)}
-                  </Text>
-                </Pressable>
+                  item={quote}
+                  onEdit={() => router.push(`/quote/${quote.id}/edit`)}
+                  onDelete={() => handleDelete(quote)}
+                  onTogglePin={() => handleTogglePin(quote)}
+                />
               ))}
             </View>
           )}
@@ -195,38 +223,13 @@ export default function Dashboard() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Quotes</Text>
               {recentQuotes.map((quote) => (
-                <Pressable
+                <SwipeableQuoteItem
                   key={quote.id}
-                  style={styles.quoteCard}
-                  onPress={() => router.push(`/quote/${quote.id}/edit`)}
-                >
-                  <View style={styles.quoteHeader}>
-                    <Text style={styles.quoteName}>
-                      {quote.name || "Untitled"}
-                    </Text>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        {
-                          backgroundColor:
-                            QuoteStatusMeta[quote.status].color + "20",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusText,
-                          { color: QuoteStatusMeta[quote.status].color },
-                        ]}
-                      >
-                        {QuoteStatusMeta[quote.status].label}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.quoteValue}>
-                    ${calculateTotal(quote).toFixed(2)}
-                  </Text>
-                </Pressable>
+                  item={quote}
+                  onEdit={() => router.push(`/quote/${quote.id}/edit`)}
+                  onDelete={() => handleDelete(quote)}
+                  onTogglePin={() => handleTogglePin(quote)}
+                />
               ))}
             </View>
           )}
@@ -251,16 +254,15 @@ export default function Dashboard() {
           )}
         </ScrollView>
 
-        {/* Settings Modal */}
-        <DashboardSettings
-          visible={settingsVisible}
-          preferences={preferences}
-          onClose={() => setSettingsVisible(false)}
-          onSave={handleSavePreferences}
-          onReset={handleResetPreferences}
+        {/* Undo Snackbar */}
+        <UndoSnackbar
+          visible={showUndo}
+          message={`Deleted "${deletedQuote?.name || "quote"}"`}
+          onUndo={handleUndo}
+          onDismiss={handleDismissUndo}
         />
       </View>
-    </>
+    </GestureHandlerRootView>
   );
 }
 
@@ -268,11 +270,15 @@ function StatCard({
   label,
   value,
   color,
+  theme,
 }: {
   label: string;
   value: number;
   color: string;
+  theme: ReturnType<typeof useTheme>['theme'];
 }) {
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
   return (
     <View style={styles.statCard}>
       <Text style={[styles.statValue, { color }]}>{value}</Text>
@@ -281,11 +287,12 @@ function StatCard({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
+function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+    },
   scrollContent: {
     padding: theme.spacing(2),
   },
@@ -302,9 +309,6 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     padding: theme.spacing(1),
-  },
-  settingsIcon: {
-    fontSize: 24,
   },
   statsGrid: {
     flexDirection: "row",
@@ -369,40 +373,6 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: theme.spacing(3),
   },
-  quoteCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  quoteHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  quoteName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.text,
-    flex: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.radius.sm,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  quoteValue: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: theme.colors.text,
-  },
   actionButton: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.lg,
@@ -416,4 +386,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: theme.colors.text,
   },
-});
+  });
+}

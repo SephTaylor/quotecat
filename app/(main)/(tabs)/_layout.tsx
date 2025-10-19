@@ -1,10 +1,12 @@
 // app/(main)/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import React from "react";
-import { Text } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function TabsLayout() {
+  const { theme } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
@@ -15,9 +17,6 @@ export default function TabsLayout() {
           backgroundColor: theme.colors.bg,
           borderTopColor: theme.colors.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -58,19 +57,19 @@ export default function TabsLayout() {
   );
 }
 
-// Simple icon components using text emojis for now
+// Clean, modern icon components
 function DashboardIcon({ color }: { color: string }) {
-  return <Text style={{ fontSize: 24, color }}>📊</Text>;
+  return <Ionicons name="grid-outline" size={24} color={color} />;
 }
 
 function QuotesIcon({ color }: { color: string }) {
-  return <Text style={{ fontSize: 24, color }}>📝</Text>;
+  return <Ionicons name="document-text-outline" size={24} color={color} />;
 }
 
 function ProToolsIcon({ color }: { color: string }) {
-  return <Text style={{ fontSize: 24, color }}>✨</Text>;
+  return <Ionicons name="sparkles-outline" size={24} color={color} />;
 }
 
 function AssembliesIcon({ color }: { color: string }) {
-  return <Text style={{ fontSize: 24, color }}>📚</Text>;
+  return <Ionicons name="albums-outline" size={24} color={color} />;
 }

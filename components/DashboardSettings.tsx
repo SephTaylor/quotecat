@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import type { DashboardPreferences } from "@/lib/preferences";
 
 type DashboardSettingsProps = {
@@ -27,6 +27,8 @@ export function DashboardSettings({
   onSave,
   onReset,
 }: DashboardSettingsProps) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [localPrefs, setLocalPrefs] =
     useState<DashboardPreferences>(preferences);
 
@@ -77,6 +79,8 @@ export function DashboardSettings({
               onToggle={(value) =>
                 setLocalPrefs({ ...localPrefs, showStats: value })
               }
+              theme={theme}
+              styles={styles}
             />
 
             <SettingRow
@@ -86,6 +90,8 @@ export function DashboardSettings({
               onToggle={(value) =>
                 setLocalPrefs({ ...localPrefs, showValueTracking: value })
               }
+              theme={theme}
+              styles={styles}
             />
 
             <SettingRow
@@ -95,6 +101,8 @@ export function DashboardSettings({
               onToggle={(value) =>
                 setLocalPrefs({ ...localPrefs, showPinnedQuotes: value })
               }
+              theme={theme}
+              styles={styles}
             />
 
             <SettingRow
@@ -104,6 +112,8 @@ export function DashboardSettings({
               onToggle={(value) =>
                 setLocalPrefs({ ...localPrefs, showRecentQuotes: value })
               }
+              theme={theme}
+              styles={styles}
             />
 
             <SettingRow
@@ -113,6 +123,8 @@ export function DashboardSettings({
               onToggle={(value) =>
                 setLocalPrefs({ ...localPrefs, showQuickActions: value })
               }
+              theme={theme}
+              styles={styles}
             />
           </View>
 
@@ -169,11 +181,15 @@ function SettingRow({
   description,
   value,
   onToggle,
+  theme,
+  styles,
 }: {
   label: string;
   description: string;
   value: boolean;
   onToggle: (value: boolean) => void;
+  theme: ReturnType<typeof useTheme>["theme"];
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <View style={styles.settingRow}>
@@ -191,7 +207,8 @@ function SettingRow({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.bg,
@@ -309,4 +326,5 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#000",
   },
-});
+  });
+}

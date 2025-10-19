@@ -1,5 +1,5 @@
 // modules/review/LineItemRow.tsx
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { formatMoney, type CurrencyCode } from "@/modules/settings";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -26,6 +26,8 @@ export default function LineItemRow({
   decimals = 2,
   mutedNote,
 }: Props) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const subtotal = quantity * unitPrice;
   return (
     <View style={styles.row}>
@@ -45,7 +47,8 @@ export default function LineItemRow({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -60,6 +63,7 @@ const styles = StyleSheet.create({
   meta: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
   note: { color: theme.colors.muted, fontSize: 12, marginBottom: 2 },
   value: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
-});
+  });
+}
 
 export { LineItemRow };

@@ -1,5 +1,5 @@
 // app/(main)/(tabs)/quotes.tsx
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   createNewQuote,
   deleteQuote,
@@ -28,6 +28,7 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 
 export default function QuotesList() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
@@ -128,6 +129,8 @@ export default function QuotesList() {
     return filtered;
   }, [quotes, searchQuery, selectedStatus]);
 
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen options={{ title: "Quotes", headerBackVisible: false }} />
@@ -151,42 +154,49 @@ export default function QuotesList() {
             label="All"
             active={selectedStatus === "all"}
             onPress={() => setSelectedStatus("all")}
+            theme={theme}
           />
           <FilterChip
             label="Draft"
             active={selectedStatus === "draft"}
             onPress={() => setSelectedStatus("draft")}
             color={QuoteStatusMeta.draft.color}
+            theme={theme}
           />
           <FilterChip
             label="Active"
             active={selectedStatus === "active"}
             onPress={() => setSelectedStatus("active")}
             color={QuoteStatusMeta.active.color}
+            theme={theme}
           />
           <FilterChip
             label="Sent"
             active={selectedStatus === "sent"}
             onPress={() => setSelectedStatus("sent")}
             color={QuoteStatusMeta.sent.color}
+            theme={theme}
           />
           <FilterChip
             label="Approved"
             active={selectedStatus === "approved"}
             onPress={() => setSelectedStatus("approved")}
             color={QuoteStatusMeta.approved.color}
+            theme={theme}
           />
           <FilterChip
             label="Completed"
             active={selectedStatus === "completed"}
             onPress={() => setSelectedStatus("completed")}
             color={QuoteStatusMeta.completed.color}
+            theme={theme}
           />
           <FilterChip
             label="Archived"
             active={selectedStatus === "archived"}
             onPress={() => setSelectedStatus("archived")}
             color={QuoteStatusMeta.archived.color}
+            theme={theme}
           />
         </ScrollView>
         <FlatList
@@ -229,12 +239,16 @@ function FilterChip({
   active,
   onPress,
   color,
+  theme,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
   color?: string;
+  theme: ReturnType<typeof useTheme>['theme'];
 }) {
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
   return (
     <Pressable
       style={[
@@ -253,8 +267,9 @@ function FilterChip({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.bg },
+function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.bg },
   searchContainer: {
     paddingHorizontal: theme.spacing(2),
     paddingVertical: theme.spacing(1),
@@ -275,7 +290,6 @@ const styles = StyleSheet.create({
   filterContainer: {
     paddingHorizontal: theme.spacing(2),
     paddingVertical: theme.spacing(1),
-    gap: theme.spacing(1),
   },
   filterChip: {
     paddingHorizontal: theme.spacing(2),
@@ -285,6 +299,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     marginRight: theme.spacing(1),
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterChipActive: {
     backgroundColor: theme.colors.accent,
@@ -318,4 +334,5 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   fabText: { fontSize: 28, lineHeight: 28, color: "#000", fontWeight: "800" },
-});
+  });
+}

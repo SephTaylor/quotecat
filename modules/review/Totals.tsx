@@ -1,5 +1,5 @@
 // modules/review/Totals.tsx
-import { theme } from "@/constants/theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { formatMoney, type CurrencyCode } from "@/modules/settings";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -22,18 +22,26 @@ export default function Totals({
   currency,
   decimals = 2,
 }: Props) {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const total = materialsSubtotal + labor;
   return (
     <View style={styles.container}>
       <Row
         label="Materials"
         value={formatMoney(materialsSubtotal, { currency, decimals })}
+        styles={styles}
       />
-      <Row label="Labor" value={formatMoney(labor, { currency, decimals })} />
+      <Row
+        label="Labor"
+        value={formatMoney(labor, { currency, decimals })}
+        styles={styles}
+      />
       <Row
         label="Total"
         value={formatMoney(total, { currency, decimals })}
         bold
+        styles={styles}
       />
     </View>
   );
@@ -43,10 +51,12 @@ function Row({
   label,
   value,
   bold = false,
+  styles,
 }: {
   label: string;
   value: string;
   bold?: boolean;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <View style={styles.row}>
@@ -56,7 +66,8 @@ function Row({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
   container: {
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
@@ -71,6 +82,7 @@ const styles = StyleSheet.create({
   label: { color: theme.colors.muted, fontSize: 13 },
   value: { color: theme.colors.text, fontSize: 14 },
   bold: { fontWeight: "700", color: theme.colors.text },
-});
+  });
+}
 
 export { Totals };
