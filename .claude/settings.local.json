@@ -12,7 +12,8 @@
       "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" pr merge 7 --squash --delete-branch)",
       "Bash(git stash:*)",
       "Bash(npx prettier:*)",
-      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" pr merge 8 --squash --delete-branch)"
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" pr merge 8 --squash --delete-branch)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

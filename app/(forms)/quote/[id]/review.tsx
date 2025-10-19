@@ -78,41 +78,50 @@ export default function QuoteReviewScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator />
-      </View>
+      <>
+        <Stack.Screen options={{ title: "Review" }} />
+        <View style={styles.center}>
+          <ActivityIndicator />
+        </View>
+      </>
     );
   }
 
   if (!qid) {
     return (
-      <FormScreenComponent
-        scroll
-        contentStyle={styles.body}
-        bottomBar={closeBar}
-      >
-        <View>
-          <Text style={styles.h2}>Missing quote id</Text>
-          <Text>Open a quote from Home and try again.</Text>
-        </View>
-      </FormScreenComponent>
+      <>
+        <Stack.Screen options={{ title: "Review" }} />
+        <FormScreenComponent
+          scroll
+          contentStyle={styles.body}
+          bottomBar={closeBar}
+        >
+          <View>
+            <Text style={styles.h2}>Missing quote id</Text>
+            <Text>Open a quote from Home and try again.</Text>
+          </View>
+        </FormScreenComponent>
+      </>
     );
   }
 
   if (!quote) {
     return (
-      <FormScreenComponent
-        scroll
-        contentStyle={styles.body}
-        bottomBar={closeBar}
-      >
-        <View>
-          <Text style={styles.h2}>Quote not found</Text>
-          <Text>
-            We couldn’t load that quote. Try again from the Home screen.
-          </Text>
-        </View>
-      </FormScreenComponent>
+      <>
+        <Stack.Screen options={{ title: "Review" }} />
+        <FormScreenComponent
+          scroll
+          contentStyle={styles.body}
+          bottomBar={closeBar}
+        >
+          <View>
+            <Text style={styles.h2}>Quote not found</Text>
+            <Text>
+              We couldn't load that quote. Try again from the Home screen.
+            </Text>
+          </View>
+        </FormScreenComponent>
+      </>
     );
   }
 

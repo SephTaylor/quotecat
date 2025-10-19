@@ -1,9 +1,14 @@
 // app/(forms)/quote/[id]/edit.tsx
 import { theme } from "@/constants/theme";
-import { getQuoteById, saveQuote, type Quote } from "@/lib/quotes";
+import { getQuoteById, updateQuote, type Quote } from "@/lib/quotes";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { parseMoney } from "@/modules/settings/money";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -41,8 +46,7 @@ export default function EditQuote() {
 
   const onDone = async () => {
     if (!id) return;
-    await saveQuote({
-      id,
+    await updateQuote(id, {
       name,
       clientName,
       labor: parseMoney(labor),
@@ -51,73 +55,76 @@ export default function EditQuote() {
   };
 
   return (
-    <FormScreen
-      scroll
-      contentStyle={{
-        paddingHorizontal: theme.spacing(2),
-        paddingTop: theme.spacing(2),
-        paddingBottom: theme.spacing(2),
-      }}
-      bottomBar={
-        <Pressable style={styles.doneBtn} onPress={onDone}>
-          <Text style={styles.doneText}>Done</Text>
-        </Pressable>
-      }
-    >
-      <Text style={styles.label}>Project name</Text>
-      <FormInput
-        placeholder="e.g., Interior wall demo"
-        value={name}
-        onChangeText={setName}
-      />
-
-      <View style={{ height: theme.spacing(2) }} />
-
-      <Text style={styles.label}>Client name</Text>
-      <FormInput
-        placeholder="e.g., Acme LLC"
-        value={clientName}
-        onChangeText={setClientName}
-        autoCapitalize="words"
-      />
-
-      <View style={{ height: theme.spacing(2) }} />
-
-      <Text style={styles.label}>Labor</Text>
-      <FormInput
-        placeholder="0.00"
-        value={labor}
-        onChangeText={setLabor}
-        keyboardType="numeric"
-        inputMode="decimal"
-      />
-
-      <View style={{ height: theme.spacing(3) }} />
-
-      <Text style={styles.h2}>Items</Text>
-      <Text style={styles.helper}>
-        Use the Materials picker to add seed-only items. Categories are
-        collapsed by default.
-      </Text>
-
-      <View style={{ height: theme.spacing(2) }} />
-      <Pressable
-        onPress={() => id && router.push(`/quote/${id}/materials`)}
-        style={{
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          backgroundColor: theme.colors.card,
-          borderRadius: theme.radius.lg,
-          height: 48,
-          alignItems: "center",
-          justifyContent: "center",
+    <>
+      <Stack.Screen options={{ title: "Edit Quote" }} />
+      <FormScreen
+        scroll
+        contentStyle={{
+          paddingHorizontal: theme.spacing(2),
+          paddingTop: theme.spacing(2),
+          paddingBottom: theme.spacing(2),
         }}
+        bottomBar={
+          <Pressable style={styles.doneBtn} onPress={onDone}>
+            <Text style={styles.doneText}>Done</Text>
+          </Pressable>
+        }
       >
-        <Text style={{ fontWeight: "800", color: theme.colors.text }}>
-          Add materials
+        <Text style={styles.label}>Project name</Text>
+        <FormInput
+          placeholder="e.g., Interior wall demo"
+          value={name}
+          onChangeText={setName}
+        />
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Client name</Text>
+        <FormInput
+          placeholder="e.g., Acme LLC"
+          value={clientName}
+          onChangeText={setClientName}
+          autoCapitalize="words"
+        />
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Labor</Text>
+        <FormInput
+          placeholder="0.00"
+          value={labor}
+          onChangeText={setLabor}
+          keyboardType="numeric"
+          inputMode="decimal"
+        />
+
+        <View style={{ height: theme.spacing(3) }} />
+
+        <Text style={styles.h2}>Items</Text>
+        <Text style={styles.helper}>
+          Use the Materials picker to add seed-only items. Categories are
+          collapsed by default.
         </Text>
-      </Pressable>
-    </FormScreen>
+
+        <View style={{ height: theme.spacing(2) }} />
+        <Pressable
+          onPress={() => id && router.push(`/quote/${id}/materials`)}
+          style={{
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.card,
+            borderRadius: theme.radius.lg,
+            height: 48,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontWeight: "800", color: theme.colors.text }}>
+            Add materials
+          </Text>
+        </Pressable>
+      </FormScreen>
+    </>
   );
 }
 

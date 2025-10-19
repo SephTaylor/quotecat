@@ -3,7 +3,7 @@ import { theme } from "@/constants/theme";
 import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
 import { Stack, useRouter } from "expo-router";
-import React from "react";
+import React, { memo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,6 +13,24 @@ import {
   Text,
   View,
 } from "react-native";
+import type { Assembly } from "@/modules/assemblies";
+
+// Memoized assembly list item for performance
+const AssemblyListItem = memo(
+  ({ item, onPress }: { item: Assembly; onPress: () => void }) => {
+    const materialCount = item.items.length;
+    return (
+      <Pressable style={styles.card} onPress={onPress}>
+        <Text style={styles.title}>{item.name}</Text>
+        <Text style={styles.sub}>
+          {materialCount} material{materialCount !== 1 ? "s" : ""}
+        </Text>
+      </Pressable>
+    );
+  },
+);
+
+AssemblyListItem.displayName = "AssemblyListItem";
 
 export default function AssembliesScreen() {
   const router = useRouter();
@@ -46,28 +64,23 @@ export default function AssembliesScreen() {
           </Text>
         </View>
 
-      <FlatList
-        data={assemblies}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() => router.push(`/(forms)/assembly/${item.id}` as any)}
-          >
-            <Text style={styles.title}>{item.name}</Text>
-            <Text style={styles.sub}>
-              {item.items.length} material{item.items.length !== 1 ? "s" : ""}
-            </Text>
-          </Pressable>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>No assemblies available.</Text>
-        }
-      />
+        <FlatList
+          data={assemblies}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          renderItem={({ item }) => (
+            <AssemblyListItem
+              item={item}
+              onPress={() => router.push(`/(forms)/assembly/${item.id}` as any)}
+            />
+          )}
+          ListEmptyComponent={
+            <Text style={styles.empty}>No assemblies available.</Text>
+          }
+        />
       </Screen>
     </>
   );

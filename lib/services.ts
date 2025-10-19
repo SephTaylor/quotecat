@@ -1,36 +1,11 @@
 // lib/services.ts
+// Service interfaces for dependency injection (if needed in future)
+// Currently not actively used - kept for potential future DI implementation
 
-// ---------- Core types ----------
-export type CurrencyCode = "USD" | "CRC";
-export type ID = string;
+import type { Quote, QuoteItem, Product, CurrencyCode, ID } from "./types";
 
-export type Product = {
-  id: ID;
-  name: string;
-  sku?: string;
-  category: string;
-  unit: "ea" | "ft" | "m" | "sheet" | "box" | string;
-  price?: number;
-  currency?: CurrencyCode;
-};
-
-export type QuoteItem = {
-  productId: ID;
-  name: string;
-  unitPrice: number;
-  qty: number;
-  currency: CurrencyCode;
-};
-
-export type Quote = {
-  id: ID;
-  name: string;
-  items: QuoteItem[];
-  labor: number;
-  currency: CurrencyCode;
-  materialSubtotal?: number;
-  total?: number;
-};
+// Re-export canonical types
+export type { Quote, QuoteItem, Product, CurrencyCode, ID } from "./types";
 
 // ---------- Settings ----------
 export interface SettingsStore {
@@ -46,14 +21,13 @@ export interface CatalogRepo {
   search(term: string): Promise<Product[]>;
 }
 
-// ---------- Quotes (NEW) ----------
+// ---------- Quotes ----------
 export interface QuotesRepo {
   list(): Promise<Quote[]>;
   get(id: ID): Promise<Quote | null>;
-  create(
-    input: Omit<Quote, "id" | "materialSubtotal" | "total"> & { id?: ID },
-  ): Promise<Quote>;
-  update(q: Quote): Promise<void>;
+  create(name?: string, clientName?: string): Promise<Quote>;
+  update(id: ID, patch: Partial<Quote>): Promise<Quote | null>;
+  save(quote: Quote): Promise<Quote>;
   remove(id: ID): Promise<void>;
 }
 
@@ -112,11 +86,11 @@ export interface PDFService {
   shareQuote(quote: Quote): Promise<void>;
 }
 
-// ---------- Aggregate Services (DI) ----------
+// ---------- Aggregate Services (DI Container) ----------
 export type Services = {
   settings: SettingsStore;
   catalog: CatalogRepo;
-  quotes: QuotesRepo; // <— NEW
+  quotes: QuotesRepo;
   priceFeed: PriceFeed;
   assemblies: AssemblyCalculator[];
   optimizer: Optimizer;

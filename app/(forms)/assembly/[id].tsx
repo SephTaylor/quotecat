@@ -15,7 +15,12 @@ import {
   View,
 } from "react-native";
 import type { Assembly, PricedLine, ProductIndex } from "@/modules/assemblies";
-import { getQuoteById, listQuotes, saveQuote } from "@/modules/quotes";
+import {
+  getQuoteById,
+  listQuotes,
+  saveQuote,
+  createQuote,
+} from "@/modules/quotes";
 import { mergeById } from "@/modules/quotes/merge";
 import { useProducts } from "@/modules/catalog";
 
@@ -104,14 +109,15 @@ export default function AssemblyCalculatorScreen() {
             {
               text: "Create Quote",
               onPress: async () => {
-                const newQuote = {
-                  id: String(Math.random()).slice(2),
-                  name: `${assembly.name} Quote`,
-                  clientName: "",
+                const newQuote = await createQuote(
+                  `${assembly.name} Quote`,
+                  "",
+                );
+                const withItems = {
+                  ...newQuote,
                   items: pricedLinesToQuoteItems(calculator.lines),
-                  labor: 0,
                 };
-                await saveQuote(newQuote);
+                await saveQuote(withItems);
                 Alert.alert("Success", "New quote created with materials");
                 router.back();
               },
@@ -163,41 +169,50 @@ export default function AssemblyCalculatorScreen() {
 
   if (loading || productsLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator />
-      </View>
+      <>
+        <Stack.Screen options={{ title: "Assembly Calculator" }} />
+        <View style={styles.center}>
+          <ActivityIndicator />
+        </View>
+      </>
     );
   }
 
   if (!assemblyId) {
     return (
-      <FormScreenComponent
-        scroll
-        contentStyle={styles.body}
-        bottomBar={closeBar}
-      >
-        <View>
-          <Text style={styles.h2}>Missing assembly id</Text>
-          <Text>Open an assembly from the library and try again.</Text>
-        </View>
-      </FormScreenComponent>
+      <>
+        <Stack.Screen options={{ title: "Assembly Calculator" }} />
+        <FormScreenComponent
+          scroll
+          contentStyle={styles.body}
+          bottomBar={closeBar}
+        >
+          <View>
+            <Text style={styles.h2}>Missing assembly id</Text>
+            <Text>Open an assembly from the library and try again.</Text>
+          </View>
+        </FormScreenComponent>
+      </>
     );
   }
 
   if (!assembly) {
     return (
-      <FormScreenComponent
-        scroll
-        contentStyle={styles.body}
-        bottomBar={closeBar}
-      >
-        <View>
-          <Text style={styles.h2}>Assembly not found</Text>
-          <Text>
-            We couldn&apos;t load that assembly. Try again from the library.
-          </Text>
-        </View>
-      </FormScreenComponent>
+      <>
+        <Stack.Screen options={{ title: "Assembly Calculator" }} />
+        <FormScreenComponent
+          scroll
+          contentStyle={styles.body}
+          bottomBar={closeBar}
+        >
+          <View>
+            <Text style={styles.h2}>Assembly not found</Text>
+            <Text>
+              We couldn&apos;t load that assembly. Try again from the library.
+            </Text>
+          </View>
+        </FormScreenComponent>
+      </>
     );
   }
 

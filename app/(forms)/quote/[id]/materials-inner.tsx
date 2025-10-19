@@ -55,7 +55,7 @@ export default function Materials() {
   if (loading) {
     return (
       <>
-        <Stack.Screen options={{ headerShown: false }} />
+        <Stack.Screen options={{ title: "Add Materials" }} />
         <Screen scroll>
           <MaterialsPicker
             categories={CATEGORIES}
@@ -71,7 +71,7 @@ export default function Materials() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ title: "Add Materials" }} />
 
       <Screen scroll>
         <MaterialsPicker

@@ -45,16 +45,28 @@ const mockQuotes: QuotesRepo = {
   async get() {
     return null;
   },
-  async create(input) {
+  async create(name = "", clientName = "") {
+    const nowIso = new Date().toISOString();
     const q: Quote = {
-      ...input,
       id: "draft",
-      materialSubtotal: 0,
-      total: input.labor || 0,
+      name,
+      clientName,
+      items: [],
+      labor: 0,
+      currency: "USD",
+      status: "draft",
+      pinned: false,
+      createdAt: nowIso,
+      updatedAt: nowIso,
     };
     return q;
   },
-  async update() {},
+  async update() {
+    return null;
+  },
+  async save(quote) {
+    return quote;
+  },
   async remove() {},
 };
 

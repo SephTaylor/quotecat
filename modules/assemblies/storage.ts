@@ -1,8 +1,9 @@
 // modules/assemblies/storage.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Assembly } from "./types";
+import { ASSEMBLY_KEYS } from "@/lib/storageKeys";
 
-const STORAGE_KEY = "@quotecat/assemblies";
+const STORAGE_KEY = ASSEMBLY_KEYS.CACHE;
 
 /**
  * Load all assemblies from storage.

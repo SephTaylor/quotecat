@@ -1,0 +1,145 @@
+// lib/types.ts
+// Canonical type definitions for QuoteCat
+// This is the single source of truth for all core domain types
+
+/**
+ * Supported currency codes across the app
+ * Add more currencies as needed
+ */
+export type CurrencyCode = "USD" | "CRC" | "CAD" | "EUR";
+
+/**
+ * ID type for all entities
+ */
+export type ID = string;
+
+/**
+ * Quote status for workflow tracking
+ */
+export type QuoteStatus =
+  | "draft" // Just created, not finished
+  | "active" // Being worked on
+  | "sent" // Shared with client
+  | "approved" // Client accepted
+  | "completed" // Job done
+  | "archived"; // Old/inactive
+
+/**
+ * Status metadata for UI display
+ */
+export const QuoteStatusMeta: Record<
+  QuoteStatus,
+  { label: string; color: string; description: string }
+> = {
+  draft: {
+    label: "Draft",
+    color: "#8E8E93",
+    description: "Not yet finished",
+  },
+  active: {
+    label: "Active",
+    color: "#007AFF",
+    description: "Currently working on",
+  },
+  sent: {
+    label: "Sent",
+    color: "#FF9500",
+    description: "Shared with client",
+  },
+  approved: {
+    label: "Approved",
+    color: "#34C759",
+    description: "Client accepted",
+  },
+  completed: {
+    label: "Completed",
+    color: "#5856D6",
+    description: "Job finished",
+  },
+  archived: {
+    label: "Archived",
+    color: "#C7C7CC",
+    description: "Old or inactive",
+  },
+};
+
+/**
+ * Product from catalog
+ */
+export type Product = {
+  id: ID;
+  name: string;
+  sku?: string;
+  categoryId: string;
+  unit: "ea" | "ft" | "m" | "sheet" | "box" | string;
+  unitPrice: number;
+  currency?: CurrencyCode;
+};
+
+/**
+ * Item within a quote
+ * productId is optional to allow manual line items
+ */
+export type QuoteItem = {
+  id?: ID; // Optional ID for the line item itself
+  productId?: ID; // Reference to catalog product
+  name: string;
+  unitPrice: number;
+  qty: number;
+  currency?: CurrencyCode;
+  // Forward-compatible: allow extra fields
+  [key: string]: any;
+};
+
+/**
+ * Quote stored in AsyncStorage
+ * All fields required except where marked optional
+ */
+export type Quote = {
+  id: ID;
+  name: string;
+  clientName?: string;
+  items: QuoteItem[];
+  labor: number;
+  currency: CurrencyCode;
+  status: QuoteStatus;
+  pinned?: boolean; // For favoriting/starring quotes
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+  // Computed fields (not persisted, recalculated on load)
+  materialSubtotal?: number;
+  total?: number;
+  // Forward-compatible: allow extra fields
+  [key: string]: any;
+};
+
+/**
+ * Partial quote for updates
+ */
+export type QuoteUpdate = Partial<Quote> & { id: ID };
+
+/**
+ * Assembly line item (computed from assembly calculator)
+ */
+export type AssemblyLine = {
+  id: ID;
+  name: string;
+  qty: number;
+  unit: string;
+  unitPrice: number;
+};
+
+/**
+ * Assembly definition
+ */
+export type Assembly = {
+  id: ID;
+  name: string;
+  description?: string;
+  items: Array<{
+    productId: ID;
+    qty?: number; // Fixed quantity
+    qtyFn?: (vars: Record<string, number>) => number; // Computed quantity
+  }>;
+  defaults?: Record<string, number>; // Default variable values
+};

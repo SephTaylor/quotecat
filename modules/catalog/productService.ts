@@ -3,9 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import type { Product } from "./seed";
 import { PRODUCTS_SEED } from "./seed";
+import { PRODUCT_KEYS } from "@/lib/storageKeys";
 
-const STORAGE_KEY = "@quotecat/products";
-const SYNC_TIMESTAMP_KEY = "@quotecat/products_sync";
+const STORAGE_KEY = PRODUCT_KEYS.CACHE;
+const SYNC_TIMESTAMP_KEY = PRODUCT_KEYS.SYNC_TIMESTAMP;
 
 // Initialize Supabase client
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";

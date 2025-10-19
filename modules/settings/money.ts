@@ -1,6 +1,9 @@
 // modules/settings/money.ts
+// Money formatting and parsing utilities
 
-export type CurrencyCode = "USD" | "CAD" | "EUR"; // extend as needed
+import type { CurrencyCode } from "@/lib/types";
+
+export type { CurrencyCode } from "@/lib/types";
 
 export type FormatMoneyOptions = {
   currency?: CurrencyCode; // default 'USD'
