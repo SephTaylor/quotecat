@@ -1,6 +1,11 @@
 // app/(forms)/quote/[id]/edit.tsx
 import { useTheme } from "@/contexts/ThemeContext";
-import { getQuoteById, updateQuote, deleteQuote, type Quote } from "@/lib/quotes";
+import {
+  getQuoteById,
+  updateQuote,
+  deleteQuote,
+  type Quote,
+} from "@/lib/quotes";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { parseMoney } from "@/modules/settings/money";
 import type { QuoteStatus } from "@/lib/types";
@@ -19,7 +24,7 @@ export default function EditQuote() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
 
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
   const [labor, setLabor] = useState<string>(""); // empty string to show placeholder

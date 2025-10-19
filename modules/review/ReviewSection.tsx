@@ -37,21 +37,21 @@ export default function ReviewSection({
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
-  section: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: theme.spacing(1),
-  },
-  title: { fontSize: 14, fontWeight: "700", color: theme.colors.text },
+    section: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(2),
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: theme.spacing(1),
+    },
+    title: { fontSize: 14, fontWeight: "700", color: theme.colors.text },
   });
 }
 

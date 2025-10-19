@@ -117,7 +117,7 @@ export default function QuoteReviewScreen() {
           <View>
             <Text style={styles.h2}>Quote not found</Text>
             <Text>
-              We couldn't load that quote. Try again from the Home screen.
+              We couldn&apos;t load that quote. Try again from the Home screen.
             </Text>
           </View>
         </FormScreenComponent>

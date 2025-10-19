@@ -39,17 +39,17 @@ export default function QuoteItemRow({ item }: QuoteItemRowProps) {
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border,
-  },
-  rowLeft: { flex: 1 },
-  itemName: { fontSize: 16, fontWeight: "500", color: theme.colors.text },
-  itemMeta: { color: theme.colors.muted, marginTop: 2 },
-  itemTotal: { fontWeight: "600", color: theme.colors.text },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
+    },
+    rowLeft: { flex: 1 },
+    itemName: { fontSize: 16, fontWeight: "500", color: theme.colors.text },
+    itemMeta: { color: theme.colors.muted, marginTop: 2 },
+    itemTotal: { fontWeight: "600", color: theme.colors.text },
   });
 }
 

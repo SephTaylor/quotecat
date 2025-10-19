@@ -209,122 +209,122 @@ function SettingRow({
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: theme.spacing(2),
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: theme.colors.text,
-  },
-  closeButton: {
-    padding: theme.spacing(1),
-  },
-  closeButtonText: {
-    fontSize: 24,
-    color: theme.colors.muted,
-  },
-  content: {
-    padding: theme.spacing(2),
-  },
-  subtitle: {
-    fontSize: 14,
-    color: theme.colors.muted,
-    marginBottom: theme.spacing(3),
-  },
-  section: {
-    marginBottom: theme.spacing(3),
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: theme.colors.text,
-    marginBottom: theme.spacing(2),
-  },
-  settingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: theme.spacing(2),
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  settingText: {
-    flex: 1,
-    marginRight: theme.spacing(2),
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.text,
-    marginBottom: 4,
-  },
-  settingDescription: {
-    fontSize: 13,
-    color: theme.colors.muted,
-  },
-  optionsRow: {
-    flexDirection: "row",
-    gap: theme.spacing(1),
-  },
-  optionChip: {
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1),
-    borderRadius: 999,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  optionChipActive: {
-    backgroundColor: theme.colors.accent,
-    borderColor: theme.colors.accent,
-  },
-  optionChipText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.muted,
-  },
-  optionChipTextActive: {
-    color: "#000",
-  },
-  actions: {
-    marginTop: theme.spacing(3),
-    gap: theme.spacing(2),
-  },
-  resetButton: {
-    padding: theme.spacing(2),
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-    alignItems: "center",
-  },
-  resetButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
-  saveButton: {
-    padding: theme.spacing(2),
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.accent,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: "center",
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-  },
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    closeButton: {
+      padding: theme.spacing(1),
+    },
+    closeButtonText: {
+      fontSize: 24,
+      color: theme.colors.muted,
+    },
+    content: {
+      padding: theme.spacing(2),
+    },
+    subtitle: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(3),
+    },
+    section: {
+      marginBottom: theme.spacing(3),
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(2),
+    },
+    settingRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    settingText: {
+      flex: 1,
+      marginRight: theme.spacing(2),
+    },
+    settingLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    settingDescription: {
+      fontSize: 13,
+      color: theme.colors.muted,
+    },
+    optionsRow: {
+      flexDirection: "row",
+      gap: theme.spacing(1),
+    },
+    optionChip: {
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      borderRadius: 999,
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    optionChipActive: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    optionChipText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    optionChipTextActive: {
+      color: "#000",
+    },
+    actions: {
+      marginTop: theme.spacing(3),
+      gap: theme.spacing(2),
+    },
+    resetButton: {
+      padding: theme.spacing(2),
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      alignItems: "center",
+    },
+    resetButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    saveButton: {
+      padding: theme.spacing(2),
+      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.accent,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+    },
+    saveButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
+    },
   });
 }

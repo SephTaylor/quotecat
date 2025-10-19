@@ -9,7 +9,7 @@ import {
   resetPreferences,
   type DashboardPreferences,
 } from "@/lib/preferences";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
@@ -23,7 +23,6 @@ import {
 } from "react-native";
 
 export default function Settings() {
-  const router = useRouter();
   const { mode, theme, setThemeMode } = useTheme();
   const [isPro, setIsPro] = useState(false);
   const [userEmail, setUserEmail] = useState<string | undefined>();
@@ -37,7 +36,10 @@ export default function Settings() {
   });
 
   const load = useCallback(async () => {
-    const [user, prefs] = await Promise.all([getUserState(), loadPreferences()]);
+    const [user, prefs] = await Promise.all([
+      getUserState(),
+      loadPreferences(),
+    ]);
     setIsPro(canAccessAssemblies(user));
     setUserEmail(user.email);
     setPreferences(prefs.dashboard);
@@ -164,9 +166,7 @@ export default function Settings() {
                     style={styles.settingButton}
                     onPress={handleManageAccount}
                   >
-                    <Text style={styles.settingButtonText}>
-                      Manage Account
-                    </Text>
+                    <Text style={styles.settingButtonText}>Manage Account</Text>
                     <Text style={styles.settingButtonIcon}>→</Text>
                   </Pressable>
 
@@ -431,7 +431,7 @@ function SettingRow({
   value: boolean;
   onToggle: (value: boolean) => void;
   isLast?: boolean;
-  theme: ReturnType<typeof useTheme>['theme'];
+  theme: ReturnType<typeof useTheme>["theme"];
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -448,145 +448,145 @@ function SettingRow({
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.colors.bg,
     },
-  scrollContent: {
-    padding: theme.spacing(2),
-  },
-  section: {
-    marginBottom: theme.spacing(3),
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: theme.colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: theme.spacing(1),
-    marginLeft: theme.spacing(0.5),
-  },
-  card: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    overflow: "hidden",
-  },
-  accountHeader: {
-    padding: theme.spacing(2),
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  accountInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  accountEmail: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
-  tierBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.colors.border,
-  },
-  tierBadgePro: {
-    backgroundColor: theme.colors.accent,
-  },
-  tierBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: theme.colors.muted,
-  },
-  tierBadgeTextPro: {
-    color: "#000",
-  },
-  settingButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: theme.spacing(2),
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  settingButtonLast: {
-    borderBottomWidth: 0,
-  },
-  settingButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing(1),
-  },
-  settingButtonText: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: theme.colors.text,
-  },
-  settingButtonIcon: {
-    fontSize: 18,
-    color: theme.colors.muted,
-  },
-  settingValue: {
-    fontSize: 16,
-    color: theme.colors.muted,
-  },
-  proLock: {
-    fontSize: 14,
-  },
-  chipContainer: {
-    flexDirection: "column",
-    alignItems: "flex-start",
-    gap: theme.spacing(1.5),
-  },
-  chipLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
-  chipsRow: {
-    flexDirection: "row",
-    gap: theme.spacing(1),
-  },
-  chip: {
-    paddingHorizontal: theme.spacing(1.5),
-    paddingVertical: theme.spacing(0.75),
-    borderRadius: 999,
-    backgroundColor: theme.colors.bg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  chipActive: {
-    backgroundColor: theme.colors.accent,
-    borderColor: theme.colors.accent,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.muted,
-  },
-  chipTextActive: {
-    color: "#000",
-  },
-  resetButton: {
-    marginTop: theme.spacing(1.5),
-    padding: theme.spacing(1.5),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-    alignItems: "center",
-  },
-  resetButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
+    scrollContent: {
+      padding: theme.spacing(2),
+    },
+    section: {
+      marginBottom: theme.spacing(3),
+    },
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: theme.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: theme.spacing(1),
+      marginLeft: theme.spacing(0.5),
+    },
+    card: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      overflow: "hidden",
+    },
+    accountHeader: {
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    accountInfo: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    accountEmail: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    tierBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: theme.radius.sm,
+      backgroundColor: theme.colors.border,
+    },
+    tierBadgePro: {
+      backgroundColor: theme.colors.accent,
+    },
+    tierBadgeText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: theme.colors.muted,
+    },
+    tierBadgeTextPro: {
+      color: "#000",
+    },
+    settingButton: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    settingButtonLast: {
+      borderBottomWidth: 0,
+    },
+    settingButtonContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+    },
+    settingButtonText: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: theme.colors.text,
+    },
+    settingButtonIcon: {
+      fontSize: 18,
+      color: theme.colors.muted,
+    },
+    settingValue: {
+      fontSize: 16,
+      color: theme.colors.muted,
+    },
+    proLock: {
+      fontSize: 14,
+    },
+    chipContainer: {
+      flexDirection: "column",
+      alignItems: "flex-start",
+      gap: theme.spacing(1.5),
+    },
+    chipLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    chipsRow: {
+      flexDirection: "row",
+      gap: theme.spacing(1),
+    },
+    chip: {
+      paddingHorizontal: theme.spacing(1.5),
+      paddingVertical: theme.spacing(0.75),
+      borderRadius: 999,
+      backgroundColor: theme.colors.bg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    chipActive: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    chipTextActive: {
+      color: "#000",
+    },
+    resetButton: {
+      marginTop: theme.spacing(1.5),
+      padding: theme.spacing(1.5),
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      alignItems: "center",
+    },
+    resetButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
   });
 }

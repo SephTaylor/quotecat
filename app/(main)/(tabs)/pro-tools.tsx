@@ -179,7 +179,7 @@ function ProFeatureCard({
   locked: boolean;
   onPress: () => void;
   details: string[];
-  theme: ReturnType<typeof useTheme>['theme'];
+  theme: ReturnType<typeof useTheme>["theme"];
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -212,116 +212,116 @@ function ProFeatureCard({
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.colors.bg,
     },
-  scrollContent: {
-    padding: theme.spacing(2),
-  },
-  header: {
-    marginBottom: theme.spacing(3),
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: theme.colors.text,
-    marginBottom: theme.spacing(1),
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: theme.colors.muted,
-  },
-  featureCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  featureCardLocked: {
-    opacity: 0.8,
-  },
-  featureHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: theme.spacing(1),
-  },
-  featureIcon: {
-    fontSize: 32,
-  },
-  lockIcon: {
-    fontSize: 20,
-  },
-  featureTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: theme.colors.text,
-    marginBottom: theme.spacing(0.5),
-  },
-  featureDescription: {
-    fontSize: 14,
-    color: theme.colors.muted,
-    marginBottom: theme.spacing(1.5),
-  },
-  featureDetails: {
-    marginTop: theme.spacing(1),
-  },
-  featureDetail: {
-    fontSize: 13,
-    color: theme.colors.muted,
-    marginBottom: 4,
-  },
-  unlockBadge: {
-    marginTop: theme.spacing(1.5),
-    backgroundColor: theme.colors.accent,
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1),
-    borderRadius: 999,
-    alignSelf: "flex-start",
-  },
-  unlockBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#000",
-  },
-  upgradeSection: {
-    marginTop: theme.spacing(3),
-    padding: theme.spacing(3),
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    borderWidth: 2,
-    borderColor: theme.colors.accent,
-    alignItems: "center",
-  },
-  upgradeTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: theme.colors.text,
-    marginBottom: theme.spacing(1),
-  },
-  upgradeSubtitle: {
-    fontSize: 14,
-    color: theme.colors.muted,
-    textAlign: "center",
-    marginBottom: theme.spacing(2),
-  },
-  upgradeButton: {
-    backgroundColor: theme.colors.accent,
-    paddingHorizontal: theme.spacing(3),
-    paddingVertical: theme.spacing(1.5),
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  upgradeButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-  },
-});
+    scrollContent: {
+      padding: theme.spacing(2),
+    },
+    header: {
+      marginBottom: theme.spacing(3),
+    },
+    headerTitle: {
+      fontSize: 28,
+      fontWeight: "800",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+    },
+    headerSubtitle: {
+      fontSize: 16,
+      color: theme.colors.muted,
+    },
+    featureCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    featureCardLocked: {
+      opacity: 0.8,
+    },
+    featureHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(1),
+    },
+    featureIcon: {
+      fontSize: 32,
+    },
+    lockIcon: {
+      fontSize: 20,
+    },
+    featureTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(0.5),
+    },
+    featureDescription: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(1.5),
+    },
+    featureDetails: {
+      marginTop: theme.spacing(1),
+    },
+    featureDetail: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      marginBottom: 4,
+    },
+    unlockBadge: {
+      marginTop: theme.spacing(1.5),
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      borderRadius: 999,
+      alignSelf: "flex-start",
+    },
+    unlockBadgeText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: "#000",
+    },
+    upgradeSection: {
+      marginTop: theme.spacing(3),
+      padding: theme.spacing(3),
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+      alignItems: "center",
+    },
+    upgradeTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+    },
+    upgradeSubtitle: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      textAlign: "center",
+      marginBottom: theme.spacing(2),
+    },
+    upgradeButton: {
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(1.5),
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    upgradeButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
+    },
+  });
 }

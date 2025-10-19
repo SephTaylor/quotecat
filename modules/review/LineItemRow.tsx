@@ -49,20 +49,20 @@ export default function LineItemRow({
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  left: { flexShrink: 1, paddingRight: theme.spacing(2) },
-  right: { alignItems: "flex-end" },
-  name: { color: theme.colors.text, fontSize: 14, fontWeight: "600" },
-  meta: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
-  note: { color: theme.colors.muted, fontSize: 12, marginBottom: 2 },
-  value: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
+    row: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    left: { flexShrink: 1, paddingRight: theme.spacing(2) },
+    right: { alignItems: "flex-end" },
+    name: { color: theme.colors.text, fontSize: 14, fontWeight: "600" },
+    meta: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
+    note: { color: theme.colors.muted, fontSize: 12, marginBottom: 2 },
+    value: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
   });
 }
 

@@ -245,7 +245,7 @@ function FilterChip({
   active: boolean;
   onPress: () => void;
   color?: string;
-  theme: ReturnType<typeof useTheme>['theme'];
+  theme: ReturnType<typeof useTheme>["theme"];
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -267,72 +267,72 @@ function FilterChip({
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.bg },
-  searchContainer: {
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1),
-    backgroundColor: theme.colors.bg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  searchInput: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1.5),
-    fontSize: 16,
-    color: theme.colors.text,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  filterContainer: {
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1),
-  },
-  filterChip: {
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1),
-    borderRadius: 999,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginRight: theme.spacing(1),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterChipActive: {
-    backgroundColor: theme.colors.accent,
-    borderColor: theme.colors.accent,
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.muted,
-  },
-  filterChipTextActive: {
-    color: "#000",
-  },
-  listContent: { padding: theme.spacing(2) },
-  empty: {
-    textAlign: "center",
-    color: theme.colors.muted,
-    marginTop: theme.spacing(4),
-  },
-  fab: {
-    position: "absolute",
-    right: theme.spacing(2),
-    bottom: theme.spacing(2),
-    height: 56,
-    width: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  fabText: { fontSize: 28, lineHeight: 28, color: "#000", fontWeight: "800" },
+    searchContainer: {
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      backgroundColor: theme.colors.bg,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    searchInput: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      fontSize: 16,
+      color: theme.colors.text,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    filterContainer: {
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+    },
+    filterChip: {
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      borderRadius: 999,
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginRight: theme.spacing(1),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    filterChipActive: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    filterChipText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    filterChipTextActive: {
+      color: "#000",
+    },
+    listContent: { padding: theme.spacing(2) },
+    empty: {
+      textAlign: "center",
+      color: theme.colors.muted,
+      marginTop: theme.spacing(4),
+    },
+    fab: {
+      position: "absolute",
+      right: theme.spacing(2),
+      bottom: theme.spacing(2),
+      height: 56,
+      width: 56,
+      borderRadius: 28,
+      backgroundColor: theme.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    fabText: { fontSize: 28, lineHeight: 28, color: "#000", fontWeight: "800" },
   });
 }

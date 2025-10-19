@@ -68,20 +68,20 @@ function Row({
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
-  container: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingTop: theme.spacing(1.5),
-    marginTop: theme.spacing(1.5),
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 6,
-  },
-  label: { color: theme.colors.muted, fontSize: 13 },
-  value: { color: theme.colors.text, fontSize: 14 },
-  bold: { fontWeight: "700", color: theme.colors.text },
+    container: {
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: theme.spacing(1.5),
+      marginTop: theme.spacing(1.5),
+    },
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: 6,
+    },
+    label: { color: theme.colors.muted, fontSize: 13 },
+    value: { color: theme.colors.text, fontSize: 14 },
+    bold: { fontWeight: "700", color: theme.colors.text },
   });
 }
 

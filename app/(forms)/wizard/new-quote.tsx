@@ -50,10 +50,7 @@ export default function NewQuote() {
           />
 
           <Text
-            style={[
-              styles.label,
-              { color: theme.colors.text, marginTop: 24 },
-            ]}
+            style={[styles.label, { color: theme.colors.text, marginTop: 24 }]}
           >
             Client Name (optional)
           </Text>

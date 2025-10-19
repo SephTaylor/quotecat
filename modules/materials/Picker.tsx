@@ -93,76 +93,76 @@ function MaterialsPicker({
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
-  content: {
-    paddingHorizontal: theme.spacing(2),
-    paddingTop: theme.spacing(2),
-    paddingBottom: theme.spacing(8),
-  },
-  h1: { fontSize: 18, fontWeight: "800", color: theme.colors.text },
-  helper: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: 12,
-  },
+    content: {
+      paddingHorizontal: theme.spacing(2),
+      paddingTop: theme.spacing(2),
+      paddingBottom: theme.spacing(8),
+    },
+    h1: { fontSize: 18, fontWeight: "800", color: theme.colors.text },
+    helper: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      marginTop: 4,
+      marginBottom: 12,
+    },
 
-  catCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing(2),
-    overflow: "hidden",
-  },
-  catHeader: {
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1.5),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  catTitle: { fontWeight: "800", color: theme.colors.text },
-  catCount: { color: theme.colors.muted },
+    catCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginBottom: theme.spacing(2),
+      overflow: "hidden",
+    },
+    catHeader: {
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    catTitle: { fontWeight: "800", color: theme.colors.text },
+    catCount: { color: theme.colors.muted },
 
-  itemsWrap: {
-    paddingHorizontal: theme.spacing(1),
-    paddingBottom: theme.spacing(1),
-  },
-  itemRow: {
-    paddingHorizontal: theme.spacing(1),
-    paddingVertical: theme.spacing(1),
-    borderRadius: theme.radius.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  itemRowActive: {
-    backgroundColor: "#fffbe6",
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  itemMeta: { flexShrink: 1, paddingRight: theme.spacing(1) },
-  itemName: { color: theme.colors.text, fontWeight: "600" },
-  itemSub: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
+    itemsWrap: {
+      paddingHorizontal: theme.spacing(1),
+      paddingBottom: theme.spacing(1),
+    },
+    itemRow: {
+      paddingHorizontal: theme.spacing(1),
+      paddingVertical: theme.spacing(1),
+      borderRadius: theme.radius.md,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    itemRowActive: {
+      backgroundColor: "#fffbe6",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    itemMeta: { flexShrink: 1, paddingRight: theme.spacing(1) },
+    itemName: { color: theme.colors.text, fontWeight: "600" },
+    itemSub: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
 
-  stepper: { flexDirection: "row", alignItems: "center", gap: 8 },
-  stepBtn: {
-    height: 32,
-    width: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.card,
-  },
-  stepText: { fontSize: 18, fontWeight: "800", color: theme.colors.text },
-  qtyText: {
-    minWidth: 20,
-    textAlign: "center",
-    color: theme.colors.text,
-    fontWeight: "700",
-  },
+    stepper: { flexDirection: "row", alignItems: "center", gap: 8 },
+    stepBtn: {
+      height: 32,
+      width: 32,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.card,
+    },
+    stepText: { fontSize: 18, fontWeight: "800", color: theme.colors.text },
+    qtyText: {
+      minWidth: 20,
+      textAlign: "center",
+      color: theme.colors.text,
+      fontWeight: "700",
+    },
   });
 }
 

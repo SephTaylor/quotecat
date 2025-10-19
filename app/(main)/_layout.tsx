@@ -16,7 +16,7 @@ export default function MainLayout() {
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
-      edges={['top', 'left', 'right']}
+      edges={["top", "left", "right"]}
     >
       <Slot />
     </SafeAreaView>

@@ -4,15 +4,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { listQuotes, type Quote } from "@/lib/quotes";
 import { QuoteStatusMeta } from "@/lib/types";
 import { calculateTotal } from "@/lib/validation";
-import {
-  loadPreferences,
-  type DashboardPreferences,
-} from "@/lib/preferences";
-import {
-  deleteQuote,
-  saveQuote,
-  updateQuote,
-} from "@/lib/quotes";
+import { loadPreferences, type DashboardPreferences } from "@/lib/preferences";
+import { deleteQuote, saveQuote, updateQuote } from "@/lib/quotes";
 import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,7 +18,7 @@ export default function Dashboard() {
   const router = useRouter();
   const { theme } = useTheme();
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [preferences, setPreferences] = useState<DashboardPreferences>({
     showStats: true,
     showValueTracking: true,
@@ -125,10 +118,7 @@ export default function Dashboard() {
     await updateQuote(quote.id, { pinned: !quote.pinned });
   }, []);
 
-  const styles = React.useMemo(
-    () => createStyles(theme),
-    [theme],
-  );
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -275,7 +265,7 @@ function StatCard({
   label: string;
   value: number;
   color: string;
-  theme: ReturnType<typeof useTheme>['theme'];
+  theme: ReturnType<typeof useTheme>["theme"];
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -287,104 +277,104 @@ function StatCard({
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.colors.bg,
     },
-  scrollContent: {
-    padding: theme.spacing(2),
-  },
-  titleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: theme.spacing(2),
-  },
-  appTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: theme.colors.text,
-  },
-  settingsButton: {
-    padding: theme.spacing(1),
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing(1.5),
-    marginBottom: theme.spacing(2),
-  },
-  statCard: {
-    flex: 1,
-    minWidth: "47%",
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing(1.5),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: "center",
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: theme.colors.muted,
-    textAlign: "center",
-  },
-  valueSection: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(3),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  valueRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  valueLabel: {
-    fontSize: 12,
-    color: theme.colors.muted,
-    marginBottom: 4,
-  },
-  valueText: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: theme.colors.text,
-  },
-  valueTextSecondary: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: theme.colors.text,
-    marginBottom: theme.spacing(2),
-  },
-  section: {
-    marginBottom: theme.spacing(3),
-  },
-  actionButton: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(1),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
+    scrollContent: {
+      padding: theme.spacing(2),
+    },
+    titleRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(2),
+    },
+    appTitle: {
+      fontSize: 28,
+      fontWeight: "800",
+      color: theme.colors.text,
+    },
+    settingsButton: {
+      padding: theme.spacing(1),
+    },
+    statsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: theme.spacing(1.5),
+      marginBottom: theme.spacing(2),
+    },
+    statCard: {
+      flex: 1,
+      minWidth: "47%",
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(1.5),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+    },
+    statValue: {
+      fontSize: 24,
+      fontWeight: "700",
+      marginBottom: 2,
+    },
+    statLabel: {
+      fontSize: 11,
+      color: theme.colors.muted,
+      textAlign: "center",
+    },
+    valueSection: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(3),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    valueRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    valueLabel: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginBottom: 4,
+    },
+    valueText: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    valueTextSecondary: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(2),
+    },
+    section: {
+      marginBottom: theme.spacing(3),
+    },
+    actionButton: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(1),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    actionText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
   });
 }
