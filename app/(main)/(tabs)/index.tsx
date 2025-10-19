@@ -4,6 +4,13 @@ import { theme } from "@/constants/theme";
 import { listQuotes, type Quote } from "@/lib/quotes";
 import { QuoteStatusMeta } from "@/lib/types";
 import { calculateTotal } from "@/lib/validation";
+import {
+  loadPreferences,
+  updateDashboardPreferences,
+  resetPreferences,
+  type DashboardPreferences,
+} from "@/lib/preferences";
+import { DashboardSettings } from "@/components/DashboardSettings";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -12,11 +19,21 @@ export default function Dashboard() {
   const router = useRouter();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [preferences, setPreferences] = useState<DashboardPreferences>({
+    showStats: true,
+    showValueTracking: true,
+    showPinnedQuotes: true,
+    showRecentQuotes: true,
+    showQuickActions: true,
+    recentQuotesCount: 5,
+  });
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const data = await listQuotes();
+    const [data, prefs] = await Promise.all([listQuotes(), loadPreferences()]);
     setQuotes(data);
+    setPreferences(prefs.dashboard);
     setLoading(false);
   }, []);
 
@@ -52,8 +69,21 @@ export default function Dashboard() {
   }, [quotes]);
 
   const recentQuotes = React.useMemo(() => {
-    return quotes.slice(0, 5);
-  }, [quotes]);
+    if (preferences.recentQuotesCount === "all") {
+      return quotes;
+    }
+    return quotes.slice(0, preferences.recentQuotesCount);
+  }, [quotes, preferences.recentQuotesCount]);
+
+  const handleSavePreferences = async (newPrefs: DashboardPreferences) => {
+    await updateDashboardPreferences(newPrefs);
+    setPreferences(newPrefs);
+  };
+
+  const handleResetPreferences = async () => {
+    const defaults = await resetPreferences();
+    setPreferences(defaults.dashboard);
+  };
 
   return (
     <>
@@ -62,53 +92,65 @@ export default function Dashboard() {
       />
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* App Title */}
-          <Text style={styles.appTitle}>🐱 QuoteCat</Text>
+          {/* App Title with Settings Button */}
+          <View style={styles.titleRow}>
+            <Text style={styles.appTitle}>🐱 QuoteCat</Text>
+            <Pressable
+              style={styles.settingsButton}
+              onPress={() => setSettingsVisible(true)}
+            >
+              <Text style={styles.settingsIcon}>⚙️</Text>
+            </Pressable>
+          </View>
 
           {/* Quick Stats */}
-          <View style={styles.statsGrid}>
-            <StatCard
-              label="Total Quotes"
-              value={stats.total}
-              color={theme.colors.text}
-            />
-            <StatCard
-              label="Active"
-              value={stats.active}
-              color={QuoteStatusMeta.active.color}
-            />
-            <StatCard
-              label="Drafts"
-              value={stats.draft}
-              color={QuoteStatusMeta.draft.color}
-            />
-            <StatCard
-              label="Sent"
-              value={stats.sent}
-              color={QuoteStatusMeta.sent.color}
-            />
-          </View>
+          {preferences.showStats && (
+            <View style={styles.statsGrid}>
+              <StatCard
+                label="Total Quotes"
+                value={stats.total}
+                color={theme.colors.text}
+              />
+              <StatCard
+                label="Active"
+                value={stats.active}
+                color={QuoteStatusMeta.active.color}
+              />
+              <StatCard
+                label="Drafts"
+                value={stats.draft}
+                color={QuoteStatusMeta.draft.color}
+              />
+              <StatCard
+                label="Sent"
+                value={stats.sent}
+                color={QuoteStatusMeta.sent.color}
+              />
+            </View>
+          )}
 
           {/* Value Stats */}
-          <View style={styles.valueSection}>
-            <View style={styles.valueRow}>
-              <View>
-                <Text style={styles.valueLabel}>Total Value</Text>
-                <Text style={styles.valueText}>
-                  ${stats.totalValue.toFixed(2)}
-                </Text>
-              </View>
-              <View>
-                <Text style={styles.valueLabel}>Active</Text>
-                <Text style={styles.valueTextSecondary}>
-                  ${stats.activeValue.toFixed(2)}
-                </Text>
+          {preferences.showValueTracking && (
+            <View style={styles.valueSection}>
+              <View style={styles.valueRow}>
+                <View>
+                  <Text style={styles.valueLabel}>Total Value</Text>
+                  <Text style={styles.valueText}>
+                    ${stats.totalValue.toFixed(2)}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={styles.valueLabel}>Active</Text>
+                  <Text style={styles.valueTextSecondary}>
+                    ${stats.activeValue.toFixed(2)}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
+          )}
 
           {/* Pinned Quotes */}
-          {stats.pinnedQuotes.length > 0 && (
+          {preferences.showPinnedQuotes && stats.pinnedQuotes.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>⭐ Pinned Quotes</Text>
               {stats.pinnedQuotes.map((quote) => (
@@ -149,61 +191,74 @@ export default function Dashboard() {
           )}
 
           {/* Recent Activity */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Quotes</Text>
-            {recentQuotes.map((quote) => (
-              <Pressable
-                key={quote.id}
-                style={styles.quoteCard}
-                onPress={() => router.push(`/quote/${quote.id}/edit`)}
-              >
-                <View style={styles.quoteHeader}>
-                  <Text style={styles.quoteName}>
-                    {quote.name || "Untitled"}
-                  </Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor:
-                          QuoteStatusMeta[quote.status].color + "20",
-                      },
-                    ]}
-                  >
-                    <Text
+          {preferences.showRecentQuotes && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Recent Quotes</Text>
+              {recentQuotes.map((quote) => (
+                <Pressable
+                  key={quote.id}
+                  style={styles.quoteCard}
+                  onPress={() => router.push(`/quote/${quote.id}/edit`)}
+                >
+                  <View style={styles.quoteHeader}>
+                    <Text style={styles.quoteName}>
+                      {quote.name || "Untitled"}
+                    </Text>
+                    <View
                       style={[
-                        styles.statusText,
-                        { color: QuoteStatusMeta[quote.status].color },
+                        styles.statusBadge,
+                        {
+                          backgroundColor:
+                            QuoteStatusMeta[quote.status].color + "20",
+                        },
                       ]}
                     >
-                      {QuoteStatusMeta[quote.status].label}
-                    </Text>
+                      <Text
+                        style={[
+                          styles.statusText,
+                          { color: QuoteStatusMeta[quote.status].color },
+                        ]}
+                      >
+                        {QuoteStatusMeta[quote.status].label}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                <Text style={styles.quoteValue}>
-                  ${calculateTotal(quote).toFixed(2)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+                  <Text style={styles.quoteValue}>
+                    ${calculateTotal(quote).toFixed(2)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           {/* Quick Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <Pressable
-              style={styles.actionButton}
-              onPress={() => router.push("./quotes" as any)}
-            >
-              <Text style={styles.actionText}>View All Quotes →</Text>
-            </Pressable>
-            <Pressable
-              style={styles.actionButton}
-              onPress={() => router.push("./assemblies" as any)}
-            >
-              <Text style={styles.actionText}>Browse Assemblies →</Text>
-            </Pressable>
-          </View>
+          {preferences.showQuickActions && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <Pressable
+                style={styles.actionButton}
+                onPress={() => router.push("./quotes" as any)}
+              >
+                <Text style={styles.actionText}>View All Quotes →</Text>
+              </Pressable>
+              <Pressable
+                style={styles.actionButton}
+                onPress={() => router.push("./assemblies" as any)}
+              >
+                <Text style={styles.actionText}>Browse Assemblies →</Text>
+              </Pressable>
+            </View>
+          )}
         </ScrollView>
+
+        {/* Settings Modal */}
+        <DashboardSettings
+          visible={settingsVisible}
+          preferences={preferences}
+          onClose={() => setSettingsVisible(false)}
+          onSave={handleSavePreferences}
+          onReset={handleResetPreferences}
+        />
       </View>
     </>
   );
@@ -234,11 +289,22 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: theme.spacing(2),
   },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing(2),
+  },
   appTitle: {
     fontSize: 28,
     fontWeight: "800",
     color: theme.colors.text,
-    marginBottom: theme.spacing(2),
+  },
+  settingsButton: {
+    padding: theme.spacing(1),
+  },
+  settingsIcon: {
+    fontSize: 24,
   },
   statsGrid: {
     flexDirection: "row",
