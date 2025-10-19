@@ -1,14 +1,15 @@
 // modules/quotes/useQuoteData.ts
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { getQuoteById, type StoredQuote } from "./index";
+import { getQuoteById } from "./storage";
+import type { Quote } from "@/lib/types";
 
 /**
  * Hook for loading quote data with automatic refetch on screen focus.
  * Handles loading state, error handling, and refetch logic.
  */
 export function useQuoteData(id?: string) {
-  const [quote, setQuote] = useState<StoredQuote | null>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
