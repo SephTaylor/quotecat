@@ -8,7 +8,6 @@ import {
   updateQuote,
   type Quote,
 } from "@/lib/quotes";
-import { Screen } from "@/modules/core/ui";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import type { QuoteStatus } from "@/lib/types";
@@ -132,7 +131,7 @@ export default function QuotesList() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen options={{ title: "Quotes", headerBackVisible: false }} />
-      <Screen scroll={false} contentStyle={styles.container}>
+      <View style={styles.container}>
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
@@ -220,7 +219,7 @@ export default function QuotesList() {
           onUndo={handleUndo}
           onDismiss={handleDismissUndo}
         />
-      </Screen>
+      </View>
     </GestureHandlerRootView>
   );
 }

@@ -2,7 +2,6 @@
 // Dashboard screen - Overview and quick stats
 import { theme } from "@/constants/theme";
 import { listQuotes, type Quote } from "@/lib/quotes";
-import { Screen } from "@/modules/core/ui";
 import { QuoteStatusMeta } from "@/lib/types";
 import { calculateTotal } from "@/lib/validation";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -61,7 +60,7 @@ export default function Dashboard() {
       <Stack.Screen
         options={{ title: "Dashboard", headerBackVisible: false }}
       />
-      <Screen scroll={false} contentStyle={styles.container}>
+      <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* App Title */}
           <Text style={styles.appTitle}>🐱 QuoteCat</Text>
@@ -205,7 +204,7 @@ export default function Dashboard() {
             </Pressable>
           </View>
         </ScrollView>
-      </Screen>
+      </View>
     </>
   );
 }

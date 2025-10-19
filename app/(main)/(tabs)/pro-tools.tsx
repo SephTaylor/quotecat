@@ -1,7 +1,6 @@
 // app/(main)/(tabs)/pro-tools.tsx
 // Pro Tools tab - Shows locked features for free users, unlocked for pro users
 import { theme } from "@/constants/theme";
-import { Screen } from "@/modules/core/ui";
 import { canAccessAssemblies } from "@/lib/features";
 import { getUserState } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -65,7 +64,7 @@ export default function ProTools() {
       <Stack.Screen
         options={{ title: "Pro Tools", headerBackVisible: false }}
       />
-      <Screen scroll={false} contentStyle={styles.container}>
+      <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {!isPro && (
             <View style={styles.header}>
@@ -153,7 +152,7 @@ export default function ProTools() {
             </View>
           )}
         </ScrollView>
-      </Screen>
+      </View>
     </>
   );
 }
