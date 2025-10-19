@@ -40,10 +40,18 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="pro-tools"
+        options={{
+          title: "Pro Tools",
+          tabBarIcon: ({ color }) => <ProToolsIcon color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="assemblies"
         options={{
           title: "Assemblies",
           tabBarIcon: ({ color }) => <AssembliesIcon color={color} />,
+          href: null, // Hide from tabs, accessed via Pro Tools
         }}
       />
     </Tabs>
@@ -57,6 +65,10 @@ function DashboardIcon({ color }: { color: string }) {
 
 function QuotesIcon({ color }: { color: string }) {
   return <Text style={{ fontSize: 24, color }}>📝</Text>;
+}
+
+function ProToolsIcon({ color }: { color: string }) {
+  return <Text style={{ fontSize: 24, color }}>✨</Text>;
 }
 
 function AssembliesIcon({ color }: { color: string }) {

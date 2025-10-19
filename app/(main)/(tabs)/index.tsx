@@ -63,6 +63,9 @@ export default function Dashboard() {
       />
       <Screen scroll={false} contentStyle={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* App Title */}
+          <Text style={styles.appTitle}>🐱 QuoteCat</Text>
+
           {/* Quick Stats */}
           <View style={styles.statsGrid}>
             <StatCard
@@ -89,11 +92,20 @@ export default function Dashboard() {
 
           {/* Value Stats */}
           <View style={styles.valueSection}>
-            <Text style={styles.sectionTitle}>Total Value</Text>
-            <Text style={styles.valueText}>${stats.totalValue.toFixed(2)}</Text>
-            <Text style={styles.valueSubtext}>
-              Active: ${stats.activeValue.toFixed(2)}
-            </Text>
+            <View style={styles.valueRow}>
+              <View>
+                <Text style={styles.valueLabel}>Total Value</Text>
+                <Text style={styles.valueText}>
+                  ${stats.totalValue.toFixed(2)}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.valueLabel}>Active</Text>
+                <Text style={styles.valueTextSecondary}>
+                  ${stats.activeValue.toFixed(2)}
+                </Text>
+              </View>
+            </View>
           </View>
 
           {/* Pinned Quotes */}
@@ -223,56 +235,71 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: theme.spacing(2),
   },
+  appTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: theme.colors.text,
+    marginBottom: theme.spacing(2),
+  },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: theme.spacing(2),
-    marginBottom: theme.spacing(3),
+    gap: theme.spacing(1.5),
+    marginBottom: theme.spacing(2),
   },
   statCard: {
     flex: 1,
-    minWidth: "45%",
+    minWidth: "47%",
     backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
+    borderRadius: theme.radius.md,
+    padding: theme.spacing(1.5),
     borderWidth: 1,
     borderColor: theme.colors.border,
     alignItems: "center",
   },
   statValue: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: theme.colors.muted,
     textAlign: "center",
   },
   valueSection: {
-    backgroundColor: theme.colors.accent,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(3),
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing(2),
     marginBottom: theme.spacing(3),
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  valueRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+  },
+  valueLabel: {
+    fontSize: 12,
+    color: theme.colors.muted,
+    marginBottom: 4,
+  },
+  valueText: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: theme.colors.text,
+  },
+  valueTextSecondary: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: theme.colors.text,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: theme.colors.text,
     marginBottom: theme.spacing(2),
-  },
-  valueText: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#000",
-    marginVertical: 8,
-  },
-  valueSubtext: {
-    fontSize: 14,
-    color: "#333",
   },
   section: {
     marginBottom: theme.spacing(3),
