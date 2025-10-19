@@ -3,6 +3,8 @@ import { theme } from "@/constants/theme";
 import { getQuoteById, updateQuote, type Quote } from "@/lib/quotes";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { parseMoney } from "@/modules/settings/money";
+import type { QuoteStatus } from "@/lib/types";
+import { QuoteStatusMeta } from "@/lib/types";
 import {
   Stack,
   useFocusEffect,
@@ -22,6 +24,8 @@ export default function EditQuote() {
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
   const [labor, setLabor] = useState<string>(""); // empty string to show placeholder
+  const [status, setStatus] = useState<QuoteStatus>("draft");
+  const [pinned, setPinned] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -32,6 +36,8 @@ export default function EditQuote() {
       setClientName(q.clientName || "");
       // Only set labor if it's non-zero, otherwise leave empty to show placeholder
       setLabor(q.labor && q.labor !== 0 ? String(q.labor) : "");
+      setStatus(q.status || "draft");
+      setPinned(q.pinned || false);
     }
   }, [id]);
 
@@ -50,6 +56,8 @@ export default function EditQuote() {
       name,
       clientName,
       labor: parseMoney(labor),
+      status,
+      pinned,
     });
     router.back();
   };
@@ -98,6 +106,44 @@ export default function EditQuote() {
           inputMode="decimal"
         />
 
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Status</Text>
+        <View style={styles.statusGrid}>
+          {(Object.keys(QuoteStatusMeta) as QuoteStatus[]).map((s) => (
+            <Pressable
+              key={s}
+              style={[
+                styles.statusChip,
+                status === s && styles.statusChipActive,
+                status === s && {
+                  backgroundColor: QuoteStatusMeta[s].color,
+                  borderColor: QuoteStatusMeta[s].color,
+                },
+              ]}
+              onPress={() => setStatus(s)}
+            >
+              <Text
+                style={[
+                  styles.statusChipText,
+                  status === s && styles.statusChipTextActive,
+                ]}
+              >
+                {QuoteStatusMeta[s].label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Pressable style={styles.pinToggle} onPress={() => setPinned(!pinned)}>
+          <Text style={styles.pinIcon}>{pinned ? "⭐" : "☆"}</Text>
+          <Text style={styles.pinText}>
+            {pinned ? "Pinned to Dashboard" : "Pin to Dashboard"}
+          </Text>
+        </Pressable>
+
         <View style={{ height: theme.spacing(3) }} />
 
         <Text style={styles.h2}>Items</Text>
@@ -137,6 +183,49 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   helper: { fontSize: 12, color: theme.colors.muted },
+  statusGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing(1),
+  },
+  statusChip: {
+    paddingHorizontal: theme.spacing(2),
+    paddingVertical: theme.spacing(1),
+    borderRadius: 999,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  statusChipActive: {
+    borderWidth: 2,
+  },
+  statusChipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.colors.muted,
+  },
+  statusChipTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  pinToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing(2),
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  pinIcon: {
+    fontSize: 20,
+    marginRight: theme.spacing(1.5),
+  },
+  pinText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: theme.colors.text,
+  },
   doneBtn: {
     backgroundColor: theme.colors.accent,
     borderRadius: theme.radius.xl,
