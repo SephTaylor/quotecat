@@ -173,7 +173,7 @@ export default function Dashboard() {
                 value={stats.pinned}
                 color={theme.colors.accent}
                 theme={theme}
-                onPress={() => router.push("./quotes" as any)}
+                onPress={() => router.push("./quotes?filter=pinned" as any)}
               />
               <StatCard
                 label="Draft"

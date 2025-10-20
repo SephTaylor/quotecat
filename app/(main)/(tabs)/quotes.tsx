@@ -36,7 +36,7 @@ export default function QuotesList() {
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
   const [showUndo, setShowUndo] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<QuoteStatus | "all">(
+  const [selectedStatus, setSelectedStatus] = useState<QuoteStatus | "all" | "pinned">(
     "all",
   );
 
@@ -52,9 +52,10 @@ export default function QuotesList() {
   // Apply filter from navigation parameter
   useEffect(() => {
     if (params.filter && typeof params.filter === "string") {
-      const filter = params.filter as QuoteStatus | "all";
+      const filter = params.filter as QuoteStatus | "all" | "pinned";
       if (
         filter === "all" ||
+        filter === "pinned" ||
         filter === "draft" ||
         filter === "sent" ||
         filter === "approved" ||
@@ -72,11 +73,11 @@ export default function QuotesList() {
   }, [params.filter, scrollToFilter]);
 
   // Scroll to the selected filter chip
-  const scrollToFilter = useCallback((filter: QuoteStatus | "all") => {
+  const scrollToFilter = useCallback((filter: QuoteStatus | "all" | "pinned") => {
     if (!filterScrollRef.current) return;
 
     // Calculate approximate position based on filter order
-    const filters = ["all", "draft", "sent", "approved", "completed", "archived"];
+    const filters = ["all", "pinned", "draft", "sent", "approved", "completed", "archived"];
     const index = filters.indexOf(filter);
 
     if (index === -1) return;
@@ -155,8 +156,10 @@ export default function QuotesList() {
   const filteredQuotes = React.useMemo(() => {
     let filtered = quotes;
 
-    // Filter by status
-    if (selectedStatus !== "all") {
+    // Filter by status or pinned
+    if (selectedStatus === "pinned") {
+      filtered = filtered.filter((quote) => quote.pinned);
+    } else if (selectedStatus !== "all") {
       filtered = filtered.filter((quote) => quote.status === selectedStatus);
     }
 
@@ -191,6 +194,13 @@ export default function QuotesList() {
             label="All"
             active={selectedStatus === "all"}
             onPress={() => setSelectedStatus("all")}
+            theme={theme}
+          />
+          <FilterChip
+            label="Pinned"
+            active={selectedStatus === "pinned"}
+            onPress={() => setSelectedStatus("pinned")}
+            color="#FF8C00"
             theme={theme}
           />
           <FilterChip
