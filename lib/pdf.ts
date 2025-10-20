@@ -66,7 +66,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         Powered by QuoteCat
       </div>
       <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
-        Create professional quotes in seconds • www.quotecat.ai
+        Create professional quotes in seconds • https://www.quotecat.ai
       </div>
       <div style="font-size: 10px; color: #999; font-style: italic;">
         Upgrade to QuoteCat Pro to remove this branding and unlock unlimited exports

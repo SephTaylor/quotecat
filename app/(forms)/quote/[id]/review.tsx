@@ -9,6 +9,7 @@ import {
   Text,
   View,
   Alert,
+  Linking,
 } from "react-native";
 import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
@@ -71,7 +72,22 @@ export default function QuoteReviewScreen() {
         reason,
         [
           { text: "Not Now", style: "cancel" },
-          { text: "Upgrade", onPress: () => {/* TODO: Navigate to upgrade screen */} },
+          {
+            text: "Learn More",
+            onPress: () => {
+              Alert.alert(
+                "QuoteCat Pro",
+                "Get unlimited PDF and spreadsheet exports, remove QuoteCat branding, and unlock premium features.",
+                [
+                  { text: "Not Now", style: "cancel" },
+                  {
+                    text: "Visit Website",
+                    onPress: () => Linking.openURL("https://www.quotecat.ai")
+                  }
+                ]
+              );
+            }
+          },
         ]
       );
       return;
@@ -185,7 +201,22 @@ export default function QuoteReviewScreen() {
         reason,
         [
           { text: "Not Now", style: "cancel" },
-          { text: "Upgrade", onPress: () => {/* TODO: Navigate to upgrade screen */} },
+          {
+            text: "Learn More",
+            onPress: () => {
+              Alert.alert(
+                "QuoteCat Pro",
+                "Get unlimited PDF and spreadsheet exports, remove QuoteCat branding, and unlock premium features.",
+                [
+                  { text: "Not Now", style: "cancel" },
+                  {
+                    text: "Visit Website",
+                    onPress: () => Linking.openURL("https://www.quotecat.ai")
+                  }
+                ]
+              );
+            }
+          },
         ]
       );
       return;
@@ -364,7 +395,7 @@ export default function QuoteReviewScreen() {
                 // TODO: Navigate to upgrade screen or website
                 Alert.alert(
                   "Upgrade to Pro",
-                  "Get unlimited PDF and spreadsheet exports, remove QuoteCat branding, and unlock premium features.\n\nVisit www.quotecat.ai to learn more.",
+                  "Get unlimited PDF and spreadsheet exports, remove QuoteCat branding, and unlock premium features.\n\nVisit https://www.quotecat.ai to learn more.",
                   [{ text: "OK" }]
                 );
               }}

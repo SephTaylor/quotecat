@@ -1,8 +1,8 @@
 // app/(main)/settings.tsx
 // Settings and profile management
 import { useTheme } from "@/contexts/ThemeContext";
-import { canAccessAssemblies } from "@/lib/features";
-import { getUserState, activateProTier, deactivateProTier } from "@/lib/user";
+import { canAccessAssemblies, getQuotaRemaining } from "@/lib/features";
+import { getUserState, activateProTier, deactivateProTier, FREE_LIMITS, type UserState } from "@/lib/user";
 import {
   loadPreferences,
   updateDashboardPreferences,
@@ -26,6 +26,7 @@ export default function Settings() {
   const { mode, theme, setThemeMode } = useTheme();
   const [isPro, setIsPro] = useState(false);
   const [userEmail, setUserEmail] = useState<string | undefined>();
+  const [userState, setUserState] = useState<UserState | null>(null);
   const [preferences, setPreferences] = useState<DashboardPreferences>({
     showStats: true,
     showValueTracking: true,
@@ -42,6 +43,7 @@ export default function Settings() {
     ]);
     setIsPro(canAccessAssemblies(user));
     setUserEmail(user.email);
+    setUserState(user);
     setPreferences(prefs.dashboard);
   }, []);
 
@@ -196,6 +198,100 @@ export default function Settings() {
               )}
             </View>
           </View>
+
+          {/* Usage & Limits Section */}
+          {userState && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Usage & Limits</Text>
+
+              <View style={styles.card}>
+                {/* Quotes */}
+                <View style={styles.usageRow}>
+                  <View style={styles.usageHeader}>
+                    <Text style={styles.usageLabel}>Quotes Created</Text>
+                    <Text style={styles.usageValue}>
+                      {isPro
+                        ? `${userState.quotesUsed} (Unlimited)`
+                        : `${userState.quotesUsed} / ${FREE_LIMITS.quotes}`}
+                    </Text>
+                  </View>
+                  {!isPro && (
+                    <View style={styles.progressBarContainer}>
+                      <View
+                        style={[
+                          styles.progressBar,
+                          {
+                            width: `${Math.min(
+                              100,
+                              (userState.quotesUsed / FREE_LIMITS.quotes) * 100
+                            )}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  )}
+                </View>
+
+                {/* PDF Exports */}
+                <View style={styles.usageRow}>
+                  <View style={styles.usageHeader}>
+                    <Text style={styles.usageLabel}>PDF Exports (This Month)</Text>
+                    <Text style={styles.usageValue}>
+                      {isPro
+                        ? `${userState.pdfsThisMonth} (Unlimited)`
+                        : `${userState.pdfsThisMonth} / ${FREE_LIMITS.pdfsPerMonth}`}
+                    </Text>
+                  </View>
+                  {!isPro && (
+                    <View style={styles.progressBarContainer}>
+                      <View
+                        style={[
+                          styles.progressBar,
+                          {
+                            width: `${Math.min(
+                              100,
+                              (userState.pdfsThisMonth / FREE_LIMITS.pdfsPerMonth) * 100
+                            )}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  )}
+                </View>
+
+                {/* Spreadsheet Exports */}
+                <View style={[styles.usageRow, styles.usageRowLast]}>
+                  <View style={styles.usageHeader}>
+                    <Text style={styles.usageLabel}>
+                      Spreadsheet Exports (This Month)
+                    </Text>
+                    <Text style={styles.usageValue}>
+                      {isPro
+                        ? `${userState.spreadsheetsThisMonth} (Unlimited)`
+                        : `${userState.spreadsheetsThisMonth} / ${FREE_LIMITS.spreadsheetsPerMonth}`}
+                    </Text>
+                  </View>
+                  {!isPro && (
+                    <View style={styles.progressBarContainer}>
+                      <View
+                        style={[
+                          styles.progressBar,
+                          {
+                            width: `${Math.min(
+                              100,
+                              (userState.spreadsheetsThisMonth /
+                                FREE_LIMITS.spreadsheetsPerMonth) *
+                                100
+                            )}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Appearance Section */}
           <View style={styles.section}>
@@ -626,6 +722,41 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 14,
       fontWeight: "600",
       color: theme.colors.text,
+    },
+    usageRow: {
+      paddingVertical: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    usageRowLast: {
+      borderBottomWidth: 0,
+    },
+    usageHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(1),
+    },
+    usageLabel: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    usageValue: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    progressBarContainer: {
+      height: 6,
+      backgroundColor: theme.colors.bg,
+      borderRadius: 3,
+      overflow: "hidden",
+    },
+    progressBar: {
+      height: "100%",
+      backgroundColor: theme.colors.accent,
+      borderRadius: 3,
     },
   });
 }
