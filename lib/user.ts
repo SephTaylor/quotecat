@@ -10,6 +10,7 @@ export type UserState = {
   email?: string;
   quotesUsed: number;
   pdfsThisMonth: number;
+  spreadsheetsThisMonth: number;
   lastPdfResetDate: string; // ISO date for monthly reset
   // Pro user fields
   proActivatedAt?: string;
@@ -19,6 +20,7 @@ export type UserState = {
 export const FREE_LIMITS = {
   quotes: 10,
   pdfsPerMonth: 3,
+  spreadsheetsPerMonth: 1,
 } as const;
 
 const USER_STATE_KEY = "@quotecat/user_state";
@@ -60,12 +62,13 @@ function getDefaultUserState(): UserState {
     tier: "free",
     quotesUsed: 0,
     pdfsThisMonth: 0,
+    spreadsheetsThisMonth: 0,
     lastPdfResetDate: new Date().toISOString(),
   };
 }
 
 /**
- * Reset PDF count if we're in a new month
+ * Reset PDF and spreadsheet counts if we're in a new month
  */
 function resetPdfCountIfNeeded(state: UserState): UserState {
   const lastReset = new Date(state.lastPdfResetDate);
@@ -79,6 +82,7 @@ function resetPdfCountIfNeeded(state: UserState): UserState {
     return {
       ...state,
       pdfsThisMonth: 0,
+      spreadsheetsThisMonth: 0,
       lastPdfResetDate: now.toISOString(),
     };
   }
@@ -116,6 +120,17 @@ export async function incrementPdfCount(): Promise<void> {
   await saveUserState({
     ...state,
     pdfsThisMonth: state.pdfsThisMonth + 1,
+  });
+}
+
+/**
+ * Increment spreadsheet export counter
+ */
+export async function incrementSpreadsheetCount(): Promise<void> {
+  const state = await getUserState();
+  await saveUserState({
+    ...state,
+    spreadsheetsThisMonth: state.spreadsheetsThisMonth + 1,
   });
 }
 

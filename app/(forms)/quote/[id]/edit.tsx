@@ -8,7 +8,7 @@ import {
 } from "@/lib/quotes";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { parseMoney } from "@/modules/settings/money";
-import type { QuoteStatus } from "@/lib/types";
+import type { QuoteStatus, QuoteItem } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
 import {
   Stack,
@@ -28,11 +28,46 @@ export default function EditQuote() {
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
   const [labor, setLabor] = useState<string>(""); // empty string to show placeholder
+  const [materialEstimate, setMaterialEstimate] = useState<string>(""); // Quick estimate for materials
   const [status, setStatus] = useState<QuoteStatus>("draft");
   const [pinned, setPinned] = useState(false);
   const [isNewQuote, setIsNewQuote] = useState(false);
+  const [items, setItems] = useState<QuoteItem[]>([]);
+  const [overhead, setOverhead] = useState<string>(""); // Flat overhead cost
+  const [markupPercent, setMarkupPercent] = useState<string>(""); // Markup percentage
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  // Calculate quote totals
+  const calculations = React.useMemo(() => {
+    const materialsFromItems = items.reduce(
+      (sum, item) => sum + item.unitPrice * item.qty,
+      0
+    );
+    const materialsEstimateValue = parseMoney(materialEstimate);
+    const laborValue = parseMoney(labor);
+    const overheadValue = parseMoney(overhead);
+    const markupPercentValue = parseFloat(markupPercent) || 0;
+
+    // Subtotal before markup
+    const subtotal = materialsFromItems + materialsEstimateValue + laborValue + overheadValue;
+
+    // Calculate markup
+    const markupAmount = (subtotal * markupPercentValue) / 100;
+
+    // Final total
+    const total = subtotal + markupAmount;
+
+    return {
+      materialsFromItems,
+      materialsEstimateValue,
+      laborValue,
+      overheadValue,
+      subtotal,
+      markupAmount,
+      total,
+    };
+  }, [items, materialEstimate, labor, overhead, markupPercent]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -43,8 +78,13 @@ export default function EditQuote() {
       setClientName(q.clientName || "");
       // Only set labor if it's non-zero, otherwise leave empty to show placeholder
       setLabor(q.labor && q.labor !== 0 ? q.labor.toFixed(2) : "");
+      // Load material estimate if present
+      setMaterialEstimate(q.materialEstimate && q.materialEstimate !== 0 ? q.materialEstimate.toFixed(2) : "");
       setStatus(q.status || "draft");
       setPinned(q.pinned || false);
+      setItems(q.items ?? []);
+      setOverhead(q.overhead && q.overhead !== 0 ? q.overhead.toFixed(2) : "");
+      setMarkupPercent(q.markupPercent && q.markupPercent !== 0 ? q.markupPercent.toString() : "");
       // Check if this is a newly created empty quote
       setIsNewQuote(!q.name && !q.clientName && q.labor === 0);
     }
@@ -78,6 +118,9 @@ export default function EditQuote() {
       name: name.trim(),
       clientName: clientName.trim(),
       labor: parseMoney(labor),
+      materialEstimate: parseMoney(materialEstimate),
+      overhead: parseMoney(overhead),
+      markupPercent: parseFloat(markupPercent) || 0,
       status,
       pinned,
     });
@@ -95,6 +138,23 @@ export default function EditQuote() {
       }
     }
     router.back();
+  };
+
+  const handleUpdateItemQty = async (itemId: string, delta: number) => {
+    if (!id) return;
+
+    const updatedItems = items.map((item) => {
+      if (item.id === itemId) {
+        const newQty = Math.max(0, item.qty + delta);
+        return { ...item, qty: newQty };
+      }
+      return item;
+    }).filter((item) => item.qty > 0); // Remove items with 0 quantity
+
+    setItems(updatedItems);
+
+    // Save to storage
+    await updateQuote(id, { items: updatedItems });
   };
 
   const formatLaborInput = (text: string) => {
@@ -115,6 +175,24 @@ export default function EditQuote() {
     return cleaned;
   };
 
+  const formatMoneyOnBlur = (value: string): string => {
+    if (!value || value === "") return "";
+
+    // If there's no decimal point, add .00
+    if (!value.includes(".")) {
+      return value + ".00";
+    }
+
+    // If there's a decimal but only one digit after it, add a zero
+    const parts = value.split(".");
+    if (parts[1].length === 1) {
+      return value + "0";
+    }
+
+    // Otherwise return as is (already has 2 decimal places)
+    return value;
+  };
+
   // Handle cleanup when navigating away
   useEffect(() => {
     return () => {
@@ -127,6 +205,7 @@ export default function EditQuote() {
         }
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps - only run on unmount
 
   return (
@@ -162,14 +241,36 @@ export default function EditQuote() {
           paddingBottom: theme.spacing(2),
         }}
         bottomBar={
-          <Pressable style={styles.doneBtn} onPress={onDone}>
-            <Text style={styles.doneText}>Done</Text>
-          </Pressable>
+          <View style={styles.bottomBar}>
+            <Pressable style={styles.doneBtn} onPress={onDone}>
+              <Text style={styles.doneText}>Done</Text>
+            </Pressable>
+            <Pressable
+              style={styles.reviewBtn}
+              onPress={async () => {
+                if (!id) return;
+                await updateQuote(id, {
+                  name: name.trim() || "Untitled",
+                  clientName: clientName.trim(),
+                  labor: parseMoney(labor),
+                  materialEstimate: parseMoney(materialEstimate),
+                  overhead: parseMoney(overhead),
+                  markupPercent: parseFloat(markupPercent) || 0,
+                  status,
+                  pinned,
+                  items,
+                });
+                router.push(`/quote/${id}/review`);
+              }}
+            >
+              <Text style={styles.reviewText}>Review & Export</Text>
+            </Pressable>
+          </View>
         }
       >
         <Text style={styles.label}>Project name *</Text>
         <FormInput
-          placeholder="e.g., Interior wall demo"
+          placeholder="The job that pays the bills..."
           value={name}
           onChangeText={(text) => {
             setName(text);
@@ -181,7 +282,7 @@ export default function EditQuote() {
 
         <Text style={styles.label}>Client name *</Text>
         <FormInput
-          placeholder="e.g., Acme LLC"
+          placeholder="Who's the lucky customer?"
           value={clientName}
           onChangeText={(text) => {
             setClientName(text);
@@ -197,6 +298,24 @@ export default function EditQuote() {
           placeholder="0.00"
           value={labor}
           onChangeText={(text) => setLabor(formatLaborInput(text))}
+          onBlur={() => setLabor(formatMoneyOnBlur(labor))}
+          keyboardType="decimal-pad"
+        />
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>
+          Materials (Quick Estimate)
+          <Text style={styles.labelOptional}> - Optional</Text>
+        </Text>
+        <Text style={styles.helperText}>
+          For a ballpark quote without detailed line items
+        </Text>
+        <FormInput
+          placeholder="0.00"
+          value={materialEstimate}
+          onChangeText={(text) => setMaterialEstimate(formatLaborInput(text))}
+          onBlur={() => setMaterialEstimate(formatMoneyOnBlur(materialEstimate))}
           keyboardType="decimal-pad"
         />
 
@@ -241,14 +360,70 @@ export default function EditQuote() {
         <View style={{ height: theme.spacing(3) }} />
 
         <Text style={styles.h2}>Items</Text>
-        <Text style={styles.helper}>
-          Use the Materials picker to add seed-only items. Categories are
-          collapsed by default.
-        </Text>
 
         <View style={{ height: theme.spacing(2) }} />
+
+        {items.length > 0 && (
+          <>
+            <View style={styles.itemsList}>
+              {items.map((item, index) => (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.itemRow,
+                    index === items.length - 1 && { borderBottomWidth: 0 },
+                  ]}
+                >
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                    <Text style={styles.itemPrice}>
+                      ${item.unitPrice.toFixed(2)} each
+                    </Text>
+                  </View>
+
+                  <View style={styles.itemControls}>
+                    <View style={styles.stepper}>
+                      <Pressable
+                        style={styles.stepBtn}
+                        onPress={() => handleUpdateItemQty(item.id, -1)}
+                      >
+                        <Text style={styles.stepText}>−</Text>
+                      </Pressable>
+                      <Text style={styles.qtyText}>{item.qty}</Text>
+                      <Pressable
+                        style={styles.stepBtn}
+                        onPress={() => handleUpdateItemQty(item.id, 1)}
+                      >
+                        <Text style={styles.stepText}>+</Text>
+                      </Pressable>
+                    </View>
+                    <Text style={styles.itemTotal}>
+                      ${(item.unitPrice * item.qty).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+            <View style={{ height: theme.spacing(2) }} />
+          </>
+        )}
+
         <Pressable
-          onPress={() => id && router.push(`/quote/${id}/materials`)}
+          onPress={async () => {
+            if (!id) return;
+            // Save current state before navigating (without validation)
+            await updateQuote(id, {
+              name: name.trim() || "Untitled",
+              clientName: clientName.trim(),
+              labor: parseMoney(labor),
+              materialEstimate: parseMoney(materialEstimate),
+              overhead: parseMoney(overhead),
+              markupPercent: parseFloat(markupPercent) || 0,
+              status,
+              pinned,
+            });
+            router.push(`/quote/${id}/materials`);
+          }}
           style={{
             borderWidth: 1,
             borderColor: theme.colors.border,
@@ -263,6 +438,109 @@ export default function EditQuote() {
             Add materials
           </Text>
         </Pressable>
+
+        <View style={{ height: theme.spacing(3) }} />
+
+        <Text style={styles.h2}>Overhead & Markup</Text>
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Overhead / Additional Costs</Text>
+        <FormInput
+          placeholder="0.00"
+          value={overhead}
+          onChangeText={(text) => setOverhead(formatLaborInput(text))}
+          onBlur={() => setOverhead(formatMoneyOnBlur(overhead))}
+          keyboardType="decimal-pad"
+        />
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Markup Percentage</Text>
+        <FormInput
+          placeholder="0"
+          value={markupPercent}
+          onChangeText={(text) => {
+            // Only allow numbers and one decimal point
+            const cleaned = text.replace(/[^0-9.]/g, "");
+            const parts = cleaned.split(".");
+            if (parts.length > 2) {
+              setMarkupPercent(parts[0] + "." + parts.slice(1).join(""));
+            } else {
+              setMarkupPercent(cleaned);
+            }
+          }}
+          keyboardType="decimal-pad"
+        />
+
+        <View style={{ height: theme.spacing(3) }} />
+
+        <View style={styles.totalsCard}>
+          <Text style={styles.totalsTitle}>Quote Total</Text>
+
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabel}>Materials (Items)</Text>
+            <Text style={styles.totalsValue}>
+              ${calculations.materialsFromItems.toFixed(2)}
+            </Text>
+          </View>
+
+          {calculations.materialsEstimateValue > 0 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Materials (Estimate)</Text>
+              <Text style={styles.totalsValue}>
+                ${calculations.materialsEstimateValue.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
+          {calculations.laborValue > 0 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Labor</Text>
+              <Text style={styles.totalsValue}>
+                ${calculations.laborValue.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
+          {calculations.overheadValue > 0 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Overhead</Text>
+              <Text style={styles.totalsValue}>
+                ${calculations.overheadValue.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.totalsDivider} />
+
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabelBold}>Subtotal</Text>
+            <Text style={styles.totalsValueBold}>
+              ${calculations.subtotal.toFixed(2)}
+            </Text>
+          </View>
+
+          {calculations.markupAmount > 0 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>
+                Markup ({markupPercent}%)
+              </Text>
+              <Text style={styles.totalsValue}>
+                ${calculations.markupAmount.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.totalsDivider} />
+
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsFinalLabel}>Total</Text>
+            <Text style={styles.totalsFinalValue}>
+              ${calculations.total.toFixed(2)}
+            </Text>
+          </View>
+        </View>
       </FormScreen>
     </>
   );
@@ -270,7 +548,18 @@ export default function EditQuote() {
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
-    label: { fontSize: 12, color: theme.colors.muted, marginBottom: 6 },
+    label: { fontSize: 12, color: theme.colors.text, marginBottom: 6, fontWeight: "600" },
+    labelOptional: {
+      fontSize: 11,
+      color: theme.colors.muted,
+      fontStyle: "italic"
+    },
+    helperText: {
+      fontSize: 11,
+      color: theme.colors.muted,
+      marginBottom: 6,
+      fontStyle: "italic"
+    },
     h2: {
       fontSize: 16,
       fontWeight: "700",
@@ -321,7 +610,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "600",
       color: theme.colors.text,
     },
+    bottomBar: {
+      flexDirection: "row",
+      gap: theme.spacing(2),
+    },
     doneBtn: {
+      flex: 1,
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.xl,
+      alignItems: "center",
+      justifyContent: "center",
+      height: 48,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    doneText: { fontSize: 16, fontWeight: "700", color: theme.colors.text },
+    reviewBtn: {
+      flex: 1,
       backgroundColor: theme.colors.accent,
       borderRadius: theme.radius.xl,
       alignItems: "center",
@@ -330,6 +635,124 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
-    doneText: { fontSize: 16, fontWeight: "800", color: "#000" },
+    reviewText: { fontSize: 16, fontWeight: "800", color: "#000" },
+    itemsList: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      overflow: "hidden",
+    },
+    itemRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    itemInfo: {
+      flex: 1,
+      marginRight: theme.spacing(2),
+    },
+    itemName: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    itemPrice: {
+      fontSize: 12,
+      color: theme.colors.muted,
+    },
+    itemControls: {
+      alignItems: "flex-end",
+      gap: theme.spacing(1),
+    },
+    stepper: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    stepBtn: {
+      height: 28,
+      width: 28,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.card,
+    },
+    stepText: {
+      fontSize: 16,
+      fontWeight: "800",
+      color: theme.colors.text,
+    },
+    qtyText: {
+      minWidth: 24,
+      textAlign: "center",
+      color: theme.colors.text,
+      fontWeight: "700",
+      fontSize: 14,
+    },
+    itemTotal: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    totalsCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(2),
+    },
+    totalsTitle: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(2),
+    },
+    totalsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(1),
+    },
+    totalsLabel: {
+      fontSize: 14,
+      color: theme.colors.muted,
+    },
+    totalsValue: {
+      fontSize: 14,
+      color: theme.colors.text,
+      fontWeight: "600",
+    },
+    totalsLabelBold: {
+      fontSize: 14,
+      color: theme.colors.text,
+      fontWeight: "700",
+    },
+    totalsValueBold: {
+      fontSize: 14,
+      color: theme.colors.text,
+      fontWeight: "700",
+    },
+    totalsDivider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: theme.spacing(1.5),
+    },
+    totalsFinalLabel: {
+      fontSize: 20,
+      fontWeight: "800",
+      color: theme.colors.text,
+    },
+    totalsFinalValue: {
+      fontSize: 24,
+      fontWeight: "800",
+      color: theme.colors.accent,
+    },
   });
 }

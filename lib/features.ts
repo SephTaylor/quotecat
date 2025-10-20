@@ -51,6 +51,31 @@ export function canExportPDF(user: UserState): {
 }
 
 /**
+ * Check if user can export a spreadsheet
+ */
+export function canExportSpreadsheet(user: UserState): {
+  allowed: boolean;
+  reason?: string;
+  remaining?: number;
+} {
+  if (user.tier === "pro") {
+    return { allowed: true };
+  }
+
+  const remaining = FREE_LIMITS.spreadsheetsPerMonth - user.spreadsheetsThisMonth;
+
+  if (remaining <= 0) {
+    return {
+      allowed: false,
+      reason: `You've used your ${FREE_LIMITS.spreadsheetsPerMonth} free spreadsheet export this month. Upgrade to Pro for unlimited exports.`,
+      remaining: 0,
+    };
+  }
+
+  return { allowed: true, remaining };
+}
+
+/**
  * Check if user can access assemblies library
  */
 export function canAccessAssemblies(user: UserState): boolean {
@@ -76,7 +101,7 @@ export function canAccessValueTracking(user: UserState): boolean {
  */
 export function getQuotaRemaining(
   user: UserState,
-  resource: "quotes" | "pdfs",
+  resource: "quotes" | "pdfs" | "spreadsheets",
 ): number {
   if (user.tier === "pro") {
     return Infinity;
@@ -88,6 +113,10 @@ export function getQuotaRemaining(
 
   if (resource === "pdfs") {
     return Math.max(0, FREE_LIMITS.pdfsPerMonth - user.pdfsThisMonth);
+  }
+
+  if (resource === "spreadsheets") {
+    return Math.max(0, FREE_LIMITS.spreadsheetsPerMonth - user.spreadsheetsThisMonth);
   }
 
   return 0;

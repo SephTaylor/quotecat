@@ -2,7 +2,7 @@
 // Settings and profile management
 import { useTheme } from "@/contexts/ThemeContext";
 import { canAccessAssemblies } from "@/lib/features";
-import { getUserState } from "@/lib/user";
+import { getUserState, activateProTier, deactivateProTier } from "@/lib/user";
 import {
   loadPreferences,
   updateDashboardPreferences,
@@ -377,6 +377,37 @@ export default function Settings() {
                   {!isPro && <Text style={styles.proLock}>🔒</Text>}
                 </View>
                 <Text style={styles.settingButtonIcon}>→</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* ⚠️ DEBUG SECTION - REMOVE BEFORE PRODUCTION ⚠️ */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: '#FF3B30' }]}>
+              ⚠️ DEBUG (REMOVE BEFORE PRODUCTION)
+            </Text>
+
+            <View style={[styles.card, { borderColor: '#FF3B30', borderWidth: 2 }]}>
+              <Pressable
+                style={[styles.settingButton, styles.settingButtonLast]}
+                onPress={async () => {
+                  const user = await getUserState();
+                  if (user.tier === "free") {
+                    await activateProTier("debug@test.com");
+                    Alert.alert("Debug", "Switched to PRO tier");
+                  } else {
+                    await deactivateProTier();
+                    Alert.alert("Debug", "Switched to FREE tier");
+                  }
+                  await load(); // Reload to update UI
+                }}
+              >
+                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
+                  Toggle Free/Pro Tier
+                </Text>
+                <Text style={styles.settingValue}>
+                  {isPro ? "PRO → FREE" : "FREE → PRO"}
+                </Text>
               </Pressable>
             </View>
           </View>

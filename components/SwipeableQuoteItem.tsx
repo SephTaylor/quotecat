@@ -4,6 +4,7 @@ import { Animated, StyleSheet, Text, View, Pressable } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import type { Quote } from "@/lib/types";
+import { QuoteStatusMeta } from "@/lib/types";
 import { calculateTotal } from "@/lib/validation";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -106,10 +107,22 @@ export const SwipeableQuoteItem = React.memo(
               </Pressable>
             )}
           </View>
-          <Text style={styles.sub}>
-            {item.clientName ? `Client: ${item.clientName}  •  ` : ""}
-            Labor: {item.labor.toFixed(2)}
-          </Text>
+          <View style={styles.metaRow}>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: QuoteStatusMeta[item.status || "draft"].color },
+              ]}
+            >
+              <Text style={styles.statusText}>
+                {QuoteStatusMeta[item.status || "draft"].label}
+              </Text>
+            </View>
+            <Text style={styles.sub}>
+              {item.clientName ? `Client: ${item.clientName}  •  ` : ""}
+              Labor: {item.labor.toFixed(2)}
+            </Text>
+          </View>
           <Text style={styles.total}>
             Total: {total.toFixed(2)} {item.currency}
           </Text>
@@ -151,10 +164,29 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 20,
       color: theme.colors.accent,
     },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 8,
+      gap: 8,
+    },
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      alignSelf: "flex-start",
+    },
+    statusText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#FFFFFF",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
     sub: {
       fontSize: 12,
       color: theme.colors.muted,
-      marginBottom: 8,
+      flex: 1,
     },
     total: {
       fontSize: 14,
