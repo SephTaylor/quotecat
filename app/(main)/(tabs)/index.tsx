@@ -150,24 +150,28 @@ export default function Dashboard() {
                 value={stats.total}
                 color={theme.colors.text}
                 theme={theme}
+                onPress={() => router.push("./quotes?filter=all" as any)}
               />
               <StatCard
                 label="Active"
                 value={stats.active}
                 color={QuoteStatusMeta.active.color}
                 theme={theme}
+                onPress={() => router.push("./quotes?filter=active" as any)}
               />
               <StatCard
                 label="Drafts"
                 value={stats.draft}
                 color={QuoteStatusMeta.draft.color}
                 theme={theme}
+                onPress={() => router.push("./quotes?filter=draft" as any)}
               />
               <StatCard
                 label="Sent"
                 value={stats.sent}
                 color={QuoteStatusMeta.sent.color}
                 theme={theme}
+                onPress={() => router.push("./quotes?filter=sent" as any)}
               />
             </View>
           )}
@@ -261,19 +265,21 @@ function StatCard({
   value,
   color,
   theme,
+  onPress,
 }: {
   label: string;
   value: number;
   color: string;
   theme: ReturnType<typeof useTheme>["theme"];
+  onPress?: () => void;
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <View style={styles.statCard}>
+    <Pressable style={styles.statCard} onPress={onPress}>
       <Text style={[styles.statValue, { color }]}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </Pressable>
   );
 }
 

@@ -8,7 +8,7 @@ import {
   updateQuote,
   type Quote,
 } from "@/lib/quotes";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import type { QuoteStatus } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
@@ -29,6 +29,7 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 export default function QuotesList() {
   const router = useRouter();
   const { theme } = useTheme();
+  const params = useLocalSearchParams();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
@@ -46,6 +47,24 @@ export default function QuotesList() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Apply filter from navigation parameter
+  useEffect(() => {
+    if (params.filter && typeof params.filter === "string") {
+      const filter = params.filter as QuoteStatus | "all";
+      if (
+        filter === "all" ||
+        filter === "draft" ||
+        filter === "active" ||
+        filter === "sent" ||
+        filter === "approved" ||
+        filter === "completed" ||
+        filter === "archived"
+      ) {
+        setSelectedStatus(filter);
+      }
+    }
+  }, [params.filter]);
 
   useFocusEffect(
     useCallback(() => {
