@@ -14,6 +14,7 @@ import React, { useCallback, useState } from "react";
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { canAccessAssemblies } from "@/lib/features";
+import { getUserState } from "@/lib/user";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -34,12 +35,16 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [data, prefs] = await Promise.all([listQuotes(), loadPreferences()]);
+    const [data, prefs, user] = await Promise.all([
+      listQuotes(),
+      loadPreferences(),
+      getUserState(),
+    ]);
     setQuotes(data);
     setPreferences(prefs.dashboard);
 
     // Check Pro status
-    const proStatus = await canAccessAssemblies();
+    const proStatus = canAccessAssemblies(user);
     setIsPro(proStatus);
 
     setLoading(false);
