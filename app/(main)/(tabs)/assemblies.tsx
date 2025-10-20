@@ -56,7 +56,19 @@ export default function AssembliesScreen() {
   if (loading) {
     return (
       <>
-        <Stack.Screen options={{ title: "Assemblies Library" }} />
+        <Stack.Screen
+          options={{
+            title: "Assemblies Library",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: theme.colors.bg,
+            },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: {
+              color: theme.colors.text,
+            },
+          }}
+        />
         <Screen scroll={false} contentStyle={styles.center}>
           <ActivityIndicator size="large" />
         </Screen>

@@ -12,7 +12,8 @@ function RootNavigator() {
       <StatusBar style={mode === "dark" ? "light" : "dark"} />
       <Stack
         screenOptions={{
-          headerShown: false, // we use our own in-screen headers
+          headerShown: false, // Hidden by default, individual screens can override
+          presentation: "card",
         }}
       />
     </>

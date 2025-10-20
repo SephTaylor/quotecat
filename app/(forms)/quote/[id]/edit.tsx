@@ -42,7 +42,7 @@ export default function EditQuote() {
       setName(q.name || "");
       setClientName(q.clientName || "");
       // Only set labor if it's non-zero, otherwise leave empty to show placeholder
-      setLabor(q.labor && q.labor !== 0 ? String(q.labor) : "");
+      setLabor(q.labor && q.labor !== 0 ? q.labor.toFixed(2) : "");
       setStatus(q.status || "draft");
       setPinned(q.pinned || false);
       // Check if this is a newly created empty quote
@@ -115,18 +115,43 @@ export default function EditQuote() {
     return cleaned;
   };
 
+  // Handle cleanup when navigating away
+  useEffect(() => {
+    return () => {
+      // Only cleanup on unmount, not on every re-render
+      if (isNewQuote && !name.trim() && !clientName.trim() && !labor.trim()) {
+        if (id) {
+          deleteQuote(id).catch(() => {
+            // Silently handle error on cleanup
+          });
+        }
+      }
+    };
+  }, []); // Empty deps - only run on unmount
+
   return (
     <>
       <Stack.Screen
         options={{
           title: "Edit Quote",
+          headerShown: true,
           headerLeft: () => (
-            <Pressable onPress={handleGoBack} style={{ padding: 8 }}>
-              <Text style={{ fontSize: 16, color: theme.colors.text }}>
-                Cancel
+            <Pressable
+              onPress={handleGoBack}
+              style={{ paddingLeft: 16, paddingVertical: 8 }}
+            >
+              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
+                ‹ Back
               </Text>
             </Pressable>
           ),
+          headerStyle: {
+            backgroundColor: theme.colors.bg,
+          },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: {
+            color: theme.colors.text,
+          },
         }}
       />
       <FormScreen

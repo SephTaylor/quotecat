@@ -23,6 +23,7 @@ import {
 } from "@/modules/quotes";
 import { mergeById } from "@/modules/quotes/merge";
 import { useProducts } from "@/modules/catalog";
+import { useTheme } from "@/contexts/ThemeContext";
 
 /**
  * Convert PricedLine array to QuoteItem array
@@ -40,6 +41,7 @@ function pricedLinesToQuoteItems(lines: PricedLine[]): any[] {
 export default function AssemblyCalculatorScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const assemblyId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const { theme } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [assembly, setAssembly] = useState<Assembly | null>(null);
@@ -170,7 +172,19 @@ export default function AssemblyCalculatorScreen() {
   if (loading || productsLoading) {
     return (
       <>
-        <Stack.Screen options={{ title: "Assembly Calculator" }} />
+        <Stack.Screen
+          options={{
+            title: "Assembly Calculator",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: theme.colors.bg,
+            },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: {
+              color: theme.colors.text,
+            },
+          }}
+        />
         <View style={styles.center}>
           <ActivityIndicator />
         </View>
@@ -181,7 +195,19 @@ export default function AssemblyCalculatorScreen() {
   if (!assemblyId) {
     return (
       <>
-        <Stack.Screen options={{ title: "Assembly Calculator" }} />
+        <Stack.Screen
+          options={{
+            title: "Assembly Calculator",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: theme.colors.bg,
+            },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: {
+              color: theme.colors.text,
+            },
+          }}
+        />
         <FormScreenComponent
           scroll
           contentStyle={styles.body}
@@ -199,7 +225,19 @@ export default function AssemblyCalculatorScreen() {
   if (!assembly) {
     return (
       <>
-        <Stack.Screen options={{ title: "Assembly Calculator" }} />
+        <Stack.Screen
+          options={{
+            title: "Assembly Calculator",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: theme.colors.bg,
+            },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: {
+              color: theme.colors.text,
+            },
+          }}
+        />
         <FormScreenComponent
           scroll
           contentStyle={styles.body}

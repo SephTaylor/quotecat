@@ -133,22 +133,14 @@ export default function QuotesList() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: "Quotes", headerBackVisible: false }} />
+      <Stack.Screen options={{ title: "Quotes" }} />
       <View style={styles.container}>
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search quotes by name or client..."
-            placeholderTextColor={theme.colors.muted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            clearButtonMode="while-editing"
-          />
-        </View>
+        {/* Status Filters */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterContainer}
+          style={styles.filterScrollView}
         >
           <FilterChip
             label="All"
@@ -199,6 +191,20 @@ export default function QuotesList() {
             theme={theme}
           />
         </ScrollView>
+
+        {/* Search */}
+        <View style={styles.topBar}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search quotes..."
+            placeholderTextColor={theme.colors.muted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            clearButtonMode="while-editing"
+          />
+        </View>
+
+        {/* Quote List */}
         <FlatList
           data={filteredQuotes}
           keyExtractor={(q) => q.id}
@@ -254,7 +260,6 @@ function FilterChip({
       style={[
         styles.filterChip,
         active && styles.filterChipActive,
-        active && color && { backgroundColor: color },
       ]}
       onPress={onPress}
     >
@@ -270,7 +275,7 @@ function FilterChip({
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.bg },
-    searchContainer: {
+    topBar: {
       paddingHorizontal: theme.spacing(2),
       paddingVertical: theme.spacing(1),
       backgroundColor: theme.colors.bg,
@@ -287,18 +292,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
+    filterScrollView: {
+      flexGrow: 0,
+      flexShrink: 0,
+    },
     filterContainer: {
       paddingHorizontal: theme.spacing(2),
-      paddingVertical: theme.spacing(1),
+      paddingVertical: theme.spacing(1.25),
+      gap: theme.spacing(1),
     },
     filterChip: {
       paddingHorizontal: theme.spacing(2),
-      paddingVertical: theme.spacing(1),
+      paddingVertical: theme.spacing(0.75),
       borderRadius: 999,
       backgroundColor: theme.colors.card,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      marginRight: theme.spacing(1),
       alignItems: "center",
       justifyContent: "center",
     },
@@ -307,14 +316,17 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderColor: theme.colors.accent,
     },
     filterChipText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: "600",
       color: theme.colors.muted,
     },
     filterChipTextActive: {
       color: "#000",
     },
-    listContent: { padding: theme.spacing(2) },
+    listContent: {
+      padding: theme.spacing(2),
+      paddingBottom: theme.spacing(10),
+    },
     empty: {
       textAlign: "center",
       color: theme.colors.muted,
@@ -322,8 +334,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     fab: {
       position: "absolute",
-      right: theme.spacing(2),
-      bottom: theme.spacing(2),
+      left: "50%",
+      marginLeft: -28, // Half of width to center
+      bottom: 20, // Much closer to tab bar
       height: 56,
       width: 56,
       borderRadius: 28,
@@ -332,7 +345,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       justifyContent: "center",
       borderWidth: 1,
       borderColor: theme.colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
-    fabText: { fontSize: 28, lineHeight: 28, color: "#000", fontWeight: "800" },
+    fabText: {
+      fontSize: 32,
+      lineHeight: 32,
+      color: "#000",
+      fontWeight: "800",
+      textAlign: "center",
+      includeFontPadding: false,
+      marginTop: 4, // Nudge down for better visual centering
+      marginLeft: 1, // Nudge right slightly
+    },
   });
 }

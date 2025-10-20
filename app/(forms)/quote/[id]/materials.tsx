@@ -12,13 +12,15 @@ import {
 } from "@/modules/materials";
 import { mergeById } from "@/modules/quotes/merge";
 import type { Product } from "@/modules/catalog/seed";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function QuoteMaterials() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
+  const { theme } = useTheme();
 
   const { products, loading } = useProducts();
-  const { selection, inc, dec, units, subtotal } = useSelection();
+  const { selection, inc, dec, clear, units, subtotal } = useSelection();
 
   // Group products by category for MaterialsPicker
   const productsByCategory = useMemo(() => {
@@ -36,24 +38,51 @@ export default function QuoteMaterials() {
 
   const saveSelected = useCallback(
     async (goBack: boolean) => {
-      if (!id) return;
+      if (!id) {
+        console.log("No quote ID");
+        return;
+      }
 
       const q = await getQuoteById(id);
-      if (!q) return;
+      if (!q) {
+        console.log("Quote not found");
+        return;
+      }
 
       const adds = transformSelectionToItems(selection);
+      console.log("Adding items:", adds);
       const merged = mergeById(q.items ?? [], adds);
 
       await saveQuote({ ...q, id, items: merged });
-      if (goBack) router.back();
+      console.log("Items saved successfully");
+
+      if (goBack) {
+        router.back();
+      } else {
+        // Clear selection after adding without going back
+        clear();
+        console.log("Items added and selection cleared, staying on screen");
+      }
     },
-    [id, selection, router],
+    [id, selection, router, clear],
   );
 
   if (loading) {
     return (
       <>
-        <Stack.Screen options={{ title: "Add Materials" }} />
+        <Stack.Screen
+          options={{
+            title: "Add Materials",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: theme.colors.bg,
+            },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: {
+              color: theme.colors.text,
+            },
+          }}
+        />
         <Screen scroll>
           <MaterialsPicker
             categories={CATEGORIES}
@@ -69,7 +98,19 @@ export default function QuoteMaterials() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Add Materials" }} />
+      <Stack.Screen
+        options={{
+          title: "Add Materials",
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.bg,
+          },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: {
+            color: theme.colors.text,
+          },
+        }}
+      />
 
       <Screen scroll>
         <MaterialsPicker

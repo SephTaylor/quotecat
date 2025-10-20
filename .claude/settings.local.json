@@ -13,7 +13,14 @@
       "Bash(git stash:*)",
       "Bash(npx prettier:*)",
       "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" pr merge 8 --squash --delete-branch)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(dir /s /b app)",
+      "Bash(findstr /i \"quotes\\|settings\")",
+      "Bash(findstr /v node_modules)",
+      "Bash(tree /F /A)",
+      "Bash(findstr /i \"settings\\|main\\|(tabs)\")",
+      "Bash(cat app.json)",
+      "Bash(git add -A)"
     ],
     "deny": [],
     "ask": []

@@ -149,6 +149,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     pinIcon: {
       fontSize: 20,
+      color: theme.colors.accent,
     },
     sub: {
       fontSize: 12,

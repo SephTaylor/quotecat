@@ -131,6 +131,14 @@ export default function Settings() {
         options={{
           title: "Settings",
           headerShown: true,
+          headerBackTitle: "Back",
+          headerStyle: {
+            backgroundColor: theme.colors.bg,
+          },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: {
+            color: theme.colors.text,
+          },
         }}
       />
       <View style={styles.container}>

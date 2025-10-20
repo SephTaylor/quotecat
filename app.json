@@ -7,9 +7,19 @@
     "icon": "./assets/images/icon.png",
     "scheme": "quotecat",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/qc-splash-tsnt-2048-text.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "splash": {
+        "image": "./assets/images/qc-splash-tsnt-2048-text.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "android": {
       "adaptiveIcon": {

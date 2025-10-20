@@ -137,9 +137,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       justifyContent: "space-between",
     },
     itemRowActive: {
-      backgroundColor: "#fffbe6",
+      backgroundColor: theme.colors.bg,
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: theme.colors.accent,
     },
     itemMeta: { flexShrink: 1, paddingRight: theme.spacing(1) },
     itemName: { color: theme.colors.text, fontWeight: "600" },

@@ -15,6 +15,7 @@ import FormScreenComponent from "@/modules/core/ui/FormScreen";
 import { useExportQuote } from "@/modules/quotes";
 import { QuoteItemRow } from "@/modules/quotes/ui";
 import { formatMoney } from "@/modules/settings/money";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type QuoteItem = {
   id?: string;
@@ -34,6 +35,7 @@ type StoredQuote = {
 export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const qid = Array.isArray(params.id) ? params.id[0] : (params.id ?? null);
+  const { theme } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<StoredQuote | null>(null);
@@ -79,7 +81,19 @@ export default function QuoteReviewScreen() {
   if (loading) {
     return (
       <>
-        <Stack.Screen options={{ title: "Review" }} />
+        <Stack.Screen
+          options={{
+            title: "Review",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: theme.colors.bg,
+            },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: {
+              color: theme.colors.text,
+            },
+          }}
+        />
         <View style={styles.center}>
           <ActivityIndicator />
         </View>
@@ -90,7 +104,19 @@ export default function QuoteReviewScreen() {
   if (!qid) {
     return (
       <>
-        <Stack.Screen options={{ title: "Review" }} />
+        <Stack.Screen
+          options={{
+            title: "Review",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: theme.colors.bg,
+            },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: {
+              color: theme.colors.text,
+            },
+          }}
+        />
         <FormScreenComponent
           scroll
           contentStyle={styles.body}
@@ -108,7 +134,19 @@ export default function QuoteReviewScreen() {
   if (!quote) {
     return (
       <>
-        <Stack.Screen options={{ title: "Review" }} />
+        <Stack.Screen
+          options={{
+            title: "Review",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: theme.colors.bg,
+            },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: {
+              color: theme.colors.text,
+            },
+          }}
+        />
         <FormScreenComponent
           scroll
           contentStyle={styles.body}

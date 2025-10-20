@@ -1,22 +1,28 @@
 // app/(forms)/_layout.tsx
-import { Screen } from "@/modules/core/ui";
-import { Slot } from "expo-router";
+import { Stack } from "expo-router";
 import React from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/contexts/ThemeContext";
 
 /**
  * Forms layout:
- * - Wraps every child route in our shared <Screen> shell
- * - Ensures consistent safe areas and keyboard handling for form flows
+ * - SafeAreaView respects device notches/status bar
+ * - Stack navigator allows headers to show
+ * - Individual screens configure their own headers
  */
 export default function FormsLayout() {
+  const { theme } = useTheme();
+
   return (
-    <Screen
-      // Forms typically manage their own ScrollView, so leave scroll off here
-      scroll={false}
-      // Keep padding zero; individual screens add their own content padding
-      contentStyle={{ paddingTop: 0, paddingBottom: 0, paddingHorizontal: 0 }}
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.colors.bg }}
+      edges={["top", "left", "right"]}
     >
-      <Slot />
-    </Screen>
+      <Stack
+        screenOptions={{
+          headerShown: false, // Hidden by default, screens can override
+        }}
+      />
+    </SafeAreaView>
   );
 }
