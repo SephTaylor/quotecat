@@ -53,7 +53,6 @@ export default function Dashboard() {
 
   // Calculate stats
   const stats = React.useMemo(() => {
-    const activeQuotes = quotes.filter((q) => q.status === "active");
     const draftQuotes = quotes.filter((q) => q.status === "draft");
     const sentQuotes = quotes.filter((q) => q.status === "sent");
     const approvedQuotes = quotes.filter((q) => q.status === "approved");
@@ -76,7 +75,6 @@ export default function Dashboard() {
 
     return {
       total: quotes.length,
-      active: activeQuotes.length,
       draft: draftQuotes.length,
       sent: sentQuotes.length,
       approved: approvedQuotes.length,
@@ -178,13 +176,6 @@ export default function Dashboard() {
                 color={QuoteStatusMeta.draft.color}
                 theme={theme}
                 onPress={() => router.push("./quotes?filter=draft" as any)}
-              />
-              <StatCard
-                label="Active"
-                value={stats.active}
-                color={QuoteStatusMeta.active.color}
-                theme={theme}
-                onPress={() => router.push("./quotes?filter=active" as any)}
               />
               <StatCard
                 label="Sent"

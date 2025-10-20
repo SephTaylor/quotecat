@@ -56,7 +56,6 @@ export default function QuotesList() {
       if (
         filter === "all" ||
         filter === "draft" ||
-        filter === "active" ||
         filter === "sent" ||
         filter === "approved" ||
         filter === "completed" ||
@@ -70,14 +69,14 @@ export default function QuotesList() {
         }, 100);
       }
     }
-  }, [params.filter]);
+  }, [params.filter, scrollToFilter]);
 
   // Scroll to the selected filter chip
   const scrollToFilter = useCallback((filter: QuoteStatus | "all") => {
     if (!filterScrollRef.current) return;
 
     // Calculate approximate position based on filter order
-    const filters = ["all", "draft", "active", "sent", "approved", "completed", "archived"];
+    const filters = ["all", "draft", "sent", "approved", "completed", "archived"];
     const index = filters.indexOf(filter);
 
     if (index === -1) return;
@@ -199,13 +198,6 @@ export default function QuotesList() {
             active={selectedStatus === "draft"}
             onPress={() => setSelectedStatus("draft")}
             color={QuoteStatusMeta.draft.color}
-            theme={theme}
-          />
-          <FilterChip
-            label="Active"
-            active={selectedStatus === "active"}
-            onPress={() => setSelectedStatus("active")}
-            color={QuoteStatusMeta.active.color}
             theme={theme}
           />
           <FilterChip

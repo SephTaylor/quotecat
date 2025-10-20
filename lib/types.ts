@@ -17,12 +17,11 @@ export type ID = string;
  * Quote status for workflow tracking
  */
 export type QuoteStatus =
-  | "draft" // Just created, not finished
-  | "active" // Being worked on
-  | "sent" // Shared with client
-  | "approved" // Client accepted
-  | "completed" // Job done
-  | "archived"; // Old/inactive
+  | "draft" // Building the quote
+  | "sent" // Sent to client, awaiting response
+  | "approved" // Client accepted, work authorized
+  | "completed" // Work finished, ready to invoice
+  | "archived"; // Closed/inactive
 
 /**
  * Status metadata for UI display
@@ -34,32 +33,27 @@ export const QuoteStatusMeta: Record<
   draft: {
     label: "Draft",
     color: "#8E8E93",
-    description: "Not yet finished",
-  },
-  active: {
-    label: "Active",
-    color: "#007AFF",
-    description: "Currently working on",
+    description: "Building the quote",
   },
   sent: {
     label: "Sent",
     color: "#FF9500",
-    description: "Shared with client",
+    description: "Sent to client, awaiting response",
   },
   approved: {
     label: "Approved",
     color: "#34C759",
-    description: "Client accepted",
+    description: "Client accepted, work authorized",
   },
   completed: {
     label: "Completed",
     color: "#5856D6",
-    description: "Job finished",
+    description: "Work finished, ready to invoice",
   },
   archived: {
     label: "Archived",
     color: "#C7C7CC",
-    description: "Old or inactive",
+    description: "Closed/inactive",
   },
 };
 

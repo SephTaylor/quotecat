@@ -69,12 +69,17 @@ export function normalizeCurrency(raw: any): CurrencyCode {
 export function normalizeStatus(raw: any): QuoteStatus {
   const validStatuses: QuoteStatus[] = [
     "draft",
-    "active",
     "sent",
     "approved",
     "completed",
     "archived",
   ];
+
+  // Migrate legacy "active" status to "draft"
+  if (raw === "active") {
+    return "draft";
+  }
+
   if (typeof raw === "string" && validStatuses.includes(raw as QuoteStatus)) {
     return raw as QuoteStatus;
   }
