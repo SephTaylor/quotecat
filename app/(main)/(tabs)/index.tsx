@@ -49,6 +49,9 @@ export default function Dashboard() {
     const activeQuotes = quotes.filter((q) => q.status === "active");
     const draftQuotes = quotes.filter((q) => q.status === "draft");
     const sentQuotes = quotes.filter((q) => q.status === "sent");
+    const approvedQuotes = quotes.filter((q) => q.status === "approved");
+    const completedQuotes = quotes.filter((q) => q.status === "completed");
+    const archivedQuotes = quotes.filter((q) => q.status === "archived");
     const pinnedQuotes = quotes.filter((q) => q.pinned);
 
     const totalValue = quotes.reduce((sum, q) => sum + calculateTotal(q), 0);
@@ -62,6 +65,9 @@ export default function Dashboard() {
       active: activeQuotes.length,
       draft: draftQuotes.length,
       sent: sentQuotes.length,
+      approved: approvedQuotes.length,
+      completed: completedQuotes.length,
+      archived: archivedQuotes.length,
       pinned: pinnedQuotes.length,
       totalValue,
       activeValue,
@@ -146,11 +152,18 @@ export default function Dashboard() {
           {preferences.showStats && (
             <View style={styles.statsGrid}>
               <StatCard
-                label="Total Quotes"
+                label="Total"
                 value={stats.total}
                 color={theme.colors.text}
                 theme={theme}
                 onPress={() => router.push("./quotes?filter=all" as any)}
+              />
+              <StatCard
+                label="Draft"
+                value={stats.draft}
+                color={QuoteStatusMeta.draft.color}
+                theme={theme}
+                onPress={() => router.push("./quotes?filter=draft" as any)}
               />
               <StatCard
                 label="Active"
@@ -160,18 +173,32 @@ export default function Dashboard() {
                 onPress={() => router.push("./quotes?filter=active" as any)}
               />
               <StatCard
-                label="Drafts"
-                value={stats.draft}
-                color={QuoteStatusMeta.draft.color}
-                theme={theme}
-                onPress={() => router.push("./quotes?filter=draft" as any)}
-              />
-              <StatCard
                 label="Sent"
                 value={stats.sent}
                 color={QuoteStatusMeta.sent.color}
                 theme={theme}
                 onPress={() => router.push("./quotes?filter=sent" as any)}
+              />
+              <StatCard
+                label="Approved"
+                value={stats.approved}
+                color={QuoteStatusMeta.approved.color}
+                theme={theme}
+                onPress={() => router.push("./quotes?filter=approved" as any)}
+              />
+              <StatCard
+                label="Completed"
+                value={stats.completed}
+                color={QuoteStatusMeta.completed.color}
+                theme={theme}
+                onPress={() => router.push("./quotes?filter=completed" as any)}
+              />
+              <StatCard
+                label="Archived"
+                value={stats.archived}
+                color={QuoteStatusMeta.archived.color}
+                theme={theme}
+                onPress={() => router.push("./quotes?filter=archived" as any)}
               />
             </View>
           )}
@@ -314,7 +341,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     statCard: {
       flex: 1,
-      minWidth: "47%",
+      minWidth: "31%",
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.md,
       padding: theme.spacing(1.5),
