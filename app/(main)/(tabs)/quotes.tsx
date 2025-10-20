@@ -30,6 +30,7 @@ export default function QuotesList() {
   const router = useRouter();
   const { theme } = useTheme();
   const params = useLocalSearchParams();
+  const filterScrollRef = React.useRef<ScrollView>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
@@ -62,9 +63,34 @@ export default function QuotesList() {
         filter === "archived"
       ) {
         setSelectedStatus(filter);
+
+        // Auto-scroll to the selected chip
+        setTimeout(() => {
+          scrollToFilter(filter);
+        }, 100);
       }
     }
   }, [params.filter]);
+
+  // Scroll to the selected filter chip
+  const scrollToFilter = useCallback((filter: QuoteStatus | "all") => {
+    if (!filterScrollRef.current) return;
+
+    // Calculate approximate position based on filter order
+    const filters = ["all", "draft", "active", "sent", "approved", "completed", "archived"];
+    const index = filters.indexOf(filter);
+
+    if (index === -1) return;
+
+    // Approximate chip width (padding + text + margins)
+    const chipWidth = 90; // Adjust based on your chip sizing
+    const scrollPosition = Math.max(0, index * chipWidth - 50); // Center-ish
+
+    filterScrollRef.current.scrollTo({
+      x: scrollPosition,
+      animated: true,
+    });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -156,6 +182,7 @@ export default function QuotesList() {
       <View style={styles.container}>
         {/* Status Filters */}
         <ScrollView
+          ref={filterScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterContainer}
