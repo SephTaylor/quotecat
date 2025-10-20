@@ -58,11 +58,18 @@ export default function Dashboard() {
     const sentQuotes = quotes.filter((q) => q.status === "sent");
     const approvedQuotes = quotes.filter((q) => q.status === "approved");
     const completedQuotes = quotes.filter((q) => q.status === "completed");
-    const archivedQuotes = quotes.filter((q) => q.status === "archived");
     const pinnedQuotes = quotes.filter((q) => q.pinned);
 
-    const totalValue = quotes.reduce((sum, q) => sum + calculateTotal(q), 0);
-    const activeValue = activeQuotes.reduce(
+    // Value tracking by business stage
+    const pendingValue = sentQuotes.reduce(
+      (sum, q) => sum + calculateTotal(q),
+      0,
+    );
+    const approvedValue = approvedQuotes.reduce(
+      (sum, q) => sum + calculateTotal(q),
+      0,
+    );
+    const toInvoiceValue = completedQuotes.reduce(
       (sum, q) => sum + calculateTotal(q),
       0,
     );
@@ -74,10 +81,10 @@ export default function Dashboard() {
       sent: sentQuotes.length,
       approved: approvedQuotes.length,
       completed: completedQuotes.length,
-      archived: archivedQuotes.length,
       pinned: pinnedQuotes.length,
-      totalValue,
-      activeValue,
+      pendingValue,
+      approvedValue,
+      toInvoiceValue,
       pinnedQuotes,
     };
   }, [quotes]);
@@ -200,30 +207,30 @@ export default function Dashboard() {
                 theme={theme}
                 onPress={() => router.push("./quotes?filter=completed" as any)}
               />
-              <StatCard
-                label="Archived"
-                value={stats.archived}
-                color={QuoteStatusMeta.archived.color}
-                theme={theme}
-                onPress={() => router.push("./quotes?filter=archived" as any)}
-              />
             </View>
           )}
 
-          {/* Value Stats */}
+          {/* Quote Value Tracking */}
           {preferences.showValueTracking && (
             <View style={styles.valueSection}>
-              <View style={styles.valueRow}>
-                <View>
-                  <Text style={styles.valueLabel}>Total Value</Text>
-                  <Text style={styles.valueText}>
-                    ${stats.totalValue.toFixed(2)}
+              <Text style={styles.valueSectionTitle}>Quote Value</Text>
+              <View style={styles.valueGrid}>
+                <View style={styles.valueItem}>
+                  <Text style={styles.valueLabel}>Pending</Text>
+                  <Text style={styles.valueAmount}>
+                    ${stats.pendingValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
-                <View>
-                  <Text style={styles.valueLabel}>Active</Text>
-                  <Text style={styles.valueTextSecondary}>
-                    ${stats.activeValue.toFixed(2)}
+                <View style={styles.valueItem}>
+                  <Text style={styles.valueLabel}>Approved</Text>
+                  <Text style={styles.valueAmount}>
+                    ${stats.approvedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+                <View style={styles.valueItem}>
+                  <Text style={styles.valueLabel}>To Invoice</Text>
+                  <Text style={styles.valueAmount}>
+                    ${stats.toInvoiceValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
               </View>
@@ -403,25 +410,32 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
-    valueRow: {
+    valueSectionTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1.5),
+    },
+    valueGrid: {
       flexDirection: "row",
       justifyContent: "space-between",
+      gap: theme.spacing(1.5),
+    },
+    valueItem: {
+      flex: 1,
       alignItems: "center",
     },
     valueLabel: {
-      fontSize: 12,
+      fontSize: 11,
       color: theme.colors.muted,
-      marginBottom: 4,
+      marginBottom: 6,
+      textAlign: "center",
     },
-    valueText: {
-      fontSize: 22,
+    valueAmount: {
+      fontSize: 18,
       fontWeight: "700",
       color: theme.colors.text,
-    },
-    valueTextSecondary: {
-      fontSize: 18,
-      fontWeight: "600",
-      color: theme.colors.text,
+      textAlign: "center",
     },
     sectionTitle: {
       fontSize: 18,
