@@ -122,7 +122,11 @@ export default function AssembliesScreen() {
             />
           )}
           ListEmptyComponent={
-            <Text style={styles.empty}>No assemblies available.</Text>
+            <Text style={styles.empty}>
+              {searchQuery.trim()
+                ? `No assemblies found for "${searchQuery}"`
+                : "No assemblies available."}
+            </Text>
           }
         />
       </Screen>

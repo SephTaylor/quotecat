@@ -1,5 +1,4 @@
 // app/(forms)/assembly/[id].tsx
-import FormScreenComponent from "@/modules/core/ui/FormScreen";
 import { getAssemblyById, useAssemblyCalculator } from "@/modules/assemblies";
 import { formatMoney } from "@/modules/settings/money";
 import { router, Stack, useLocalSearchParams } from "expo-router";
