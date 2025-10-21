@@ -31,6 +31,7 @@ export default function EditQuote() {
   const [, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
+  const [tier, setTier] = useState("");
   const [labor, setLabor] = useState<string>(""); // empty string to show placeholder
   const [materialEstimate, setMaterialEstimate] = useState<string>(""); // Quick estimate for materials
   const [status, setStatus] = useState<QuoteStatus>("draft");
@@ -83,6 +84,7 @@ export default function EditQuote() {
       setQuote(q);
       setName(q.name || "");
       setClientName(q.clientName || "");
+      setTier(q.tier || "");
       // Only set labor if it's non-zero, otherwise leave empty to show placeholder
       setLabor(q.labor && q.labor !== 0 ? q.labor.toFixed(2) : "");
       // Load material estimate if present
@@ -189,6 +191,7 @@ export default function EditQuote() {
     await updateQuote(id, {
       name: name.trim(),
       clientName: clientName.trim(),
+      tier: tier.trim() || undefined,
       labor: parseMoney(labor),
       materialEstimate: parseMoney(materialEstimate),
       overhead: parseMoney(overhead),
@@ -219,6 +222,7 @@ export default function EditQuote() {
     await updateQuote(id, {
       name: name.trim() || "Untitled",
       clientName: clientName.trim(),
+      tier: tier.trim() || undefined,
       labor: parseMoney(labor),
       materialEstimate: parseMoney(materialEstimate),
       overhead: parseMoney(overhead),
@@ -366,6 +370,7 @@ export default function EditQuote() {
                 await updateQuote(id, {
                   name: name.trim() || "Untitled",
                   clientName: clientName.trim(),
+                  tier: tier.trim() || undefined,
                   labor: parseMoney(labor),
                   materialEstimate: parseMoney(materialEstimate),
                   overhead: parseMoney(overhead),
@@ -403,6 +408,21 @@ export default function EditQuote() {
             if (text.trim()) setIsNewQuote(false);
           }}
           autoCapitalize="words"
+        />
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>
+          Tier / Variant
+          <Text style={styles.labelOptional}> - Optional</Text>
+        </Text>
+        <Text style={styles.helperText}>
+          For tiered pricing: "Good", "Better", "Best" or add-ons like "Base + Surge Protector"
+        </Text>
+        <FormInput
+          placeholder='e.g., "Better" or "With Generator Hookup"'
+          value={tier}
+          onChangeText={setTier}
         />
 
         <View style={{ height: theme.spacing(2) }} />
@@ -541,6 +561,7 @@ export default function EditQuote() {
             await updateQuote(id, {
               name: name.trim() || "Untitled",
               clientName: clientName.trim(),
+              tier: tier.trim() || undefined,
               labor: parseMoney(labor),
               materialEstimate: parseMoney(materialEstimate),
               overhead: parseMoney(overhead),

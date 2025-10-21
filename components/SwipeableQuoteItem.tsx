@@ -108,7 +108,14 @@ export const SwipeableQuoteItem = React.memo(
       >
         <Pressable style={styles.card} onPress={onEdit}>
           <View style={styles.header}>
-            <Text style={styles.title}>{item.name || "Untitled project"}</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>{item.name || "Untitled project"}</Text>
+              {item.tier && (
+                <View style={styles.tierBadge}>
+                  <Text style={styles.tierText}>{item.tier}</Text>
+                </View>
+              )}
+            </View>
             {onTogglePin && (
               <Pressable
                 style={styles.pinButton}
@@ -164,11 +171,31 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       alignItems: "center",
       marginBottom: 6,
     },
+    titleRow: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      flexWrap: "wrap",
+    },
     title: {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
-      flex: 1,
+    },
+    tierBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: theme.colors.accent,
+      opacity: 0.9,
+    },
+    tierText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#000",
+      textTransform: "uppercase",
+      letterSpacing: 0.3,
     },
     pinButton: {
       padding: 4,

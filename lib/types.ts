@@ -98,6 +98,7 @@ export type Quote = {
   currency: CurrencyCode;
   status: QuoteStatus;
   pinned?: boolean; // For favoriting/starring quotes
+  tier?: string; // Optional tier/variant name (e.g., "Good", "Better", "Best", "Base + Generator")
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
   // Computed fields (not persisted, recalculated on load)
