@@ -28,15 +28,14 @@ export default function EditQuote() {
   const [, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
-  const [tier, setTier] = useState("");
   const [labor, setLabor] = useState<string>(""); // empty string to show placeholder
   const [materialEstimate, setMaterialEstimate] = useState<string>(""); // Quick estimate for materials
   const [status, setStatus] = useState<QuoteStatus>("draft");
   const [pinned, setPinned] = useState(false);
   const [isNewQuote, setIsNewQuote] = useState(false);
   const [items, setItems] = useState<QuoteItem[]>([]);
-  const [overhead, setOverhead] = useState<string>(""); // Flat overhead cost
   const [markupPercent, setMarkupPercent] = useState<string>(""); // Markup percentage
+  const [notes, setNotes] = useState<string>(""); // Notes / additional details
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -48,11 +47,10 @@ export default function EditQuote() {
     );
     const materialsEstimateValue = parseMoney(materialEstimate);
     const laborValue = parseMoney(labor);
-    const overheadValue = parseMoney(overhead);
     const markupPercentValue = parseFloat(markupPercent) || 0;
 
     // Subtotal before markup
-    const subtotal = materialsFromItems + materialsEstimateValue + laborValue + overheadValue;
+    const subtotal = materialsFromItems + materialsEstimateValue + laborValue;
 
     // Calculate markup
     const markupAmount = (subtotal * markupPercentValue) / 100;
@@ -64,12 +62,11 @@ export default function EditQuote() {
       materialsFromItems,
       materialsEstimateValue,
       laborValue,
-      overheadValue,
       subtotal,
       markupAmount,
       total,
     };
-  }, [items, materialEstimate, labor, overhead, markupPercent]);
+  }, [items, materialEstimate, labor, markupPercent]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -78,7 +75,6 @@ export default function EditQuote() {
       setQuote(q);
       setName(q.name || "");
       setClientName(q.clientName || "");
-      setTier(q.tier || "");
       // Only set labor if it's non-zero, otherwise leave empty to show placeholder
       setLabor(q.labor && q.labor !== 0 ? q.labor.toFixed(2) : "");
       // Load material estimate if present
@@ -86,8 +82,8 @@ export default function EditQuote() {
       setStatus(q.status || "draft");
       setPinned(q.pinned || false);
       setItems(q.items ?? []);
-      setOverhead(q.overhead && q.overhead !== 0 ? q.overhead.toFixed(2) : "");
       setMarkupPercent(q.markupPercent && q.markupPercent !== 0 ? q.markupPercent.toString() : "");
+      setNotes(q.notes || "");
       // Check if this is a newly created empty quote
       setIsNewQuote(!q.name && !q.clientName && q.labor === 0);
     }
@@ -114,32 +110,6 @@ export default function EditQuote() {
     }
 
     return true;
-  };
-
-  const onDone = async () => {
-    if (!id) return;
-
-    // Validate required fields
-    if (!validateRequiredFields()) {
-      return;
-    }
-
-    // Save the quote
-    await updateQuote(id, {
-      name: name.trim(),
-      clientName: clientName.trim(),
-      tier: tier.trim() || undefined,
-      labor: parseMoney(labor),
-      materialEstimate: parseMoney(materialEstimate),
-      overhead: parseMoney(overhead),
-      markupPercent: parseFloat(markupPercent) || 0,
-      status,
-      pinned,
-    });
-
-    // No longer a new quote after saving
-    setIsNewQuote(false);
-    router.back();
   };
 
   const handleGoBack = async () => {
@@ -238,6 +208,16 @@ export default function EditQuote() {
               </Text>
             </Pressable>
           ),
+          headerRight: () => (
+            <Pressable
+              onPress={() => setPinned(!pinned)}
+              style={{ paddingRight: 16, paddingVertical: 8 }}
+            >
+              <Text style={{ fontSize: 24 }}>
+                {pinned ? "⭐" : "☆"}
+              </Text>
+            </Pressable>
+          ),
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -255,40 +235,59 @@ export default function EditQuote() {
           paddingBottom: theme.spacing(2),
         }}
         bottomBar={
-          <View style={styles.bottomBar}>
-            <Pressable style={styles.doneBtn} onPress={onDone}>
-              <Text style={styles.doneText}>Done</Text>
-            </Pressable>
-            <Pressable
-              style={styles.reviewBtn}
-              onPress={async () => {
-                if (!id) return;
+          <Pressable
+            style={styles.reviewBtn}
+            onPress={async () => {
+              if (!id) return;
 
-                // Validate required fields before proceeding
-                if (!validateRequiredFields()) {
-                  return;
-                }
+              // Validate required fields before proceeding
+              if (!validateRequiredFields()) {
+                return;
+              }
 
-                await updateQuote(id, {
-                  name: name.trim(),
-                  clientName: clientName.trim(),
-                  tier: tier.trim() || undefined,
-                  labor: parseMoney(labor),
-                  materialEstimate: parseMoney(materialEstimate),
-                  overhead: parseMoney(overhead),
-                  markupPercent: parseFloat(markupPercent) || 0,
-                  status,
-                  pinned,
-                  items,
-                });
-                router.push(`/quote/${id}/review`);
-              }}
-            >
-              <Text style={styles.reviewText}>Review & Export</Text>
-            </Pressable>
-          </View>
+              await updateQuote(id, {
+                name: name.trim(),
+                clientName: clientName.trim(),
+                labor: parseMoney(labor),
+                materialEstimate: parseMoney(materialEstimate),
+                markupPercent: parseFloat(markupPercent) || 0,
+                notes: notes.trim() || undefined,
+                status,
+                pinned,
+                items,
+              });
+              router.push(`/quote/${id}/review`);
+            }}
+          >
+            <Text style={styles.reviewText}>Review & Export</Text>
+          </Pressable>
         }
       >
+        <Text style={styles.label}>Status</Text>
+        <View style={styles.statusChips}>
+          {(Object.keys(QuoteStatusMeta) as QuoteStatus[]).map((s) => (
+            <Pressable
+              key={s}
+              style={[
+                styles.statusChip,
+                status === s && styles.statusChipActive,
+              ]}
+              onPress={() => setStatus(s)}
+            >
+              <Text
+                style={[
+                  styles.statusChipText,
+                  status === s && styles.statusChipTextActive,
+                ]}
+              >
+                {QuoteStatusMeta[s].label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={{ height: theme.spacing(2) }} />
+
         <Text style={styles.label}>Project name *</Text>
         <FormInput
           placeholder="The job that pays the bills..."
@@ -323,77 +322,11 @@ export default function EditQuote() {
           keyboardType="decimal-pad"
         />
 
-        <View style={{ height: theme.spacing(2) }} />
-
-        <Text style={styles.label}>
-          Materials (Quick Estimate)
-          <Text style={styles.labelOptional}> - Optional</Text>
-        </Text>
-        <Text style={styles.helperText}>
-          For a ballpark quote without detailed line items
-        </Text>
-        <FormInput
-          placeholder="0.00"
-          value={materialEstimate}
-          onChangeText={(text) => setMaterialEstimate(formatLaborInput(text))}
-          onBlur={() => setMaterialEstimate(formatMoneyOnBlur(materialEstimate))}
-          keyboardType="decimal-pad"
-        />
-
-        <View style={{ height: theme.spacing(2) }} />
-
-        <Text style={styles.label}>Status</Text>
-        <View style={styles.statusGrid}>
-          {(Object.keys(QuoteStatusMeta) as QuoteStatus[]).map((s) => (
-            <Pressable
-              key={s}
-              style={[
-                styles.statusChip,
-                status === s && styles.statusChipActive,
-                status === s && {
-                  backgroundColor: QuoteStatusMeta[s].color,
-                  borderColor: QuoteStatusMeta[s].color,
-                },
-              ]}
-              onPress={() => setStatus(s)}
-            >
-              <Text
-                style={[
-                  styles.statusChipText,
-                  status === s && styles.statusChipTextActive,
-                ]}
-              >
-                {QuoteStatusMeta[s].label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <View style={{ height: theme.spacing(2) }} />
-
-        <Pressable style={styles.pinToggle} onPress={() => setPinned(!pinned)}>
-          <Text style={styles.pinIcon}>{pinned ? "⭐" : "☆"}</Text>
-          <Text style={styles.pinText}>
-            {pinned ? "Pinned to Dashboard" : "Pin to Dashboard"}
-          </Text>
-        </Pressable>
-
         <View style={{ height: theme.spacing(3) }} />
 
         <Text style={styles.h2}>Items</Text>
 
         <View style={{ height: theme.spacing(2) }} />
-
-        {items.length === 0 && (
-          <View style={styles.emptyMaterials}>
-            <Text style={styles.emptyMaterialsText}>
-              No materials added yet
-            </Text>
-            <Text style={styles.emptyMaterialsHint}>
-              Tap &quot;Add materials&quot; below to browse the catalog or use assemblies
-            </Text>
-          </View>
-        )}
 
         {items.length > 0 && (
           <>
@@ -447,11 +380,10 @@ export default function EditQuote() {
             await updateQuote(id, {
               name: name.trim() || "Untitled",
               clientName: clientName.trim(),
-              tier: tier.trim() || undefined,
               labor: parseMoney(labor),
               materialEstimate: parseMoney(materialEstimate),
-              overhead: parseMoney(overhead),
               markupPercent: parseFloat(markupPercent) || 0,
+              notes: notes.trim() || undefined,
               status,
               pinned,
             });
@@ -474,16 +406,28 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(3) }} />
 
-        <Text style={styles.h2}>Overhead & Markup</Text>
+        <Text style={styles.h2}>Notes & Adjustments</Text>
 
         <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.label}>Overhead / Additional Costs</Text>
+        <Text style={styles.label}>Notes</Text>
+        <FormInput
+          placeholder="Special instructions, conditions, etc..."
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          numberOfLines={3}
+          style={{ height: 80, textAlignVertical: "top" }}
+        />
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Materials (Quick Estimate)</Text>
         <FormInput
           placeholder="0.00"
-          value={overhead}
-          onChangeText={(text) => setOverhead(formatLaborInput(text))}
-          onBlur={() => setOverhead(formatMoneyOnBlur(overhead))}
+          value={materialEstimate}
+          onChangeText={(text) => setMaterialEstimate(formatLaborInput(text))}
+          onBlur={() => setMaterialEstimate(formatMoneyOnBlur(materialEstimate))}
           keyboardType="decimal-pad"
         />
 
@@ -540,14 +484,6 @@ export default function EditQuote() {
             </View>
           )}
 
-          {calculations.overheadValue > 0 && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Overhead</Text>
-              <Text style={styles.totalsValue}>
-                ${calculations.overheadValue.toFixed(2)}
-              </Text>
-            </View>
-          )}
 
           <View style={styles.totalsDivider} />
 
@@ -586,11 +522,6 @@ export default function EditQuote() {
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     label: { fontSize: 12, color: theme.colors.text, marginBottom: 6, fontWeight: "600" },
-    labelOptional: {
-      fontSize: 11,
-      color: theme.colors.muted,
-      fontStyle: "italic"
-    },
     inputWithSuffix: {
       position: "relative",
     },
@@ -600,17 +531,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     inputSuffix: {
       position: "absolute",
       right: theme.spacing(2),
-      top: "50%",
-      transform: [{ translateY: -10 }],
+      top: 0,
+      bottom: 0,
+      justifyContent: "center",
+      alignItems: "center",
       fontSize: 16,
       fontWeight: "600",
       color: theme.colors.text,
-    },
-    helperText: {
-      fontSize: 11,
-      color: theme.colors.muted,
-      marginBottom: 6,
-      fontStyle: "italic"
+      lineHeight: 48,
     },
     h2: {
       fontSize: 16,
@@ -619,66 +547,33 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginBottom: 6,
     },
     helper: { fontSize: 12, color: theme.colors.muted },
-    statusGrid: {
+    statusChips: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: theme.spacing(1),
     },
     statusChip: {
-      paddingHorizontal: theme.spacing(2),
-      paddingVertical: theme.spacing(1),
-      borderRadius: 999,
+      paddingHorizontal: theme.spacing(1.5),
+      paddingVertical: theme.spacing(0.75),
+      borderRadius: theme.radius.md,
       backgroundColor: theme.colors.card,
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
     statusChipActive: {
-      borderWidth: 2,
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
     },
     statusChipText: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: theme.colors.muted,
-    },
-    statusChipTextActive: {
-      color: "#FFFFFF",
-      fontWeight: "700",
-    },
-    pinToggle: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      padding: theme.spacing(2),
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    pinIcon: {
-      fontSize: 20,
-      marginRight: theme.spacing(1.5),
-    },
-    pinText: {
-      fontSize: 14,
+      fontSize: 12,
       fontWeight: "600",
       color: theme.colors.text,
     },
-    bottomBar: {
-      flexDirection: "row",
-      gap: theme.spacing(2),
+    statusChipTextActive: {
+      color: "#000",
+      fontWeight: "700",
     },
-    doneBtn: {
-      flex: 1,
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.xl,
-      alignItems: "center",
-      justifyContent: "center",
-      height: 48,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    doneText: { fontSize: 16, fontWeight: "700", color: theme.colors.text },
     reviewBtn: {
-      flex: 1,
       backgroundColor: theme.colors.accent,
       borderRadius: theme.radius.xl,
       alignItems: "center",
@@ -702,32 +597,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 14,
       fontWeight: "700",
       color: theme.colors.text,
-    },
-    emptyMaterials: {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      padding: theme.spacing(4),
-      alignItems: "center",
-      marginBottom: theme.spacing(2),
-    },
-    emptyMaterialsIcon: {
-      fontSize: 48,
-      marginBottom: theme.spacing(1.5),
-    },
-    emptyMaterialsText: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: theme.colors.text,
-      marginBottom: theme.spacing(0.5),
-      textAlign: "center",
-    },
-    emptyMaterialsHint: {
-      fontSize: 13,
-      color: theme.colors.muted,
-      textAlign: "center",
-      lineHeight: 18,
     },
     itemsList: {
       backgroundColor: theme.colors.card,

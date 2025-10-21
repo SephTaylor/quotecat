@@ -285,23 +285,18 @@ export default function QuotesList() {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>
                 {selectedStatus === "all" && searchQuery === ""
-                  ? "No Quotes Yet"
+                  ? "No quotes yet"
                   : searchQuery !== ""
-                  ? "No Matches Found"
-                  : `No ${selectedStatus === "pinned" ? "Pinned" : QuoteStatusMeta[selectedStatus as QuoteStatus]?.label || ""} Quotes`}
+                  ? "No matches"
+                  : `No ${selectedStatus === "pinned" ? "pinned" : selectedStatus} quotes`}
               </Text>
               <Text style={styles.emptyDescription}>
                 {selectedStatus === "all" && searchQuery === ""
-                  ? "Create your first quote to get started. Tap the + button below to begin."
+                  ? "Tap the + button to create your first quote"
                   : searchQuery !== ""
-                  ? `No quotes match "${searchQuery}". Try a different search term.`
-                  : `You don't have any ${selectedStatus === "pinned" ? "pinned" : selectedStatus} quotes yet.`}
+                  ? `Try a different search term`
+                  : `Tap the + button to create a quote`}
               </Text>
-              {selectedStatus === "all" && searchQuery === "" && (
-                <Pressable style={styles.emptyButton} onPress={onNew}>
-                  <Text style={styles.emptyButtonText}>Create First Quote</Text>
-                </Pressable>
-              )}
             </View>
           }
         />
@@ -430,20 +425,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 14,
       color: theme.colors.muted,
       textAlign: "center",
-      marginBottom: theme.spacing(3),
       lineHeight: 20,
       maxWidth: 300,
-    },
-    emptyButton: {
-      backgroundColor: theme.colors.accent,
-      paddingHorizontal: theme.spacing(3),
-      paddingVertical: theme.spacing(1.5),
-      borderRadius: theme.radius.xl,
-    },
-    emptyButtonText: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: "#000",
     },
     fab: {
       position: "absolute",

@@ -87,101 +87,67 @@ export default function ProTools() {
             </View>
           )}
 
-          {/* Assembly Manager */}
-          <ProFeatureCard
-            icon=""
-            title="Assembly Manager"
-            description="Create and manage your custom assemblies"
-            locked={!isPro}
-            onPress={() => handleFeatureTap("Assembly Manager")}
-            details={[
-              "Create custom assemblies from scratch",
-              "Start from built-in templates",
-              "Edit quantities and materials",
-              "Build your personal library",
-            ]}
-            theme={theme}
-          />
+          {/* Available Tools Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Available Now</Text>
 
-          {/* Assembly Library */}
-          <ProFeatureCard
-            icon=""
-            title="Assembly Library"
-            description="Browse pre-built assembly templates"
-            locked={!isPro}
-            onPress={() => handleFeatureTap("Assembly Library")}
-            details={[
-              "8+ pre-built templates",
-              "General construction",
-              "Electrical rough-ins",
-              "Quick-add to quotes",
-            ]}
-            theme={theme}
-          />
+            {/* Assembly Manager */}
+            <ProFeatureCard
+              icon=""
+              title="Assembly Manager"
+              description="Create and manage your custom assemblies"
+              locked={!isPro}
+              onPress={() => handleFeatureTap("Assembly Manager")}
+              details={[]}
+              theme={theme}
+            />
 
-          {/* Wizard */}
-          <ProFeatureCard
-            icon=""
-            title="Quote Wizard"
-            description="Calculate materials from room dimensions"
-            locked={true}
-            onPress={() => handleFeatureTap("Wizard")}
-            details={[
-              "Input room dimensions",
-              "Auto-calculate materials",
-              "Adjust quantities on-the-fly",
-              "Coming soon",
-            ]}
-            theme={theme}
-          />
+            {/* Assembly Library */}
+            <ProFeatureCard
+              icon=""
+              title="Assembly Library"
+              description="Browse pre-built assembly templates"
+              locked={!isPro}
+              onPress={() => handleFeatureTap("Assembly Library")}
+              details={[]}
+              theme={theme}
+            />
+          </View>
 
-          {/* Cloud Backup */}
-          <ProFeatureCard
-            icon=""
-            title="Cloud Backup & Sync"
-            description="Never lose your quotes"
-            locked={!isPro}
-            onPress={() => handleFeatureTap("Cloud")}
-            details={[
-              "Auto-save to cloud",
-              "Sync across devices",
-              "Access anywhere",
-              "Backup history",
-            ]}
-            theme={theme}
-          />
+          {/* Coming Soon Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Coming Soon</Text>
 
-          {/* Branded PDFs */}
-          <ProFeatureCard
-            icon=""
-            title="Branded PDFs"
-            description="Professional exports with your branding"
-            locked={!isPro}
-            onPress={() => handleFeatureTap("Branding")}
-            details={[
-              "Unlimited exports",
-              "Custom logo & colors",
-              "No watermarks",
-              "Professional templates",
-            ]}
-            theme={theme}
-          />
+            <View style={styles.comingSoonList}>
+              <View style={styles.comingSoonItem}>
+                <Text style={styles.comingSoonTitle}>Quote Wizard</Text>
+                <Text style={styles.comingSoonDescription}>
+                  Calculate materials from room dimensions
+                </Text>
+              </View>
 
-          {/* Value Tracking */}
-          <ProFeatureCard
-            icon=""
-            title="Advanced Analytics"
-            description="Track quote value and performance"
-            locked={!isPro}
-            onPress={() => handleFeatureTap("Analytics")}
-            details={[
-              "Total pipeline value",
-              "Status breakdown",
-              "Win rate tracking",
-              "Revenue forecasting",
-            ]}
-            theme={theme}
-          />
+              <View style={styles.comingSoonItem}>
+                <Text style={styles.comingSoonTitle}>Cloud Backup & Sync</Text>
+                <Text style={styles.comingSoonDescription}>
+                  Never lose your quotes
+                </Text>
+              </View>
+
+              <View style={styles.comingSoonItem}>
+                <Text style={styles.comingSoonTitle}>Branded PDFs</Text>
+                <Text style={styles.comingSoonDescription}>
+                  Professional exports with your branding
+                </Text>
+              </View>
+
+              <View style={styles.comingSoonItem}>
+                <Text style={styles.comingSoonTitle}>Advanced Analytics</Text>
+                <Text style={styles.comingSoonDescription}>
+                  Track quote value and performance
+                </Text>
+              </View>
+            </View>
+          </View>
 
           {!isPro && (
             <View style={styles.upgradeSection}>
@@ -223,8 +189,10 @@ function ProFeatureCard({
 
   return (
     <View style={[styles.featureCard, locked && styles.featureCardLocked]}>
-      <Text style={styles.featureTitle}>{title}</Text>
-      <Text style={styles.featureDescription}>{description}</Text>
+      <View style={styles.featureInfo}>
+        <Text style={styles.featureTitle}>{title}</Text>
+        <Text style={styles.featureDescription}>{description}</Text>
+      </View>
 
       <Pressable
         style={[styles.launchButton, locked && styles.launchButtonLocked]}
@@ -260,45 +228,50 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       color: theme.colors.muted,
     },
+    section: {
+      marginBottom: theme.spacing(3),
+    },
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: theme.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: theme.spacing(1.5),
+    },
     featureCard: {
       backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(2),
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(1.5),
+      marginBottom: theme.spacing(1.5),
       borderWidth: 1,
       borderColor: theme.colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: theme.spacing(2),
     },
     featureCardLocked: {
       opacity: 0.8,
     },
-    featureHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: theme.spacing(1),
-    },
-    featureIcon: {
-      fontSize: 32,
-    },
-    lockIcon: {
-      fontSize: 20,
+    featureInfo: {
+      flex: 1,
     },
     featureTitle: {
-      fontSize: 20,
+      fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
-      marginBottom: theme.spacing(0.5),
+      marginBottom: 2,
     },
     featureDescription: {
-      fontSize: 14,
+      fontSize: 13,
       color: theme.colors.muted,
-      marginBottom: theme.spacing(2),
     },
     launchButton: {
       backgroundColor: theme.colors.accent,
-      paddingHorizontal: theme.spacing(3),
-      paddingVertical: theme.spacing(1.5),
-      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing(1.5),
+      paddingVertical: theme.spacing(0.75),
+      borderRadius: theme.radius.sm,
       alignItems: "center",
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -307,9 +280,25 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       opacity: 0.7,
     },
     launchButtonText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: "700",
       color: "#000",
+    },
+    comingSoonList: {
+      gap: theme.spacing(2),
+    },
+    comingSoonItem: {
+      paddingLeft: theme.spacing(1),
+    },
+    comingSoonTitle: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 2,
+    },
+    comingSoonDescription: {
+      fontSize: 13,
+      color: theme.colors.muted,
     },
     upgradeSection: {
       marginTop: theme.spacing(3),

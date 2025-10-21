@@ -227,10 +227,32 @@ export default function AssembliesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Assembly Library" }} />
+      <Stack.Screen
+        options={{
+          title: "Assembly Library",
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.bg,
+          },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: {
+            color: theme.colors.text,
+          },
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.back()}
+              style={{ paddingLeft: 16, paddingVertical: 8 }}
+            >
+              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
+                ‹ Back
+              </Text>
+            </Pressable>
+          ),
+        }}
+      />
       <Screen scroll={false} contentStyle={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerSub}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.headerDescription}>
             Pre-built material calculators for common tasks
           </Text>
         </View>
@@ -289,16 +311,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flex: 1,
       backgroundColor: theme.colors.bg,
     },
-    header: {
-      padding: theme.spacing(2),
+    headerContainer: {
+      paddingHorizontal: theme.spacing(2),
       paddingTop: theme.spacing(1),
-      backgroundColor: theme.colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
+      paddingBottom: theme.spacing(0.5),
     },
-    headerSub: {
+    headerDescription: {
       fontSize: 13,
       color: theme.colors.muted,
+      lineHeight: 18,
     },
     listContent: {
       padding: theme.spacing(2),
@@ -343,8 +364,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     searchInput: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderWidth: 2,
+      borderColor: "#FFFFFF",
       padding: theme.spacing(1.5),
       fontSize: 14,
       color: theme.colors.text,

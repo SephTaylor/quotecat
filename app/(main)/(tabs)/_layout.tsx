@@ -49,6 +49,7 @@ export default function TabsLayout() {
         name="assemblies"
         options={{
           href: null, // Hidden - accessed via Pro Tools
+          headerShown: true, // Override default to show header
         }}
       />
     </Tabs>

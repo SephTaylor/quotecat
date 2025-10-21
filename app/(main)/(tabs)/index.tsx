@@ -11,10 +11,8 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { canAccessAssemblies } from "@/lib/features";
-import { getUserState } from "@/lib/user";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -31,22 +29,15 @@ export default function Dashboard() {
   });
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
   const [showUndo, setShowUndo] = useState(false);
-  const [isPro, setIsPro] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [data, prefs, user] = await Promise.all([
+    const [data, prefs] = await Promise.all([
       listQuotes(),
       loadPreferences(),
-      getUserState(),
     ]);
     setQuotes(data);
     setPreferences(prefs.dashboard);
-
-    // Check Pro status
-    const proStatus = canAccessAssemblies(user);
-    setIsPro(proStatus);
-
     setLoading(false);
   }, []);
 
@@ -272,53 +263,6 @@ export default function Dashboard() {
             </View>
           )}
 
-          {/* Quick Actions */}
-          {preferences.showQuickActions && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-              <Pressable
-                style={styles.actionButton}
-                onPress={() => {
-                  if (isPro) {
-                    router.push("./assemblies" as any);
-                  } else {
-                    Alert.alert(
-                      "QuoteCat Pro Feature",
-                      "Assemblies let you create reusable material bundles for common projects. Save time by adding entire room setups with one tap.\n\nUpgrade to Pro to unlock assemblies and more premium features.",
-                      [
-                        { text: "Not Now", style: "cancel" },
-                        {
-                          text: "Learn More",
-                          onPress: () => {
-                            Alert.alert(
-                              "QuoteCat Pro",
-                              "Get unlimited quotes, unlimited exports, remove branding, and unlock assemblies.",
-                              [
-                                { text: "Not Now", style: "cancel" },
-                                {
-                                  text: "Visit Website",
-                                  onPress: () => Linking.openURL("https://www.quotecat.ai"),
-                                },
-                              ]
-                            );
-                          },
-                        },
-                      ]
-                    );
-                  }
-                }}
-              >
-                <View style={styles.actionButtonContent}>
-                  <Text style={styles.actionText}>Browse Assemblies →</Text>
-                  {!isPro && (
-                    <View style={styles.proBadge}>
-                      <Text style={styles.proBadgeText}>PRO</Text>
-                    </View>
-                  )}
-                </View>
-              </Pressable>
-            </View>
-          )}
         </ScrollView>
 
         {/* Undo Snackbar */}
@@ -448,36 +392,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     section: {
       marginBottom: theme.spacing(3),
-    },
-    actionButton: {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(1),
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    actionButtonContent: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    actionText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: theme.colors.text,
-    },
-    proBadge: {
-      backgroundColor: theme.colors.accent,
-      paddingHorizontal: theme.spacing(1),
-      paddingVertical: theme.spacing(0.5),
-      borderRadius: theme.radius.sm,
-    },
-    proBadgeText: {
-      fontSize: 10,
-      fontWeight: "800",
-      color: "#000",
-      letterSpacing: 0.5,
     },
   });
 }
