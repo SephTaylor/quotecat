@@ -3,6 +3,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
 import { deleteAssembly } from "@/modules/assemblies/storage";
+import { getUserState } from "@/lib/user";
 import { Stack, useRouter } from "expo-router";
 import React, { memo, useMemo, useState } from "react";
 import {
@@ -64,6 +65,18 @@ export default function AssembliesScreen() {
   const { assemblies, loading, reload } = useAssemblies();
   const [refreshing, setRefreshing] = React.useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isPro, setIsPro] = React.useState(false);
+  const [checkingTier, setCheckingTier] = React.useState(true);
+
+  // Check Pro tier on mount
+  React.useEffect(() => {
+    const checkTier = async () => {
+      const userState = await getUserState();
+      setIsPro(userState.tier === "pro");
+      setCheckingTier(false);
+    };
+    checkTier();
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -115,7 +128,7 @@ export default function AssembliesScreen() {
     );
   }, [assemblies, searchQuery]);
 
-  if (loading) {
+  if (loading || checkingTier) {
     return (
       <>
         <Stack.Screen
@@ -133,6 +146,78 @@ export default function AssembliesScreen() {
         />
         <Screen scroll={false} contentStyle={styles.center}>
           <ActivityIndicator size="large" />
+        </Screen>
+      </>
+    );
+  }
+
+  // Show upgrade teaser for free users
+  if (!isPro) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: "Assemblies Library",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: theme.colors.bg,
+            },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: {
+              color: theme.colors.text,
+            },
+          }}
+        />
+        <Screen scroll={false} contentStyle={styles.container}>
+          <View style={styles.upgradeContainer}>
+            <Text style={styles.upgradeIcon}>🚀</Text>
+            <Text style={styles.upgradeTitle}>Assemblies Library</Text>
+            <Text style={styles.upgradeSubtitle}>Pro Feature</Text>
+
+            <View style={styles.upgradeCard}>
+              <Text style={styles.upgradeDescription}>
+                Save your quotes as reusable assembly templates and speed up your workflow.
+              </Text>
+
+              <View style={styles.benefitsList}>
+                <View style={styles.benefitRow}>
+                  <Text style={styles.benefitIcon}>⚡</Text>
+                  <Text style={styles.benefitText}>
+                    Pre-built material calculators for common tasks
+                  </Text>
+                </View>
+                <View style={styles.benefitRow}>
+                  <Text style={styles.benefitIcon}>💾</Text>
+                  <Text style={styles.benefitText}>
+                    Save your own quotes as custom assemblies
+                  </Text>
+                </View>
+                <View style={styles.benefitRow}>
+                  <Text style={styles.benefitIcon}>📌</Text>
+                  <Text style={styles.benefitText}>
+                    Build your personal template library
+                  </Text>
+                </View>
+                <View style={styles.benefitRow}>
+                  <Text style={styles.benefitIcon}>🎯</Text>
+                  <Text style={styles.benefitText}>
+                    Always-current pricing from live catalog
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <Pressable
+              style={styles.upgradeButton}
+              onPress={() => router.push("/(main)/settings")}
+            >
+              <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+            </Pressable>
+
+            <Text style={styles.upgradeHint}>
+              Go to Settings to upgrade and unlock assemblies
+            </Text>
+          </View>
         </Screen>
       </>
     );
@@ -256,6 +341,81 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       padding: theme.spacing(1.5),
       fontSize: 14,
       color: theme.colors.text,
+    },
+    upgradeContainer: {
+      flex: 1,
+      padding: theme.spacing(3),
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    upgradeIcon: {
+      fontSize: 64,
+      marginBottom: theme.spacing(2),
+    },
+    upgradeTitle: {
+      fontSize: 28,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(0.5),
+      textAlign: "center",
+    },
+    upgradeSubtitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.accent,
+      marginBottom: theme.spacing(3),
+      textAlign: "center",
+    },
+    upgradeCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing(3),
+      marginBottom: theme.spacing(3),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      width: "100%",
+    },
+    upgradeDescription: {
+      fontSize: 16,
+      color: theme.colors.text,
+      marginBottom: theme.spacing(3),
+      textAlign: "center",
+      lineHeight: 24,
+    },
+    benefitsList: {
+      gap: theme.spacing(2),
+    },
+    benefitRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing(1.5),
+    },
+    benefitIcon: {
+      fontSize: 20,
+      marginTop: 2,
+    },
+    benefitText: {
+      flex: 1,
+      fontSize: 14,
+      color: theme.colors.text,
+      lineHeight: 20,
+    },
+    upgradeButton: {
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing(4),
+      paddingVertical: theme.spacing(2),
+      borderRadius: theme.radius.xl,
+      marginBottom: theme.spacing(1.5),
+    },
+    upgradeButtonText: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: "#000",
+    },
+    upgradeHint: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      textAlign: "center",
     },
   });
 }
