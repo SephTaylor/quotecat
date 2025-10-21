@@ -80,7 +80,7 @@ export default function ProTools() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {!isPro && (
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>✨ Pro Features</Text>
+              <Text style={styles.headerTitle}>Pro Features</Text>
               <Text style={styles.headerSubtitle}>
                 Unlock powerful tools for professional quoting
               </Text>
@@ -89,7 +89,7 @@ export default function ProTools() {
 
           {/* Assembly Manager */}
           <ProFeatureCard
-            icon="🛠️"
+            icon=""
             title="Assembly Manager"
             description="Create and manage your custom assemblies"
             locked={!isPro}
@@ -105,7 +105,7 @@ export default function ProTools() {
 
           {/* Assembly Library */}
           <ProFeatureCard
-            icon="📚"
+            icon=""
             title="Assembly Library"
             description="Browse pre-built assembly templates"
             locked={!isPro}
@@ -121,7 +121,7 @@ export default function ProTools() {
 
           {/* Wizard */}
           <ProFeatureCard
-            icon="🪄"
+            icon=""
             title="Quote Wizard"
             description="Calculate materials from room dimensions"
             locked={true}
@@ -137,7 +137,7 @@ export default function ProTools() {
 
           {/* Cloud Backup */}
           <ProFeatureCard
-            icon="☁️"
+            icon=""
             title="Cloud Backup & Sync"
             description="Never lose your quotes"
             locked={!isPro}
@@ -153,7 +153,7 @@ export default function ProTools() {
 
           {/* Branded PDFs */}
           <ProFeatureCard
-            icon="📄"
+            icon=""
             title="Branded PDFs"
             description="Professional exports with your branding"
             locked={!isPro}
@@ -169,7 +169,7 @@ export default function ProTools() {
 
           {/* Value Tracking */}
           <ProFeatureCard
-            icon="💰"
+            icon=""
             title="Advanced Analytics"
             description="Track quote value and performance"
             locked={!isPro}
@@ -220,30 +220,53 @@ function ProFeatureCard({
   theme: ReturnType<typeof useTheme>["theme"];
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const [expanded, setExpanded] = React.useState(false);
+
+  const handlePress = () => {
+    if (locked) {
+      // Locked: Show upgrade prompt
+      onPress();
+    } else if (expanded) {
+      // Already expanded: Navigate to the tool
+      onPress();
+    } else {
+      // Collapsed: Expand to show details
+      setExpanded(true);
+    }
+  };
 
   return (
     <Pressable
       style={[styles.featureCard, locked && styles.featureCardLocked]}
-      onPress={onPress}
+      onPress={handlePress}
     >
       <View style={styles.featureHeader}>
-        <Text style={styles.featureIcon}>{icon}</Text>
-        {locked && <Text style={styles.lockIcon}>🔒</Text>}
+        {icon && <Text style={styles.featureIcon}>{icon}</Text>}
       </View>
       <Text style={styles.featureTitle}>{title}</Text>
       <Text style={styles.featureDescription}>{description}</Text>
 
-      <View style={styles.featureDetails}>
-        {details.map((detail, index) => (
-          <Text key={index} style={styles.featureDetail}>
-            • {detail}
-          </Text>
-        ))}
-      </View>
+      {expanded && (
+        <View style={styles.featureDetails}>
+          {details.map((detail, index) => (
+            <Text key={index} style={styles.featureDetail}>
+              • {detail}
+            </Text>
+          ))}
+        </View>
+      )}
 
       {locked && (
         <View style={styles.unlockBadge}>
           <Text style={styles.unlockBadgeText}>Tap to unlock</Text>
+        </View>
+      )}
+
+      {!locked && (
+        <View style={styles.unlockBadge}>
+          <Text style={styles.unlockBadgeText}>
+            {expanded ? "Tap to Open →" : "Tap to View Details"}
+          </Text>
         </View>
       )}
     </Pressable>
