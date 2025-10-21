@@ -15,7 +15,7 @@ import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Text, View, StyleSheet, Pressable } from "react-native";
 import type { QuoteItem } from "@/lib/types";
-import { trackProductUsage } from "@/lib/analytics";
+import { trackProductUsage, getRecentlyUsedProducts } from "@/lib/analytics";
 
 export default function QuoteMaterials() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -26,6 +26,7 @@ export default function QuoteMaterials() {
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [initialSelectionLoaded, setInitialSelectionLoaded] = useState(false);
+  const [recentProductIds, setRecentProductIds] = useState<string[]>([]);
 
   // Create initial selection from quote items
   const initialSelection = useMemo(() => {
@@ -70,6 +71,15 @@ export default function QuoteMaterials() {
   useEffect(() => {
     loadQuote();
   }, [loadQuote]);
+
+  // Load recently used products
+  useEffect(() => {
+    const loadRecent = async () => {
+      const recent = await getRecentlyUsedProducts();
+      setRecentProductIds(recent);
+    };
+    loadRecent();
+  }, []);
 
   // Reload when returning from edit-items screen
   useFocusEffect(
@@ -181,6 +191,7 @@ export default function QuoteMaterials() {
             selection={selection}
             onInc={inc}
             onDec={dec}
+            recentProductIds={[]}
           />
         </Screen>
       </>
@@ -246,6 +257,7 @@ export default function QuoteMaterials() {
           selection={selection}
           onInc={inc}
           onDec={dec}
+          recentProductIds={recentProductIds}
         />
       </Screen>
 

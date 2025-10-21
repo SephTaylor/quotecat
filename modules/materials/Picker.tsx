@@ -12,6 +12,7 @@ export type MaterialsPickerProps = {
   selection: Selection;
   onInc(product: Product): void;
   onDec(product: Product): void;
+  recentProductIds?: string[]; // Optional: IDs of recently used products
 };
 
 function MaterialsPicker({
@@ -20,6 +21,7 @@ function MaterialsPicker({
   selection,
   onInc,
   onDec,
+  recentProductIds = [],
 }: MaterialsPickerProps) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -28,12 +30,63 @@ function MaterialsPicker({
   const toggle = (catId: string) =>
     setExpanded((e) => ({ ...e, [catId]: !e[catId] }));
 
+  // Find recently used products from all categories
+  const recentProducts = React.useMemo(() => {
+    const allProducts = Object.values(itemsByCategory).flat();
+    return recentProductIds
+      .map((id) => allProducts.find((p) => p.id === id))
+      .filter((p): p is Product => p !== undefined)
+      .slice(0, 5); // Show max 5 recent products
+  }, [recentProductIds, itemsByCategory]);
+
   return (
     <View style={styles.content}>
       <Text style={styles.h1}>Add Materials</Text>
       <Text style={styles.helper}>
         Seed-only catalog. Categories start collapsed.
       </Text>
+
+      {/* Recently Used Section */}
+      {recentProducts.length > 0 && (
+        <View style={styles.recentCard}>
+          <Text style={styles.recentTitle}>⚡ Recently Used</Text>
+          <View style={styles.itemsWrap}>
+            {recentProducts.map((p) => {
+              const q = selection.get(p.id)?.qty ?? 0;
+              const active = q > 0;
+              return (
+                <View
+                  key={p.id}
+                  style={[styles.itemRow, active && styles.itemRowActive]}
+                >
+                  <View style={styles.itemMeta}>
+                    <Text style={styles.itemName}>{p.name}</Text>
+                    <Text style={styles.itemSub}>
+                      {p.unitPrice.toFixed(2)} / {p.unit}
+                    </Text>
+                  </View>
+
+                  <View style={styles.stepper}>
+                    <Pressable
+                      style={styles.stepBtn}
+                      onPress={() => onDec(p)}
+                    >
+                      <Text style={styles.stepText}>–</Text>
+                    </Pressable>
+                    <Text style={styles.qtyText}>{q}</Text>
+                    <Pressable
+                      style={styles.stepBtn}
+                      onPress={() => onInc(p)}
+                    >
+                      <Text style={styles.stepText}>+</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {categories.map((cat) => {
         const open = !!expanded[cat.id];
@@ -106,6 +159,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginBottom: 12,
     },
 
+    recentCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+      marginBottom: theme.spacing(2),
+      overflow: "hidden",
+    },
+    recentTitle: {
+      fontWeight: "800",
+      color: theme.colors.accent,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      fontSize: 14,
+    },
     catCard: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
