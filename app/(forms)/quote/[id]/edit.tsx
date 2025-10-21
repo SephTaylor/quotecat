@@ -458,21 +458,25 @@ export default function EditQuote() {
         <View style={{ height: theme.spacing(2) }} />
 
         <Text style={styles.label}>Markup Percentage</Text>
-        <FormInput
-          placeholder="0"
-          value={markupPercent}
-          onChangeText={(text) => {
-            // Only allow numbers and one decimal point
-            const cleaned = text.replace(/[^0-9.]/g, "");
-            const parts = cleaned.split(".");
-            if (parts.length > 2) {
-              setMarkupPercent(parts[0] + "." + parts.slice(1).join(""));
-            } else {
-              setMarkupPercent(cleaned);
-            }
-          }}
-          keyboardType="decimal-pad"
-        />
+        <View style={styles.inputWithSuffix}>
+          <FormInput
+            placeholder="0"
+            value={markupPercent}
+            onChangeText={(text) => {
+              // Only allow numbers and one decimal point
+              const cleaned = text.replace(/[^0-9.]/g, "");
+              const parts = cleaned.split(".");
+              if (parts.length > 2) {
+                setMarkupPercent(parts[0] + "." + parts.slice(1).join(""));
+              } else {
+                setMarkupPercent(cleaned);
+              }
+            }}
+            keyboardType="decimal-pad"
+            style={styles.inputWithSuffixField}
+          />
+          <Text style={styles.inputSuffix}>%</Text>
+        </View>
 
         <View style={{ height: theme.spacing(3) }} />
 
@@ -554,6 +558,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 11,
       color: theme.colors.muted,
       fontStyle: "italic"
+    },
+    inputWithSuffix: {
+      position: "relative",
+    },
+    inputWithSuffixField: {
+      paddingRight: theme.spacing(5),
+    },
+    inputSuffix: {
+      position: "absolute",
+      right: theme.spacing(2),
+      top: "50%",
+      transform: [{ translateY: -10 }],
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
     },
     helperText: {
       fontSize: 11,
