@@ -23,13 +23,24 @@ type ProductCache = {
 
 /**
  * Get products from local cache (offline-first).
- * Falls back to seed data if cache is empty.
+ * Automatically merges new seed products with existing cache.
  */
 export async function getProducts(): Promise<Product[]> {
   try {
     const cached = await AsyncStorage.getItem(STORAGE_KEY);
     if (cached) {
       const cache: ProductCache = JSON.parse(cached);
+
+      // Merge new seed products with existing cache
+      await mergeSeedProducts(cache);
+
+      // Re-read after merge
+      const updated = await AsyncStorage.getItem(STORAGE_KEY);
+      if (updated) {
+        const updatedCache: ProductCache = JSON.parse(updated);
+        return updatedCache.data;
+      }
+
       return cache.data;
     }
 
@@ -131,6 +142,32 @@ async function initializeCache(): Promise<void> {
 
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
   console.log("📦 Initialized cache with seed data");
+}
+
+/**
+ * Merge new seed products into existing cache.
+ * - Seed products are added if they don't exist (by ID)
+ * - Existing products (from Supabase or custom) are preserved
+ */
+async function mergeSeedProducts(cache: ProductCache): Promise<void> {
+  const seedProducts = getFlattenedSeedProducts();
+
+  // Build a map of existing IDs
+  const existingIds = new Set(cache.data.map((p) => p.id));
+
+  // Find new seed products
+  const newProducts = seedProducts.filter((s) => !existingIds.has(s.id));
+
+  if (newProducts.length > 0) {
+    // Merge existing + new seed products
+    const merged: ProductCache = {
+      ...cache,
+      data: [...cache.data, ...newProducts],
+    };
+
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    console.log(`✨ Added ${newProducts.length} new products from seed`);
+  }
 }
 
 /**

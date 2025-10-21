@@ -15,6 +15,7 @@ import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Text, View, StyleSheet, Pressable } from "react-native";
 import type { QuoteItem } from "@/lib/types";
+import { trackProductUsage } from "@/lib/analytics";
 
 export default function QuoteMaterials() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -125,6 +126,11 @@ export default function QuoteMaterials() {
       const newlySelectedItems = transformSelectionToItems(selection);
       console.log("Newly selected items:", newlySelectedItems);
       console.log("Existing quote items:", existingItems);
+
+      // Track usage for analytics (privacy-friendly)
+      newlySelectedItems.forEach((item) => {
+        trackProductUsage(item.productId || item.id || "", item.qty);
+      });
 
       // Merge existing items with newly selected items (accumulate mode)
       const mergedItems = mergeById(existingItems, newlySelectedItems);

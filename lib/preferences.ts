@@ -12,8 +12,13 @@ export type DashboardPreferences = {
   recentQuotesCount: 3 | 5 | 10 | "all";
 };
 
+export type PrivacyPreferences = {
+  shareAnonymousUsage: boolean; // Opt-in for anonymous product usage analytics
+};
+
 export type UserPreferences = {
   dashboard: DashboardPreferences;
+  privacy: PrivacyPreferences;
   // Add more preference categories as needed
   // notifications: NotificationPreferences;
   // appearance: AppearancePreferences;
@@ -33,6 +38,9 @@ export function getDefaultPreferences(): UserPreferences {
       showRecentQuotes: true,
       showQuickActions: true,
       recentQuotesCount: 5,
+    },
+    privacy: {
+      shareAnonymousUsage: false, // Opt-in, not opt-out
     },
   };
 }
@@ -55,6 +63,10 @@ export async function loadPreferences(): Promise<UserPreferences> {
       dashboard: {
         ...getDefaultPreferences().dashboard,
         ...stored.dashboard,
+      },
+      privacy: {
+        ...getDefaultPreferences().privacy,
+        ...stored.privacy,
       },
     };
   } catch (error) {

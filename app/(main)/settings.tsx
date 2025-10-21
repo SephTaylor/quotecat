@@ -1,13 +1,15 @@
 // app/(main)/settings.tsx
 // Settings and profile management
 import { useTheme } from "@/contexts/ThemeContext";
-import { canAccessAssemblies, getQuotaRemaining } from "@/lib/features";
+import { canAccessAssemblies } from "@/lib/features";
 import { getUserState, activateProTier, deactivateProTier, FREE_LIMITS, type UserState } from "@/lib/user";
 import {
   loadPreferences,
+  savePreferences,
   updateDashboardPreferences,
   resetPreferences,
   type DashboardPreferences,
+  type UserPreferences,
 } from "@/lib/preferences";
 import { Stack, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -28,13 +30,18 @@ export default function Settings() {
   const [isPro, setIsPro] = useState(false);
   const [userEmail, setUserEmail] = useState<string | undefined>();
   const [userState, setUserState] = useState<UserState | null>(null);
-  const [preferences, setPreferences] = useState<DashboardPreferences>({
-    showStats: true,
-    showValueTracking: true,
-    showPinnedQuotes: true,
-    showRecentQuotes: true,
-    showQuickActions: true,
-    recentQuotesCount: 5,
+  const [preferences, setPreferences] = useState<UserPreferences>({
+    dashboard: {
+      showStats: true,
+      showValueTracking: true,
+      showPinnedQuotes: true,
+      showRecentQuotes: true,
+      showQuickActions: true,
+      recentQuotesCount: 5,
+    },
+    privacy: {
+      shareAnonymousUsage: false,
+    },
   });
 
   // Track expanded sections
@@ -43,6 +50,7 @@ export default function Settings() {
     appearance: true,
     dashboard: true,
     quoteDefaults: true,
+    privacy: true,
     debug: false,
     about: false,
   });
@@ -55,14 +63,14 @@ export default function Settings() {
   };
 
   const load = useCallback(async () => {
-    const [user, prefs] = await Promise.all([
+    const [user, fullPrefs] = await Promise.all([
       getUserState(),
       loadPreferences(),
     ]);
     setIsPro(canAccessAssemblies(user));
     setUserEmail(user.email);
     setUserState(user);
-    setPreferences(prefs.dashboard);
+    setPreferences(fullPrefs);
   }, []);
 
   useFocusEffect(
@@ -136,7 +144,7 @@ export default function Settings() {
           style: "destructive",
           onPress: async () => {
             const defaults = await resetPreferences();
-            setPreferences(defaults.dashboard);
+            setPreferences(defaults);
           },
         },
       ],
@@ -219,9 +227,12 @@ export default function Settings() {
 
           {/* Usage & Limits Section */}
           {userState && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Usage & Limits</Text>
-
+            <CollapsibleSection
+              title="Usage & Limits"
+              isExpanded={expandedSections.usage}
+              onToggle={() => toggleSection('usage')}
+              theme={theme}
+            >
               <View style={styles.card}>
                 {/* Quotes */}
                 <View style={styles.usageRow}>
@@ -308,13 +319,16 @@ export default function Settings() {
                   )}
                 </View>
               </View>
-            </View>
+            </CollapsibleSection>
           )}
 
           {/* Appearance Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Appearance</Text>
-
+          <CollapsibleSection
+            title="Appearance"
+            isExpanded={expandedSections.appearance}
+            onToggle={() => toggleSection('appearance')}
+            theme={theme}
+          >
             <View style={styles.card}>
               <View style={styles.settingButton}>
                 <Text style={styles.settingButtonText}>Dark Mode</Text>
@@ -328,16 +342,19 @@ export default function Settings() {
                 />
               </View>
             </View>
-          </View>
+          </CollapsibleSection>
 
           {/* Dashboard Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Dashboard</Text>
-
+          <CollapsibleSection
+            title="Dashboard"
+            isExpanded={expandedSections.dashboard}
+            onToggle={() => toggleSection('dashboard')}
+            theme={theme}
+          >
             <View style={styles.card}>
               <SettingRow
                 label="Quick Stats"
-                value={preferences.showStats}
+                value={preferences.dashboard.showStats}
                 onToggle={(value) =>
                   handleUpdatePreference({ showStats: value })
                 }
@@ -345,7 +362,7 @@ export default function Settings() {
               />
               <SettingRow
                 label="Value Tracking"
-                value={preferences.showValueTracking}
+                value={preferences.dashboard.showValueTracking}
                 onToggle={(value) =>
                   handleUpdatePreference({ showValueTracking: value })
                 }
@@ -353,7 +370,7 @@ export default function Settings() {
               />
               <SettingRow
                 label="Pinned Quotes"
-                value={preferences.showPinnedQuotes}
+                value={preferences.dashboard.showPinnedQuotes}
                 onToggle={(value) =>
                   handleUpdatePreference({ showPinnedQuotes: value })
                 }
@@ -361,7 +378,7 @@ export default function Settings() {
               />
               <SettingRow
                 label="Recent Quotes"
-                value={preferences.showRecentQuotes}
+                value={preferences.dashboard.showRecentQuotes}
                 onToggle={(value) =>
                   handleUpdatePreference({ showRecentQuotes: value })
                 }
@@ -369,7 +386,7 @@ export default function Settings() {
               />
               <SettingRow
                 label="Quick Actions"
-                value={preferences.showQuickActions}
+                value={preferences.dashboard.showQuickActions}
                 onToggle={(value) =>
                   handleUpdatePreference({ showQuickActions: value })
                 }
@@ -378,7 +395,7 @@ export default function Settings() {
               />
 
               {/* Recent Quotes Count */}
-              {preferences.showRecentQuotes && (
+              {preferences.dashboard.showRecentQuotes && (
                 <View
                   style={[
                     styles.settingButton,
@@ -393,7 +410,7 @@ export default function Settings() {
                         key={count}
                         style={[
                           styles.chip,
-                          preferences.recentQuotesCount === count &&
+                          preferences.dashboard.recentQuotesCount === count &&
                             styles.chipActive,
                         ]}
                         onPress={() =>
@@ -403,7 +420,7 @@ export default function Settings() {
                         <Text
                           style={[
                             styles.chipText,
-                            preferences.recentQuotesCount === count &&
+                            preferences.dashboard.recentQuotesCount === count &&
                               styles.chipTextActive,
                           ]}
                         >
@@ -423,12 +440,15 @@ export default function Settings() {
             >
               <Text style={styles.resetButtonText}>Reset to Default</Text>
             </Pressable>
-          </View>
+          </CollapsibleSection>
 
           {/* Quote Defaults Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quote Defaults</Text>
-
+          <CollapsibleSection
+            title="Quote Defaults"
+            isExpanded={expandedSections.quoteDefaults}
+            onToggle={() => toggleSection('quoteDefaults')}
+            theme={theme}
+          >
             <View style={styles.card}>
               <Pressable
                 style={styles.settingButton}
@@ -493,7 +513,44 @@ export default function Settings() {
                 <Text style={styles.settingButtonIcon}>→</Text>
               </Pressable>
             </View>
-          </View>
+          </CollapsibleSection>
+
+          {/* Privacy & Data Section */}
+          <CollapsibleSection
+            title="Privacy & Data"
+            isExpanded={expandedSections.privacy}
+            onToggle={() => toggleSection('privacy')}
+            theme={theme}
+          >
+            <View style={styles.card}>
+              <View style={styles.settingRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.settingLabel}>
+                    Share Anonymous Usage Data
+                  </Text>
+                  <Text style={styles.settingDescription}>
+                    Help improve QuoteCat by sharing which products you use most often. No personal information is collected.
+                  </Text>
+                </View>
+                <Switch
+                  value={preferences.privacy?.shareAnonymousUsage || false}
+                  onValueChange={async (value) => {
+                    const updated = {
+                      ...preferences,
+                      privacy: {
+                        ...preferences.privacy,
+                        shareAnonymousUsage: value,
+                      },
+                    };
+                    setPreferences(updated);
+                    await savePreferences(updated);
+                  }}
+                  trackColor={{ false: theme.colors.muted, true: theme.colors.accent }}
+                  thumbColor={theme.colors.card}
+                />
+              </View>
+            </View>
+          </CollapsibleSection>
 
           {/* ⚠️ DEBUG SECTION - REMOVE BEFORE PRODUCTION ⚠️ */}
           <CollapsibleSection
@@ -871,6 +928,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingVertical: theme.spacing(2),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+    },
+    settingRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: theme.spacing(2),
+      gap: theme.spacing(2),
+    },
+    settingLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    settingDescription: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      lineHeight: 18,
     },
     usageRowLast: {
       borderBottomWidth: 0,

@@ -60,11 +60,33 @@ export async function deleteAssembly(id: string): Promise<void> {
 }
 
 /**
- * Initialize storage with seed data if empty.
+ * Initialize storage with seed data, merging with existing assemblies.
+ * - Seed assemblies are added if they don't exist (by ID)
+ * - Existing assemblies (custom or modified) are preserved
+ * - This allows new seed assemblies to appear without wiping custom ones
  */
 export async function initAssemblies(seed: Assembly[]): Promise<void> {
   const existing = await listAssemblies();
+
+  // If completely empty, just use seed data
   if (existing.length === 0) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+    console.log(`📦 Initialized ${seed.length} assemblies from seed`);
+    return;
+  }
+
+  // Build a map of existing IDs for quick lookup
+  const existingIds = new Set(existing.map((a) => a.id));
+
+  // Find new seed assemblies that don't exist yet
+  const newAssemblies = seed.filter((s) => !existingIds.has(s.id));
+
+  if (newAssemblies.length > 0) {
+    // Merge: existing + new seed assemblies
+    const merged = [...existing, ...newAssemblies];
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    console.log(`✨ Added ${newAssemblies.length} new assemblies from seed`);
+  } else {
+    console.log(`✓ All seed assemblies already present`);
   }
 }

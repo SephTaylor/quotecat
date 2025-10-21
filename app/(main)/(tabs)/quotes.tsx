@@ -49,6 +49,26 @@ export default function QuotesList() {
     load();
   }, [load]);
 
+  // Scroll to the selected filter chip
+  const scrollToFilter = useCallback((filter: QuoteStatus | "all" | "pinned") => {
+    if (!filterScrollRef.current) return;
+
+    // Calculate approximate position based on filter order
+    const filters = ["all", "pinned", "draft", "sent", "approved", "completed", "archived"];
+    const index = filters.indexOf(filter);
+
+    if (index === -1) return;
+
+    // Approximate chip width (padding + text + margins)
+    const chipWidth = 90; // Adjust based on your chip sizing
+    const scrollPosition = Math.max(0, index * chipWidth - 50); // Center-ish
+
+    filterScrollRef.current.scrollTo({
+      x: scrollPosition,
+      animated: true,
+    });
+  }, []);
+
   // Apply filter from navigation parameter
   useEffect(() => {
     if (params.filter && typeof params.filter === "string") {
@@ -71,26 +91,6 @@ export default function QuotesList() {
       }
     }
   }, [params.filter, scrollToFilter]);
-
-  // Scroll to the selected filter chip
-  const scrollToFilter = useCallback((filter: QuoteStatus | "all" | "pinned") => {
-    if (!filterScrollRef.current) return;
-
-    // Calculate approximate position based on filter order
-    const filters = ["all", "pinned", "draft", "sent", "approved", "completed", "archived"];
-    const index = filters.indexOf(filter);
-
-    if (index === -1) return;
-
-    // Approximate chip width (padding + text + margins)
-    const chipWidth = 90; // Adjust based on your chip sizing
-    const scrollPosition = Math.max(0, index * chipWidth - 50); // Center-ish
-
-    filterScrollRef.current.scrollTo({
-      x: scrollPosition,
-      animated: true,
-    });
-  }, []);
 
   useFocusEffect(
     useCallback(() => {

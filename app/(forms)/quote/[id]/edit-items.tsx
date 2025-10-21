@@ -31,7 +31,8 @@ export default function EditItems() {
 
     const updatedItems = items
       .map((item) => {
-        if (item.id === itemId) {
+        const currentId = item.productId || item.id;
+        if (currentId === itemId) {
           const newQty = Math.max(0, item.qty + delta);
           return { ...item, qty: newQty };
         }
@@ -97,14 +98,14 @@ export default function EditItems() {
                       <View style={styles.stepper}>
                         <Pressable
                           style={styles.stepBtn}
-                          onPress={() => handleUpdateItemQty(item.id, -1)}
+                          onPress={() => handleUpdateItemQty(item.productId || item.id || '', -1)}
                         >
                           <Text style={styles.stepText}>−</Text>
                         </Pressable>
                         <Text style={styles.qtyText}>{item.qty}</Text>
                         <Pressable
                           style={styles.stepBtn}
-                          onPress={() => handleUpdateItemQty(item.id, 1)}
+                          onPress={() => handleUpdateItemQty(item.productId || item.id || '', 1)}
                         >
                           <Text style={styles.stepText}>+</Text>
                         </Pressable>
