@@ -15,7 +15,7 @@ import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Text, View, StyleSheet, Pressable, Alert } from "react-native";
 import type { QuoteItem } from "@/lib/types";
-import { trackProductUsage, getRecentlyUsedProducts } from "@/lib/analytics";
+import { trackProductUsage } from "@/lib/analytics";
 
 export default function QuoteMaterials() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -26,7 +26,6 @@ export default function QuoteMaterials() {
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [initialSelectionLoaded, setInitialSelectionLoaded] = useState(false);
-  const [recentProductIds, setRecentProductIds] = useState<string[]>([]);
 
   // Create initial selection from quote items
   const initialSelection = useMemo(() => {
@@ -72,14 +71,6 @@ export default function QuoteMaterials() {
     loadQuote();
   }, [loadQuote]);
 
-  // Load recently used products
-  useEffect(() => {
-    const loadRecent = async () => {
-      const recent = await getRecentlyUsedProducts();
-      setRecentProductIds(recent);
-    };
-    loadRecent();
-  }, []);
 
   // Reload when returning from edit-items screen
   useFocusEffect(
@@ -264,14 +255,14 @@ export default function QuoteMaterials() {
           selection={selection}
           onInc={inc}
           onDec={dec}
-          recentProductIds={recentProductIds}
+          recentProductIds={[]}
         />
       </Screen>
 
       <BottomBar>
         <Button
           variant="secondary"
-          onPress={() => router.push("/assemblies" as any)}
+          onPress={() => router.push(`/assemblies?quoteId=${id}` as any)}
         >
           Assemblies
         </Button>

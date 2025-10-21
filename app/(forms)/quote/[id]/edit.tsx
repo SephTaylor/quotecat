@@ -4,7 +4,6 @@ import {
   getQuoteById,
   updateQuote,
   deleteQuote,
-  duplicateQuote,
   type Quote,
 } from "@/lib/quotes";
 import { FormInput, FormScreen } from "@/modules/core/ui";
@@ -12,7 +11,6 @@ import { parseMoney } from "@/modules/settings/money";
 import { getItemId } from "@/lib/validation";
 import type { QuoteStatus, QuoteItem } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
-import { getUserState } from "@/lib/user";
 import { saveAssembly } from "@/modules/assemblies/storage";
 import type { Assembly } from "@/modules/assemblies";
 import {
@@ -41,7 +39,6 @@ export default function EditQuote() {
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [overhead, setOverhead] = useState<string>(""); // Flat overhead cost
   const [markupPercent, setMarkupPercent] = useState<string>(""); // Markup percentage
-  const [isPro, setIsPro] = useState(false);
   const [showSaveAssemblyModal, setShowSaveAssemblyModal] = useState(false);
   const [assemblyName, setAssemblyName] = useState("");
 
@@ -98,10 +95,6 @@ export default function EditQuote() {
       // Check if this is a newly created empty quote
       setIsNewQuote(!q.name && !q.clientName && q.labor === 0);
     }
-
-    // Check Pro tier
-    const userState = await getUserState();
-    setIsPro(userState.tier === "pro");
   }, [id]);
 
   useEffect(() => {
@@ -113,29 +106,6 @@ export default function EditQuote() {
     }, [load]),
   );
 
-  const handleSaveAsAssembly = async () => {
-    if (!isPro) {
-      Alert.alert(
-        "Pro Feature",
-        "Saving custom assemblies is a Pro feature. Upgrade to Pro to create reusable templates from your quotes!",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
-    if (items.length === 0) {
-      Alert.alert(
-        "No Materials",
-        "Add materials to this quote before saving as an assembly.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
-    // Pre-fill with quote name if available
-    setAssemblyName(name || "");
-    setShowSaveAssemblyModal(true);
-  };
 
   const confirmSaveAsAssembly = async () => {
     const trimmedName = assemblyName.trim();
@@ -224,29 +194,6 @@ export default function EditQuote() {
     router.back();
   };
 
-  const handleDuplicate = async () => {
-    if (!id) return;
-
-    // Save current changes first
-    await updateQuote(id, {
-      name: name.trim() || "Untitled",
-      clientName: clientName.trim(),
-      tier: tier.trim() || undefined,
-      labor: parseMoney(labor),
-      materialEstimate: parseMoney(materialEstimate),
-      overhead: parseMoney(overhead),
-      markupPercent: parseFloat(markupPercent) || 0,
-      status,
-      pinned,
-      items,
-    });
-
-    // Duplicate and navigate to the copy
-    const duplicated = await duplicateQuote(id);
-    if (duplicated) {
-      router.replace(`/quote/${duplicated.id}/edit`);
-    }
-  };
 
   const handleUpdateItemQty = async (itemId: string, delta: number) => {
     if (!id) return;
@@ -333,16 +280,6 @@ export default function EditQuote() {
               </Text>
             </Pressable>
           ),
-          headerRight: () => (
-            <Pressable
-              onPress={handleDuplicate}
-              style={{ paddingRight: 16, paddingVertical: 8 }}
-            >
-              <Text style={{ fontSize: 17, color: theme.colors.accent, fontWeight: "600" }}>
-                Duplicate
-              </Text>
-            </Pressable>
-          ),
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -361,14 +298,6 @@ export default function EditQuote() {
         }}
         bottomBar={
           <View style={styles.bottomBar}>
-            {isPro && items.length > 0 && (
-              <Pressable
-                style={styles.assemblyBtn}
-                onPress={handleSaveAsAssembly}
-              >
-                <Text style={styles.assemblyText}>💾 Save as Assembly</Text>
-              </Pressable>
-            )}
             <Pressable style={styles.doneBtn} onPress={onDone}>
               <Text style={styles.doneText}>Done</Text>
             </Pressable>
@@ -423,21 +352,6 @@ export default function EditQuote() {
             if (text.trim()) setIsNewQuote(false);
           }}
           autoCapitalize="words"
-        />
-
-        <View style={{ height: theme.spacing(2) }} />
-
-        <Text style={styles.label}>
-          Tier / Variant
-          <Text style={styles.labelOptional}> - Optional</Text>
-        </Text>
-        <Text style={styles.helperText}>
-          For tiered pricing: &quot;Good&quot;, &quot;Better&quot;, &quot;Best&quot; or add-ons like &quot;Base + Surge Protector&quot;
-        </Text>
-        <FormInput
-          placeholder='e.g., "Better" or "With Generator Hookup"'
-          value={tier}
-          onChangeText={setTier}
         />
 
         <View style={{ height: theme.spacing(2) }} />
@@ -514,7 +428,6 @@ export default function EditQuote() {
 
         {items.length === 0 && (
           <View style={styles.emptyMaterials}>
-            <Text style={styles.emptyMaterialsIcon}>📦</Text>
             <Text style={styles.emptyMaterialsText}>
               No materials added yet
             </Text>

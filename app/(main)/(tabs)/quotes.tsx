@@ -283,7 +283,6 @@ export default function QuotesList() {
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📋</Text>
               <Text style={styles.emptyTitle}>
                 {selectedStatus === "all" && searchQuery === ""
                   ? "No Quotes Yet"
