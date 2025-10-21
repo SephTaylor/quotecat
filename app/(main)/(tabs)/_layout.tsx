@@ -48,9 +48,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="assemblies"
         options={{
-          title: "Assemblies",
-          tabBarIcon: ({ color }) => <AssembliesIcon color={color} />,
-          href: null, // Hide from tabs, accessed via Pro Tools
+          href: null, // Hidden - accessed via Pro Tools
         }}
       />
     </Tabs>
@@ -68,8 +66,4 @@ function QuotesIcon({ color }: { color: string }) {
 
 function ProToolsIcon({ color }: { color: string }) {
   return <Ionicons name="sparkles-outline" size={24} color={color} />;
-}
-
-function AssembliesIcon({ color }: { color: string }) {
-  return <Ionicons name="albums-outline" size={24} color={color} />;
 }

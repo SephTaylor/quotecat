@@ -50,10 +50,17 @@ export default function ProTools() {
   const handleFeatureTap = (featureName: string) => {
     if (isPro) {
       // Navigate to feature
-      if (featureName === "Assemblies") {
+      if (featureName === "Assembly Library") {
         router.push("./assemblies" as any);
       } else if (featureName === "Assembly Manager") {
         router.push("/(main)/assembly-manager" as any);
+      } else if (featureName === "Wizard") {
+        // Coming soon
+        Alert.alert(
+          "Coming Soon",
+          "The Quote Wizard will help you build quotes faster by calculating materials based on room dimensions and project scope.",
+          [{ text: "OK" }]
+        );
       }
       // Add other pro features here
     } else {
@@ -84,33 +91,46 @@ export default function ProTools() {
           <ProFeatureCard
             icon="🛠️"
             title="Assembly Manager"
-            description="Create and manage custom assembly templates"
+            description="Create and manage your custom assemblies"
             locked={!isPro}
             onPress={() => handleFeatureTap("Assembly Manager")}
             details={[
-              "Create custom assemblies",
-              "Manage your template library",
-              "Delete or edit existing assemblies",
-              "Build reusable material packages",
+              "Create custom assemblies from scratch",
+              "Start from built-in templates",
+              "Edit quantities and materials",
+              "Build your personal library",
             ]}
             theme={theme}
           />
 
-          {/* Assemblies Library */}
+          {/* Assembly Library */}
           <ProFeatureCard
-            icon="📐"
-            title="Assemblies Library"
-            description="Pre-built calculators for all trades"
+            icon="📚"
+            title="Assembly Library"
+            description="Browse pre-built assembly templates"
             locked={!isPro}
-            onPress={() => handleFeatureTap("Assemblies")}
+            onPress={() => handleFeatureTap("Assembly Library")}
             details={[
-              "General Construction",
-              "Electrical",
-              "Plumbing",
-              "HVAC",
-              "Finishing",
-              "Exterior",
-              "Custom formulas",
+              "8+ pre-built templates",
+              "General construction",
+              "Electrical rough-ins",
+              "Quick-add to quotes",
+            ]}
+            theme={theme}
+          />
+
+          {/* Wizard */}
+          <ProFeatureCard
+            icon="🪄"
+            title="Quote Wizard"
+            description="Calculate materials from room dimensions"
+            locked={true}
+            onPress={() => handleFeatureTap("Wizard")}
+            details={[
+              "Input room dimensions",
+              "Auto-calculate materials",
+              "Adjust quantities on-the-fly",
+              "Coming soon",
             ]}
             theme={theme}
           />

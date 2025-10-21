@@ -135,7 +135,7 @@ export default function AssembliesScreen() {
       <>
         <Stack.Screen
           options={{
-            title: "Assemblies Library",
+            title: "Assembly Library",
             headerShown: true,
             headerStyle: {
               backgroundColor: theme.colors.bg,
@@ -159,7 +159,7 @@ export default function AssembliesScreen() {
       <>
         <Stack.Screen
           options={{
-            title: "Assemblies Library",
+            title: "Assembly Library",
             headerShown: true,
             headerStyle: {
               backgroundColor: theme.colors.bg,
@@ -227,7 +227,7 @@ export default function AssembliesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Assemblies Library" }} />
+      <Stack.Screen options={{ title: "Assembly Library" }} />
       <Screen scroll={false} contentStyle={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerSub}>
