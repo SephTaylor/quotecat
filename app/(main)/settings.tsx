@@ -21,6 +21,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function Settings() {
   const { mode, theme, setThemeMode } = useTheme();
@@ -35,6 +36,23 @@ export default function Settings() {
     showQuickActions: true,
     recentQuotesCount: 5,
   });
+
+  // Track expanded sections
+  const [expandedSections, setExpandedSections] = useState({
+    usage: true,
+    appearance: true,
+    dashboard: true,
+    quoteDefaults: true,
+    debug: false,
+    about: false,
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
 
   const load = useCallback(async () => {
     const [user, prefs] = await Promise.all([
@@ -478,14 +496,16 @@ export default function Settings() {
           </View>
 
           {/* ⚠️ DEBUG SECTION - REMOVE BEFORE PRODUCTION ⚠️ */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: '#FF3B30' }]}>
-              ⚠️ DEBUG (REMOVE BEFORE PRODUCTION)
-            </Text>
-
+          <CollapsibleSection
+            title="⚠️ DEBUG (REMOVE BEFORE PRODUCTION)"
+            isExpanded={expandedSections.debug}
+            onToggle={() => toggleSection('debug')}
+            theme={theme}
+            titleColor="#FF3B30"
+          >
             <View style={[styles.card, { borderColor: '#FF3B30', borderWidth: 2 }]}>
               <Pressable
-                style={[styles.settingButton, styles.settingButtonLast]}
+                style={styles.settingButton}
                 onPress={async () => {
                   const user = await getUserState();
                   if (user.tier === "free") {
@@ -505,13 +525,95 @@ export default function Settings() {
                   {isPro ? "PRO → FREE" : "FREE → PRO"}
                 </Text>
               </Pressable>
+
+              <Pressable
+                style={styles.settingButton}
+                onPress={async () => {
+                  Alert.alert(
+                    "Reset Assemblies?",
+                    "This will reset all assemblies to the latest seed data. Any custom assemblies will be lost.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Reset",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+                            const { ASSEMBLY_KEYS } = await import("@/lib/storageKeys");
+                            const { ASSEMBLIES_SEED } = await import("@/modules/assemblies");
+
+                            // Clear existing assemblies
+                            await AsyncStorage.removeItem(ASSEMBLY_KEYS.CACHE);
+
+                            // Reinitialize with seed data
+                            await AsyncStorage.setItem(
+                              ASSEMBLY_KEYS.CACHE,
+                              JSON.stringify(ASSEMBLIES_SEED)
+                            );
+
+                            Alert.alert("Success", "Assemblies reset to seed data");
+                          } catch (error) {
+                            console.error("Failed to reset assemblies:", error);
+                            Alert.alert("Error", "Failed to reset assemblies");
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
+                  Reset Assemblies to Seed
+                </Text>
+                <Text style={[styles.settingValue, { color: '#FF3B30' }]}>
+                  Destructive
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.settingButton, styles.settingButtonLast]}
+                onPress={async () => {
+                  Alert.alert(
+                    "Reset Products?",
+                    "This will reset all products to the latest seed data and clear the Supabase sync cache.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Reset",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            const { clearProductCache } = await import("@/modules/catalog/productService");
+                            await clearProductCache();
+                            Alert.alert("Success", "Products cache cleared. Restart app to reinitialize.");
+                          } catch (error) {
+                            console.error("Failed to reset products:", error);
+                            Alert.alert("Error", "Failed to reset products");
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
+                  Reset Products to Seed
+                </Text>
+                <Text style={[styles.settingValue, { color: '#FF3B30' }]}>
+                  Destructive
+                </Text>
+              </Pressable>
             </View>
-          </View>
+          </CollapsibleSection>
 
           {/* About Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About</Text>
-
+          <CollapsibleSection
+            title="About"
+            isExpanded={expandedSections.about}
+            onToggle={() => toggleSection('about')}
+            theme={theme}
+          >
             <View style={styles.card}>
               <View style={styles.settingButton}>
                 <Text style={styles.settingButtonText}>Version</Text>
@@ -548,10 +650,47 @@ export default function Settings() {
                 <Text style={styles.settingButtonIcon}>→</Text>
               </Pressable>
             </View>
-          </View>
+          </CollapsibleSection>
         </ScrollView>
       </View>
     </>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  isExpanded,
+  onToggle,
+  children,
+  theme,
+  titleColor,
+}: {
+  title: string;
+  isExpanded: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+  theme: ReturnType<typeof useTheme>["theme"];
+  titleColor?: string;
+}) {
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  return (
+    <View style={styles.section}>
+      <Pressable
+        style={styles.sectionHeader}
+        onPress={onToggle}
+      >
+        <Text style={[styles.sectionTitle, titleColor && { color: titleColor }]}>
+          {title}
+        </Text>
+        <Ionicons
+          name={isExpanded ? "chevron-down" : "chevron-forward"}
+          size={20}
+          color={titleColor || theme.colors.text}
+        />
+      </Pressable>
+      {isExpanded && children}
+    </View>
   );
 }
 
@@ -595,14 +734,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     section: {
       marginBottom: theme.spacing(3),
     },
+    sectionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(1),
+      paddingHorizontal: theme.spacing(0.5),
+    },
     sectionTitle: {
       fontSize: 13,
       fontWeight: "700",
       color: theme.colors.muted,
       textTransform: "uppercase",
       letterSpacing: 0.5,
-      marginBottom: theme.spacing(1),
-      marginLeft: theme.spacing(0.5),
     },
     card: {
       backgroundColor: theme.colors.card,

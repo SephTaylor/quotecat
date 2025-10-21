@@ -169,6 +169,13 @@ export default function Dashboard() {
           {preferences.showStats && (
             <View style={styles.statsGrid}>
               <StatCard
+                label="All"
+                value={stats.total}
+                color={theme.colors.text}
+                theme={theme}
+                onPress={() => router.push("./quotes?filter=all" as any)}
+              />
+              <StatCard
                 label="Pinned"
                 value={stats.pinned}
                 color={theme.colors.accent}

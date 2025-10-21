@@ -82,9 +82,11 @@ export default function AssemblyCalculatorScreen() {
     products,
   });
 
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const closeBar = (
     <View style={styles.footer}>
-      <Button title="Close" onPress={() => router.back()} />
+      <Button title="Close" onPress={() => router.back()} color={theme.colors.accent} />
     </View>
   );
 
@@ -164,8 +166,9 @@ export default function AssemblyCalculatorScreen() {
         title="Add to Quote"
         onPress={handleAddToQuote}
         disabled={!assembly || !calculator || calculator.lines.length === 0}
+        color={theme.colors.accent}
       />
-      <Button title="Cancel" onPress={() => router.back()} />
+      <Button title="Cancel" onPress={() => router.back()} color={theme.colors.accent} />
     </View>
   );
 
@@ -323,61 +326,95 @@ export default function AssemblyCalculatorScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  body: { padding: 16 },
-  h2: { fontSize: 18, fontWeight: "600", marginBottom: 12 },
-  muted: { color: "#666" },
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
+    center: { flex: 1, alignItems: "center", justifyContent: "center" },
+    body: { padding: 16 },
+    h2: {
+      fontSize: 18,
+      fontWeight: "600",
+      marginBottom: 12,
+      color: theme.colors.text,
+    },
+    muted: { color: theme.colors.muted },
 
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  label: {
-    flex: 1,
-    fontSize: 14,
-    color: "#333",
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 6,
-    padding: 8,
-    fontSize: 14,
-  },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    label: {
+      flex: 1,
+      fontSize: 14,
+      color: theme.colors.text,
+    },
+    input: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 6,
+      padding: 8,
+      fontSize: 14,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.card,
+    },
 
-  divider: { height: 1, backgroundColor: "#e5e5e5", marginVertical: 8 },
+    divider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: 8,
+    },
 
-  lineRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#f0f0f0",
-  },
-  lineLeft: { flex: 1 },
-  lineName: { fontSize: 14, fontWeight: "600", marginBottom: 2 },
-  lineSub: { fontSize: 12, color: "#666" },
-  lineTotal: { fontSize: 14, fontWeight: "600", marginLeft: 12 },
+    lineRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
+    },
+    lineLeft: { flex: 1 },
+    lineName: {
+      fontSize: 14,
+      fontWeight: "600",
+      marginBottom: 2,
+      color: theme.colors.text,
+    },
+    lineSub: {
+      fontSize: 12,
+      color: theme.colors.muted,
+    },
+    lineTotal: {
+      fontSize: 14,
+      fontWeight: "600",
+      marginLeft: 12,
+      color: theme.colors.text,
+    },
 
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    borderTopWidth: 2,
-    borderTopColor: "#333",
-  },
-  totalLabel: { fontSize: 16, fontWeight: "700" },
-  totalValue: { fontSize: 16, fontWeight: "700" },
+    totalRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: 12,
+      borderTopWidth: 2,
+      borderTopColor: theme.colors.text,
+    },
+    totalLabel: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    totalValue: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
 
-  footer: {
-    flexDirection: "row",
-    gap: 12,
-    padding: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#e5e5e5",
-    backgroundColor: "white",
-  },
-});
+    footer: {
+      flexDirection: "row",
+      gap: 12,
+      padding: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+    },
+  });
+}
