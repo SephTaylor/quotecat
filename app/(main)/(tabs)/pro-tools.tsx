@@ -220,56 +220,21 @@ function ProFeatureCard({
   theme: ReturnType<typeof useTheme>["theme"];
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
-  const [expanded, setExpanded] = React.useState(false);
-
-  const handlePress = () => {
-    if (locked) {
-      // Locked: Show upgrade prompt
-      onPress();
-    } else if (expanded) {
-      // Already expanded: Navigate to the tool
-      onPress();
-    } else {
-      // Collapsed: Expand to show details
-      setExpanded(true);
-    }
-  };
 
   return (
-    <Pressable
-      style={[styles.featureCard, locked && styles.featureCardLocked]}
-      onPress={handlePress}
-    >
-      <View style={styles.featureHeader}>
-        {icon && <Text style={styles.featureIcon}>{icon}</Text>}
-      </View>
+    <View style={[styles.featureCard, locked && styles.featureCardLocked]}>
       <Text style={styles.featureTitle}>{title}</Text>
       <Text style={styles.featureDescription}>{description}</Text>
 
-      {expanded && (
-        <View style={styles.featureDetails}>
-          {details.map((detail, index) => (
-            <Text key={index} style={styles.featureDetail}>
-              • {detail}
-            </Text>
-          ))}
-        </View>
-      )}
-
-      {locked && (
-        <View style={styles.unlockBadge}>
-          <Text style={styles.unlockBadgeText}>Tap to unlock</Text>
-        </View>
-      )}
-
-      {!locked && (
-        <View style={styles.unlockBadge}>
-          <Text style={styles.unlockBadgeText}>
-            {expanded ? "Tap to Open →" : "Tap to View Details"}
-          </Text>
-        </View>
-      )}
-    </Pressable>
+      <Pressable
+        style={[styles.launchButton, locked && styles.launchButtonLocked]}
+        onPress={onPress}
+      >
+        <Text style={styles.launchButtonText}>
+          {locked ? "Unlock" : "Launch"}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -327,27 +292,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     featureDescription: {
       fontSize: 14,
       color: theme.colors.muted,
-      marginBottom: theme.spacing(1.5),
+      marginBottom: theme.spacing(2),
     },
-    featureDetails: {
-      marginTop: theme.spacing(1),
-    },
-    featureDetail: {
-      fontSize: 13,
-      color: theme.colors.muted,
-      marginBottom: 4,
-    },
-    unlockBadge: {
-      marginTop: theme.spacing(1.5),
+    launchButton: {
       backgroundColor: theme.colors.accent,
-      paddingHorizontal: theme.spacing(2),
-      paddingVertical: theme.spacing(1),
-      borderRadius: 999,
-      alignSelf: "flex-start",
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(1.5),
+      borderRadius: theme.radius.md,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
-    unlockBadgeText: {
-      fontSize: 12,
-      fontWeight: "600",
+    launchButtonLocked: {
+      opacity: 0.7,
+    },
+    launchButtonText: {
+      fontSize: 14,
+      fontWeight: "700",
       color: "#000",
     },
     upgradeSection: {
