@@ -443,6 +443,18 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(2) }} />
 
+        {items.length === 0 && (
+          <View style={styles.emptyMaterials}>
+            <Text style={styles.emptyMaterialsIcon}>📦</Text>
+            <Text style={styles.emptyMaterialsText}>
+              No materials added yet
+            </Text>
+            <Text style={styles.emptyMaterialsHint}>
+              Tap "Add materials" below to browse the catalog or use assemblies
+            </Text>
+          </View>
+        )}
+
         {items.length > 0 && (
           <>
             <View style={styles.itemsList}>
@@ -867,6 +879,32 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: "#000",
+    },
+    emptyMaterials: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(4),
+      alignItems: "center",
+      marginBottom: theme.spacing(2),
+    },
+    emptyMaterialsIcon: {
+      fontSize: 48,
+      marginBottom: theme.spacing(1.5),
+    },
+    emptyMaterialsText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(0.5),
+      textAlign: "center",
+    },
+    emptyMaterialsHint: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      textAlign: "center",
+      lineHeight: 18,
     },
     itemsList: {
       backgroundColor: theme.colors.card,

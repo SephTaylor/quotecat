@@ -269,7 +269,28 @@ export default function QuotesList() {
             />
           )}
           ListEmptyComponent={
-            <Text style={styles.empty}>No quotes yet. Tap + to start.</Text>
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>📋</Text>
+              <Text style={styles.emptyTitle}>
+                {selectedStatus === "all" && searchQuery === ""
+                  ? "No Quotes Yet"
+                  : searchQuery !== ""
+                  ? "No Matches Found"
+                  : `No ${selectedStatus === "pinned" ? "Pinned" : QuoteStatusMeta[selectedStatus as QuoteStatus]?.label || ""} Quotes`}
+              </Text>
+              <Text style={styles.emptyDescription}>
+                {selectedStatus === "all" && searchQuery === ""
+                  ? "Create your first quote to get started. Tap the + button below to begin."
+                  : searchQuery !== ""
+                  ? `No quotes match "${searchQuery}". Try a different search term.`
+                  : `You don't have any ${selectedStatus === "pinned" ? "pinned" : selectedStatus} quotes yet.`}
+              </Text>
+              {selectedStatus === "all" && searchQuery === "" && (
+                <Pressable style={styles.emptyButton} onPress={onNew}>
+                  <Text style={styles.emptyButtonText}>Create First Quote</Text>
+                </Pressable>
+              )}
+            </View>
           }
         />
 
@@ -375,10 +396,42 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       padding: theme.spacing(2),
       paddingBottom: theme.spacing(10),
     },
-    empty: {
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: theme.spacing(4),
+      marginTop: theme.spacing(8),
+    },
+    emptyIcon: {
+      fontSize: 64,
+      marginBottom: theme.spacing(2),
+    },
+    emptyTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
       textAlign: "center",
+    },
+    emptyDescription: {
+      fontSize: 14,
       color: theme.colors.muted,
-      marginTop: theme.spacing(4),
+      textAlign: "center",
+      marginBottom: theme.spacing(3),
+      lineHeight: 20,
+      maxWidth: 300,
+    },
+    emptyButton: {
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(1.5),
+      borderRadius: theme.radius.xl,
+    },
+    emptyButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
     },
     fab: {
       position: "absolute",
