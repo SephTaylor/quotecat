@@ -2,10 +2,12 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
+import { deleteAssembly } from "@/modules/assemblies/storage";
 import { Stack, useRouter } from "expo-router";
 import React, { memo, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -21,18 +23,32 @@ const AssemblyListItem = memo(
   ({
     item,
     onPress,
+    onLongPress,
     styles,
   }: {
     item: Assembly;
     onPress: () => void;
+    onLongPress?: () => void;
     styles: ReturnType<typeof createStyles>;
   }) => {
     const materialCount = item.items.length;
+    const isCustom = item.id.startsWith("custom-");
+
     return (
-      <Pressable style={styles.card} onPress={onPress}>
-        <Text style={styles.title}>{item.name}</Text>
+      <Pressable
+        style={[styles.card, isCustom && styles.cardCustom]}
+        onPress={onPress}
+        onLongPress={onLongPress}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={styles.title}>
+            {isCustom && "📌 "}
+            {item.name}
+          </Text>
+        </View>
         <Text style={styles.sub}>
           {materialCount} material{materialCount !== 1 ? "s" : ""}
+          {isCustom && " • Custom"}
         </Text>
       </Pressable>
     );
@@ -53,6 +69,41 @@ export default function AssembliesScreen() {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
+  };
+
+  const handleDeleteAssembly = async (assembly: Assembly) => {
+    const isCustom = assembly.id.startsWith("custom-");
+
+    if (!isCustom) {
+      Alert.alert(
+        "Cannot Delete",
+        "Seed assemblies cannot be deleted. Only custom assemblies can be removed.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Delete Assembly?",
+      `Are you sure you want to delete "${assembly.name}"? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteAssembly(assembly.id);
+              await reload(); // Refresh the list
+              Alert.alert("Deleted", `"${assembly.name}" has been deleted.`);
+            } catch (error) {
+              console.error("Failed to delete assembly:", error);
+              Alert.alert("Error", "Could not delete assembly. Please try again.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Filter assemblies based on search query
@@ -118,6 +169,7 @@ export default function AssembliesScreen() {
             <AssemblyListItem
               item={item}
               onPress={() => router.push(`/(forms)/assembly/${item.id}` as any)}
+              onLongPress={() => handleDeleteAssembly(item)}
               styles={styles}
             />
           )}
@@ -166,6 +218,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginBottom: theme.spacing(2),
       borderWidth: 1,
       borderColor: theme.colors.border,
+    },
+    cardCustom: {
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
     },
     title: {
       fontSize: 16,

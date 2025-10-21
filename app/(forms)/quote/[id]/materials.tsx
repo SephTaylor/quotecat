@@ -264,6 +264,13 @@ export default function QuoteMaterials() {
       <BottomBar>
         <Button
           variant="secondary"
+          onPress={() => router.push("/assemblies" as any)}
+        >
+          Assemblies
+        </Button>
+
+        <Button
+          variant="secondary"
           disabled={units === 0}
           onPress={() => saveSelected(false)}
         >

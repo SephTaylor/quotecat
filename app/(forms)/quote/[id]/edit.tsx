@@ -10,6 +10,9 @@ import { FormInput, FormScreen } from "@/modules/core/ui";
 import { parseMoney } from "@/modules/settings/money";
 import type { QuoteStatus, QuoteItem } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
+import { getUserState } from "@/lib/user";
+import { saveAssembly } from "@/modules/assemblies/storage";
+import type { Assembly } from "@/modules/assemblies";
 import {
   Stack,
   useFocusEffect,
@@ -17,7 +20,7 @@ import {
   useRouter,
 } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, TextInput, View, Modal } from "react-native";
 
 export default function EditQuote() {
   const { theme } = useTheme();
@@ -35,6 +38,9 @@ export default function EditQuote() {
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [overhead, setOverhead] = useState<string>(""); // Flat overhead cost
   const [markupPercent, setMarkupPercent] = useState<string>(""); // Markup percentage
+  const [isPro, setIsPro] = useState(false);
+  const [showSaveAssemblyModal, setShowSaveAssemblyModal] = useState(false);
+  const [assemblyName, setAssemblyName] = useState("");
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -88,6 +94,10 @@ export default function EditQuote() {
       // Check if this is a newly created empty quote
       setIsNewQuote(!q.name && !q.clientName && q.labor === 0);
     }
+
+    // Check Pro tier
+    const userState = await getUserState();
+    setIsPro(userState.tier === "pro");
   }, [id]);
 
   useEffect(() => {
@@ -98,6 +108,67 @@ export default function EditQuote() {
       load();
     }, [load]),
   );
+
+  const handleSaveAsAssembly = async () => {
+    if (!isPro) {
+      Alert.alert(
+        "Pro Feature",
+        "Saving custom assemblies is a Pro feature. Upgrade to Pro to create reusable templates from your quotes!",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    if (items.length === 0) {
+      Alert.alert(
+        "No Materials",
+        "Add materials to this quote before saving as an assembly.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    // Pre-fill with quote name if available
+    setAssemblyName(name || "");
+    setShowSaveAssemblyModal(true);
+  };
+
+  const confirmSaveAsAssembly = async () => {
+    const trimmedName = assemblyName.trim();
+    if (!trimmedName) {
+      Alert.alert("Name Required", "Please enter a name for this assembly.");
+      return;
+    }
+
+    try {
+      // Create assembly from quote items (fixed quantities)
+      const assembly: Assembly = {
+        id: `custom-${Date.now()}`,
+        name: trimmedName,
+        items: items
+          .filter((item) => item.productId || item.id) // Only include items with valid IDs
+          .map((item) => ({
+            productId: (item.productId || item.id) as string,
+            qty: item.qty,
+          })),
+        defaults: {}, // No variables for quote-based assemblies
+      };
+
+      await saveAssembly(assembly);
+
+      setShowSaveAssemblyModal(false);
+      setAssemblyName("");
+
+      Alert.alert(
+        "Assembly Saved!",
+        `"${trimmedName}" has been saved to your assemblies library. You can now use it to quickly add these materials to future quotes.`,
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Failed to save assembly:", error);
+      Alert.alert("Error", "Could not save assembly. Please try again.");
+    }
+  };
 
   const onDone = async () => {
     if (!id) return;
@@ -243,6 +314,14 @@ export default function EditQuote() {
         }}
         bottomBar={
           <View style={styles.bottomBar}>
+            {isPro && items.length > 0 && (
+              <Pressable
+                style={styles.assemblyBtn}
+                onPress={handleSaveAsAssembly}
+              >
+                <Text style={styles.assemblyText}>💾 Save as Assembly</Text>
+              </Pressable>
+            )}
             <Pressable style={styles.doneBtn} onPress={onDone}>
               <Text style={styles.doneText}>Done</Text>
             </Pressable>
@@ -547,6 +626,56 @@ export default function EditQuote() {
           </View>
         </View>
       </FormScreen>
+
+      {/* Save as Assembly Modal */}
+      <Modal
+        visible={showSaveAssemblyModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSaveAssemblyModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowSaveAssemblyModal(false)}
+        >
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.modalTitle}>Save as Assembly</Text>
+            <Text style={styles.modalDescription}>
+              Give this assembly a name to save it for future use. You'll be able to quickly add these {items.length} materials to any quote.
+            </Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Assembly name..."
+              placeholderTextColor={theme.colors.muted}
+              value={assemblyName}
+              onChangeText={setAssemblyName}
+              autoFocus
+            />
+
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={styles.modalCancelBtn}
+                onPress={() => {
+                  setShowSaveAssemblyModal(false);
+                  setAssemblyName("");
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalSaveBtn}
+                onPress={confirmSaveAsAssembly}
+              >
+                <Text style={styles.modalSaveText}>Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </>
   );
 }
@@ -656,6 +785,89 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderColor: theme.colors.border,
     },
     reviewText: { fontSize: 16, fontWeight: "800", color: "#000" },
+    assemblyBtn: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.xl,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: theme.spacing(2),
+      height: 48,
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+    },
+    assemblyText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: theme.spacing(2),
+    },
+    modalContent: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing(3),
+      width: "100%",
+      maxWidth: 400,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+    },
+    modalDescription: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(3),
+      lineHeight: 20,
+    },
+    modalInput: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(2),
+      fontSize: 16,
+      color: theme.colors.text,
+      marginBottom: theme.spacing(3),
+    },
+    modalButtons: {
+      flexDirection: "row",
+      gap: theme.spacing(2),
+    },
+    modalCancelBtn: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.lg,
+      paddingVertical: theme.spacing(1.5),
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalCancelText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    modalSaveBtn: {
+      flex: 1,
+      backgroundColor: theme.colors.accent,
+      borderRadius: theme.radius.lg,
+      paddingVertical: theme.spacing(1.5),
+      alignItems: "center",
+    },
+    modalSaveText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
+    },
     itemsList: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
