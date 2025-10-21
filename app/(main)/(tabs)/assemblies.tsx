@@ -3,7 +3,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
 import { Stack, useRouter } from "expo-router";
-import React, { memo } from "react";
+import React, { memo, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -11,6 +11,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import type { Assembly } from "@/modules/assemblies";
@@ -46,12 +47,22 @@ export default function AssembliesScreen() {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const { assemblies, loading, reload } = useAssemblies();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const onRefresh = async () => {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
   };
+
+  // Filter assemblies based on search query
+  const filteredAssemblies = useMemo(() => {
+    if (!searchQuery.trim()) return assemblies;
+    const query = searchQuery.toLowerCase();
+    return assemblies.filter((assembly) =>
+      assembly.name.toLowerCase().includes(query)
+    );
+  }, [assemblies, searchQuery]);
 
   if (loading) {
     return (
@@ -86,8 +97,18 @@ export default function AssembliesScreen() {
           </Text>
         </View>
 
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search assemblies..."
+            placeholderTextColor={theme.colors.muted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
         <FlatList
-          data={assemblies}
+          data={filteredAssemblies}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -156,6 +177,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       textAlign: "center",
       color: theme.colors.muted,
       marginTop: theme.spacing(4),
+    },
+    searchContainer: {
+      paddingHorizontal: theme.spacing(2),
+      paddingTop: theme.spacing(2),
+      backgroundColor: theme.colors.bg,
+    },
+    searchInput: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(1.5),
+      fontSize: 14,
+      color: theme.colors.text,
     },
   });
 }
