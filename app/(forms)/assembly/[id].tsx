@@ -7,7 +7,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Button,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,14 +15,12 @@ import {
 } from "react-native";
 import type { Assembly, PricedLine, ProductIndex } from "@/modules/assemblies";
 import {
-  getQuoteById,
-  listQuotes,
   saveQuote,
   createQuote,
 } from "@/modules/quotes";
-import { mergeById } from "@/modules/quotes/merge";
 import { useProducts } from "@/modules/catalog";
 import { useTheme } from "@/contexts/ThemeContext";
+import { BottomBar, Button } from "@/modules/core/ui";
 
 /**
  * Convert PricedLine array to QuoteItem array
@@ -84,93 +81,52 @@ export default function AssemblyCalculatorScreen() {
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const closeBar = (
-    <View style={styles.footer}>
-      <Button title="Close" onPress={() => router.back()} color={theme.colors.accent} />
-    </View>
-  );
-
   const handleAddToQuote = async () => {
     if (!assembly || !calculator || calculator.lines.length === 0) {
       Alert.alert(
         "No materials",
-        "Calculate materials first before adding to quote",
+        "Calculate materials first before creating quote",
       );
       return;
     }
 
     try {
-      // Load all quotes
-      const quotes = await listQuotes();
+      // Create a new quote with these materials
+      const newQuote = await createQuote(
+        `${assembly.name}`,
+        "",
+      );
+      const withItems = {
+        ...newQuote,
+        items: pricedLinesToQuoteItems(calculator.lines),
+      };
+      await saveQuote(withItems);
 
-      if (quotes.length === 0) {
-        // No quotes exist - prompt to create one
-        Alert.alert(
-          "No quotes found",
-          "Create a new quote to add these materials?",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Create Quote",
-              onPress: async () => {
-                const newQuote = await createQuote(
-                  `${assembly.name} Quote`,
-                  "",
-                );
-                const withItems = {
-                  ...newQuote,
-                  items: pricedLinesToQuoteItems(calculator.lines),
-                };
-                await saveQuote(withItems);
-                Alert.alert("Success", "New quote created with materials");
-                router.back();
-              },
+      Alert.alert(
+        "Quote Created!",
+        `"${assembly.name}" quote created with ${calculator.lines.length} items.`,
+        [
+          {
+            text: "View Quote",
+            onPress: () => {
+              router.back();
+              // Navigate to the new quote
+              router.push(`/quote/${newQuote.id}/edit` as any);
             },
-          ],
-        );
-        return;
-      }
-
-      // Show quote picker
-      const quoteOptions = quotes.map((q, idx) => ({
-        text: q.name || `Quote ${idx + 1}`,
-        onPress: async () => {
-          const existing = await getQuoteById(q.id);
-          if (!existing) return;
-
-          const newItems = pricedLinesToQuoteItems(calculator.lines);
-          const merged = mergeById((existing.items as any) ?? [], newItems);
-
-          await saveQuote({ ...existing, items: merged as any });
-          Alert.alert(
-            "Success",
-            `Added ${calculator.lines.length} items to "${q.name || "quote"}"`,
-          );
-          router.back();
-        },
-      }));
-
-      Alert.alert("Add to Quote", "Select a quote to add these materials:", [
-        ...quoteOptions,
-        { text: "Cancel", style: "cancel" },
-      ]);
+          },
+          {
+            text: "Done",
+            onPress: () => router.back(),
+            style: "cancel",
+          },
+        ],
+      );
     } catch (error) {
-      console.error("Failed to add to quote:", error);
-      Alert.alert("Error", "Could not add materials to quote");
+      console.error("Failed to create quote:", error);
+      Alert.alert("Error", "Could not create quote");
     }
   };
 
-  const actionBar = (
-    <View style={styles.footer}>
-      <Button
-        title="Add to Quote"
-        onPress={handleAddToQuote}
-        disabled={!assembly || !calculator || calculator.lines.length === 0}
-        color={theme.colors.accent}
-      />
-      <Button title="Cancel" onPress={() => router.back()} color={theme.colors.accent} />
-    </View>
-  );
 
   if (loading || productsLoading) {
     return (
@@ -211,16 +167,12 @@ export default function AssemblyCalculatorScreen() {
             },
           }}
         />
-        <FormScreenComponent
-          scroll
-          contentStyle={styles.body}
-          bottomBar={closeBar}
-        >
-          <View>
+        <View style={styles.container}>
+          <View style={styles.center}>
             <Text style={styles.h2}>Missing assembly id</Text>
-            <Text>Open an assembly from the library and try again.</Text>
+            <Text style={styles.muted}>Open an assembly from the library and try again.</Text>
           </View>
-        </FormScreenComponent>
+        </View>
       </>
     );
   }
@@ -241,60 +193,68 @@ export default function AssemblyCalculatorScreen() {
             },
           }}
         />
-        <FormScreenComponent
-          scroll
-          contentStyle={styles.body}
-          bottomBar={closeBar}
-        >
-          <View>
+        <View style={styles.container}>
+          <View style={styles.center}>
             <Text style={styles.h2}>Assembly not found</Text>
-            <Text>
+            <Text style={styles.muted}>
               We couldn&apos;t load that assembly. Try again from the library.
             </Text>
           </View>
-        </FormScreenComponent>
+        </View>
       </>
     );
   }
 
-  const { vars, updateVar, lines, materialTotal } = calculator;
+  const { vars, updateVar, lines, materialTotal} = calculator;
 
   return (
     <>
-      <Stack.Screen options={{ title: assembly.name }} />
-      <FormScreenComponent
-        scroll
-        contentStyle={styles.body}
-        bottomBar={actionBar}
-      >
-        <ScrollView contentContainerStyle={{ gap: 16 }}>
+      <Stack.Screen
+        options={{
+          title: assembly.name,
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.bg,
+          },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: {
+            color: theme.colors.text,
+          },
+        }}
+      />
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.body}>
           {/* Variables Section */}
-          <View>
-            <Text style={styles.h2}>Parameters</Text>
-            {Object.keys(vars).map((key) => (
-              <View key={key} style={styles.inputRow}>
-                <Text style={styles.label}>{key}:</Text>
-                <TextInput
-                  style={styles.input}
-                  value={String(vars[key])}
-                  onChangeText={(text) => {
-                    const num = parseFloat(text);
-                    updateVar(key, Number.isNaN(num) ? 0 : num);
-                  }}
-                  keyboardType="numeric"
-                />
-              </View>
-            ))}
-          </View>
+          {Object.keys(vars).length > 0 && (
+            <View>
+              <Text style={styles.h2}>Parameters</Text>
+              {Object.keys(vars).map((key) => (
+                <View key={key} style={styles.inputRow}>
+                  <Text style={styles.label}>{key}:</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={String(vars[key])}
+                    onChangeText={(text) => {
+                      const num = parseFloat(text);
+                      updateVar(key, Number.isNaN(num) ? 0 : num);
+                    }}
+                    keyboardType="numeric"
+                  />
+                </View>
+              ))}
+            </View>
+          )}
 
-          <View style={styles.divider} />
+          {Object.keys(vars).length > 0 && <View style={styles.divider} />}
 
           {/* Materials Section */}
           <View>
             <Text style={styles.h2}>Materials</Text>
             {lines.length === 0 ? (
               <Text style={styles.muted}>
-                No materials calculated. Adjust parameters above.
+                {Object.keys(vars).length > 0
+                  ? "No materials calculated. Adjust parameters above."
+                  : "This assembly has no materials."}
               </Text>
             ) : (
               lines.map((line, idx) => (
@@ -321,15 +281,26 @@ export default function AssemblyCalculatorScreen() {
             <Text style={styles.totalValue}>{formatMoney(materialTotal)}</Text>
           </View>
         </ScrollView>
-      </FormScreenComponent>
+
+        <BottomBar>
+          <Button
+            variant="primary"
+            onPress={handleAddToQuote}
+            disabled={!assembly || !calculator || calculator.lines.length === 0}
+          >
+            Create Quote
+          </Button>
+        </BottomBar>
+      </View>
     </>
   );
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.bg },
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
-    body: { padding: 16 },
+    body: { padding: 16, paddingBottom: 100 },
     h2: {
       fontSize: 18,
       fontWeight: "600",
@@ -408,13 +379,5 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
     },
 
-    footer: {
-      flexDirection: "row",
-      gap: 12,
-      padding: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.colors.border,
-      backgroundColor: theme.colors.card,
-    },
   });
 }
