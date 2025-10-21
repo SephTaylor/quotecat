@@ -52,6 +52,8 @@ export default function ProTools() {
       // Navigate to feature
       if (featureName === "Assemblies") {
         router.push("./assemblies" as any);
+      } else if (featureName === "Assembly Manager") {
+        router.push("/(main)/assembly-manager" as any);
       }
       // Add other pro features here
     } else {
@@ -77,6 +79,22 @@ export default function ProTools() {
               </Text>
             </View>
           )}
+
+          {/* Assembly Manager */}
+          <ProFeatureCard
+            icon="🛠️"
+            title="Assembly Manager"
+            description="Create and manage custom assembly templates"
+            locked={!isPro}
+            onPress={() => handleFeatureTap("Assembly Manager")}
+            details={[
+              "Create custom assemblies",
+              "Manage your template library",
+              "Delete or edit existing assemblies",
+              "Build reusable material packages",
+            ]}
+            theme={theme}
+          />
 
           {/* Assemblies Library */}
           <ProFeatureCard
