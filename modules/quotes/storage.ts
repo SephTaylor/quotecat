@@ -271,6 +271,47 @@ export async function deleteQuote(id: string): Promise<void> {
 }
 
 /**
+ * Duplicate a quote
+ * Creates a copy with a new ID, appending "Copy" to the name
+ */
+export async function duplicateQuote(id: string): Promise<Quote | null> {
+  const result = await withErrorHandling(async () => {
+    const original = await getQuoteById(id);
+    if (!original) {
+      throw new Error(`Quote ${id} not found`);
+    }
+
+    // Create a copy with new ID and updated name
+    const now = new Date().toISOString();
+    const copy: Quote = {
+      ...original,
+      id: `quote-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+      name: original.name ? `${original.name} (Copy)` : "Untitled (Copy)",
+      status: "draft", // Reset to draft
+      createdAt: now,
+      updatedAt: now,
+      pinned: false, // Don't copy pinned status
+    };
+
+    // Save the copy
+    const allQuotes = await readAllQuotes();
+    await writeQuotes([...allQuotes, copy]);
+
+    return copy;
+  }, ErrorType.STORAGE);
+
+  if (!result.success) {
+    logError(result.error, "duplicateQuote");
+    return null;
+  }
+
+  // Invalidate cache
+  cache.invalidate(CacheKeys.quotes.all());
+
+  return result.data;
+}
+
+/**
  * Clear all quotes (use with caution!)
  */
 export async function clearAllQuotes(): Promise<void> {

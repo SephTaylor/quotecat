@@ -10,6 +10,7 @@ export {
   saveQuote,
   updateQuote,
   deleteQuote,
+  duplicateQuote,
 } from "@/modules/quotes";
 
 export type {

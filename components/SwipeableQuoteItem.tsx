@@ -12,11 +12,12 @@ type SwipeableQuoteItemProps = {
   item: Quote;
   onEdit: () => void;
   onDelete: () => void;
+  onDuplicate?: () => void;
   onTogglePin?: () => void;
 };
 
 export const SwipeableQuoteItem = React.memo(
-  ({ item, onEdit, onDelete, onTogglePin }: SwipeableQuoteItemProps) => {
+  ({ item, onEdit, onDelete, onDuplicate, onTogglePin }: SwipeableQuoteItemProps) => {
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     const total = calculateTotal(item);
@@ -61,8 +62,8 @@ export const SwipeableQuoteItem = React.memo(
       dragX: Animated.AnimatedInterpolation<number>,
     ) => {
       const translateX = dragX.interpolate({
-        inputRange: [0, 100],
-        outputRange: [-100, 0],
+        inputRange: [0, onDuplicate ? 200 : 100],
+        outputRange: [onDuplicate ? -200 : -100, 0],
         extrapolate: "clamp",
       });
 
@@ -72,6 +73,14 @@ export const SwipeableQuoteItem = React.memo(
         onEdit();
       };
 
+      const handleDuplicate = () => {
+        if (onDuplicate) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          swipeableRef.current?.close();
+          onDuplicate();
+        }
+      };
+
       return (
         <Animated.View
           style={[styles.actionsContainer, { transform: [{ translateX }] }]}
@@ -79,6 +88,11 @@ export const SwipeableQuoteItem = React.memo(
           <Pressable style={styles.editButton} onPress={handleEdit}>
             <Text style={styles.actionText}>Edit</Text>
           </Pressable>
+          {onDuplicate && (
+            <Pressable style={styles.duplicateButton} onPress={handleDuplicate}>
+              <Text style={styles.actionText}>Duplicate</Text>
+            </Pressable>
+          )}
         </Animated.View>
       );
     };
@@ -206,6 +220,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     editButton: {
       backgroundColor: "#007AFF",
+      justifyContent: "center",
+      alignItems: "center",
+      width: 100,
+      borderRadius: theme.radius.lg,
+    },
+    duplicateButton: {
+      backgroundColor: theme.colors.accent,
       justifyContent: "center",
       alignItems: "center",
       width: 100,

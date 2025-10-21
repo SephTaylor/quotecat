@@ -4,6 +4,7 @@ import {
   getQuoteById,
   updateQuote,
   deleteQuote,
+  duplicateQuote,
   type Quote,
 } from "@/lib/quotes";
 import { FormInput, FormScreen } from "@/modules/core/ui";
@@ -211,6 +212,29 @@ export default function EditQuote() {
     router.back();
   };
 
+  const handleDuplicate = async () => {
+    if (!id) return;
+
+    // Save current changes first
+    await updateQuote(id, {
+      name: name.trim() || "Untitled",
+      clientName: clientName.trim(),
+      labor: parseMoney(labor),
+      materialEstimate: parseMoney(materialEstimate),
+      overhead: parseMoney(overhead),
+      markupPercent: parseFloat(markupPercent) || 0,
+      status,
+      pinned,
+      items,
+    });
+
+    // Duplicate and navigate to the copy
+    const duplicated = await duplicateQuote(id);
+    if (duplicated) {
+      router.replace(`/quote/${duplicated.id}/edit`);
+    }
+  };
+
   const handleUpdateItemQty = async (itemId: string, delta: number) => {
     if (!id) return;
 
@@ -293,6 +317,16 @@ export default function EditQuote() {
             >
               <Text style={{ fontSize: 17, color: theme.colors.accent }}>
                 ‹ Back
+              </Text>
+            </Pressable>
+          ),
+          headerRight: () => (
+            <Pressable
+              onPress={handleDuplicate}
+              style={{ paddingRight: 16, paddingVertical: 8 }}
+            >
+              <Text style={{ fontSize: 17, color: theme.colors.accent, fontWeight: "600" }}>
+                Duplicate
               </Text>
             </Pressable>
           ),

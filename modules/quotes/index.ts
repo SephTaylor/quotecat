@@ -10,6 +10,7 @@ export {
   saveQuote,
   updateQuote,
   deleteQuote,
+  duplicateQuote,
   clearAllQuotes,
 } from "./storage";
 

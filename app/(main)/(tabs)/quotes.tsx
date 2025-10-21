@@ -3,6 +3,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import {
   createNewQuote,
   deleteQuote,
+  duplicateQuote,
   listQuotes,
   saveQuote,
   updateQuote,
@@ -152,6 +153,17 @@ export default function QuotesList() {
     await updateQuote(quote.id, { pinned: !quote.pinned });
   }, []);
 
+  const handleDuplicate = useCallback(async (quote: Quote) => {
+    const duplicated = await duplicateQuote(quote.id);
+    if (duplicated) {
+      // Optimistically add to list at the top
+      setQuotes((prev) => [duplicated, ...prev]);
+
+      // Navigate to edit the new quote
+      router.push(`/quote/${duplicated.id}/edit`);
+    }
+  }, [router]);
+
   // Filter quotes based on search query and status
   const filteredQuotes = React.useMemo(() => {
     let filtered = quotes;
@@ -265,6 +277,7 @@ export default function QuotesList() {
               item={item}
               onEdit={() => router.push(`/quote/${item.id}/edit`)}
               onDelete={() => handleDelete(item)}
+              onDuplicate={() => handleDuplicate(item)}
               onTogglePin={() => handleTogglePin(item)}
             />
           )}
