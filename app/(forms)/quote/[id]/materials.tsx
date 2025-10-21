@@ -13,7 +13,7 @@ import {
 import { mergeById } from "@/modules/quotes/merge";
 import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Text, View, StyleSheet, Pressable } from "react-native";
+import { Text, View, StyleSheet, Pressable, Alert } from "react-native";
 import type { QuoteItem } from "@/lib/types";
 import { trackProductUsage, getRecentlyUsedProducts } from "@/lib/analytics";
 
@@ -120,49 +120,56 @@ export default function QuoteMaterials() {
     async (goBack: boolean) => {
       if (!id) {
         console.log("No quote ID");
+        Alert.alert("Error", "No quote ID found. Please try again.");
         return;
       }
 
-      const q = await getQuoteById(id);
-      if (!q) {
-        console.log("Quote not found");
-        return;
-      }
+      try {
+        const q = await getQuoteById(id);
+        if (!q) {
+          console.log("Quote not found");
+          Alert.alert("Error", "Quote not found. Please try again.");
+          return;
+        }
 
-      // Get current quote items
-      const existingItems = q.items ?? [];
+        // Get current quote items
+        const existingItems = q.items ?? [];
 
-      // Convert current selection to items
-      const newlySelectedItems = transformSelectionToItems(selection);
-      console.log("Newly selected items:", newlySelectedItems);
-      console.log("Existing quote items:", existingItems);
+        // Convert current selection to items
+        const newlySelectedItems = transformSelectionToItems(selection);
+        console.log("Newly selected items:", newlySelectedItems);
+        console.log("Existing quote items:", existingItems);
 
-      // Track usage for analytics (privacy-friendly)
-      newlySelectedItems.forEach((item) => {
-        trackProductUsage(item.productId || item.id || "", item.qty);
-      });
+        // Track usage for analytics (privacy-friendly)
+        newlySelectedItems.forEach((item) => {
+          trackProductUsage(item.productId || item.id || "", item.qty);
+        });
 
-      // Merge existing items with newly selected items (accumulate mode)
-      const mergedItems = mergeById(existingItems, newlySelectedItems);
-      console.log("Merged items:", mergedItems);
+        // Merge existing items with newly selected items (accumulate mode)
+        const mergedItems = mergeById(existingItems, newlySelectedItems);
+        console.log("Merged items:", mergedItems);
 
-      // Save the merged items list
-      await saveQuote({ ...q, id, items: mergedItems });
-      console.log("Items saved successfully");
+        // Save the merged items list
+        await saveQuote({ ...q, id, items: mergedItems });
+        console.log("Items saved successfully");
 
-      if (goBack) {
-        router.back();
-      } else {
-        // Update the indicator to show all saved items
-        setQuoteItems(mergedItems);
+        if (goBack) {
+          router.back();
+        } else {
+          // Update the indicator to show all saved items
+          setQuoteItems(mergedItems);
 
-        // Clear the selection UI so user can select new items
-        clear();
-        console.log("Selection cleared. Quote now has", mergedItems.length, "product types");
+          // Clear the selection UI so user can select new items
+          clear();
+          console.log("Selection cleared. Quote now has", mergedItems.length, "product types");
 
-        // Show success message
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 3000);
+          // Show success message
+          setShowSuccessMessage(true);
+          setTimeout(() => setShowSuccessMessage(false), 3000);
+        }
+      } catch (error) {
+        console.error("Failed to save materials:", error);
+        Alert.alert("Error", "Failed to add materials. Please try again.");
       }
     },
     [id, selection, router, clear],

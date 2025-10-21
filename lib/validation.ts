@@ -24,9 +24,13 @@ const KNOWN_QUOTE_KEYS = new Set([
   "clientName",
   "items",
   "labor",
+  "materialEstimate",
+  "overhead",
+  "markupPercent",
   "currency",
   "status",
   "pinned",
+  "tier",
   "createdAt",
   "updatedAt",
   "materialSubtotal",
@@ -124,9 +128,13 @@ export function normalizeQuote(raw: any): Quote {
       typeof raw?.clientName === "string" ? raw.clientName : undefined,
     items: itemsArray.map(normalizeQuoteItem),
     labor: Number.isFinite(raw?.labor) ? Number(raw.labor) : 0,
+    materialEstimate: Number.isFinite(raw?.materialEstimate) ? Number(raw.materialEstimate) : undefined,
+    overhead: Number.isFinite(raw?.overhead) ? Number(raw.overhead) : undefined,
+    markupPercent: Number.isFinite(raw?.markupPercent) ? Number(raw.markupPercent) : undefined,
     currency: normalizeCurrency(raw?.currency),
     status: normalizeStatus(raw?.status),
     pinned: typeof raw?.pinned === "boolean" ? raw.pinned : false,
+    tier: typeof raw?.tier === "string" && raw.tier ? raw.tier : undefined,
     createdAt: typeof raw?.createdAt === "string" ? raw.createdAt : nowIso,
     updatedAt: typeof raw?.updatedAt === "string" ? raw.updatedAt : nowIso,
   };
@@ -143,6 +151,14 @@ export function normalizeQuote(raw: any): Quote {
 }
 
 /**
+ * Get a stable ID for a quote item
+ * Falls back to generating a temporary ID if both productId and id are missing
+ */
+export function getItemId(item: QuoteItem): string {
+  return item.productId || item.id || `temp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/**
  * Calculate material subtotal from quote items
  */
 export function calculateMaterialSubtotal(items: QuoteItem[]): number {
@@ -153,11 +169,46 @@ export function calculateMaterialSubtotal(items: QuoteItem[]): number {
 }
 
 /**
- * Calculate total including labor
+ * Calculate all quote totals with breakdown
+ * This is the single source of truth for quote calculations
+ */
+export function calculateQuoteTotals(quote: Quote): {
+  materialsFromItems: number;
+  materialEstimate: number;
+  labor: number;
+  overhead: number;
+  subtotal: number;
+  markupPercent: number;
+  markupAmount: number;
+  total: number;
+} {
+  const materialsFromItems = calculateMaterialSubtotal(quote.items);
+  const materialEstimate = quote.materialEstimate ?? 0;
+  const labor = quote.labor ?? 0;
+  const overhead = quote.overhead ?? 0;
+  const markupPercent = quote.markupPercent ?? 0;
+
+  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+  const markupAmount = (subtotal * markupPercent) / 100;
+  const total = subtotal + markupAmount;
+
+  return {
+    materialsFromItems,
+    materialEstimate,
+    labor,
+    overhead,
+    subtotal,
+    markupPercent,
+    markupAmount,
+    total,
+  };
+}
+
+/**
+ * Calculate total (simplified wrapper for backward compatibility)
  */
 export function calculateTotal(quote: Quote): number {
-  const materialSubtotal = calculateMaterialSubtotal(quote.items);
-  return materialSubtotal + (quote.labor || 0);
+  return calculateQuoteTotals(quote).total;
 }
 
 /**

@@ -95,6 +95,9 @@ export type Quote = {
   clientName?: string;
   items: QuoteItem[];
   labor: number;
+  materialEstimate?: number; // Quick estimate for materials without line items
+  overhead?: number; // Flat overhead/additional costs
+  markupPercent?: number; // Markup percentage applied to subtotal
   currency: CurrencyCode;
   status: QuoteStatus;
   pinned?: boolean; // For favoriting/starring quotes

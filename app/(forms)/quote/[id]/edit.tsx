@@ -9,6 +9,7 @@ import {
 } from "@/lib/quotes";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { parseMoney } from "@/modules/settings/money";
+import { getItemId } from "@/lib/validation";
 import type { QuoteStatus, QuoteItem } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
 import { getUserState } from "@/lib/user";
@@ -173,17 +174,25 @@ export default function EditQuote() {
     }
   };
 
-  const onDone = async () => {
-    if (!id) return;
-
-    // Validate required fields
+  const validateRequiredFields = (): boolean => {
     if (!name.trim()) {
       Alert.alert("Required Field", "Please enter a project name.");
-      return;
+      return false;
     }
 
     if (!clientName.trim()) {
       Alert.alert("Required Field", "Please enter a client name.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const onDone = async () => {
+    if (!id) return;
+
+    // Validate required fields
+    if (!validateRequiredFields()) {
       return;
     }
 
@@ -243,7 +252,7 @@ export default function EditQuote() {
     if (!id) return;
 
     const updatedItems = items.map((item) => {
-      const currentId = item.productId || item.id;
+      const currentId = getItemId(item);
       if (currentId === itemId) {
         const newQty = Math.max(0, item.qty + delta);
         return { ...item, qty: newQty };
@@ -367,8 +376,14 @@ export default function EditQuote() {
               style={styles.reviewBtn}
               onPress={async () => {
                 if (!id) return;
+
+                // Validate required fields before proceeding
+                if (!validateRequiredFields()) {
+                  return;
+                }
+
                 await updateQuote(id, {
-                  name: name.trim() || "Untitled",
+                  name: name.trim(),
                   clientName: clientName.trim(),
                   tier: tier.trim() || undefined,
                   labor: parseMoney(labor),
@@ -417,7 +432,7 @@ export default function EditQuote() {
           <Text style={styles.labelOptional}> - Optional</Text>
         </Text>
         <Text style={styles.helperText}>
-          For tiered pricing: "Good", "Better", "Best" or add-ons like "Base + Surge Protector"
+          For tiered pricing: &quot;Good&quot;, &quot;Better&quot;, &quot;Best&quot; or add-ons like &quot;Base + Surge Protector&quot;
         </Text>
         <FormInput
           placeholder='e.g., "Better" or "With Generator Hookup"'
@@ -504,7 +519,7 @@ export default function EditQuote() {
               No materials added yet
             </Text>
             <Text style={styles.emptyMaterialsHint}>
-              Tap "Add materials" below to browse the catalog or use assemblies
+              Tap &quot;Add materials&quot; below to browse the catalog or use assemblies
             </Text>
           </View>
         )}
@@ -531,14 +546,14 @@ export default function EditQuote() {
                     <View style={styles.stepper}>
                       <Pressable
                         style={styles.stepBtn}
-                        onPress={() => handleUpdateItemQty(item.productId || item.id || '', -1)}
+                        onPress={() => handleUpdateItemQty(getItemId(item), -1)}
                       >
                         <Text style={styles.stepText}>−</Text>
                       </Pressable>
                       <Text style={styles.qtyText}>{item.qty}</Text>
                       <Pressable
                         style={styles.stepBtn}
-                        onPress={() => handleUpdateItemQty(item.productId || item.id || '', 1)}
+                        onPress={() => handleUpdateItemQty(getItemId(item), 1)}
                       >
                         <Text style={styles.stepText}>+</Text>
                       </Pressable>
@@ -711,7 +726,7 @@ export default function EditQuote() {
           >
             <Text style={styles.modalTitle}>Save as Assembly</Text>
             <Text style={styles.modalDescription}>
-              Give this assembly a name to save it for future use. You'll be able to quickly add these {items.length} materials to any quote.
+              Give this assembly a name to save it for future use. You&apos;ll be able to quickly add these {items.length} materials to any quote.
             </Text>
 
             <TextInput

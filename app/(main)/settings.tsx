@@ -690,7 +690,7 @@ export default function Settings() {
                 <Text style={styles.comingSoonFeature}>✓ Present all options in one PDF</Text>
               </View>
               <Text style={styles.comingSoonNote}>
-                💡 Tip: You can manually create tiers now using the "Tier / Variant" field when editing quotes!
+                💡 Tip: You can manually create tiers now using the &quot;Tier / Variant&quot; field when editing quotes!
               </Text>
             </View>
           </CollapsibleSection>
