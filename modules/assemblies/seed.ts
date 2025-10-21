@@ -462,20 +462,4 @@ export const ASSEMBLIES_SEED: Assembly[] = [
       },
     ],
   },
-  // ===== TEST ASSEMBLY - AUTO-MERGE VERIFICATION =====
-  {
-    id: "test-automerge-assembly",
-    name: "🧪 Test Auto-Merge Assembly",
-    defaults: {},
-    items: [
-      {
-        productId: "stud-2x4x92-5-8",
-        qty: 10,
-      },
-      {
-        productId: "sheet-1-2-4x8",
-        qty: 5,
-      },
-    ],
-  },
 ];

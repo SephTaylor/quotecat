@@ -46,12 +46,12 @@ export default function Settings() {
 
   // Track expanded sections
   const [expandedSections, setExpandedSections] = useState({
+    debug: true, // Expanded by default for tester access
     usage: true,
     appearance: true,
     dashboard: true,
     quoteDefaults: true,
     privacy: true,
-    debug: false,
     about: false,
   });
 
@@ -224,6 +224,118 @@ export default function Settings() {
               )}
             </View>
           </View>
+
+          {/* ⚠️ TESTER DEBUG SECTION ⚠️ */}
+          <CollapsibleSection
+            title="🧪 Tester Tools"
+            isExpanded={expandedSections.debug}
+            onToggle={() => toggleSection('debug')}
+            theme={theme}
+            titleColor={theme.colors.accent}
+          >
+            <View style={[styles.card, { borderColor: theme.colors.accent, borderWidth: 2 }]}>
+              <Pressable
+                style={styles.settingButton}
+                onPress={async () => {
+                  const user = await getUserState();
+                  if (user.tier === "free") {
+                    await activateProTier("debug@test.com");
+                    Alert.alert("Debug", "Switched to PRO tier");
+                  } else {
+                    await deactivateProTier();
+                    Alert.alert("Debug", "Switched to FREE tier");
+                  }
+                  await load(); // Reload to update UI
+                }}
+              >
+                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
+                  Toggle Free/Pro Tier
+                </Text>
+                <Text style={styles.settingValue}>
+                  {isPro ? "PRO → FREE" : "FREE → PRO"}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.settingButton}
+                onPress={async () => {
+                  Alert.alert(
+                    "Reset Assemblies?",
+                    "This will reset all assemblies to the latest seed data. Any custom assemblies will be lost.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Reset",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+                            const { ASSEMBLY_KEYS } = await import("@/lib/storageKeys");
+                            const { ASSEMBLIES_SEED } = await import("@/modules/assemblies");
+
+                            // Clear existing assemblies
+                            await AsyncStorage.removeItem(ASSEMBLY_KEYS.CACHE);
+
+                            // Reinitialize with seed data
+                            await AsyncStorage.setItem(
+                              ASSEMBLY_KEYS.CACHE,
+                              JSON.stringify(ASSEMBLIES_SEED)
+                            );
+
+                            Alert.alert("Success", "Assemblies reset to seed data");
+                          } catch (error) {
+                            console.error("Failed to reset assemblies:", error);
+                            Alert.alert("Error", "Failed to reset assemblies");
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
+                  Reset Assemblies to Seed
+                </Text>
+                <Text style={[styles.settingValue, { color: '#FF3B30' }]}>
+                  Destructive
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.settingButton, styles.settingButtonLast]}
+                onPress={async () => {
+                  Alert.alert(
+                    "Reset Products?",
+                    "This will reset all products to the latest seed data and clear the Supabase sync cache.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Reset",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            const { clearProductCache } = await import("@/modules/catalog/productService");
+                            await clearProductCache();
+                            Alert.alert("Success", "Products cache cleared. Restart app to reinitialize.");
+                          } catch (error) {
+                            console.error("Failed to reset products:", error);
+                            Alert.alert("Error", "Failed to reset products");
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
+                  Reset Products to Seed
+                </Text>
+                <Text style={[styles.settingValue, { color: '#FF3B30' }]}>
+                  Destructive
+                </Text>
+              </Pressable>
+            </View>
+          </CollapsibleSection>
 
           {/* Usage & Limits Section */}
           {userState && (
@@ -549,118 +661,6 @@ export default function Settings() {
                   thumbColor={theme.colors.card}
                 />
               </View>
-            </View>
-          </CollapsibleSection>
-
-          {/* ⚠️ DEBUG SECTION - REMOVE BEFORE PRODUCTION ⚠️ */}
-          <CollapsibleSection
-            title="⚠️ DEBUG (REMOVE BEFORE PRODUCTION)"
-            isExpanded={expandedSections.debug}
-            onToggle={() => toggleSection('debug')}
-            theme={theme}
-            titleColor="#FF3B30"
-          >
-            <View style={[styles.card, { borderColor: '#FF3B30', borderWidth: 2 }]}>
-              <Pressable
-                style={styles.settingButton}
-                onPress={async () => {
-                  const user = await getUserState();
-                  if (user.tier === "free") {
-                    await activateProTier("debug@test.com");
-                    Alert.alert("Debug", "Switched to PRO tier");
-                  } else {
-                    await deactivateProTier();
-                    Alert.alert("Debug", "Switched to FREE tier");
-                  }
-                  await load(); // Reload to update UI
-                }}
-              >
-                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
-                  Toggle Free/Pro Tier
-                </Text>
-                <Text style={styles.settingValue}>
-                  {isPro ? "PRO → FREE" : "FREE → PRO"}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.settingButton}
-                onPress={async () => {
-                  Alert.alert(
-                    "Reset Assemblies?",
-                    "This will reset all assemblies to the latest seed data. Any custom assemblies will be lost.",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Reset",
-                        style: "destructive",
-                        onPress: async () => {
-                          try {
-                            const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-                            const { ASSEMBLY_KEYS } = await import("@/lib/storageKeys");
-                            const { ASSEMBLIES_SEED } = await import("@/modules/assemblies");
-
-                            // Clear existing assemblies
-                            await AsyncStorage.removeItem(ASSEMBLY_KEYS.CACHE);
-
-                            // Reinitialize with seed data
-                            await AsyncStorage.setItem(
-                              ASSEMBLY_KEYS.CACHE,
-                              JSON.stringify(ASSEMBLIES_SEED)
-                            );
-
-                            Alert.alert("Success", "Assemblies reset to seed data");
-                          } catch (error) {
-                            console.error("Failed to reset assemblies:", error);
-                            Alert.alert("Error", "Failed to reset assemblies");
-                          }
-                        },
-                      },
-                    ]
-                  );
-                }}
-              >
-                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
-                  Reset Assemblies to Seed
-                </Text>
-                <Text style={[styles.settingValue, { color: '#FF3B30' }]}>
-                  Destructive
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.settingButton, styles.settingButtonLast]}
-                onPress={async () => {
-                  Alert.alert(
-                    "Reset Products?",
-                    "This will reset all products to the latest seed data and clear the Supabase sync cache.",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Reset",
-                        style: "destructive",
-                        onPress: async () => {
-                          try {
-                            const { clearProductCache } = await import("@/modules/catalog/productService");
-                            await clearProductCache();
-                            Alert.alert("Success", "Products cache cleared. Restart app to reinitialize.");
-                          } catch (error) {
-                            console.error("Failed to reset products:", error);
-                            Alert.alert("Error", "Failed to reset products");
-                          }
-                        },
-                      },
-                    ]
-                  );
-                }}
-              >
-                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
-                  Reset Products to Seed
-                </Text>
-                <Text style={[styles.settingValue, { color: '#FF3B30' }]}>
-                  Destructive
-                </Text>
-              </Pressable>
             </View>
           </CollapsibleSection>
 

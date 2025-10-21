@@ -296,13 +296,5 @@ export const PRODUCTS_SEED: Record<string, Product[]> = {
       unit: "ea",
       unitPrice: 6.2,
     },
-    // TEST PRODUCT - AUTO-MERGE VERIFICATION
-    {
-      id: "test-automerge-product",
-      categoryId: "plumbing",
-      name: "🧪 Test Auto-Merge Product",
-      unit: "ea",
-      unitPrice: 99.99,
-    },
   ],
 };
