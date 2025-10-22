@@ -11,7 +11,7 @@ import {
   type DashboardPreferences,
   type UserPreferences,
 } from "@/lib/preferences";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
@@ -24,9 +24,11 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { GradientBackground } from "@/components/GradientBackground";
 
 export default function Settings() {
   const { mode, theme, setThemeMode } = useTheme();
+  const router = useRouter();
   const [isPro, setIsPro] = useState(false);
   const [userEmail, setUserEmail] = useState<string | undefined>();
   const [userState, setUserState] = useState<UserState | null>(null);
@@ -46,13 +48,13 @@ export default function Settings() {
 
   // Track expanded sections
   const [expandedSections, setExpandedSections] = useState({
-    debug: true, // Expanded by default for tester access
-    usage: true,
-    appearance: true,
-    dashboard: true,
-    quoteDefaults: true,
-    privacy: true,
-    comingSoon: true, // Show testers what's coming in v1
+    debug: false,
+    usage: false,
+    appearance: false,
+    dashboard: false,
+    quoteDefaults: false,
+    privacy: false,
+    comingSoon: false,
     about: false,
   });
 
@@ -112,20 +114,6 @@ export default function Settings() {
     );
   };
 
-  const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: () => {
-          // TODO: Implement sign out logic
-          Alert.alert("Signed Out", "You have been signed out successfully.");
-        },
-      },
-    ]);
-  };
-
   const handleUpdatePreference = async (
     updates: Partial<DashboardPreferences>,
   ) => {
@@ -170,11 +158,13 @@ export default function Settings() {
           },
         }}
       />
-      <View style={styles.container}>
+      <GradientBackground>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Profile Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Profile</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Profile</Text>
+            </View>
 
             <View style={styles.card}>
               <View style={styles.accountHeader}>
@@ -198,22 +188,13 @@ export default function Settings() {
               </View>
 
               {userEmail ? (
-                <>
-                  <Pressable
-                    style={styles.settingButton}
-                    onPress={handleManageAccount}
-                  >
-                    <Text style={styles.settingButtonText}>Manage Account</Text>
-                    <Text style={styles.settingButtonIcon}>→</Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={[styles.settingButton, styles.settingButtonLast]}
-                    onPress={handleSignOut}
-                  >
-                    <Text style={styles.settingButtonText}>Sign Out</Text>
-                  </Pressable>
-                </>
+                <Pressable
+                  style={[styles.settingButton, styles.settingButtonLast]}
+                  onPress={handleManageAccount}
+                >
+                  <Text style={styles.settingButtonText}>Manage Account</Text>
+                  <Text style={styles.settingButtonIcon}>→</Text>
+                </Pressable>
               ) : (
                 <Pressable
                   style={[styles.settingButton, styles.settingButtonLast]}
@@ -401,11 +382,11 @@ export default function Settings() {
                   )}
                 </View>
 
-                {/* Spreadsheet Exports */}
+                {/* CSV Exports */}
                 <View style={[styles.usageRow, styles.usageRowLast]}>
                   <View style={styles.usageHeader}>
                     <Text style={styles.usageLabel}>
-                      Spreadsheet Exports (This Month)
+                      CSV Exports (This Month)
                     </Text>
                     <Text style={styles.usageValue}>
                       {isPro
@@ -562,63 +543,38 @@ export default function Settings() {
             onToggle={() => toggleSection('quoteDefaults')}
             theme={theme}
           >
-            <View style={styles.card}>
-              <Pressable
-                style={styles.settingButton}
-                onPress={() => {
-                  // TODO: Navigate to company name editor
-                  Alert.alert("Coming Soon", "Company name editing");
-                }}
-              >
-                <Text style={styles.settingButtonText}>Company Name</Text>
-                <Text style={styles.settingButtonIcon}>→</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.settingButton}
-                onPress={() => {
-                  // TODO: Navigate to currency picker
-                  Alert.alert("Coming Soon", "Currency picker");
-                }}
-              >
-                <Text style={styles.settingButtonText}>Currency</Text>
-                <Text style={styles.settingButtonIcon}>→</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.settingButton}
-                onPress={() => {
-                  // TODO: Navigate to contact info editor
-                  Alert.alert("Coming Soon", "Contact info editing");
-                }}
-              >
-                <Text style={styles.settingButtonText}>Contact Info</Text>
-                <Text style={styles.settingButtonIcon}>→</Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.settingButton, styles.settingButtonLast]}
-                onPress={() => {
-                  if (!isPro) {
-                    Alert.alert(
-                      "Pro Feature",
-                      "Company logo upload is available for Pro subscribers.",
-                      [
-                        { text: "OK", style: "cancel" }
-                      ],
-                    );
-                  } else {
-                    // TODO: Navigate to logo upload
-                    Alert.alert("Coming Soon", "Logo upload");
-                  }
-                }}
-              >
-                <View style={styles.settingButtonContent}>
-                  <Text style={styles.settingButtonText}>Company Logo</Text>
-                  {!isPro && <Text style={styles.proLock}>🔒</Text>}
+            <View style={styles.defaultsContainer}>
+              {/* Company Details - All-in-One Editor */}
+              <View style={[styles.defaultItem, styles.defaultItemLast]}>
+                <View style={styles.defaultItemHeader}>
+                  <Ionicons name="business-outline" size={20} color={theme.colors.accent} />
+                  <Text style={styles.defaultItemTitle}>Company Details</Text>
                 </View>
-                <Text style={styles.settingButtonIcon}>→</Text>
-              </Pressable>
+                <Text style={styles.defaultItemDescription}>
+                  Set your company name, contact info, and logo. These appear on all quotes and PDFs.
+                </Text>
+                {preferences.company && (preferences.company.companyName || preferences.company.email || preferences.company.phone) && (
+                  <View style={styles.previewBox}>
+                    {preferences.company.companyName && (
+                      <Text style={styles.previewText}>📍 {preferences.company.companyName}</Text>
+                    )}
+                    {preferences.company.email && (
+                      <Text style={styles.previewText}>✉️ {preferences.company.email}</Text>
+                    )}
+                    {preferences.company.phone && (
+                      <Text style={styles.previewText}>📞 {preferences.company.phone}</Text>
+                    )}
+                  </View>
+                )}
+                <Pressable
+                  style={styles.defaultItemButton}
+                  onPress={() => router.push("/(main)/company-details")}
+                >
+                  <Text style={styles.defaultItemButtonText}>
+                    {preferences.company?.companyName ? "Edit Details" : "Set Up Company Details"}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </CollapsibleSection>
 
@@ -734,7 +690,7 @@ export default function Settings() {
             </View>
           </CollapsibleSection>
         </ScrollView>
-      </View>
+      </GradientBackground>
     </>
   );
 }
@@ -811,7 +767,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       backgroundColor: theme.colors.bg,
     },
     scrollContent: {
-      padding: theme.spacing(2),
+      padding: theme.spacing(3),
+      paddingBottom: theme.spacing(2),
     },
     section: {
       marginBottom: theme.spacing(3),
@@ -901,6 +858,80 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     proLock: {
       fontSize: 14,
     },
+    // Quote Defaults redesign
+    defaultsContainer: {
+      gap: theme.spacing(2),
+    },
+    defaultItem: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    defaultItemLast: {
+      marginBottom: 0,
+    },
+    defaultItemHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(1),
+    },
+    defaultItemTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
+      flex: 1,
+    },
+    defaultItemDescription: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(1.5),
+      lineHeight: 18,
+    },
+    defaultItemButton: {
+      backgroundColor: theme.colors.accent,
+      borderRadius: theme.radius.sm,
+      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(2),
+      alignItems: "center",
+    },
+    defaultItemButtonDisabled: {
+      backgroundColor: theme.colors.border,
+    },
+    defaultItemButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#000",
+    },
+    defaultItemButtonTextDisabled: {
+      color: theme.colors.muted,
+    },
+    proBadge: {
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    proBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#000",
+      letterSpacing: 0.5,
+    },
+    previewBox: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.sm,
+      padding: theme.spacing(1.5),
+      marginBottom: theme.spacing(1.5),
+      gap: theme.spacing(0.5),
+    },
+    previewText: {
+      fontSize: 13,
+      color: theme.colors.text,
+      lineHeight: 18,
+    },
     chipContainer: {
       flexDirection: "column",
       alignItems: "flex-start",
@@ -951,6 +982,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     usageRow: {
       paddingVertical: theme.spacing(2),
+      paddingHorizontal: theme.spacing(2),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
@@ -980,8 +1012,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       justifyContent: "space-between",
       alignItems: "center",
       marginBottom: theme.spacing(1),
+      gap: theme.spacing(2),
     },
     usageLabel: {
+      flex: 1,
       fontSize: 15,
       fontWeight: "600",
       color: theme.colors.text,
@@ -990,6 +1024,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 14,
       fontWeight: "600",
       color: theme.colors.muted,
+      flexShrink: 0,
     },
     progressBarContainer: {
       height: 6,

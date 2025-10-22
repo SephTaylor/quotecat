@@ -8,8 +8,8 @@ import { loadPreferences, type DashboardPreferences } from "@/lib/preferences";
 import { deleteQuote, saveQuote, updateQuote } from "@/lib/quotes";
 import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
-import { Ionicons } from "@expo/vector-icons";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { GradientBackground } from "@/components/GradientBackground";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -137,41 +137,23 @@ export default function Dashboard() {
   if (loading) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <Stack.Screen
-          options={{ title: "Dashboard", headerBackVisible: false }}
-        />
-        <View style={styles.container}>
+        <GradientBackground>
           <View style={styles.center}>
             <ActivityIndicator size="large" color={theme.colors.accent} />
           </View>
-        </View>
+        </GradientBackground>
       </GestureHandlerRootView>
     );
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack.Screen
-        options={{ title: "Dashboard", headerBackVisible: false }}
-      />
-      <View style={styles.container}>
+      <GradientBackground>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* App Title with Settings Button */}
-          <View style={styles.titleRow}>
-            <Text style={styles.appTitle}>QuoteCat</Text>
-            <Pressable
-              style={styles.settingsButton}
-              onPress={() => router.push("/settings" as any)}
-              accessibilityLabel="Settings"
-              accessibilityRole="button"
-              accessibilityHint="Opens app settings and preferences"
-            >
-              <Ionicons
-                name="settings-outline"
-                size={24}
-                color={theme.colors.text}
-              />
-            </Pressable>
+          {/* Welcome message */}
+          <View style={styles.welcomeSection}>
+            <Text style={styles.welcomeText}>Welcome back!</Text>
+            <Text style={styles.welcomeSubtext}>Here&apos;s your business overview</Text>
           </View>
 
           {/* Quick Stats */}
@@ -298,7 +280,7 @@ export default function Dashboard() {
           onUndo={handleUndo}
           onDismiss={handleDismissUndo}
         />
-      </View>
+      </GradientBackground>
     </GestureHandlerRootView>
   );
 }
@@ -318,9 +300,12 @@ function StatCard({
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
+  // Dynamic color: accent when has value, text color when zero
+  const displayColor = value > 0 ? theme.colors.accent : theme.colors.text;
+
   return (
     <Pressable style={styles.statCard} onPress={onPress}>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={[styles.statValue, { color: displayColor }]}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </Pressable>
   );
@@ -338,21 +323,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       justifyContent: "center",
     },
     scrollContent: {
-      padding: theme.spacing(2),
+      padding: theme.spacing(3),
+      paddingBottom: theme.spacing(2),
     },
-    titleRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: theme.spacing(2),
+    welcomeSection: {
+      marginBottom: theme.spacing(3),
     },
-    appTitle: {
-      fontSize: 28,
-      fontWeight: "800",
+    welcomeText: {
+      fontSize: 24,
+      fontWeight: "700",
       color: theme.colors.text,
+      marginBottom: 4,
     },
-    settingsButton: {
-      padding: theme.spacing(1),
+    welcomeSubtext: {
+      fontSize: 14,
+      color: theme.colors.muted,
     },
     statsGrid: {
       flexDirection: "row",
@@ -365,18 +350,18 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       minWidth: "31%",
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.md,
-      padding: theme.spacing(1.5),
+      padding: theme.spacing(1),
       borderWidth: 1,
       borderColor: theme.colors.border,
       alignItems: "center",
     },
     statValue: {
-      fontSize: 24,
+      fontSize: 32,
       fontWeight: "700",
       marginBottom: 2,
     },
     statLabel: {
-      fontSize: 11,
+      fontSize: 12,
       color: theme.colors.muted,
       textAlign: "center",
     },
@@ -419,7 +404,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 18,
       fontWeight: "700",
       color: theme.colors.text,
-      marginBottom: theme.spacing(2),
+      marginBottom: theme.spacing(1.5),
     },
     section: {
       marginBottom: theme.spacing(3),
@@ -432,18 +417,65 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
+    emptyIcon: {
+      fontSize: 64,
+      marginBottom: theme.spacing(2),
+    },
     emptyTitle: {
-      fontSize: 16,
-      fontWeight: "600",
+      fontSize: 20,
+      fontWeight: "700",
       color: theme.colors.text,
       marginBottom: theme.spacing(1),
       textAlign: "center",
+    },
+    emptySubtitle: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      textAlign: "center",
+      lineHeight: 20,
+      marginBottom: theme.spacing(3),
+    },
+    emptyButton: {
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(1.5),
+      borderRadius: theme.radius.xl,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+    },
+    emptyButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
     },
     emptyDescription: {
       fontSize: 14,
       color: theme.colors.muted,
       textAlign: "center",
       lineHeight: 20,
+    },
+    fab: {
+      position: "absolute",
+      bottom: theme.spacing(3),
+      right: theme.spacing(3),
+      backgroundColor: theme.colors.accent,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2.5),
+      borderRadius: theme.radius.xl,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    fabText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
     },
     emptyStateSimple: {
       paddingVertical: theme.spacing(3),

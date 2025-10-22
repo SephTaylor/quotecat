@@ -1,5 +1,5 @@
 // app/(forms)/assembly/[id].tsx
-import { getAssemblyById, useAssemblyCalculator, validateAssembly, getValidationSummary } from "@/modules/assemblies";
+import { getAssemblyById, useAssemblyCalculator, validateAssembly } from "@/modules/assemblies";
 import { formatMoney } from "@/modules/settings/money";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";

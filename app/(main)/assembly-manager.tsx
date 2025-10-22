@@ -131,7 +131,6 @@ export default function AssemblyManager() {
             try {
               await deleteAssembly(assembly.id);
               await reload();
-              Alert.alert("Deleted", `"${assembly.name}" has been deleted.`);
             } catch (error) {
               console.error("Failed to delete assembly:", error);
               Alert.alert("Error", "Could not delete assembly. Please try again.");
@@ -353,7 +352,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       backgroundColor: theme.colors.bg,
     },
     content: {
-      padding: theme.spacing(2),
+      padding: theme.spacing(3),
     },
     descriptionContainer: {
       paddingBottom: theme.spacing(1.5),

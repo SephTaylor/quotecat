@@ -1,7 +1,6 @@
 // app/(main)/(tabs)/quotes.tsx
 import { useTheme } from "@/contexts/ThemeContext";
 import {
-  createNewQuote,
   deleteQuote,
   duplicateQuote,
   listQuotes,
@@ -26,6 +25,7 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
+import { GradientBackground } from "@/components/GradientBackground";
 
 export default function QuotesList() {
   const router = useRouter();
@@ -99,11 +99,11 @@ export default function QuotesList() {
     }, [load]),
   );
 
-  const onNew = useCallback(async () => {
-    // Blank fields so the edit form starts empty
-    const q = await createNewQuote("", "");
-    router.push(`/quote/${q.id}/edit`);
-  }, [router]);
+  // Removed FAB - using header button now
+  // const onNew = useCallback(async () => {
+  //   const q = await createNewQuote("", "");
+  //   router.push(`/quote/${q.id}/edit`);
+  // }, [router]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -193,7 +193,7 @@ export default function QuotesList() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen options={{ title: "Quotes" }} />
-      <View style={styles.container}>
+      <GradientBackground>
         {/* Status Filters */}
         <ScrollView
           ref={filterScrollRef}
@@ -292,24 +292,14 @@ export default function QuotesList() {
               </Text>
               <Text style={styles.emptyDescription}>
                 {selectedStatus === "all" && searchQuery === ""
-                  ? "Tap the + button to create your first quote"
+                  ? "Tap the + to start"
                   : searchQuery !== ""
                   ? `Try a different search term`
-                  : `Tap the + button to create a quote`}
+                  : `Tap the + to start`}
               </Text>
             </View>
           }
         />
-
-        <Pressable
-          style={styles.fab}
-          onPress={onNew}
-          accessibilityLabel="Create new quote"
-          accessibilityRole="button"
-          accessibilityHint="Opens the quote editor to create a new quote"
-        >
-          <Text style={styles.fabText}>＋</Text>
-        </Pressable>
 
         <UndoSnackbar
           visible={showUndo}
@@ -317,7 +307,7 @@ export default function QuotesList() {
           onUndo={handleUndo}
           onDismiss={handleDismissUndo}
         />
-      </View>
+      </GradientBackground>
     </GestureHandlerRootView>
   );
 }
@@ -358,8 +348,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.bg },
     topBar: {
-      paddingHorizontal: theme.spacing(2),
-      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(1.5),
       backgroundColor: theme.colors.bg,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
@@ -379,8 +369,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flexShrink: 0,
     },
     filterContainer: {
-      paddingHorizontal: theme.spacing(2),
-      paddingVertical: theme.spacing(1.25),
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(1.5),
       gap: theme.spacing(1),
     },
     filterChip: {
@@ -406,7 +396,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#000", // Black on orange accent (good contrast)
     },
     listContent: {
-      padding: theme.spacing(2),
+      padding: theme.spacing(3),
       paddingBottom: theme.spacing(10),
     },
     emptyContainer: {
@@ -433,33 +423,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       textAlign: "center",
       lineHeight: 20,
       maxWidth: 300,
-    },
-    fab: {
-      position: "absolute",
-      left: "50%",
-      bottom: 20, // Much closer to tab bar
-      height: 56,
-      width: 56,
-      transform: [{ translateX: -28 }],
-      borderRadius: 28,
-      backgroundColor: theme.colors.accent,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
-    },
-    fabText: {
-      fontSize: 32,
-      lineHeight: 56, // Match FAB height for proper vertical centering
-      color: "#000", // Black on orange accent FAB (good contrast)
-      fontWeight: "800",
-      textAlign: "center",
-      includeFontPadding: false,
     },
   });
 }

@@ -9,7 +9,6 @@ import {
   Text,
   View,
   Alert,
-  Linking,
 } from "react-native";
 import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
@@ -19,6 +18,7 @@ import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/fea
 import type { UserState } from "@/lib/user";
 import { generateAndSharePDF } from "@/lib/pdf";
 import { generateAndShareSpreadsheet } from "@/lib/spreadsheet";
+import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
 
 export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -28,6 +28,7 @@ export default function QuoteReviewScreen() {
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [userState, setUserState] = useState<UserState | null>(null);
+  const [companyDetails, setCompanyDetails] = useState<CompanyDetails | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingSpreadsheet, setIsExportingSpreadsheet] = useState(false);
 
@@ -35,9 +36,14 @@ export default function QuoteReviewScreen() {
     (async () => {
       try {
         if (!qid) return;
-        const [q, user] = await Promise.all([getQuoteById(qid), getUserState()]);
+        const [q, user, prefs] = await Promise.all([
+          getQuoteById(qid),
+          getUserState(),
+          loadPreferences()
+        ]);
         setQuote(q ?? null);
         setUserState(user);
+        setCompanyDetails(prefs.company);
       } finally {
         setLoading(false);
       }
@@ -83,7 +89,8 @@ export default function QuoteReviewScreen() {
 
         // Generate PDF with or without branding based on tier
         await generateAndSharePDF(quote, {
-          includeBranding: userState.tier === "free"
+          includeBranding: userState.tier === "free",
+          companyDetails: companyDetails ?? undefined
         });
 
         // Increment PDF count for free users
@@ -96,7 +103,7 @@ export default function QuoteReviewScreen() {
           setUserState(updatedState);
         }
 
-        Alert.alert("Success", "PDF shared successfully!");
+        Alert.alert("Success!");
       } catch (error) {
         Alert.alert("Error", "Failed to generate PDF. Please try again.");
         console.error("PDF generation error:", error);
@@ -207,7 +214,7 @@ export default function QuoteReviewScreen() {
           setUserState(updatedState);
         }
 
-        Alert.alert("Success", "Spreadsheet shared successfully!");
+        Alert.alert("Success!");
       } catch (error) {
         Alert.alert("Error", "Failed to generate spreadsheet. Please try again.");
         console.error("Spreadsheet generation error:", error);
@@ -248,6 +255,27 @@ export default function QuoteReviewScreen() {
         }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Company Details Section */}
+        {companyDetails && (companyDetails.companyName || companyDetails.email || companyDetails.phone || companyDetails.website || companyDetails.address) && (
+          <View style={styles.companyCard}>
+            {companyDetails.companyName && (
+              <Text style={styles.companyName}>{companyDetails.companyName}</Text>
+            )}
+            {companyDetails.email && (
+              <Text style={styles.companyDetail}>Email: {companyDetails.email}</Text>
+            )}
+            {companyDetails.phone && (
+              <Text style={styles.companyDetail}>Phone: {companyDetails.phone}</Text>
+            )}
+            {companyDetails.website && (
+              <Text style={styles.companyDetail}>Website: {companyDetails.website}</Text>
+            )}
+            {companyDetails.address && (
+              <Text style={styles.companyDetail}>{companyDetails.address}</Text>
+            )}
+          </View>
+        )}
+
         {/* Header Section */}
         <View style={styles.header}>
           <Text style={styles.projectName}>{quote.name || "Untitled Quote"}</Text>
@@ -290,6 +318,11 @@ export default function QuoteReviewScreen() {
         {/* Totals Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cost Breakdown</Text>
+          {(overhead > 0 || markupAmount > 0) && (
+            <Text style={styles.exportNote}>
+              Note: Detailed breakdown shown here. PDF export shows simplified total only.
+            </Text>
+          )}
           <View style={styles.totalsCard}>
             {materialsFromItems > 0 && (
               <View style={styles.totalRow}>
@@ -377,13 +410,6 @@ export default function QuoteReviewScreen() {
       {/* Bottom Bar */}
       <View style={styles.bottomBar}>
         <Pressable
-          style={[styles.buttonSmall, styles.buttonSecondary]}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.buttonSecondaryText}>Edit</Text>
-        </Pressable>
-
-        <Pressable
           style={[styles.buttonSmall, styles.buttonPrimary, isExporting && styles.buttonDisabled]}
           onPress={handleExportPDF}
           disabled={isExporting}
@@ -399,8 +425,15 @@ export default function QuoteReviewScreen() {
           disabled={isExportingSpreadsheet}
         >
           <Text style={styles.buttonPrimaryText}>
-            {isExportingSpreadsheet ? "..." : "Spreadsheet"}
+            {isExportingSpreadsheet ? "..." : "CSV"}
           </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.buttonSmall, styles.buttonSecondary]}
+          onPress={() => router.push("/(main)/(tabs)/quotes")}
+        >
+          <Text style={styles.buttonSecondaryText}>Done</Text>
         </Pressable>
       </View>
     </>
@@ -439,6 +472,27 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "700",
       color: "#000",
     },
+    companyCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(3),
+      borderLeftWidth: 4,
+      borderLeftColor: theme.colors.accent,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    companyName: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+    },
+    companyDetail: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      marginBottom: 4,
+    },
     header: {
       marginBottom: theme.spacing(3),
       paddingBottom: theme.spacing(2),
@@ -469,6 +523,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "700",
       color: theme.colors.text,
       marginBottom: theme.spacing(1.5),
+    },
+    exportNote: {
+      fontSize: 12,
+      fontStyle: "italic",
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(1),
     },
     itemsCard: {
       backgroundColor: theme.colors.card,

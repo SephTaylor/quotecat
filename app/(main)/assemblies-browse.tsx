@@ -19,6 +19,7 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import type { Assembly } from "@/modules/assemblies";
+import { GradientBackground } from "@/components/GradientBackground";
 
 // Memoized assembly list item for performance
 const AssemblyListItem = memo(
@@ -125,7 +126,6 @@ export default function AssembliesScreen() {
             try {
               await deleteAssembly(assembly.id);
               await reload(); // Refresh the list
-              Alert.alert("Deleted", `"${assembly.name}" has been deleted.`);
             } catch (error) {
               console.error("Failed to delete assembly:", error);
               Alert.alert("Error", "Could not delete assembly. Please try again.");
@@ -153,6 +153,16 @@ export default function AssembliesScreen() {
             title: "Assembly Library",
             headerShown: true,
             headerBackTitle: quoteId ? "Quote" : "Back",
+            headerLeft: quoteId ? () => (
+              <Pressable
+                onPress={() => router.back()}
+                style={{ paddingLeft: 16, paddingVertical: 8 }}
+              >
+                <Text style={{ fontSize: 17, color: theme.colors.accent }}>
+                  ‹ Quote
+                </Text>
+              </Pressable>
+            ) : undefined,
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -162,9 +172,11 @@ export default function AssembliesScreen() {
             },
           }}
         />
-        <View style={styles.center}>
-          <ActivityIndicator size="large" />
-        </View>
+        <GradientBackground>
+          <View style={styles.center}>
+            <ActivityIndicator size="large" />
+          </View>
+        </GradientBackground>
       </>
     );
   }
@@ -178,6 +190,16 @@ export default function AssembliesScreen() {
             title: "Assembly Library",
             headerShown: true,
             headerBackTitle: quoteId ? "Quote" : "Back",
+            headerLeft: quoteId ? () => (
+              <Pressable
+                onPress={() => router.back()}
+                style={{ paddingLeft: 16, paddingVertical: 8 }}
+              >
+                <Text style={{ fontSize: 17, color: theme.colors.accent }}>
+                  ‹ Quote
+                </Text>
+              </Pressable>
+            ) : undefined,
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -187,7 +209,7 @@ export default function AssembliesScreen() {
             },
           }}
         />
-        <View style={styles.container}>
+        <GradientBackground>
           <View style={styles.upgradeContainer}>
             <Text style={styles.upgradeIcon}>🚀</Text>
             <Text style={styles.upgradeTitle}>Assemblies Library</Text>
@@ -237,7 +259,7 @@ export default function AssembliesScreen() {
               Go to Settings to upgrade and unlock assemblies
             </Text>
           </View>
-        </View>
+        </GradientBackground>
       </>
     );
   }
@@ -249,6 +271,16 @@ export default function AssembliesScreen() {
           title: "Assembly Library",
           headerShown: true,
           headerBackTitle: quoteId ? "Quote" : "Back",
+          headerLeft: quoteId ? () => (
+            <Pressable
+              onPress={() => router.back()}
+              style={{ paddingLeft: 16, paddingVertical: 8 }}
+            >
+              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
+                ‹ Quote
+              </Text>
+            </Pressable>
+          ) : undefined,
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -258,7 +290,7 @@ export default function AssembliesScreen() {
           },
         }}
       />
-      <View style={styles.container}>
+      <GradientBackground>
         <View style={styles.headerContainer}>
           <Text style={styles.headerDescription}>
             Pre-built material calculators for common tasks
@@ -305,7 +337,7 @@ export default function AssembliesScreen() {
             </Text>
           }
         />
-      </View>
+      </GradientBackground>
     </GestureHandlerRootView>
   );
 }
@@ -336,15 +368,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flex: 1,
     },
     listContent: {
-      paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(1),
+      paddingHorizontal: theme.spacing(3),
+      paddingTop: theme.spacing(1.5),
       paddingBottom: theme.spacing(2),
     },
     card: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(2),
+      padding: theme.spacing(1),
+      marginBottom: theme.spacing(1),
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
@@ -373,9 +405,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginTop: theme.spacing(4),
     },
     searchContainer: {
-      paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(1),
-      paddingBottom: theme.spacing(1),
+      paddingHorizontal: theme.spacing(3),
+      paddingTop: theme.spacing(1.5),
+      paddingBottom: theme.spacing(1.5),
       backgroundColor: theme.colors.bg,
     },
     searchInput: {

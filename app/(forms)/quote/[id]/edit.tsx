@@ -4,6 +4,7 @@ import {
   getQuoteById,
   updateQuote,
   deleteQuote,
+  saveQuote,
   type Quote,
 } from "@/lib/quotes";
 import { FormInput, FormScreen } from "@/modules/core/ui";
@@ -118,6 +119,19 @@ export default function EditQuote() {
       if (id) {
         await deleteQuote(id);
       }
+    } else if (id) {
+      // Save any changes before going back
+      await updateQuote(id, {
+        name: name.trim() || "Untitled",
+        clientName: clientName.trim() || "Unnamed Client",
+        labor: parseMoney(labor),
+        materialEstimate: parseMoney(materialEstimate),
+        markupPercent: parseFloat(markupPercent) || 0,
+        notes: notes.trim() || undefined,
+        status,
+        pinned,
+        items,
+      });
     }
     router.back();
   };
@@ -366,17 +380,29 @@ export default function EditQuote() {
           <Pressable
             onPress={async () => {
               if (!id) return;
-              // Save current state before navigating (without validation)
-              await updateQuote(id, {
+
+              // Check if quote exists, if not create it
+              const existing = await getQuoteById(id);
+              const quoteData = {
                 name: name.trim() || "Untitled",
-                clientName: clientName.trim(),
+                clientName: clientName.trim() || "Unnamed Client",
                 labor: parseMoney(labor),
                 materialEstimate: parseMoney(materialEstimate),
                 markupPercent: parseFloat(markupPercent) || 0,
                 notes: notes.trim() || undefined,
                 status,
                 pinned,
-              });
+                items,
+              };
+
+              if (existing) {
+                // Update existing quote
+                await updateQuote(id, quoteData);
+              } else {
+                // Create new quote
+                await saveQuote({ ...quoteData, id });
+              }
+
               router.push(`/quote/${id}/materials`);
             }}
             style={{
@@ -645,13 +671,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      padding: theme.spacing(2),
+      padding: theme.spacing(1),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
     itemInfo: {
       flex: 1,
-      marginRight: theme.spacing(2),
+      marginRight: theme.spacing(1.5),
     },
     itemName: {
       fontSize: 14,

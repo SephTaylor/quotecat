@@ -2,7 +2,6 @@
 // Browse built-in assembly templates
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAssemblies, validateAssembly } from "@/modules/assemblies";
-import type { Assembly } from "@/modules/assemblies";
 import { useProducts } from "@/modules/catalog";
 import { Stack, useRouter } from "expo-router";
 import React, { useState, useMemo } from "react";
@@ -110,7 +109,7 @@ export default function BuiltInAssembliesScreen() {
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>No Results</Text>
               <Text style={styles.emptyDescription}>
-                No built-in assemblies match "{searchQuery}"
+                No built-in assemblies match &quot;{searchQuery}&quot;
               </Text>
             </View>
           }
@@ -158,8 +157,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "700",
     },
     listContent: {
-      padding: theme.spacing(2),
-      paddingTop: theme.spacing(1),
+      padding: theme.spacing(3),
+      paddingTop: theme.spacing(1.5),
     },
     card: {
       backgroundColor: theme.colors.card,

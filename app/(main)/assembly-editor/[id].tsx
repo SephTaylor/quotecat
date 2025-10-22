@@ -12,7 +12,6 @@ import React, { useEffect, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -80,6 +79,11 @@ export default function AssemblyEditorScreen() {
     return products.filter((p) => p.name.toLowerCase().includes(query));
   }, [products, searchQuery]);
 
+  // Calculate total selected items (must be before early returns)
+  const totalSelectedItems = useMemo(() => {
+    return Array.from(selectedProducts.values()).reduce((sum, qty) => sum + qty, 0);
+  }, [selectedProducts]);
+
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) => ({
       ...prev,
@@ -102,12 +106,6 @@ export default function AssemblyEditorScreen() {
     } else {
       newMap.set(product.id, current - 1);
     }
-    setSelectedProducts(newMap);
-  };
-
-  const handleRemoveProduct = (productId: string) => {
-    const newMap = new Map(selectedProducts);
-    newMap.delete(productId);
     setSelectedProducts(newMap);
   };
 
@@ -228,13 +226,6 @@ export default function AssemblyEditorScreen() {
       </>
     );
   }
-
-  const selectedProductsList = Array.from(selectedProducts.entries())
-    .map(([productId, qty]) => {
-      const product = products.find((p) => p.id === productId);
-      return product ? { product, qty } : null;
-    })
-    .filter((item): item is { product: Product; qty: number } => item !== null);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -362,7 +353,7 @@ export default function AssemblyEditorScreen() {
                 variant="secondary"
                 onPress={() => handleSave(false)}
               >
-                Add Products ({selectedProducts.size})
+                Add {totalSelectedItems} {totalSelectedItems === 1 ? 'item' : 'items'}
               </Button>
               <Button
                 variant="primary"

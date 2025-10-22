@@ -7,13 +7,13 @@ import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { GradientBackground } from "@/components/GradientBackground";
 
 export default function ProTools() {
   const router = useRouter();
@@ -70,7 +70,7 @@ export default function ProTools() {
       <Stack.Screen
         options={{ title: "Pro Tools", headerBackVisible: false }}
       />
-      <View style={styles.container}>
+      <GradientBackground>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {!isPro && (
             <View style={styles.header}>
@@ -157,7 +157,7 @@ export default function ProTools() {
             </View>
           )}
         </ScrollView>
-      </View>
+      </GradientBackground>
     </>
   );
 }
@@ -207,7 +207,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       backgroundColor: theme.colors.bg,
     },
     scrollContent: {
-      padding: theme.spacing(2),
+      padding: theme.spacing(3),
+      paddingBottom: theme.spacing(2),
     },
     header: {
       marginBottom: theme.spacing(3),

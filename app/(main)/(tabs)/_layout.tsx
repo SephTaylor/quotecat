@@ -1,70 +1,268 @@
 // app/(main)/(tabs)/_layout.tsx
-import { Tabs } from "expo-router";
+import { Drawer } from "expo-router/drawer";
 import { useTheme } from "@/contexts/ThemeContext";
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } from "@react-navigation/drawer";
+import { View, Text, StyleSheet, Pressable, Alert, Linking } from "react-native";
+import { useRouter } from "expo-router";
+import { getUserState } from "@/lib/user";
+import { createNewQuote } from "@/lib/quotes";
 
-export default function TabsLayout() {
+type IconProps = { color: string; size: number };
+
+export default function DrawerLayout() {
   const { theme } = useTheme();
+  const router = useRouter();
+
+  const handleCreateNewQuote = React.useCallback(async () => {
+    const newQuote = await createNewQuote("", "");
+    router.push(`/quote/${newQuote.id}/edit`);
+  }, [router]);
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.colors.accent,
-        tabBarInactiveTintColor: theme.colors.muted,
-        tabBarStyle: {
+    <Drawer
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      screenOptions={({ navigation }) => ({
+        headerShown: true,
+        headerStyle: {
           backgroundColor: theme.colors.bg,
-          borderTopColor: theme.colors.border,
-          borderTopWidth: 1,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
+        headerTintColor: theme.colors.text,
+        headerTitleStyle: {
+          fontWeight: "700",
+        },
+        headerLeft: () => (
+          <Pressable
+            onPress={() => navigation.toggleDrawer()}
+            style={{ marginLeft: 16, padding: 4 }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="menu" size={28} color={theme.colors.text} />
+          </Pressable>
+        ),
+        drawerActiveTintColor: theme.colors.accent,
+        drawerInactiveTintColor: theme.colors.muted,
+        drawerStyle: {
+          backgroundColor: theme.colors.bg,
+        },
+        drawerLabelStyle: {
+          fontSize: 16,
           fontWeight: "600",
         },
-      }}
+        drawerItemStyle: {
+          borderRadius: theme.radius.md,
+          marginHorizontal: 8,
+          marginVertical: 4,
+        },
+        drawerActiveBackgroundColor: `${theme.colors.accent}15`,
+      })}
     >
-      <Tabs.Screen
-        name="index"
+      <Drawer.Screen
+        name="dashboard"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color }) => <DashboardIcon color={color} />,
+          drawerLabel: "Dashboard",
+          drawerIcon: ({ color, size }: IconProps) => (
+            <Ionicons name="grid-outline" size={size} color={color} />
+          ),
+          headerRight: () => (
+            <Pressable
+              onPress={handleCreateNewQuote}
+              style={{ marginRight: 16, padding: 4 }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="add" size={32} color={theme.colors.accent} />
+            </Pressable>
+          ),
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="quotes"
         options={{
           title: "Quotes",
-          tabBarIcon: ({ color }) => <QuotesIcon color={color} />,
+          drawerLabel: "Quotes",
+          drawerIcon: ({ color, size }: IconProps) => (
+            <Ionicons name="document-text-outline" size={size} color={color} />
+          ),
+          headerRight: () => (
+            <Pressable
+              onPress={handleCreateNewQuote}
+              style={{ marginRight: 16, padding: 4 }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="add" size={32} color={theme.colors.accent} />
+            </Pressable>
+          ),
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="pro-tools"
         options={{
           title: "Pro Tools",
-          tabBarIcon: ({ color }) => <ProToolsIcon color={color} />,
+          drawerLabel: "Pro Tools",
+          drawerIcon: ({ color, size }: IconProps) => (
+            <Ionicons name="sparkles-outline" size={size} color={color} />
+          ),
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="assemblies"
         options={{
-          href: null, // Hidden - accessed via Pro Tools
-          headerShown: true, // Override default to show header
+          title: "Assemblies",
+          drawerLabel: "Assemblies",
+          drawerItemStyle: { display: "none" }, // Hidden - accessed via Pro Tools
+          drawerIcon: ({ color, size }: IconProps) => (
+            <Ionicons name="layers-outline" size={size} color={color} />
+          ),
         }}
       />
-    </Tabs>
+    </Drawer>
   );
 }
 
-// Clean, modern icon components
-function DashboardIcon({ color }: { color: string }) {
-  return <Ionicons name="grid-outline" size={24} color={color} />;
+// Custom drawer content with app branding
+function CustomDrawerContent(props: DrawerContentComponentProps) {
+  const { theme } = useTheme();
+  const router = useRouter();
+  const styles = React.useMemo(() => createDrawerStyles(theme), [theme]);
+  const [userEmail, setUserEmail] = React.useState<string | undefined>();
+  const [isSignedIn, setIsSignedIn] = React.useState(false);
+
+  // Load user state
+  React.useEffect(() => {
+    const load = async () => {
+      const user = await getUserState();
+      setUserEmail(user.email);
+      setIsSignedIn(!!user.email);
+    };
+    load();
+  }, []);
+
+  const handleSignIn = () => {
+    Alert.alert(
+      "Sign In",
+      "You'll be redirected to quotecat.ai to sign in to your account.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Continue",
+          onPress: () => {
+            Linking.openURL("https://quotecat.ai/login");
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSignOut = () => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: () => {
+          // TODO: Implement sign out logic
+          setIsSignedIn(false);
+          setUserEmail(undefined);
+          Alert.alert("Signed Out", "You have been signed out successfully.");
+        },
+      },
+    ]);
+  };
+
+  return (
+    <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerContent}>
+      <View style={styles.drawerHeader}>
+        <Text style={styles.appTitle}>QuoteCat</Text>
+        <Text style={styles.appSubtitle}>Quotes with Claws</Text>
+        {isSignedIn && userEmail && (
+          <Text style={styles.userEmail}>{userEmail}</Text>
+        )}
+      </View>
+      <DrawerItemList {...props} />
+      <View style={styles.drawerFooter}>
+        {isSignedIn ? (
+          <Pressable
+            style={styles.settingsItem}
+            onPress={handleSignOut}
+          >
+            <Ionicons name="log-out-outline" size={24} color={theme.colors.muted} />
+            <Text style={styles.settingsText}>Sign Out</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={styles.settingsItem}
+            onPress={handleSignIn}
+          >
+            <Ionicons name="log-in-outline" size={24} color={theme.colors.muted} />
+            <Text style={styles.settingsText}>Sign In</Text>
+          </Pressable>
+        )}
+        <View style={styles.footerDivider} />
+        <Pressable
+          style={styles.settingsItem}
+          onPress={() => router.push("/(main)/settings")}
+        >
+          <Ionicons name="settings-outline" size={24} color={theme.colors.muted} />
+          <Text style={styles.settingsText}>Settings</Text>
+        </Pressable>
+      </View>
+    </DrawerContentScrollView>
+  );
 }
 
-function QuotesIcon({ color }: { color: string }) {
-  return <Ionicons name="document-text-outline" size={24} color={color} />;
-}
-
-function ProToolsIcon({ color }: { color: string }) {
-  return <Ionicons name="sparkles-outline" size={24} color={color} />;
+function createDrawerStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
+    drawerContent: {
+      flex: 1,
+    },
+    drawerHeader: {
+      padding: 24,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      marginBottom: 8,
+    },
+    appTitle: {
+      fontSize: 28,
+      fontWeight: "800",
+      color: theme.colors.accent,
+      marginBottom: 4,
+    },
+    appSubtitle: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      fontWeight: "500",
+    },
+    userEmail: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: 8,
+      fontWeight: "500",
+    },
+    drawerFooter: {
+      marginTop: "auto",
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      padding: 8,
+    },
+    footerDivider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: 8,
+      marginHorizontal: 8,
+    },
+    settingsItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 16,
+      gap: 16,
+      borderRadius: theme.radius.md,
+    },
+    settingsText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+  });
 }

@@ -110,7 +110,6 @@ export default function AssembliesScreen() {
             try {
               await deleteAssembly(assembly.id);
               await reload(); // Refresh the list
-              Alert.alert("Deleted", `"${assembly.name}" has been deleted.`);
             } catch (error) {
               console.error("Failed to delete assembly:", error);
               Alert.alert("Error", "Could not delete assembly. Please try again.");
@@ -320,8 +319,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flex: 1,
     },
     listContent: {
-      paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(1),
+      paddingHorizontal: theme.spacing(3),
+      paddingTop: theme.spacing(1.5),
       paddingBottom: theme.spacing(2),
     },
     card: {
@@ -357,9 +356,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginTop: theme.spacing(4),
     },
     searchContainer: {
-      paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(1),
-      paddingBottom: theme.spacing(1),
+      paddingHorizontal: theme.spacing(3),
+      paddingTop: theme.spacing(1.5),
+      paddingBottom: theme.spacing(1.5),
       backgroundColor: theme.colors.bg,
     },
     searchInput: {

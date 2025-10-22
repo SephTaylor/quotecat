@@ -166,8 +166,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     card: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(2),
+      padding: theme.spacing(1),
+      marginBottom: theme.spacing(1),
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
@@ -242,7 +242,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     actionsContainer: {
       flexDirection: "row",
-      marginBottom: theme.spacing(2),
+      marginBottom: theme.spacing(1),
     },
     deleteButton: {
       backgroundColor: "#FF3B30",

@@ -4,16 +4,18 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import type { Quote } from './types';
+import type { CompanyDetails } from './preferences';
 
 export type PDFOptions = {
   includeBranding: boolean; // true for free tier, false for pro
+  companyDetails?: CompanyDetails;
 };
 
 /**
  * Generate HTML for the quote PDF
  */
 function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
-  const { includeBranding } = options;
+  const { includeBranding, companyDetails } = options;
 
   // Calculate totals
   const materialsFromItems = quote.items?.reduce(
@@ -71,6 +73,17 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
       <div style="font-size: 10px; color: #999; font-style: italic;">
         Upgrade to QuoteCat Pro to remove this branding and unlock unlimited exports
       </div>
+    </div>
+  ` : '';
+
+  // Company header with details
+  const companyHeader = companyDetails && (companyDetails.companyName || companyDetails.email || companyDetails.phone || companyDetails.website || companyDetails.address) ? `
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px;">
+      ${companyDetails.companyName ? `<div style="font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #000;">${companyDetails.companyName}</div>` : ''}
+      ${companyDetails.email ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Email: ${companyDetails.email}</div>` : ''}
+      ${companyDetails.phone ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Phone: ${companyDetails.phone}</div>` : ''}
+      ${companyDetails.website ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Website: ${companyDetails.website}</div>` : ''}
+      ${companyDetails.address ? `<div style="font-size: 13px; color: #666;">${companyDetails.address}</div>` : ''}
     </div>
   ` : '';
 
@@ -176,6 +189,8 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
     </head>
     <body>
       ${brandingHeader}
+
+      ${companyHeader}
 
       <div class="header">
         <div class="project-name">${quote.name || 'Untitled Quote'}</div>

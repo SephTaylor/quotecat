@@ -16,9 +16,19 @@ export type PrivacyPreferences = {
   shareAnonymousUsage: boolean; // Opt-in for anonymous product usage analytics
 };
 
+export type CompanyDetails = {
+  companyName: string;
+  email: string;
+  phone: string;
+  website: string;
+  address: string;
+  logoUrl?: string; // Optional logo URL
+};
+
 export type UserPreferences = {
   dashboard: DashboardPreferences;
   privacy: PrivacyPreferences;
+  company: CompanyDetails;
   // Add more preference categories as needed
   // notifications: NotificationPreferences;
   // appearance: AppearancePreferences;
@@ -41,6 +51,14 @@ export function getDefaultPreferences(): UserPreferences {
     },
     privacy: {
       shareAnonymousUsage: false, // Opt-in, not opt-out
+    },
+    company: {
+      companyName: "",
+      email: "",
+      phone: "",
+      website: "",
+      address: "",
+      logoUrl: undefined,
     },
   };
 }
@@ -67,6 +85,10 @@ export async function loadPreferences(): Promise<UserPreferences> {
       privacy: {
         ...getDefaultPreferences().privacy,
         ...stored.privacy,
+      },
+      company: {
+        ...getDefaultPreferences().company,
+        ...stored.company,
       },
     };
   } catch (error) {
@@ -99,6 +121,24 @@ export async function updateDashboardPreferences(
     ...prefs,
     dashboard: {
       ...prefs.dashboard,
+      ...updates,
+    },
+  };
+  await savePreferences(updated);
+  return updated;
+}
+
+/**
+ * Update company details
+ */
+export async function updateCompanyDetails(
+  updates: Partial<CompanyDetails>,
+): Promise<UserPreferences> {
+  const prefs = await loadPreferences();
+  const updated: UserPreferences = {
+    ...prefs,
+    company: {
+      ...prefs.company,
       ...updates,
     },
   };
