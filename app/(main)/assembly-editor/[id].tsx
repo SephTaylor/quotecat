@@ -361,24 +361,29 @@ export default function AssemblyEditorScreen() {
         )}
 
         <BottomBar>
-          <View style={styles.buttonRow}>
-            {selectedProducts.size > 0 && (
+          {selectedProducts.size > 0 ? (
+            <>
               <Button
                 variant="secondary"
                 onPress={() => handleSave(false)}
-                style={styles.addButton}
               >
                 Add Products
               </Button>
-            )}
+              <Button
+                variant="primary"
+                onPress={() => handleSave(true)}
+              >
+                Done
+              </Button>
+            </>
+          ) : (
             <Button
               variant="primary"
               onPress={() => handleSave(true)}
-              style={styles.doneButton}
             >
               Done
             </Button>
-          </View>
+          )}
         </BottomBar>
       </View>
     </GestureHandlerRootView>
@@ -592,17 +597,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#fff",
       fontSize: 14,
       fontWeight: "600",
-    },
-    // Button row
-    buttonRow: {
-      flexDirection: "row",
-      gap: theme.spacing(2),
-    },
-    addButton: {
-      flex: 1,
-    },
-    doneButton: {
-      flex: 1,
     },
   });
 }
