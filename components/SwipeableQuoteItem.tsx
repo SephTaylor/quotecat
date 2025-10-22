@@ -106,7 +106,13 @@ export const SwipeableQuoteItem = React.memo(
         overshootRight={false}
         overshootLeft={false}
       >
-        <Pressable style={styles.card} onPress={onEdit}>
+        <Pressable
+          style={styles.card}
+          onPress={onEdit}
+          accessibilityLabel={`Quote: ${item.name || "Untitled"}`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to edit. Swipe left for delete, duplicate. Swipe right to pin or unpin."
+        >
           <View style={styles.header}>
             <View style={styles.titleRow}>
               <Text style={styles.title}>{item.name || "Untitled project"}</Text>

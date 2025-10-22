@@ -162,6 +162,9 @@ export default function Dashboard() {
             <Pressable
               style={styles.settingsButton}
               onPress={() => router.push("/settings" as any)}
+              accessibilityLabel="Settings"
+              accessibilityRole="button"
+              accessibilityHint="Opens app settings and preferences"
             >
               <Ionicons
                 name="settings-outline"

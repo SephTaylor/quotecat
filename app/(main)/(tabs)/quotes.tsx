@@ -301,7 +301,13 @@ export default function QuotesList() {
           }
         />
 
-        <Pressable style={styles.fab} onPress={onNew}>
+        <Pressable
+          style={styles.fab}
+          onPress={onNew}
+          accessibilityLabel="Create new quote"
+          accessibilityRole="button"
+          accessibilityHint="Opens the quote editor to create a new quote"
+        >
           <Text style={styles.fabText}>＋</Text>
         </Pressable>
 
@@ -449,13 +455,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     fabText: {
       fontSize: 32,
-      lineHeight: 32,
+      lineHeight: 56, // Match FAB height for proper vertical centering
       color: "#000", // Black on orange accent FAB (good contrast)
       fontWeight: "800",
       textAlign: "center",
       includeFontPadding: false,
-      marginTop: 4, // Nudge down for better visual centering
-      marginLeft: 1, // Nudge right slightly
     },
   });
 }
