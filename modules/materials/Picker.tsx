@@ -213,7 +213,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     itemName: { color: theme.colors.text, fontWeight: "600" },
     itemSub: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
 
-    stepper: { flexDirection: "row", alignItems: "center", gap: 8 },
+    stepper: { flexDirection: "row", alignItems: "center", gap: theme.spacing(1) },
     stepBtn: {
       height: 32,
       width: 32,

@@ -634,7 +634,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     stepper: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
+      gap: theme.spacing(1),
     },
     stepBtn: {
       height: 28,

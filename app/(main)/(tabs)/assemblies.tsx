@@ -236,16 +236,6 @@ export default function AssembliesScreen() {
           headerTitleStyle: {
             color: theme.colors.text,
           },
-          headerLeft: () => (
-            <Pressable
-              onPress={() => router.back()}
-              style={{ paddingLeft: 16, paddingVertical: 8 }}
-            >
-              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
-                ‹ Back
-              </Text>
-            </Pressable>
-          ),
         }}
       />
       <Screen scroll={false} contentStyle={styles.container}>

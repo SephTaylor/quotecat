@@ -34,7 +34,7 @@ function createStyles(
   size: number,
 ) {
   return StyleSheet.create({
-    wrap: { flexDirection: "row", alignItems: "center", gap: 8 },
+    wrap: { flexDirection: "row", alignItems: "center", gap: theme.spacing(1) },
     btn: {
       height: size,
       width: size,

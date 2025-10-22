@@ -34,7 +34,7 @@ export function FormNav({
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
-    row: { flexDirection: "row", gap: 12 },
+    row: { flexDirection: "row", gap: theme.spacing(1.5) },
     btn: {
       flex: 1,
       height: 48,

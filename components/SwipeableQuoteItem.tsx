@@ -175,7 +175,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flex: 1,
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
+      gap: theme.spacing(1),
       flexWrap: "wrap",
     },
     title: {
@@ -209,7 +209,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flexDirection: "row",
       alignItems: "center",
       marginBottom: 8,
-      gap: 8,
+      gap: theme.spacing(1),
     },
     statusBadge: {
       paddingHorizontal: 8,
