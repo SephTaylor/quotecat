@@ -602,15 +602,9 @@ export default function Settings() {
                   if (!isPro) {
                     Alert.alert(
                       "Pro Feature",
-                      "Company logo upload is available for Pro subscribers. Upgrade at quotecat.ai to unlock this feature.",
+                      "Company logo upload is available for Pro subscribers.",
                       [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Upgrade",
-                          onPress: () => {
-                            Linking.openURL("https://quotecat.ai/pricing");
-                          },
-                        },
+                        { text: "OK", style: "cancel" }
                       ],
                     );
                   } else {

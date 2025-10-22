@@ -437,10 +437,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     fab: {
       position: "absolute",
       left: "50%",
-      marginLeft: -28, // Half of width to center
       bottom: 20, // Much closer to tab bar
       height: 56,
       width: 56,
+      transform: [{ translateX: -28 }],
       borderRadius: 28,
       backgroundColor: theme.colors.accent,
       alignItems: "center",

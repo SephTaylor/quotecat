@@ -68,26 +68,10 @@ export default function QuoteReviewScreen() {
 
     if (!allowed) {
       Alert.alert(
-        "Upgrade to Pro",
+        "Limit Reached",
         reason,
         [
-          { text: "Not Now", style: "cancel" },
-          {
-            text: "Learn More",
-            onPress: () => {
-              Alert.alert(
-                "QuoteCat Pro",
-                "Get unlimited PDF and spreadsheet exports, remove QuoteCat branding, and unlock premium features.",
-                [
-                  { text: "Not Now", style: "cancel" },
-                  {
-                    text: "Visit Website",
-                    onPress: () => Linking.openURL("https://www.quotecat.ai")
-                  }
-                ]
-              );
-            }
-          },
+          { text: "OK", style: "cancel" }
         ]
       );
       return;
@@ -197,26 +181,10 @@ export default function QuoteReviewScreen() {
 
     if (!allowed) {
       Alert.alert(
-        "Upgrade to Pro",
+        "Limit Reached",
         reason,
         [
-          { text: "Not Now", style: "cancel" },
-          {
-            text: "Learn More",
-            onPress: () => {
-              Alert.alert(
-                "QuoteCat Pro",
-                "Get unlimited PDF and spreadsheet exports, remove QuoteCat branding, and unlock premium features.",
-                [
-                  { text: "Not Now", style: "cancel" },
-                  {
-                    text: "Visit Website",
-                    onPress: () => Linking.openURL("https://www.quotecat.ai")
-                  }
-                ]
-              );
-            }
-          },
+          { text: "OK", style: "cancel" }
         ]
       );
       return;

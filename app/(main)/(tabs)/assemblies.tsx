@@ -4,7 +4,7 @@ import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
 import { deleteAssembly } from "@/modules/assemblies/storage";
 import { getUserState } from "@/lib/user";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import React, { memo, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -60,6 +60,8 @@ AssemblyListItem.displayName = "AssemblyListItem";
 
 export default function AssembliesScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ quoteId?: string }>();
+  const quoteId = params.quoteId; // If present, we're adding to an existing quote
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const { assemblies, loading, reload } = useAssemblies();
@@ -135,6 +137,7 @@ export default function AssembliesScreen() {
           options={{
             title: "Assembly Library",
             headerShown: true,
+            headerBackTitle: quoteId ? "Quote" : "Back",
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -159,6 +162,7 @@ export default function AssembliesScreen() {
           options={{
             title: "Assembly Library",
             headerShown: true,
+            headerBackTitle: quoteId ? "Quote" : "Back",
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -229,6 +233,7 @@ export default function AssembliesScreen() {
         options={{
           title: "Assembly Library",
           headerShown: true,
+          headerBackTitle: quoteId ? "Quote" : undefined,
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -259,6 +264,7 @@ export default function AssembliesScreen() {
           data={filteredAssemblies}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          style={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -266,7 +272,11 @@ export default function AssembliesScreen() {
             <AssemblyListItem
               item={item}
               onPress={() => {
-                router.push(`/(forms)/assembly/${item.id}` as any);
+                // Pass quoteId if we're adding to an existing quote
+                const url = quoteId
+                  ? `/(main)/assembly/${item.id}?quoteId=${quoteId}`
+                  : `/(main)/assembly/${item.id}`;
+                router.push(url as any);
               }}
               onLongPress={() => handleDeleteAssembly(item)}
               styles={styles}
@@ -298,16 +308,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     headerContainer: {
       paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(1),
-      paddingBottom: theme.spacing(0.5),
+      paddingTop: theme.spacing(2),
+      paddingBottom: theme.spacing(1),
     },
     headerDescription: {
       fontSize: 13,
       color: theme.colors.muted,
       lineHeight: 18,
     },
+    list: {
+      flex: 1,
+    },
     listContent: {
-      padding: theme.spacing(2),
+      paddingHorizontal: theme.spacing(2),
+      paddingTop: theme.spacing(1),
+      paddingBottom: theme.spacing(2),
     },
     card: {
       backgroundColor: theme.colors.card,
@@ -343,7 +358,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     searchContainer: {
       paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(2),
+      paddingTop: theme.spacing(1),
+      paddingBottom: theme.spacing(1),
       backgroundColor: theme.colors.bg,
     },
     searchInput: {

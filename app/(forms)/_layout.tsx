@@ -21,6 +21,7 @@ export default function FormsLayout() {
       <Stack
         screenOptions={{
           headerShown: false, // Hidden by default, screens can override
+          presentation: "card", // Ensures proper navigation stack behavior
         }}
       />
     </SafeAreaView>

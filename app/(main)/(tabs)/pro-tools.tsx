@@ -33,16 +33,10 @@ export default function ProTools() {
 
   const handleUpgrade = () => {
     Alert.alert(
-      "Upgrade to Pro",
-      "You'll be redirected to quotecat.ai to view pricing and upgrade options.",
+      "Pro Feature",
+      "This feature requires a Pro account.",
       [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Continue",
-          onPress: () => {
-            Linking.openURL("https://quotecat.ai/pricing");
-          },
-        },
+        { text: "OK", style: "cancel" }
       ],
     );
   };
@@ -51,7 +45,7 @@ export default function ProTools() {
     if (isPro) {
       // Navigate to feature
       if (featureName === "Assembly Library") {
-        router.push("./assemblies" as any);
+        router.push("/(main)/assemblies-browse" as any);
       } else if (featureName === "Assembly Manager") {
         router.push("/(main)/assembly-manager" as any);
       } else if (featureName === "Wizard") {
@@ -151,13 +145,13 @@ export default function ProTools() {
 
           {!isPro && (
             <View style={styles.upgradeSection}>
-              <Text style={styles.upgradeTitle}>Ready to upgrade?</Text>
+              <Text style={styles.upgradeTitle}>Pro Features</Text>
               <Text style={styles.upgradeSubtitle}>
-                Visit quotecat.ai to view pricing and plans
+                Sign in to access Pro features
               </Text>
               <Pressable style={styles.upgradeButton} onPress={handleUpgrade}>
                 <Text style={styles.upgradeButtonText}>
-                  Learn More & Upgrade
+                  Learn More
                 </Text>
               </Pressable>
             </View>
@@ -188,21 +182,21 @@ function ProFeatureCard({
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <View style={[styles.featureCard, locked && styles.featureCardLocked]}>
+    <Pressable
+      style={[styles.featureCard, locked && styles.featureCardLocked]}
+      onPress={onPress}
+    >
       <View style={styles.featureInfo}>
         <Text style={styles.featureTitle}>{title}</Text>
         <Text style={styles.featureDescription}>{description}</Text>
       </View>
 
-      <Pressable
-        style={[styles.launchButton, locked && styles.launchButtonLocked]}
-        onPress={onPress}
-      >
+      <View style={[styles.launchButton, locked && styles.launchButtonLocked]}>
         <Text style={styles.launchButtonText}>
           {locked ? "Unlock" : "Launch"}
         </Text>
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 

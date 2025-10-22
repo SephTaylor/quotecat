@@ -56,10 +56,11 @@ export async function saveUserState(state: UserState): Promise<void> {
 
 /**
  * Default state for new users
+ * NOTE: Default tier is "pro" for TestFlight beta testing
  */
 function getDefaultUserState(): UserState {
   return {
-    tier: "free",
+    tier: "pro", // TestFlight: Start as Pro so testers can test all features
     quotesUsed: 0,
     pdfsThisMonth: 0,
     spreadsheetsThisMonth: 0,

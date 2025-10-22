@@ -313,17 +313,6 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.label}>Labor</Text>
-        <FormInput
-          placeholder="0.00"
-          value={labor}
-          onChangeText={(text) => setLabor(formatLaborInput(text))}
-          onBlur={() => setLabor(formatMoneyOnBlur(labor))}
-          keyboardType="decimal-pad"
-        />
-
-        <View style={{ height: theme.spacing(3) }} />
-
         <Text style={styles.h2}>Items</Text>
 
         <View style={{ height: theme.spacing(2) }} />
@@ -373,36 +362,83 @@ export default function EditQuote() {
           </>
         )}
 
-        <Pressable
-          onPress={async () => {
-            if (!id) return;
-            // Save current state before navigating (without validation)
-            await updateQuote(id, {
-              name: name.trim() || "Untitled",
-              clientName: clientName.trim(),
-              labor: parseMoney(labor),
-              materialEstimate: parseMoney(materialEstimate),
-              markupPercent: parseFloat(markupPercent) || 0,
-              notes: notes.trim() || undefined,
-              status,
-              pinned,
-            });
-            router.push(`/quote/${id}/materials`);
-          }}
-          style={{
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            backgroundColor: theme.colors.card,
-            borderRadius: theme.radius.lg,
-            height: 48,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontWeight: "800", color: theme.colors.text }}>
-            Add materials
-          </Text>
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: theme.spacing(2) }}>
+          <Pressable
+            onPress={async () => {
+              if (!id) return;
+              // Save current state before navigating (without validation)
+              await updateQuote(id, {
+                name: name.trim() || "Untitled",
+                clientName: clientName.trim(),
+                labor: parseMoney(labor),
+                materialEstimate: parseMoney(materialEstimate),
+                markupPercent: parseFloat(markupPercent) || 0,
+                notes: notes.trim() || undefined,
+                status,
+                pinned,
+              });
+              router.push(`/quote/${id}/materials`);
+            }}
+            style={{
+              flex: 1,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.card,
+              borderRadius: theme.radius.lg,
+              height: 48,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ fontWeight: "800", color: theme.colors.text }}>
+              Add materials
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={async () => {
+              if (!id) return;
+              // Save current state before navigating
+              await updateQuote(id, {
+                name: name.trim() || "Untitled",
+                clientName: clientName.trim(),
+                labor: parseMoney(labor),
+                materialEstimate: parseMoney(materialEstimate),
+                markupPercent: parseFloat(markupPercent) || 0,
+                notes: notes.trim() || undefined,
+                status,
+                pinned,
+              });
+              // Navigate to assembly library with quote context
+              router.push(`/(main)/assemblies-browse?quoteId=${id}` as any);
+            }}
+            style={{
+              flex: 1,
+              borderWidth: 1,
+              borderColor: theme.colors.accent,
+              backgroundColor: theme.colors.card,
+              borderRadius: theme.radius.lg,
+              height: 48,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ fontWeight: "800", color: theme.colors.accent }}>
+              Add from Assembly
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={{ height: theme.spacing(3) }} />
+
+        <Text style={styles.label}>Labor</Text>
+        <FormInput
+          placeholder="0.00"
+          value={labor}
+          onChangeText={(text) => setLabor(formatLaborInput(text))}
+          onBlur={() => setLabor(formatMoneyOnBlur(labor))}
+          keyboardType="decimal-pad"
+        />
 
         <View style={{ height: theme.spacing(3) }} />
 

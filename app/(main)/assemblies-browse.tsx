@@ -1,6 +1,5 @@
 // app/(main)/assemblies.tsx
 import { useTheme } from "@/contexts/ThemeContext";
-import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
 import { deleteAssembly } from "@/modules/assemblies/storage";
 import { getUserState } from "@/lib/user";
@@ -147,9 +146,9 @@ export default function AssembliesScreen() {
             },
           }}
         />
-        <Screen scroll={false} contentStyle={styles.center}>
+        <View style={styles.center}>
           <ActivityIndicator size="large" />
-        </Screen>
+        </View>
       </>
     );
   }
@@ -172,7 +171,7 @@ export default function AssembliesScreen() {
             },
           }}
         />
-        <Screen scroll={false} contentStyle={styles.container}>
+        <View style={styles.container}>
           <View style={styles.upgradeContainer}>
             <Text style={styles.upgradeIcon}>🚀</Text>
             <Text style={styles.upgradeTitle}>Assemblies Library</Text>
@@ -222,7 +221,7 @@ export default function AssembliesScreen() {
               Go to Settings to upgrade and unlock assemblies
             </Text>
           </View>
-        </Screen>
+        </View>
       </>
     );
   }
@@ -243,7 +242,7 @@ export default function AssembliesScreen() {
           },
         }}
       />
-      <Screen scroll={false} contentStyle={styles.container}>
+      <View style={styles.container}>
         <View style={styles.headerContainer}>
           <Text style={styles.headerDescription}>
             Pre-built material calculators for common tasks
@@ -290,7 +289,7 @@ export default function AssembliesScreen() {
             </Text>
           }
         />
-      </Screen>
+      </View>
     </>
   );
 }
@@ -305,6 +304,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     container: {
       flex: 1,
       backgroundColor: theme.colors.bg,
+      paddingTop: 0,
     },
     headerContainer: {
       paddingHorizontal: theme.spacing(2),

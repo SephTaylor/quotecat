@@ -2,9 +2,10 @@
 // Pro tool for managing custom assemblies
 import { useTheme } from "@/contexts/ThemeContext";
 import { getUserState } from "@/lib/user";
-import { saveAssembly, useAssemblies, deleteAssembly } from "@/modules/assemblies";
+import { saveAssembly, useAssemblies, deleteAssembly, validateAssembly } from "@/modules/assemblies";
 import type { Assembly } from "@/modules/assemblies";
-import { Stack } from "expo-router";
+import { useProducts } from "@/modules/catalog";
+import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -19,11 +20,15 @@ import {
 } from "react-native";
 
 export default function AssemblyManager() {
+  const router = useRouter();
   const { theme } = useTheme();
   const { assemblies, reload } = useAssemblies();
+  const { products } = useProducts();
   const [isPro, setIsPro] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [assemblyName, setAssemblyName] = useState("");
+  const [invalidAssemblies, setInvalidAssemblies] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -35,6 +40,20 @@ export default function AssemblyManager() {
     };
     load();
   }, []);
+
+  // Validate all assemblies when products load
+  React.useEffect(() => {
+    if (assemblies.length > 0 && products.length > 0) {
+      const invalid = new Set<string>();
+      assemblies.forEach((asm) => {
+        const result = validateAssembly(asm, products);
+        if (!result.isValid) {
+          invalid.add(asm.id);
+        }
+      });
+      setInvalidAssemblies(invalid);
+    }
+  }, [assemblies, products]);
 
   const handleCreateAssembly = () => {
     if (!isPro) {
@@ -71,8 +90,14 @@ export default function AssemblyManager() {
 
       Alert.alert(
         "Assembly Created",
-        `"${trimmedName}" has been created. You can now add materials to it.`,
-        [{ text: "OK" }]
+        `"${trimmedName}" has been created. Add products to it now?`,
+        [
+          { text: "Later", style: "cancel" },
+          {
+            text: "Add Products",
+            onPress: () => router.push(`/(main)/assembly-editor/${assembly.id}` as any),
+          },
+        ]
       );
     } catch (error) {
       console.error("Failed to create assembly:", error);
@@ -115,8 +140,15 @@ export default function AssemblyManager() {
     );
   };
 
-  const customAssemblies = assemblies.filter((a) => a.id.startsWith("custom-"));
-  const builtInAssemblies = assemblies.filter((a) => !a.id.startsWith("custom-"));
+  // Filter assemblies by search query
+  const filteredAssemblies = React.useMemo(() => {
+    if (!searchQuery.trim()) return assemblies;
+    const query = searchQuery.toLowerCase();
+    return assemblies.filter((a) => a.name.toLowerCase().includes(query));
+  }, [assemblies, searchQuery]);
+
+  const customAssemblies = filteredAssemblies.filter((a) => a.id.startsWith("custom-"));
+  const builtInAssemblies = filteredAssemblies.filter((a) => !a.id.startsWith("custom-"));
 
   return (
     <>
@@ -124,6 +156,7 @@ export default function AssemblyManager() {
         options={{
           title: "Assembly Manager",
           headerShown: true,
+          headerBackTitle: "Pro Tools",
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -136,12 +169,30 @@ export default function AssemblyManager() {
 
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Manage Assemblies</Text>
-            <Text style={styles.headerSubtitle}>
+          {/* Description */}
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.description}>
               Create and manage reusable material templates
             </Text>
+          </View>
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search assemblies..."
+              placeholderTextColor={theme.colors.muted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <Pressable
+                onPress={() => setSearchQuery("")}
+                style={styles.clearButton}
+              >
+                <Text style={styles.clearButtonText}>✕</Text>
+              </Pressable>
+            )}
           </View>
 
           {/* Custom Assemblies Section */}
@@ -159,66 +210,68 @@ export default function AssemblyManager() {
             </View>
 
             {customAssemblies.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>No Custom Assemblies Yet</Text>
-                <Text style={styles.emptyDescription}>
-                  Create your first custom assembly template to speed up your quoting workflow.
+              <View style={styles.emptyStateSimple}>
+                <Text style={styles.emptyTextSimple}>
+                  {searchQuery.trim()
+                    ? `No custom assemblies match "${searchQuery}"`
+                    : isPro
+                    ? "No custom assemblies yet. Tap + New to create your first template."
+                    : "No custom assemblies yet. Pro users can create custom templates."}
                 </Text>
-                {!isPro && (
-                  <Text style={styles.emptyNote}>
-                    Upgrade to Pro to create custom assemblies
-                  </Text>
-                )}
               </View>
             ) : (
               <FlatList
                 data={customAssemblies}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <Pressable
-                    style={styles.assemblyCard}
-                    onLongPress={() => handleDeleteAssembly(item)}
-                  >
-                    <View style={styles.assemblyHeader}>
-                      <Text style={styles.assemblyName}>{item.name}</Text>
-                      <View style={styles.customBadge}>
-                        <Text style={styles.customBadgeText}>CUSTOM</Text>
+                renderItem={({ item }) => {
+                  const isInvalid = invalidAssemblies.has(item.id);
+                  return (
+                    <Pressable
+                      style={[styles.assemblyCard, isInvalid && styles.assemblyCardInvalid]}
+                      onPress={() => router.push(`/(main)/assembly-editor/${item.id}` as any)}
+                      onLongPress={() => handleDeleteAssembly(item)}
+                    >
+                      <View style={styles.assemblyHeader}>
+                        <Text style={styles.assemblyName}>
+                          {isInvalid && "⚠️ "}
+                          {item.name}
+                        </Text>
+                        <View style={styles.customBadge}>
+                          <Text style={styles.customBadgeText}>CUSTOM</Text>
+                        </View>
                       </View>
-                    </View>
-                    <Text style={styles.assemblyMeta}>
-                      {item.items.length} material{item.items.length !== 1 ? "s" : ""}
-                    </Text>
-                    <Text style={styles.assemblyHint}>
-                      Long press to delete
-                    </Text>
-                  </Pressable>
-                )}
+                      <Text style={styles.assemblyMeta}>
+                        {item.items.length} material{item.items.length !== 1 ? "s" : ""}
+                      </Text>
+                      {isInvalid && (
+                        <Text style={styles.warningText}>
+                          Needs review - some products unavailable
+                        </Text>
+                      )}
+                      <Text style={styles.assemblyHint}>
+                        Tap to edit • Long press to delete
+                      </Text>
+                    </Pressable>
+                  );
+                }}
               />
             )}
           </View>
 
-          {/* Built-in Assemblies Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              Built-in Assemblies ({builtInAssemblies.length})
-            </Text>
-
-            <FlatList
-              data={builtInAssemblies}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <View style={styles.assemblyCard}>
-                  <Text style={styles.assemblyName}>{item.name}</Text>
-                  <Text style={styles.assemblyMeta}>
-                    {item.items.length} material{item.items.length !== 1 ? "s" : ""}
-                  </Text>
-                </View>
-              )}
-            />
-          </View>
         </ScrollView>
+
+        {/* Browse Built-In Link - Subtle at bottom */}
+        <View style={styles.footer}>
+          <Pressable
+            onPress={() => router.push("/(main)/built-in-assemblies" as any)}
+            style={styles.browseLink}
+          >
+            <Text style={styles.browseLinkText}>
+              Browse {builtInAssemblies.length} built-in assembly templates →
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Create Assembly Modal */}
@@ -286,18 +339,43 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     content: {
       padding: theme.spacing(2),
     },
-    header: {
+    descriptionContainer: {
+      paddingBottom: theme.spacing(1.5),
+    },
+    description: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      lineHeight: 18,
+    },
+    searchContainer: {
+      position: "relative",
       marginBottom: theme.spacing(3),
     },
-    headerTitle: {
-      fontSize: 24,
-      fontWeight: "700",
+    searchInput: {
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(1.5),
+      fontSize: 16,
       color: theme.colors.text,
-      marginBottom: theme.spacing(0.5),
+      paddingRight: 40,
     },
-    headerSubtitle: {
+    clearButton: {
+      position: "absolute",
+      right: 12,
+      top: 12,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: theme.colors.muted,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    clearButtonText: {
+      color: theme.colors.bg,
       fontSize: 14,
-      color: theme.colors.muted,
+      fontWeight: "700",
     },
     section: {
       marginBottom: theme.spacing(3),
@@ -326,31 +404,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "700",
       color: "#000",
     },
-    emptyCard: {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      padding: theme.spacing(3),
+    emptyStateSimple: {
+      paddingVertical: theme.spacing(3),
       alignItems: "center",
     },
-    emptyTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: theme.colors.text,
-      marginBottom: theme.spacing(1),
-    },
-    emptyDescription: {
+    emptyTextSimple: {
       fontSize: 14,
       color: theme.colors.muted,
       textAlign: "center",
-      marginBottom: theme.spacing(1.5),
       lineHeight: 20,
-    },
-    emptyNote: {
-      fontSize: 13,
-      color: theme.colors.accent,
-      fontStyle: "italic",
     },
     assemblyCard: {
       backgroundColor: theme.colors.card,
@@ -359,6 +421,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderColor: theme.colors.border,
       padding: theme.spacing(2),
       marginBottom: theme.spacing(1.5),
+    },
+    assemblyCardInvalid: {
+      borderColor: "#FFC107",
+      borderWidth: 2,
+      backgroundColor: "#FFF3CD",
     },
     assemblyHeader: {
       flexDirection: "row",
@@ -392,7 +459,29 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 10,
       fontWeight: "800",
       color: "#000",
+    },
+    warningText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: "#856404",
+      marginTop: 4,
       letterSpacing: 0.5,
+    },
+    footer: {
+      padding: theme.spacing(2),
+      paddingTop: theme.spacing(1),
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      backgroundColor: theme.colors.bg,
+    },
+    browseLink: {
+      padding: theme.spacing(1.5),
+      alignItems: "center",
+    },
+    browseLinkText: {
+      fontSize: 14,
+      color: theme.colors.accent,
+      textAlign: "center",
     },
     modalOverlay: {
       flex: 1,

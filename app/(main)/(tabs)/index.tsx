@@ -270,10 +270,9 @@ export default function Dashboard() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Quotes</Text>
               {recentQuotes.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyTitle}>No quotes yet</Text>
-                  <Text style={styles.emptyDescription}>
-                    Tap the Quotes tab below to create your first quote
+                <View style={styles.emptyStateSimple}>
+                  <Text style={styles.emptyTextSimple}>
+                    No quotes yet. Tap the Quotes tab below to create your first quote.
                   </Text>
                 </View>
               ) : (
@@ -441,6 +440,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       textAlign: "center",
     },
     emptyDescription: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    emptyStateSimple: {
+      paddingVertical: theme.spacing(3),
+      alignItems: "center",
+    },
+    emptyTextSimple: {
       fontSize: 14,
       color: theme.colors.muted,
       textAlign: "center",

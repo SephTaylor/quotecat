@@ -1,5 +1,5 @@
 // app/(forms)/assembly/[id].tsx
-import { getAssemblyById, useAssemblyCalculator } from "@/modules/assemblies";
+import { getAssemblyById, useAssemblyCalculator, validateAssembly, getValidationSummary } from "@/modules/assemblies";
 import { formatMoney } from "@/modules/settings/money";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -16,6 +16,7 @@ import type { Assembly, PricedLine, ProductIndex } from "@/modules/assemblies";
 import {
   saveQuote,
   createQuote,
+  getQuoteById,
 } from "@/modules/quotes";
 import { useProducts } from "@/modules/catalog";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -35,12 +36,14 @@ function pricedLinesToQuoteItems(lines: PricedLine[]): any[] {
 }
 
 export default function AssemblyCalculatorScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; quoteId?: string | string[] }>();
   const assemblyId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const quoteId = Array.isArray(params.quoteId) ? params.quoteId[0] : params.quoteId;
   const { theme } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [assembly, setAssembly] = useState<Assembly | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Load products from Supabase/cache
   const { products: productsList, loading: productsLoading } = useProducts();
@@ -65,6 +68,18 @@ export default function AssemblyCalculatorScreen() {
       }
     })();
   }, [assemblyId]);
+
+  // Validate assembly when products are loaded
+  useEffect(() => {
+    if (assembly && productsList.length > 0) {
+      const validation = validateAssembly(assembly, productsList);
+      if (!validation.isValid) {
+        setValidationErrors(validation.errors.map((e) => e.message));
+      } else {
+        setValidationErrors([]);
+      }
+    }
+  }, [assembly, productsList]);
 
   // Create a dummy assembly for the hook to satisfy rules-of-hooks
   const dummyAssembly: Assembly = {
@@ -92,38 +107,56 @@ export default function AssemblyCalculatorScreen() {
     try {
       const newItems = pricedLinesToQuoteItems(calculator.lines);
 
-      // CREATE new quote
-      const newQuote = await createQuote(
-        `${assembly.name}`,
-        "",
-      );
-      const withItems = {
-        ...newQuote,
-        items: newItems,
-      };
-      await saveQuote(withItems);
+      if (quoteId) {
+        // ADD TO EXISTING QUOTE
+        const existingQuote = await getQuoteById(quoteId);
+        if (!existingQuote) {
+          Alert.alert("Error", "Quote not found");
+          return;
+        }
 
-      Alert.alert(
-        "Quote Created!",
-        `"${assembly.name}" quote created with ${calculator.lines.length} items.`,
-        [
-          {
-            text: "View Quote",
-            onPress: () => {
-              router.back();
-              router.push(`/quote/${newQuote.id}/edit` as any);
+        // Merge items (add new items to existing)
+        const { mergeById } = await import("@/modules/quotes/merge");
+        const mergedItems = mergeById(existingQuote.items ?? [], newItems);
+
+        const updatedQuote = {
+          ...existingQuote,
+          items: mergedItems,
+        };
+        await saveQuote(updatedQuote);
+
+        Alert.alert(
+          "Items Added!",
+          `Added ${calculator.lines.length} items from "${assembly.name}" to your quote.`,
+          [
+            {
+              text: "Back to Quote",
+              onPress: () => {
+                router.back();
+                router.back(); // Go back twice (assembly list -> quote edit)
+              },
             },
-          },
-          {
-            text: "Done",
-            onPress: () => router.back(),
-            style: "cancel",
-          },
-        ],
-      );
+          ],
+        );
+      } else {
+        // CREATE NEW QUOTE
+        const newQuote = await createQuote(
+          `${assembly.name}`,
+          "",
+        );
+        const withItems = {
+          ...newQuote,
+          items: newItems,
+        };
+        await saveQuote(withItems);
+
+        // Navigate directly to the new quote
+        router.dismissAll();
+        router.push(`/quote/${newQuote.id}/edit` as any);
+      }
     } catch (error) {
-      console.error("Failed to create quote:", error);
-      Alert.alert("Error", "Could not create quote");
+      console.error("Failed to process quote:", error);
+      Alert.alert("Error", "Could not process quote");
     }
   };
 
@@ -135,6 +168,7 @@ export default function AssemblyCalculatorScreen() {
           options={{
             title: "Assembly Calculator",
             headerShown: true,
+            headerBackTitle: "Assemblies",
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -158,6 +192,7 @@ export default function AssemblyCalculatorScreen() {
           options={{
             title: "Assembly Calculator",
             headerShown: true,
+            headerBackTitle: "Assemblies",
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -184,6 +219,7 @@ export default function AssemblyCalculatorScreen() {
           options={{
             title: "Assembly Calculator",
             headerShown: true,
+            headerBackTitle: "Assemblies",
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -213,6 +249,7 @@ export default function AssemblyCalculatorScreen() {
         options={{
           title: assembly.name,
           headerShown: true,
+          headerBackTitle: "Back",
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -224,6 +261,26 @@ export default function AssemblyCalculatorScreen() {
       />
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.body}>
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorTitle}>⚠️ Assembly Needs Review</Text>
+              <Text style={styles.errorDescription}>
+                This assembly has issues that must be fixed before use:
+              </Text>
+              {validationErrors.map((error, idx) => (
+                <Text key={idx} style={styles.errorItem}>
+                  • {error}
+                </Text>
+              ))}
+              <Text style={styles.errorAction}>
+                {assembly.id.startsWith("custom-")
+                  ? "Edit this assembly to fix the issues."
+                  : "This is a built-in assembly. Contact support if this issue persists."}
+              </Text>
+            </View>
+          )}
+
           {/* Variables Section */}
           {Object.keys(vars).length > 0 && (
             <View>
@@ -286,9 +343,14 @@ export default function AssemblyCalculatorScreen() {
           <Button
             variant="primary"
             onPress={handleCreateQuote}
-            disabled={!assembly || !calculator || calculator.lines.length === 0}
+            disabled={
+              !assembly ||
+              !calculator ||
+              calculator.lines.length === 0 ||
+              validationErrors.length > 0
+            }
           >
-            Create Quote
+            {quoteId ? "Add to Quote" : "Create Quote"}
           </Button>
         </BottomBar>
       </View>
@@ -377,6 +439,39 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
+    },
+
+    errorCard: {
+      backgroundColor: "#FFF3CD",
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 2,
+      borderColor: "#FFC107",
+    },
+    errorTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#856404",
+      marginBottom: 8,
+    },
+    errorDescription: {
+      fontSize: 14,
+      color: "#856404",
+      marginBottom: 8,
+    },
+    errorItem: {
+      fontSize: 13,
+      color: "#856404",
+      marginBottom: 4,
+      marginLeft: 8,
+    },
+    errorAction: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: "#856404",
+      marginTop: 8,
+      fontStyle: "italic",
     },
 
   });
