@@ -275,10 +275,11 @@ export default function AssemblyEditorScreen() {
             </View>
           )}
 
-          {selectedProducts.size > 0 && (
-            <View style={styles.selectionIndicator}>
-              <Text style={styles.selectionText}>
-                {selectedProducts.size} product{selectedProducts.size !== 1 ? "s" : ""} selected
+          {showSuccessMessage && (
+            <View style={styles.successMessage}>
+              <Text style={styles.successText}>
+                ✓ Products added! Assembly now has {assembly.items.length} product
+                {assembly.items.length !== 1 ? "s" : ""}
               </Text>
             </View>
           )}
@@ -298,16 +299,20 @@ export default function AssemblyEditorScreen() {
           {/* Show filtered search results OR categories */}
           {searchQuery.trim() ? (
             <View style={styles.searchResults}>
-              {filteredProducts.map((product) => (
-                <ProductRow
-                  key={product.id}
-                  product={product}
-                  qty={selectedProducts.get(product.id) || 0}
-                  onIncrement={() => handleIncrement(product)}
-                  onDecrement={() => handleDecrement(product)}
-                  theme={theme}
-                />
-              ))}
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((product) => (
+                  <ProductRow
+                    key={product.id}
+                    product={product}
+                    qty={selectedProducts.get(product.id) || 0}
+                    onIncrement={() => handleIncrement(product)}
+                    onDecrement={() => handleDecrement(product)}
+                    theme={theme}
+                  />
+                ))
+              ) : (
+                <Text style={styles.errorText}>No products found</Text>
+              )}
             </View>
           ) : (
             CATEGORIES.map((category) => {
@@ -350,16 +355,6 @@ export default function AssemblyEditorScreen() {
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        {/* Success Message */}
-        {showSuccessMessage && (
-          <View style={styles.successMessage}>
-            <Text style={styles.successText}>
-              ✓ Products added! Assembly now has {assembly.items.length} product
-              {assembly.items.length !== 1 ? "s" : ""}
-            </Text>
-          </View>
-        )}
-
         <BottomBar>
           {selectedProducts.size > 0 ? (
             <>
@@ -367,7 +362,7 @@ export default function AssemblyEditorScreen() {
                 variant="secondary"
                 onPress={() => handleSave(false)}
               >
-                Add Products
+                Add Products ({selectedProducts.size})
               </Button>
               <Button
                 variant="primary"
@@ -526,11 +521,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       alignItems: "center",
       justifyContent: "space-between",
       paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(1),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+      borderRadius: theme.radius.sm,
+      marginBottom: 2,
     },
     productRowActive: {
-      backgroundColor: theme.colors.accent + "10",
+      backgroundColor: theme.colors.accent + "20",
+      borderBottomColor: theme.colors.accent,
+      borderBottomWidth: 2,
     },
     productInfo: {
       flex: 1,
@@ -576,22 +576,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderRadius: theme.radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      padding: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(2),
     },
     errorText: {
       fontSize: 16,
       color: theme.colors.muted,
     },
-    // Success message
+    // Success message (inline, not absolute)
     successMessage: {
-      position: "absolute",
-      bottom: 100,
-      left: theme.spacing(2),
-      right: theme.spacing(2),
       backgroundColor: "#4CAF50",
-      padding: theme.spacing(2),
-      borderRadius: theme.radius.lg,
+      padding: theme.spacing(1.5),
+      borderRadius: theme.radius.md,
       alignItems: "center",
+      marginTop: theme.spacing(1),
     },
     successText: {
       color: "#fff",
