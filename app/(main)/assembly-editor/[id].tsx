@@ -35,6 +35,7 @@ export default function AssemblyEditorScreen() {
   const [selectedProducts, setSelectedProducts] = useState<Map<string, number>>(new Map());
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -111,7 +112,7 @@ export default function AssemblyEditorScreen() {
     setSelectedProducts(newMap);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (goBack: boolean) => {
     if (!assembly) return;
 
     const trimmedName = assemblyName.trim();
@@ -120,7 +121,7 @@ export default function AssemblyEditorScreen() {
       return;
     }
 
-    if (selectedProducts.size === 0) {
+    if (assembly.items.length === 0 && selectedProducts.size === 0) {
       Alert.alert(
         "No Products",
         "Please add at least one product to this assembly.",
@@ -130,32 +131,59 @@ export default function AssemblyEditorScreen() {
     }
 
     try {
-      // Convert selected products to assembly items
-      const items: AssemblyItem[] = Array.from(selectedProducts.entries()).map(
+      // Get existing assembly items
+      const existingItems = assembly.items || [];
+
+      // Convert newly selected products to assembly items
+      const newlySelectedItems: AssemblyItem[] = Array.from(selectedProducts.entries()).map(
         ([productId, qty]) => ({
           productId,
           qty,
         })
       );
 
+      // Merge existing items with newly selected items
+      const mergedMap = new Map<string, number>();
+
+      // Add existing items
+      existingItems.forEach((item) => {
+        if (typeof item.qty === "number") {
+          mergedMap.set(item.productId, item.qty);
+        }
+      });
+
+      // Merge in newly selected items (add quantities)
+      newlySelectedItems.forEach((item) => {
+        const current = mergedMap.get(item.productId) || 0;
+        mergedMap.set(item.productId, current + item.qty);
+      });
+
+      // Convert back to array
+      const mergedItems: AssemblyItem[] = Array.from(mergedMap.entries()).map(
+        ([productId, qty]) => ({ productId, qty })
+      );
+
       const updatedAssembly: Assembly = {
         ...assembly,
         name: trimmedName,
-        items,
+        items: mergedItems,
       };
 
       await saveAssembly(updatedAssembly);
 
-      Alert.alert(
-        "Assembly Saved",
-        `"${trimmedName}" has been saved with ${items.length} products.`,
-        [
-          {
-            text: "OK",
-            onPress: () => router.back(),
-          },
-        ]
-      );
+      if (goBack) {
+        router.back();
+      } else {
+        // Update local assembly state
+        setAssembly(updatedAssembly);
+
+        // Clear selection so user can add more
+        setSelectedProducts(new Map());
+
+        // Show success message
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+      }
     } catch (error) {
       console.error("Failed to save assembly:", error);
       Alert.alert("Error", "Could not save assembly. Please try again.");
@@ -320,10 +348,35 @@ export default function AssemblyEditorScreen() {
           <View style={{ height: 100 }} />
         </ScrollView>
 
+        {/* Success Message */}
+        {showSuccessMessage && (
+          <View style={styles.successMessage}>
+            <Text style={styles.successText}>
+              ✓ Products added! Assembly now has {assembly.items.length} product
+              {assembly.items.length !== 1 ? "s" : ""}
+            </Text>
+          </View>
+        )}
+
         <BottomBar>
-          <Button variant="primary" onPress={handleSave}>
-            Save Assembly
-          </Button>
+          <View style={styles.buttonRow}>
+            {selectedProducts.size > 0 && (
+              <Button
+                variant="secondary"
+                onPress={() => handleSave(false)}
+                style={styles.addButton}
+              >
+                Add Products
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              onPress={() => handleSave(true)}
+              style={styles.doneButton}
+            >
+              Done
+            </Button>
+          </View>
         </BottomBar>
       </View>
     </GestureHandlerRootView>
@@ -557,6 +610,33 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     errorText: {
       fontSize: 16,
       color: theme.colors.muted,
+    },
+    // Success message
+    successMessage: {
+      position: "absolute",
+      bottom: 100,
+      left: theme.spacing(2),
+      right: theme.spacing(2),
+      backgroundColor: "#4CAF50",
+      padding: theme.spacing(2),
+      borderRadius: theme.radius.lg,
+      alignItems: "center",
+    },
+    successText: {
+      color: "#fff",
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    // Button row
+    buttonRow: {
+      flexDirection: "row",
+      gap: theme.spacing(2),
+    },
+    addButton: {
+      flex: 1,
+    },
+    doneButton: {
+      flex: 1,
     },
   });
 }
