@@ -328,7 +328,7 @@ const styles = (theme: ReturnType<typeof useTheme>["theme"]) =>
       color: "#000",
     },
     successMessage: {
-      backgroundColor: "#34C759",
+      backgroundColor: theme.colors.accent,
       borderRadius: theme.radius.lg,
       padding: theme.spacing(1.5),
       marginHorizontal: theme.spacing(2),
@@ -338,6 +338,6 @@ const styles = (theme: ReturnType<typeof useTheme>["theme"]) =>
     successText: {
       fontSize: 14,
       fontWeight: "700",
-      color: "#FFFFFF",
+      color: "#000", // Black on orange accent (good contrast)
     },
   });

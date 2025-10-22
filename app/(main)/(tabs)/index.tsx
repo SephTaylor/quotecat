@@ -11,14 +11,14 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function Dashboard() {
   const router = useRouter();
   const { theme } = useTheme();
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [preferences, setPreferences] = useState<DashboardPreferences>({
     showStats: true,
     showValueTracking: true,
@@ -133,6 +133,21 @@ export default function Dashboard() {
   }, []);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  if (loading) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Stack.Screen
+          options={{ title: "Dashboard", headerBackVisible: false }}
+        />
+        <View style={styles.container}>
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={theme.colors.accent} />
+          </View>
+        </View>
+      </GestureHandlerRootView>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -251,15 +266,24 @@ export default function Dashboard() {
           {preferences.showRecentQuotes && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Quotes</Text>
-              {recentQuotes.map((quote) => (
-                <SwipeableQuoteItem
-                  key={quote.id}
-                  item={quote}
-                  onEdit={() => router.push(`/quote/${quote.id}/edit`)}
-                  onDelete={() => handleDelete(quote)}
-                  onTogglePin={() => handleTogglePin(quote)}
-                />
-              ))}
+              {recentQuotes.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyTitle}>No quotes yet</Text>
+                  <Text style={styles.emptyDescription}>
+                    Tap the Quotes tab below to create your first quote
+                  </Text>
+                </View>
+              ) : (
+                recentQuotes.map((quote) => (
+                  <SwipeableQuoteItem
+                    key={quote.id}
+                    item={quote}
+                    onEdit={() => router.push(`/quote/${quote.id}/edit`)}
+                    onDelete={() => handleDelete(quote)}
+                    onTogglePin={() => handleTogglePin(quote)}
+                  />
+                ))
+              )}
             </View>
           )}
 
@@ -305,6 +329,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     container: {
       flex: 1,
       backgroundColor: theme.colors.bg,
+    },
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
     },
     scrollContent: {
       padding: theme.spacing(2),
@@ -392,6 +421,27 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     section: {
       marginBottom: theme.spacing(3),
+    },
+    emptyState: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(4),
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+      textAlign: "center",
+    },
+    emptyDescription: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      textAlign: "center",
+      lineHeight: 20,
     },
   });
 }

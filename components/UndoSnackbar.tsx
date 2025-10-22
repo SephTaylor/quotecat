@@ -87,8 +87,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       zIndex: 1000,
     },
     content: {
-      backgroundColor: "#323232",
+      backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
       padding: theme.spacing(2),
       flexDirection: "row",
       alignItems: "center",
@@ -103,7 +105,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       elevation: 8,
     },
     message: {
-      color: "#FFFFFF",
+      color: theme.colors.text,
       fontSize: 14,
       flex: 1,
     },

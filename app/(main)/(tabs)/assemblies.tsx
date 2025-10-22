@@ -360,7 +360,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.md,
       borderWidth: 2,
-      borderColor: "#FFFFFF",
+      borderColor: theme.colors.border,
       padding: theme.spacing(1.5),
       fontSize: 14,
       color: theme.colors.text,

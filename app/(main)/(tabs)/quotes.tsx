@@ -397,7 +397,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.muted,
     },
     filterChipTextActive: {
-      color: "#000",
+      color: "#000", // Black on orange accent (good contrast)
     },
     listContent: {
       padding: theme.spacing(2),
@@ -450,7 +450,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     fabText: {
       fontSize: 32,
       lineHeight: 32,
-      color: "#000",
+      color: "#000", // Black on orange accent FAB (good contrast)
       fontWeight: "800",
       textAlign: "center",
       includeFontPadding: false,

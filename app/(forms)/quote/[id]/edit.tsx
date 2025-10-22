@@ -570,7 +570,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
     },
     statusChipTextActive: {
-      color: "#000",
+      color: "#000", // Black on orange accent (good contrast)
       fontWeight: "700",
     },
     reviewBtn: {
@@ -582,7 +582,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
-    reviewText: { fontSize: 16, fontWeight: "800", color: "#000" },
+    reviewText: { fontSize: 16, fontWeight: "800", color: "#000" }, // Black on orange accent (good contrast)
     assemblyBtn: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.xl,
