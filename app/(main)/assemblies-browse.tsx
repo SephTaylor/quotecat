@@ -308,7 +308,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     headerContainer: {
       paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(2),
+      paddingTop: theme.spacing(1),
       paddingBottom: theme.spacing(1),
     },
     headerDescription: {
