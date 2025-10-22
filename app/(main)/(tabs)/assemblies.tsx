@@ -4,7 +4,7 @@ import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
 import { deleteAssembly } from "@/modules/assemblies/storage";
 import { getUserState } from "@/lib/user";
-import { Stack, useRouter, useLocalSearchParams } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { memo, useMemo, useState } from "react";
 import {
   ActivityIndicator,
