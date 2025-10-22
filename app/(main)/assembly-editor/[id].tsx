@@ -20,7 +20,6 @@ import {
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import Swipeable from "react-native-gesture-handler/Swipeable";
 
 export default function AssemblyEditorScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
@@ -259,29 +258,32 @@ export default function AssemblyEditorScreen() {
             placeholder="e.g., Bedroom Rough-In"
           />
 
-          <View style={{ height: theme.spacing(3) }} />
+          <View style={{ height: theme.spacing(2) }} />
 
-          {/* Selected Products with Swipe to Delete */}
-          {selectedProductsList.length > 0 && (
-            <>
-              <Text style={styles.h2}>
-                Selected Products ({selectedProductsList.length})
-              </Text>
-              {selectedProductsList.map(({ product, qty }) => (
-                <SelectedProductItem
-                  key={product.id}
-                  product={product}
-                  qty={qty}
-                  onIncrement={() => handleIncrement(product)}
-                  onDecrement={() => handleDecrement(product)}
-                  onDelete={() => handleRemoveProduct(product.id)}
-                  theme={theme}
-                />
-              ))}
-
-              <View style={{ height: theme.spacing(3) }} />
-            </>
+          {/* Assembly Status Indicator */}
+          {assembly.items.length > 0 && (
+            <View style={styles.assemblyIndicator}>
+              <View style={styles.indicatorContent}>
+                <View style={styles.indicatorTextContainer}>
+                  <Text style={styles.indicatorText}>
+                    Assembly has {assembly.items.reduce((sum, item) => sum + (typeof item.qty === 'number' ? item.qty : 0), 0)}{" "}
+                    item{assembly.items.reduce((sum, item) => sum + (typeof item.qty === 'number' ? item.qty : 0), 0) !== 1 ? "s" : ""}{" "}
+                    ({assembly.items.length} product{assembly.items.length !== 1 ? "s" : ""})
+                  </Text>
+                </View>
+              </View>
+            </View>
           )}
+
+          {selectedProducts.size > 0 && (
+            <View style={styles.selectionIndicator}>
+              <Text style={styles.selectionText}>
+                {selectedProducts.size} product{selectedProducts.size !== 1 ? "s" : ""} selected
+              </Text>
+            </View>
+          )}
+
+          <View style={{ height: theme.spacing(2) }} />
 
           {/* Product Browser by Category */}
           <Text style={styles.h2}>Add Products</Text>
@@ -421,51 +423,6 @@ function ProductRow({
   );
 }
 
-// Selected product item with swipe to delete
-function SelectedProductItem({
-  product,
-  qty,
-  onIncrement,
-  onDecrement,
-  onDelete,
-  theme,
-}: {
-  product: Product;
-  qty: number;
-  onIncrement: () => void;
-  onDecrement: () => void;
-  onDelete: () => void;
-  theme: ReturnType<typeof useTheme>["theme"];
-}) {
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
-
-  const renderRightActions = () => (
-    <Pressable style={styles.deleteAction} onPress={onDelete}>
-      <Text style={styles.deleteText}>Delete</Text>
-    </Pressable>
-  );
-
-  return (
-    <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
-      <View style={styles.selectedProductRow}>
-        <View style={styles.productInfo}>
-          <Text style={styles.productName}>{product.name}</Text>
-          <Text style={styles.productMeta}>{product.unit}</Text>
-        </View>
-        <View style={styles.stepper}>
-          <Pressable style={styles.stepperButton} onPress={onDecrement}>
-            <Text style={styles.stepperText}>−</Text>
-          </Pressable>
-          <Text style={styles.qtyText}>{qty}</Text>
-          <Pressable style={styles.stepperButton} onPress={onIncrement}>
-            <Text style={styles.stepperText}>+</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Swipeable>
-  );
-}
-
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     container: {
@@ -495,6 +452,40 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "700",
       color: theme.colors.text,
       marginBottom: theme.spacing(2),
+    },
+    // Assembly status indicator
+    assemblyIndicator: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(1),
+    },
+    indicatorContent: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    indicatorTextContainer: {
+      flex: 1,
+    },
+    indicatorText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    // Selection indicator
+    selectionIndicator: {
+      backgroundColor: theme.colors.accent + "20",
+      borderRadius: theme.radius.sm,
+      padding: theme.spacing(1),
+      alignItems: "center",
+    },
+    selectionText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: theme.colors.text,
     },
     // Category card (collapsible)
     categoryCard: {
@@ -573,31 +564,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
       minWidth: 32,
       textAlign: "center",
-    },
-    // Selected products with swipe
-    selectedProductRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: theme.spacing(2),
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      marginBottom: theme.spacing(1.5),
-    },
-    deleteAction: {
-      backgroundColor: theme.colors.danger,
-      justifyContent: "center",
-      alignItems: "center",
-      width: 80,
-      borderRadius: theme.radius.md,
-      marginBottom: theme.spacing(1.5),
-    },
-    deleteText: {
-      color: "#fff",
-      fontWeight: "700",
-      fontSize: 14,
     },
     // Search results
     searchResults: {
