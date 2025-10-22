@@ -16,6 +16,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 import type { Assembly } from "@/modules/assemblies";
 
 // Memoized assembly list item for performance
@@ -23,22 +25,28 @@ const AssemblyListItem = memo(
   ({
     item,
     onPress,
-    onLongPress,
+    onDelete,
     styles,
   }: {
     item: Assembly;
     onPress: () => void;
-    onLongPress?: () => void;
+    onDelete?: () => void;
     styles: ReturnType<typeof createStyles>;
   }) => {
     const materialCount = item.items.length;
     const isCustom = item.id.startsWith("custom-");
 
-    return (
+    const renderRightActions = () =>
+      isCustom && onDelete ? (
+        <Pressable style={styles.deleteAction} onPress={onDelete}>
+          <Text style={styles.deleteText}>Delete</Text>
+        </Pressable>
+      ) : null;
+
+    const content = (
       <Pressable
         style={[styles.card, isCustom && styles.cardCustom]}
         onPress={onPress}
-        onLongPress={onLongPress}
       >
         <View style={styles.cardHeader}>
           <Text style={styles.title}>
@@ -48,9 +56,17 @@ const AssemblyListItem = memo(
         </View>
         <Text style={styles.sub}>
           {materialCount} material{materialCount !== 1 ? "s" : ""}
-          {isCustom && " • Custom"}
+          {isCustom && " • Custom • Swipe to delete"}
         </Text>
       </Pressable>
+    );
+
+    return isCustom && onDelete ? (
+      <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
+        {content}
+      </Swipeable>
+    ) : (
+      content
     );
   },
 );
@@ -227,7 +243,7 @@ export default function AssembliesScreen() {
   }
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen
         options={{
           title: "Assembly Library",
@@ -277,7 +293,7 @@ export default function AssembliesScreen() {
                   : `/(main)/assembly/${item.id}`;
                 router.push(url as any);
               }}
-              onLongPress={() => handleDeleteAssembly(item)}
+              onDelete={() => handleDeleteAssembly(item)}
               styles={styles}
             />
           )}
@@ -290,7 +306,7 @@ export default function AssembliesScreen() {
           }
         />
       </View>
-    </>
+    </GestureHandlerRootView>
   );
 }
 
@@ -445,6 +461,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 12,
       color: theme.colors.muted,
       textAlign: "center",
+    },
+    deleteAction: {
+      backgroundColor: theme.colors.danger,
+      justifyContent: "center",
+      alignItems: "center",
+      width: 80,
+      borderRadius: theme.radius.lg,
+      marginBottom: theme.spacing(2),
+    },
+    deleteText: {
+      color: "#fff",
+      fontWeight: "700",
+      fontSize: 14,
     },
   });
 }
