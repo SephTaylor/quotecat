@@ -60,8 +60,6 @@ AssemblyListItem.displayName = "AssemblyListItem";
 
 export default function AssembliesScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ quoteId?: string }>();
-  const quoteId = params.quoteId;
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const { assemblies, loading, reload } = useAssemblies();
@@ -278,10 +276,7 @@ export default function AssembliesScreen() {
             <AssemblyListItem
               item={item}
               onPress={() => {
-                const path = quoteId
-                  ? `/(forms)/assembly/${item.id}?quoteId=${quoteId}`
-                  : `/(forms)/assembly/${item.id}`;
-                router.push(path as any);
+                router.push(`/(forms)/assembly/${item.id}` as any);
               }}
               onLongPress={() => handleDeleteAssembly(item)}
               styles={styles}

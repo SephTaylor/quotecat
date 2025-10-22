@@ -35,9 +35,8 @@ function pricedLinesToQuoteItems(lines: PricedLine[]): any[] {
 }
 
 export default function AssemblyCalculatorScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[]; quoteId?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
   const assemblyId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const quoteId = Array.isArray(params.quoteId) ? params.quoteId[0] : params.quoteId;
   const { theme } = useTheme();
 
   const [loading, setLoading] = useState(true);
@@ -81,7 +80,7 @@ export default function AssemblyCalculatorScreen() {
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const handleAddToQuote = async () => {
+  const handleCreateQuote = async () => {
     if (!assembly || !calculator || calculator.lines.length === 0) {
       Alert.alert(
         "No materials",
@@ -93,60 +92,38 @@ export default function AssemblyCalculatorScreen() {
     try {
       const newItems = pricedLinesToQuoteItems(calculator.lines);
 
-      if (quoteId) {
-        // ADD to existing quote
-        const { getQuoteById } = await import("@/modules/quotes");
-        const existing = await getQuoteById(quoteId);
-        if (!existing) {
-          Alert.alert("Error", "Quote not found");
-          return;
-        }
+      // CREATE new quote
+      const newQuote = await createQuote(
+        `${assembly.name}`,
+        "",
+      );
+      const withItems = {
+        ...newQuote,
+        items: newItems,
+      };
+      await saveQuote(withItems);
 
-        const { mergeById } = await import("@/modules/quotes/merge");
-        const mergedItems = mergeById(existing.items ?? [], newItems);
-
-        await saveQuote({
-          ...existing,
-          items: mergedItems,
-        });
-
-        // Go back to materials picker
-        router.back();
-        router.back(); // Back to quote materials screen
-      } else {
-        // CREATE new quote
-        const newQuote = await createQuote(
-          `${assembly.name}`,
-          "",
-        );
-        const withItems = {
-          ...newQuote,
-          items: newItems,
-        };
-        await saveQuote(withItems);
-
-        Alert.alert(
-          "Quote Created!",
-          `"${assembly.name}" quote created with ${calculator.lines.length} items.`,
-          [
-            {
-              text: "View Quote",
-              onPress: () => {
-                router.back();
-                router.push(`/quote/${newQuote.id}/edit` as any);
-              },
+      Alert.alert(
+        "Quote Created!",
+        `"${assembly.name}" quote created with ${calculator.lines.length} items.`,
+        [
+          {
+            text: "View Quote",
+            onPress: () => {
+              router.back();
+              router.push(`/quote/${newQuote.id}/edit` as any);
             },
-            {
-              text: "Done",
-              onPress: () => router.back(),
-              style: "cancel",
-            },
-          ],
-        );
-      }
+          },
+          {
+            text: "Done",
+            onPress: () => router.back(),
+            style: "cancel",
+          },
+        ],
+      );
     } catch (error) {
-      console.error("Failed to add materials:", error);
-      Alert.alert("Error", "Could not add materials");
+      console.error("Failed to create quote:", error);
+      Alert.alert("Error", "Could not create quote");
     }
   };
 
@@ -308,10 +285,10 @@ export default function AssemblyCalculatorScreen() {
         <BottomBar>
           <Button
             variant="primary"
-            onPress={handleAddToQuote}
+            onPress={handleCreateQuote}
             disabled={!assembly || !calculator || calculator.lines.length === 0}
           >
-            {quoteId ? "Add to Quote" : "Create Quote"}
+            Create Quote
           </Button>
         </BottomBar>
       </View>

@@ -262,7 +262,7 @@ export default function QuoteMaterials() {
       <BottomBar>
         <Button
           variant="secondary"
-          onPress={() => router.push(`/assemblies?quoteId=${id}` as any)}
+          onPress={() => router.push(`/assemblies` as any)}
         >
           Assemblies
         </Button>
