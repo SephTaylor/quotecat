@@ -18,6 +18,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 
 export default function AssemblyManager() {
   const router = useRouter();
@@ -151,7 +153,7 @@ export default function AssemblyManager() {
   const builtInAssemblies = filteredAssemblies.filter((a) => !a.id.startsWith("custom-"));
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen
         options={{
           title: "Assembly Manager",
@@ -226,33 +228,47 @@ export default function AssemblyManager() {
                 scrollEnabled={false}
                 renderItem={({ item }) => {
                   const isInvalid = invalidAssemblies.has(item.id);
-                  return (
+
+                  const renderRightActions = () => (
                     <Pressable
-                      style={[styles.assemblyCard, isInvalid && styles.assemblyCardInvalid]}
-                      onPress={() => router.push(`/(main)/assembly-editor/${item.id}` as any)}
-                      onLongPress={() => handleDeleteAssembly(item)}
+                      style={styles.deleteAction}
+                      onPress={() => handleDeleteAssembly(item)}
                     >
-                      <View style={styles.assemblyHeader}>
-                        <Text style={styles.assemblyName}>
-                          {isInvalid && "⚠️ "}
-                          {item.name}
-                        </Text>
-                        <View style={styles.customBadge}>
-                          <Text style={styles.customBadgeText}>CUSTOM</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.assemblyMeta}>
-                        {item.items.length} material{item.items.length !== 1 ? "s" : ""}
-                      </Text>
-                      {isInvalid && (
-                        <Text style={styles.warningText}>
-                          Needs review - some products unavailable
-                        </Text>
-                      )}
-                      <Text style={styles.assemblyHint}>
-                        Tap to edit • Long press to delete
-                      </Text>
+                      <Text style={styles.deleteText}>Delete</Text>
                     </Pressable>
+                  );
+
+                  return (
+                    <Swipeable
+                      renderRightActions={renderRightActions}
+                      overshootRight={false}
+                    >
+                      <Pressable
+                        style={[styles.assemblyCard, isInvalid && styles.assemblyCardInvalid]}
+                        onPress={() => router.push(`/(main)/assembly-editor/${item.id}` as any)}
+                      >
+                        <View style={styles.assemblyHeader}>
+                          <Text style={styles.assemblyName}>
+                            {isInvalid && "⚠️ "}
+                            {item.name}
+                          </Text>
+                          <View style={styles.customBadge}>
+                            <Text style={styles.customBadgeText}>CUSTOM</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.assemblyMeta}>
+                          {item.items.length} material{item.items.length !== 1 ? "s" : ""}
+                        </Text>
+                        {isInvalid && (
+                          <Text style={styles.warningText}>
+                            Needs review - some products unavailable
+                          </Text>
+                        )}
+                        <Text style={styles.assemblyHint}>
+                          Tap to edit • Swipe to delete
+                        </Text>
+                      </Pressable>
+                    </Swipeable>
                   );
                 }}
               />
@@ -326,7 +342,7 @@ export default function AssemblyManager() {
           </Pressable>
         </Pressable>
       </Modal>
-    </>
+    </GestureHandlerRootView>
   );
 }
 
@@ -466,6 +482,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#856404",
       marginTop: 4,
       letterSpacing: 0.5,
+    },
+    deleteAction: {
+      backgroundColor: theme.colors.danger,
+      justifyContent: "center",
+      alignItems: "center",
+      width: 80,
+      borderRadius: theme.radius.lg,
+      marginBottom: theme.spacing(1.5),
+    },
+    deleteText: {
+      color: "#fff",
+      fontWeight: "700",
+      fontSize: 14,
     },
     footer: {
       padding: theme.spacing(2),
