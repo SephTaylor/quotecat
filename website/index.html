@@ -351,15 +351,21 @@
             transform: scale(1.05);
         }
 
+        .tier-card.featured {
+            position: relative;
+        }
+
         .tier-card.featured:hover {
             transform: scale(1.05) translateY(-4px);
         }
 
         .tier-drew-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 16px;
-            display: block;
+            width: 60px;
+            height: 60px;
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            opacity: 0.9;
         }
 
         .tier-badge {
