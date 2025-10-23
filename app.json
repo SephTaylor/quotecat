@@ -20,6 +20,9 @@
         "image": "./assets/images/qc-splash-tsnt-2048-text.png",
         "resizeMode": "contain",
         "backgroundColor": "#FFFFFF"
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -38,6 +41,12 @@
     },
     "androidStatusBar": {
       "backgroundColor": "#ffffff"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dc5517f1-c28a-4507-804b-406cee16ff3c"
+      }
     }
   }
 }
