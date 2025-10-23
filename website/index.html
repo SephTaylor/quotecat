@@ -60,6 +60,13 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .logo:hover {
+            opacity: 0.85;
         }
 
         .logo img {
@@ -510,10 +517,10 @@
     <header>
         <div class="container">
             <div class="header-content">
-                <div class="logo">
+                <a href="/" class="logo">
                     <img src="logo.png" alt="QuoteCat Logo">
                     <span class="logo-text">QuoteCat</span>
-                </div>
+                </a>
                 <span class="status-badge">Beta Coming Soon</span>
             </div>
         </div>
