@@ -319,7 +319,7 @@ CREATE POLICY "Service can insert usage events"
 | **Advanced Analytics** | ❌ | ❌ | ✅ Yes |
 | **Team Collaboration** | ❌ | ❌ | ✅ Yes (future) |
 | **Priority Support** | ❌ | ❌ | ✅ Yes |
-| **Price** | $0 | $10/mo or $99/yr | $99/mo or $999/yr |
+| **Price** | $0 | $50/mo or $499/yr | $99/mo or $999/yr |
 
 ---
 
