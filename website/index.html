@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuoteCat - Professional Construction Quotes in Minutes</title>
+    <meta name="description" content="Mobile app for contractors to create professional quotes fast. Build quotes, manage materials, calculate costs, and generate PDFs on the go.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #fef3c7;
+            color: #92400e;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: var(--text-light);
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 16px 32px;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 18px;
+            transition: background 0.2s;
+        }
+
+        .cta-button:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 80px 0;
+            background: var(--bg-light);
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 60px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+        }
+
+        .feature-card {
+            text-align: center;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 28px;
+        }
+
+        .feature-card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .feature-card p {
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        /* Tiers Section */
+        .tiers {
+            padding: 80px 0;
+        }
+
+        .tiers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .tier-card {
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .tier-card.featured {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.1);
+        }
+
+        .tier-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .tier-description {
+            color: var(--text-light);
+            margin-bottom: 20px;
+        }
+
+        .tier-features {
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .tier-features li {
+            padding: 8px 0;
+            color: var(--text-light);
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 0 40px;
+            background: var(--text);
+            color: white;
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 36px;
+            }
+
+            .subtitle {
+                font-size: 18px;
+            }
+
+            .section-title {
+                font-size: 28px;
+            }
+
+            .hero {
+                padding: 40px 0;
+            }
+
+            .features, .tiers {
+                padding: 40px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">🐱 QuoteCat</div>
+                <span class="status-badge">Coming Soon</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>Professional Construction Quotes<br>in Minutes</h1>
+            <p class="subtitle">
+                The mobile app built for contractors. Create quotes fast, manage materials, calculate costs, and generate beautiful PDFs on the go.
+            </p>
+            <a href="mailto:hello@quotecat.ai" class="cta-button">Get Early Access</a>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Built for Speed and Simplicity</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Create Quotes Fast</h3>
+                    <p>Build professional quotes in minutes, not hours. Designed for contractors who need to work on the go.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Product Catalog</h3>
+                    <p>Access 100+ construction materials organized by category. Framing, drywall, electrical, plumbing, and more.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧮</div>
+                    <h3>Smart Calculations</h3>
+                    <p>Automatic labor, materials, overhead, and markup calculations. Get accurate totals every time.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📄</div>
+                    <h3>Professional PDFs</h3>
+                    <p>Generate beautiful, branded PDFs with your company details. Export and share instantly.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h3>Custom Assemblies</h3>
+                    <p>Create reusable templates for common jobs. Frame a room, wire a house, save hours of work.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">☁️</div>
+                    <h3>Cloud Sync</h3>
+                    <p>Your quotes backed up and synced across devices. Access your work anywhere, anytime.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tiers Section -->
+    <section class="tiers">
+        <div class="container">
+            <h2 class="section-title">Choose Your Plan</h2>
+            <div class="tiers-grid">
+                <div class="tier-card">
+                    <div class="tier-name">Free</div>
+                    <div class="tier-description">Perfect for getting started</div>
+                    <ul class="tier-features">
+                        <li>✓ 25 quotes per month</li>
+                        <li>✓ 5 PDF exports</li>
+                        <li>✓ 2 CSV exports</li>
+                        <li>✓ Product catalog</li>
+                        <li>✓ Local storage</li>
+                    </ul>
+                </div>
+                <div class="tier-card featured">
+                    <div class="tier-name">Pro</div>
+                    <div class="tier-description">For serious contractors</div>
+                    <ul class="tier-features">
+                        <li>✓ Unlimited quotes</li>
+                        <li>✓ Unlimited exports</li>
+                        <li>✓ Custom assemblies</li>
+                        <li>✓ Cloud backup & sync</li>
+                        <li>✓ Multi-device access</li>
+                        <li>✓ Company branding</li>
+                    </ul>
+                </div>
+                <div class="tier-card">
+                    <div class="tier-name">Premium</div>
+                    <div class="tier-description">Complete toolkit</div>
+                    <ul class="tier-features">
+                        <li>✓ Everything in Pro</li>
+                        <li>✓ Company logo on PDFs</li>
+                        <li>✓ Quote Wizard</li>
+                        <li>✓ Advanced analytics</li>
+                        <li>✓ Priority support</li>
+                        <li>✓ Team collaboration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p style="margin-bottom: 20px;">
+                <strong>QuoteCat</strong> - Built for contractors, by developers who care.
+            </p>
+            <p style="color: #9ca3af;">
+                Questions? Email us at <a href="mailto:hello@quotecat.ai">hello@quotecat.ai</a>
+            </p>
+            <p style="margin-top: 40px; font-size: 14px; color: #6b7280;">
+                &copy; 2025 QuoteCat. All rights reserved.
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
