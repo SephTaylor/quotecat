@@ -277,26 +277,33 @@
             border-color: rgba(249, 115, 22, 0.3);
         }
 
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
         .feature-icon {
-            width: 56px;
-            height: 56px;
+            width: 48px;
+            height: 48px;
             background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 20px;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
             color: white;
             box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+            flex-shrink: 0;
         }
 
         .feature-card h3 {
-            font-size: 20px;
-            margin-bottom: 10px;
+            font-size: 18px;
             font-weight: 700;
             color: var(--text);
+            margin: 0;
         }
 
         .feature-card p {
@@ -342,22 +349,17 @@
             border-width: 3px;
             box-shadow: 0 8px 32px rgba(249, 115, 22, 0.3);
             transform: scale(1.05);
-            position: relative;
-            overflow: hidden;
         }
 
         .tier-card.featured:hover {
             transform: scale(1.05) translateY(-4px);
         }
 
-        .tier-card-drew {
-            position: absolute;
-            bottom: -10px;
-            right: -10px;
-            width: 100px;
-            height: 100px;
-            opacity: 0.08;
-            pointer-events: none;
+        .tier-drew-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 16px;
+            display: block;
         }
 
         .tier-badge {
@@ -562,7 +564,7 @@
             <div class="problem-content">
                 <h2 class="problem-title">You're Losing Money on Every Delayed Quote</h2>
                 <p class="problem-text">
-                    By the time you get home, open your laptop, and send that quote... your client already hired someone else. Speed wins jobs. QuoteCat puts the power in your pocket.
+                    Traditional quoting means going home, booting up your laptop, and spending hours in spreadsheets. By then, your client already hired someone faster. QuoteCat puts professional quoting right in your pocket—quote on-site in minutes.
                 </p>
                 <div class="pain-points">
                     <div class="pain-point">
@@ -593,33 +595,45 @@
             <p class="section-subtitle">Built by developers who understand construction. No bloat, no complicated menus, just fast quoting.</p>
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon">5m</div>
-                    <h3>Quote in 5 Minutes</h3>
+                    <div class="feature-header">
+                        <div class="feature-icon">5m</div>
+                        <h3>Quote in 5 Minutes</h3>
+                    </div>
                     <p>Pick products, add labor, done. While other contractors are still driving home, you've already sent a professional quote and moved on to the next job.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">100+</div>
-                    <h3>Real Product Catalog</h3>
+                    <div class="feature-header">
+                        <div class="feature-icon">100+</div>
+                        <h3>Real Product Catalog</h3>
+                    </div>
                     <p>100+ construction materials with actual prices. Framing, drywall, electrical, plumbing, roofing. No more guessing, no more spreadsheets.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">$</div>
-                    <h3>Automatic Math</h3>
+                    <div class="feature-header">
+                        <div class="feature-icon">$</div>
+                        <h3>Automatic Math</h3>
+                    </div>
                     <p>Never lose money on bad calculations again. Labor, materials, overhead, and markup calculated instantly. Your price, your profit.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">PDF</div>
-                    <h3>Professional PDFs</h3>
+                    <div class="feature-header">
+                        <div class="feature-icon">PDF</div>
+                        <h3>Professional PDFs</h3>
+                    </div>
                     <p>Client-ready quotes with your company branding. Look like a pro, even if it's your first year in business. Email or text instantly.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">+</div>
-                    <h3>Job Templates</h3>
+                    <div class="feature-header">
+                        <div class="feature-icon">+</div>
+                        <h3>Job Templates</h3>
+                    </div>
                     <p>Quote a bathroom remodel? Save it as a template. Next bathroom? Done in 2 minutes. Work smarter, not harder.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">☁</div>
-                    <h3>Cloud Backup</h3>
+                    <div class="feature-header">
+                        <div class="feature-icon">☁</div>
+                        <h3>Cloud Backup</h3>
+                    </div>
                     <p>Your quotes backed up automatically. Switch between phone and tablet seamlessly. Your business data, always safe and accessible.</p>
                 </div>
             </div>
@@ -644,7 +658,7 @@
                     </ul>
                 </div>
                 <div class="tier-card featured">
-                    <img src="drew-icon.png" alt="" class="tier-card-drew">
+                    <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <span class="tier-badge">Most Popular</span>
                     <div class="tier-name">Pro</div>
                     <div class="tier-description">For contractors who mean business</div>
@@ -694,7 +708,7 @@
                 Questions? Email us at <a href="mailto:hello@quotecat.ai">hello@quotecat.ai</a>
             </p>
             <p style="margin-top: 40px; font-size: 14px; color: #6b7280;">
-                &copy; 2025 QuoteCat. All rights reserved.
+                &copy; 2025 QuoteCat.ai. All rights reserved.
             </p>
         </div>
     </footer>
