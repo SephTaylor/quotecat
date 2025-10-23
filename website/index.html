@@ -57,12 +57,14 @@
         }
 
         .logo {
-            font-size: 28px;
-            font-weight: 800;
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo img {
+            height: 48px;
+            width: auto;
         }
 
         .status-badge {
@@ -496,7 +498,9 @@
     <header>
         <div class="container">
             <div class="header-content">
-                <div class="logo">🐱 QuoteCat</div>
+                <div class="logo">
+                    <img src="logo.png" alt="QuoteCat Logo">
+                </div>
                 <span class="status-badge">Beta Coming Soon</span>
             </div>
         </div>
