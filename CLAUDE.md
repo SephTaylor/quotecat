@@ -173,3 +173,287 @@ Quote UI components accept optional `onPress`/`onLongPress` handlers. When omitt
 - Import warnings silenced for default exports
 - Quote UI handlers now accept optional callbacks
 - Unescaped apostrophes fixed in JSX strings
+
+---
+
+## 🎯 Business Model & Monetization Strategy
+
+### CRITICAL: Avoid Apple's 30% Commission
+
+**DO NOT implement in-app purchases in Phase 1.** All payments must go through external website to avoid Apple taking 30%.
+
+**Allowed in App:**
+- ✅ Show locked features with "Pro" badge
+- ✅ "Learn More" button → opens website in Safari
+- ✅ Login screen for users who bought on website
+- ✅ Check subscription tier after login
+- ✅ Display current tier in settings
+
+**NOT Allowed in App:**
+- ❌ Any pricing displayed ($29, $79, etc.)
+- ❌ "Buy", "Purchase", "Subscribe" buttons
+- ❌ Payment forms
+- ❌ Urgency messaging with pricing ("Only 47 spots at $29!")
+- ❌ Price comparisons
+
+### Pricing Tiers (As of Jan 2025)
+
+**Free Tier:**
+- Price: $0
+- Features: Unlimited quotes (local only), 25 quotes/month, 5 PDF exports/month, 2 CSV exports/month
+- No assemblies, no cloud sync
+
+**Pro Tier - Founder Pricing:**
+- Price: $29/mo or $290/yr (first 500 customers, locked forever)
+- Regular price: $99/mo or $990/yr
+- Features: Everything in Free + unlimited exports, custom assemblies, cloud sync, multi-device, company branding
+
+**Premium Tier - Founder Pricing:**
+- Price: $79/mo or $790/yr (first 100 customers, locked forever)
+- Regular price: $199/mo or $1,990/yr
+- Features: Everything in Pro + company logo on PDFs, Quote Wizard, advanced analytics, team collaboration (future), priority support
+
+**Price Increase Triggers:**
+- Primary: Hit customer cap (100 Pro = $49, 500 Pro = $99)
+- Secondary: 90 days from TestFlight launch
+- Backup: High conversion rate (>20%) for 30 days
+
+### User Journey (Compliant)
+
+1. User downloads free app from App Store
+2. Uses app, sees "🔒 Pro Feature"
+3. Taps "Learn More" → Opens quotecat.app in Safari
+4. Website shows pricing, urgency, spots remaining
+5. Buys via Stripe on website
+6. Gets email with login credentials
+7. Returns to app → Logs in
+8. App checks Supabase: tier = 'pro'
+9. Pro features unlock ✅
+
+---
+
+## 🗄️ Database Architecture (Supabase)
+
+### Tables (9 total)
+
+**User & Subscription:**
+1. `profiles` - User accounts, tier, company details, usage tracking, preferences
+2. `subscriptions` - Payment history, tier management, billing info
+3. `usage_events` - Analytics, feature usage tracking
+
+**Quote Data:**
+4. `quotes` - Cloud-synced quotes with RLS (Pro/Premium only)
+5. `assemblies` - Custom assembly templates (Pro/Premium only)
+
+**Product Catalog (Supplier API):**
+6. `suppliers` - Lowe's, Home Depot, Menards, 1Build
+7. `categories` - Product categories (Framing, Drywall, etc.)
+8. `products` - Full product catalog with real-time pricing
+9. `product_prices` - Price history tracking
+
+### Security
+
+All tables have Row-Level Security (RLS):
+- Users can only see their own quotes/assemblies/profiles
+- Product catalog is public read, service role only for writes
+- Soft deletes via `deleted_at` (never lose data)
+
+### Helper Functions
+
+- `user_has_tier(required_tier)` - Check if user meets tier requirement
+- `get_spots_remaining(tier, pricing)` - Count remaining founder slots
+- `reset_monthly_usage()` - Reset PDF/CSV counters monthly
+
+---
+
+## 🔌 Supplier API Integration Plan
+
+### Architecture
+
+```
+Supplier APIs (Lowe's, HD, Menards, 1Build)
+    ↓
+Supabase (products & categories tables) ← Central catalog
+    ↓
+App Cache (AsyncStorage) ← Fast, offline access
+    ↓
+User creates quotes with real-time pricing
+```
+
+### Data Flow
+
+1. **Background Job (daily):** 1Build API → Supabase products table
+2. **App startup:** Supabase products → AsyncStorage cache
+3. **User creates quote:** Reads from AsyncStorage (fast, offline)
+4. **Periodic sync (when online):** Check Supabase for price updates
+
+### Target Suppliers
+
+- **1Build** (Primary - aggregates multiple suppliers)
+- **Lowe's** (Direct API)
+- **Home Depot** (Direct API)
+- **Menards** (Direct API)
+
+### Product Data Structure
+
+- Real-time pricing and availability
+- Product images and descriptions
+- SKU, category, supplier info
+- Stock quantities
+- Last sync timestamp
+
+**ALL TIERS** can access supplier catalog (free tier has quote limits, not catalog limits).
+
+---
+
+## 📱 Migration Strategy (Local → Cloud)
+
+### Free Users
+- All data stays in AsyncStorage (local only)
+- Never touches Supabase
+- Offline-first, no cloud sync
+
+### Pro/Premium Users (First Login)
+
+**Auto-migration on first sign-in:**
+
+1. User logs in → Check if cloud has data
+2. If cloud empty but local has data → Migrate
+3. Show: "Importing your 15 quotes to cloud..."
+4. Upload quotes, assemblies, company details to Supabase
+5. Keep local data as cache
+6. Success: "Your data is now backed up!"
+
+**Ongoing sync:**
+- Local AsyncStorage = Fast cache
+- Supabase = Source of truth + backup
+- Bi-directional sync (future)
+- Conflict resolution: last-write-wins
+
+**Migration happens:**
+- Automatically on first Pro/Premium login
+- One-time, one-way (local → cloud)
+- Non-destructive (keeps local copy)
+- Progress indicator shown to user
+
+---
+
+## 🚀 Current Status (Jan 2025)
+
+### ✅ Complete
+
+**MVP Features:**
+- Quote management (create, edit, delete, duplicate)
+- Product catalog (100+ construction products)
+- PDF/CSV export with company branding
+- Assembly system (Pro feature)
+- Dashboard with value tracking
+- Light/dark mode with gradients
+- Swipe gestures, pin quotes, status workflow
+
+**Technical:**
+- React Native + Expo SDK 54
+- Expo Router v6
+- AsyncStorage (local-first)
+- EAS Build configured
+- 0 lint errors/warnings
+- Version 1.1.0
+
+**Database:**
+- Supabase project set up
+- All 9 tables created with RLS
+- Migration files documented
+- Helper functions implemented
+
+### ⏳ In Progress
+
+**Apple Developer:**
+- Payment processed ($99/year)
+- Account pending activation (24-48 hours)
+- Ready for TestFlight build when approved
+
+### 🔜 Next Steps (Priority Order)
+
+**Immediate (This Week):**
+1. Apple Developer activation
+2. Build iOS app with EAS
+3. Submit to TestFlight
+4. Add beta testers
+5. Gather feedback
+
+**Phase 1 (Next Week):**
+1. Login/signup screens
+2. Supabase auth integration
+3. Tier checking in app
+4. Auto-migration (local → cloud)
+5. Basic cloud sync
+
+**Phase 2 (2-4 Weeks):**
+1. Landing page (quotecat.app)
+2. Stripe payment integration
+3. Spots remaining counter
+4. Email automation
+5. Founder pricing launch
+
+**Phase 3 (1-2 Months):**
+1. 1Build API integration
+2. Supplier product sync
+3. Real-time pricing updates
+4. Quote Wizard (Premium feature)
+5. Public launch
+
+---
+
+## ⚠️ Critical Gotchas
+
+### Apple In-App Purchase
+- **DO NOT** add pricing to the app in Phase 1
+- All payment must flow through website → Stripe
+- App can only check tier and unlock features
+- See "Business Model" section above
+
+### Supplier API Tables
+- `products` and `categories` tables in Supabase are for supplier API data
+- DO NOT delete these tables
+- Currently seeded from `modules/catalog/seed.ts` (in-memory)
+- Will be populated by 1Build API sync job later
+
+### Data Migration
+- Free users stay 100% local (no forced cloud)
+- Pro/Premium users auto-migrate on first login
+- Always keep local cache for offline access
+- Supabase is backup + sync, not replacement
+
+### Pricing Strategy
+- Founder pricing ($29/$79) for first 100/500 customers
+- Price locked forever for early adopters
+- Raise prices at customer milestones, not time-based
+- Grandfathering creates loyalty and urgency
+
+---
+
+## 📊 Success Metrics (Future)
+
+When launched, track:
+- Downloads
+- Free → Pro conversion rate
+- Spots remaining (founder pricing)
+- Monthly recurring revenue (MRR)
+- User retention
+- Feature usage (exports, assemblies, etc.)
+- Quote volume created
+
+---
+
+## 🎬 Vision
+
+QuoteCat aims to be the **fastest, simplest construction quoting app** for contractors and builders:
+
+- **Speed:** Create professional quotes in minutes, not hours
+- **Accuracy:** Real-time supplier pricing (Lowe's, HD, Menards)
+- **Offline-first:** Works without internet
+- **Mobile-optimized:** Built for on-site use
+- **Fair pricing:** No Apple tax, founder pricing rewards early believers
+- **Pro-focused:** Premium tier for serious contractors doing high volume
+
+**Long-term:** Build a sustainable, profitable business helping contractors run better businesses.
