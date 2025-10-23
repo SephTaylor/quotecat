@@ -187,28 +187,36 @@
         }
 
         .pain-points {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 24px;
-            margin-top: 48px;
+            list-style: none;
+            margin-top: 32px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .pain-point {
-            padding: 24px;
-            background: white;
-            border-radius: 16px;
-            border: 2px solid rgba(249, 115, 22, 0.1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            color: #e5e7eb;
+            font-size: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pain-point:last-child {
+            border-bottom: none;
         }
 
         .pain-point-icon {
-            font-size: 32px;
-            margin-bottom: 12px;
+            font-size: 20px;
+            color: #f97316;
+            min-width: 24px;
         }
 
         .pain-point-text {
-            font-weight: 600;
-            color: var(--text);
+            font-weight: 500;
+            color: #e5e7eb;
         }
 
         /* Features Section */
