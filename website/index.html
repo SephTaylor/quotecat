@@ -342,10 +342,22 @@
             border-width: 3px;
             box-shadow: 0 8px 32px rgba(249, 115, 22, 0.3);
             transform: scale(1.05);
+            position: relative;
+            overflow: hidden;
         }
 
         .tier-card.featured:hover {
             transform: scale(1.05) translateY(-4px);
+        }
+
+        .tier-card-drew {
+            position: absolute;
+            bottom: -10px;
+            right: -10px;
+            width: 100px;
+            height: 100px;
+            opacity: 0.08;
+            pointer-events: none;
         }
 
         .tier-badge {
@@ -632,6 +644,7 @@
                     </ul>
                 </div>
                 <div class="tier-card featured">
+                    <img src="drew-icon.png" alt="" class="tier-card-drew">
                     <span class="tier-badge">Most Popular</span>
                     <div class="tier-name">Pro</div>
                     <div class="tier-description">For contractors who mean business</div>
