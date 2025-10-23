@@ -351,12 +351,19 @@
             transform: scale(1.05);
         }
 
+        .tier-card.featured {
+            position: relative;
+        }
+
         .tier-card.featured:hover {
             transform: scale(1.05) translateY(-4px);
         }
 
         .tier-badge {
-            display: inline-block;
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
             padding: 6px 16px;
             background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
             color: white;
@@ -364,8 +371,18 @@
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
-            margin-bottom: 16px;
             letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+        }
+
+        .tier-drew-icon {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            top: -20px;
+            right: 20px;
+            opacity: 0.95;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
         }
 
         .tier-name {
@@ -651,6 +668,7 @@
                     </ul>
                 </div>
                 <div class="tier-card featured">
+                    <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <span class="tier-badge">Most Popular</span>
                     <div class="tier-name">Pro</div>
                     <div class="tier-description">For contractors who mean business</div>
