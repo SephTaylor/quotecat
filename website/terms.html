@@ -11,6 +11,10 @@
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
             line-height: 1.6;
@@ -31,20 +35,49 @@
             padding: 0 24px;
         }
 
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
         header {
             padding: 16px 0;
             backdrop-filter: blur(10px);
             background: rgba(20, 20, 20, 0.95);
             border-bottom: 1px solid rgba(249, 115, 22, 0.3);
-            position: sticky;
-            top: 0;
+            position: relative;
             z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.2);
         }
 
         .logo {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 0px;
             text-decoration: none;
             cursor: pointer;
             transition: opacity 0.2s;
@@ -55,24 +88,179 @@
         }
 
         .logo img {
-            height: 60px;
+            height: 100px;
             width: auto;
+            margin-right: -20px;
         }
 
         .logo-text {
-            font-size: 32px;
+            font-size: 42px;
             font-weight: 400;
             color: #ffffff;
             letter-spacing: -0.5px;
         }
 
+        /* Hamburger Menu */
+        .hamburger {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .hamburger-line {
+            width: 100%;
+            height: 2px;
+            background: #f97316;
+            transition: all 0.3s;
+            border-radius: 2px;
+        }
+
+        .hamburger:hover .hamburger-line {
+            background: #ea580c;
+        }
+
+        /* Mobile Menu Overlay */
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 300px;
+            height: 100vh;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .mobile-menu.open {
+            right: 0;
+        }
+
+        .mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .mobile-menu-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .close-menu {
+            width: 32px;
+            height: 32px;
+            background: none;
+            border: none;
+            color: #f97316;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .close-menu:hover {
+            color: #ea580c;
+        }
+
+        .mobile-menu-content {
+            padding: 24px;
+        }
+
+        .menu-section {
+            margin-bottom: 32px;
+        }
+
+        .menu-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        .menu-link {
+            display: block;
+            padding: 12px 0;
+            color: #e5e7eb;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+            transition: color 0.2s;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-link:last-child {
+            border-bottom: none;
+        }
+
+        .menu-link:hover {
+            color: #f97316;
+        }
+
+        .menu-link:active {
+            color: #ea580c;
+        }
+
+        .menu-signin-button {
+            display: block;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+        }
+
+        .menu-signin-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+        }
+
+        /* Overlay backdrop */
+        .menu-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 999;
+        }
+
+        .menu-backdrop.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* Main Content */
         .content {
-            padding: 60px 0;
+            padding: 60px 0 80px;
         }
 
         h1 {
-            font-size: 42px;
-            font-weight: 700;
+            font-size: 48px;
+            font-weight: 800;
             margin-bottom: 16px;
             color: #ffffff;
         }
@@ -103,6 +291,7 @@
             margin-bottom: 16px;
             color: #d1d5db;
             line-height: 1.7;
+            font-size: 18px;
         }
 
         ul {
@@ -113,11 +302,13 @@
 
         ul li {
             margin-bottom: 8px;
+            font-size: 18px;
         }
 
         a {
             color: #f97316;
             text-decoration: none;
+            font-weight: 600;
         }
 
         a:hover {
@@ -132,21 +323,54 @@
             border-radius: 4px;
         }
 
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid rgba(249, 115, 22, 0.3);
-            text-align: center;
-            color: #9ca3af;
-            font-size: 14px;
+        .highlight-box p {
+            margin: 0;
         }
 
+        /* Footer */
+        footer {
+            padding: 60px 0 40px;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            color: white;
+            text-align: center;
+        }
+
+        footer a {
+            color: #f97316;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
             .container {
                 padding: 0 16px;
             }
 
+            .header-container {
+                padding: 0 16px;
+            }
+
+            .logo img {
+                height: 60px;
+                margin-right: -12px;
+            }
+
+            .logo-text {
+                font-size: 28px;
+            }
+
+            .status-badge {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+
             h1 {
-                font-size: 32px;
+                font-size: 36px;
             }
 
             h2 {
@@ -154,20 +378,63 @@
             }
 
             .content {
-                padding: 40px 0;
+                padding: 40px 0 60px;
+            }
+
+            p, ul li {
+                font-size: 16px;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Header -->
     <header>
-        <div class="container">
-            <a href="/" class="logo">
-                <img src="logo.png" alt="QuoteCat Logo">
-                <span class="logo-text">QuoteCat</span>
-            </a>
+        <div class="header-container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <img src="logo.png" alt="QuoteCat Logo">
+                    <span class="logo-text">QuoteCat</span>
+                </a>
+                <div class="header-nav">
+                    <span class="status-badge">Beta Coming Soon</span>
+                    <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
+
+    <!-- Menu Backdrop -->
+    <div class="menu-backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+            <span class="mobile-menu-title">Menu</span>
+            <button class="close-menu" onclick="toggleMenu()" aria-label="Close">&times;</button>
+        </div>
+        <div class="mobile-menu-content">
+            <a href="signin.html" class="menu-signin-button">Sign In</a>
+            <div class="menu-section">
+                <div class="menu-section-title">Navigation</div>
+                <a href="index.html" class="menu-link">Home</a>
+                <a href="faq.html" class="menu-link">FAQ</a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">Resources</div>
+                <a href="privacy.html" class="menu-link">Privacy Policy</a>
+                <a href="terms.html" class="menu-link">Terms of Service</a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">Contact</div>
+                <a href="mailto:hello@quotecat.ai" class="menu-link">Email Support</a>
+            </div>
+        </div>
+    </div>
 
     <div class="container">
         <div class="content">
@@ -385,10 +652,41 @@
         </div>
     </div>
 
+    <!-- Footer -->
     <footer>
         <div class="container">
-            <p>&copy; 2025 QuoteCat.ai. All rights reserved. | <a href="/privacy.html">Privacy Policy</a> | <a href="/terms.html">Terms of Service</a></p>
+            <p style="margin-bottom: 20px;">
+                <strong>QuoteCat</strong> - Built for contractors, by developers who care.
+            </p>
+            <p style="color: #9ca3af;">
+                Questions? Email us at <a href="mailto:hello@quotecat.ai">hello@quotecat.ai</a>
+            </p>
+            <p style="margin-top: 40px; font-size: 14px; color: #6b7280;">
+                &copy; 2025 QuoteCat.ai. All rights reserved. |
+                <a href="faq.html">FAQ</a> |
+                <a href="privacy.html">Privacy Policy</a> |
+                <a href="terms.html">Terms of Service</a>
+            </p>
         </div>
     </footer>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const backdrop = document.getElementById('menuBackdrop');
+            menu.classList.toggle('open');
+            backdrop.classList.toggle('open');
+        }
+
+        // Close menu on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const menu = document.getElementById('mobileMenu');
+                if (menu.classList.contains('open')) {
+                    toggleMenu();
+                }
+            }
+        });
+    </script>
 </body>
 </html>
