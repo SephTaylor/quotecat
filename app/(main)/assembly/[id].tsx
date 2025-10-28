@@ -5,13 +5,13 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { showAlert } from "@/lib/alert";
 import type { Assembly, PricedLine, ProductIndex } from "@/modules/assemblies";
 import {
   saveQuote,
@@ -97,7 +97,7 @@ export default function AssemblyCalculatorScreen() {
 
   const handleCreateQuote = async () => {
     if (!assembly || !calculator || calculator.lines.length === 0) {
-      Alert.alert(
+      showAlert(
         "No materials",
         "Calculate materials first",
       );
@@ -111,7 +111,7 @@ export default function AssemblyCalculatorScreen() {
         // ADD TO EXISTING QUOTE
         const existingQuote = await getQuoteById(quoteId);
         if (!existingQuote) {
-          Alert.alert("Error", "Quote not found");
+          showAlert("Error", "Quote not found");
           return;
         }
 
@@ -125,7 +125,7 @@ export default function AssemblyCalculatorScreen() {
         };
         await saveQuote(updatedQuote);
 
-        Alert.alert(
+        showAlert(
           "Items Added!",
           `Added ${calculator.lines.length} items from "${assembly.name}" to your quote.`,
           [
@@ -156,7 +156,7 @@ export default function AssemblyCalculatorScreen() {
       }
     } catch (error) {
       console.error("Failed to process quote:", error);
-      Alert.alert("Error", "Could not process quote");
+      showAlert("Error", "Could not process quote");
     }
   };
 

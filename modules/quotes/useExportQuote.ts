@@ -1,8 +1,10 @@
 // modules/quotes/useExportQuote.ts
 import type { QuoteItem } from "@/lib/quotes";
 import { useCallback, useState } from "react";
-import { Alert, Share } from "react-native";
+import { Share } from "react-native";
+import { showAlert } from "@/lib/alert";
 import { generateQuoteCsv, type QuoteExportData } from "./exportCsv";
+import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 
 type QuoteForExport = {
   id?: string;
@@ -53,9 +55,20 @@ export function useExportQuote() {
         message: csvContent,
         title: `Export: ${fileName}`,
       });
+
+      // Track CSV export
+      trackEvent(AnalyticsEvents.CSV_EXPORTED, {
+        quoteId: quote.id,
+        itemCount: items.length,
+        total: total,
+      });
     } catch (error) {
       console.error("Export error:", error);
-      Alert.alert(
+      trackEvent(AnalyticsEvents.ERROR_OCCURRED, {
+        context: 'csv_export',
+        error: String(error),
+      });
+      showAlert(
         "Export Failed",
         error instanceof Error ? error.message : "Could not export quote",
       );

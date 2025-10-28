@@ -8,8 +8,8 @@ import {
   StyleSheet,
   Text,
   View,
-  Alert,
 } from "react-native";
+import { showAlert } from "@/lib/alert";
 import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -19,6 +19,7 @@ import type { UserState } from "@/lib/user";
 import { generateAndSharePDF } from "@/lib/pdf";
 import { generateAndShareSpreadsheet } from "@/lib/spreadsheet";
 import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
+import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 
 export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -44,6 +45,15 @@ export default function QuoteReviewScreen() {
         setQuote(q ?? null);
         setUserState(user);
         setCompanyDetails(prefs.company);
+
+        // Track review screen opened
+        if (q) {
+          trackEvent(AnalyticsEvents.REVIEW_OPENED, {
+            quoteId: q.id,
+            itemCount: q.items?.length || 0,
+            total: q.total,
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -73,7 +83,7 @@ export default function QuoteReviewScreen() {
     const { allowed, reason, remaining } = canExportPDF(userState);
 
     if (!allowed) {
-      Alert.alert(
+      showAlert(
         "Limit Reached",
         reason,
         [
@@ -103,9 +113,9 @@ export default function QuoteReviewScreen() {
           setUserState(updatedState);
         }
 
-        Alert.alert("Success!");
+        showAlert("Success!");
       } catch (error) {
-        Alert.alert("Error", "Failed to generate PDF. Please try again.");
+        showAlert("Error", "Failed to generate PDF. Please try again.");
         console.error("PDF generation error:", error);
       } finally {
         setIsExporting(false);
@@ -114,7 +124,7 @@ export default function QuoteReviewScreen() {
 
     // Show remaining for free users
     if (userState.tier === "free" && remaining !== undefined) {
-      Alert.alert(
+      showAlert(
         "Export PDF",
         `This will use 1 of your ${remaining} remaining PDF exports this month.\n\nFree PDFs include QuoteCat branding. Upgrade to Pro for unlimited exports with your own branding.`,
         [
@@ -187,7 +197,7 @@ export default function QuoteReviewScreen() {
     const { allowed, reason, remaining } = canExportSpreadsheet(userState);
 
     if (!allowed) {
-      Alert.alert(
+      showAlert(
         "Limit Reached",
         reason,
         [
@@ -214,9 +224,9 @@ export default function QuoteReviewScreen() {
           setUserState(updatedState);
         }
 
-        Alert.alert("Success!");
+        showAlert("Success!");
       } catch (error) {
-        Alert.alert("Error", "Failed to generate spreadsheet. Please try again.");
+        showAlert("Error", "Failed to generate spreadsheet. Please try again.");
         console.error("Spreadsheet generation error:", error);
       } finally {
         setIsExportingSpreadsheet(false);
@@ -225,7 +235,7 @@ export default function QuoteReviewScreen() {
 
     // Show remaining for free users
     if (userState.tier === "free" && remaining !== undefined) {
-      Alert.alert(
+      showAlert(
         "Export Spreadsheet",
         `This will use your ${remaining} remaining spreadsheet export this month.\n\nSpreadsheet exports work in Excel, Google Sheets, Numbers, and accounting software. Upgrade to Pro for unlimited exports.`,
         [
@@ -394,7 +404,7 @@ export default function QuoteReviewScreen() {
               style={styles.upgradeButton}
               onPress={() => {
                 // TODO: Navigate to upgrade screen or website
-                Alert.alert(
+                showAlert(
                   "Upgrade to Pro",
                   "Get unlimited PDF and spreadsheet exports, remove QuoteCat branding, and unlock premium features.\n\nVisit https://www.quotecat.ai to learn more.",
                   [{ text: "OK" }]

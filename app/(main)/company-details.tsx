@@ -7,14 +7,15 @@ import { canAccessAssemblies } from "@/lib/features";
 import { FormInput, BottomBar, Button } from "@/modules/core/ui";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
 import React, { useState, useCallback } from "react";
+import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import {
   ScrollView,
   StyleSheet,
   Text,
   View,
-  Alert,
   Pressable,
 } from "react-native";
+import { showAlert } from "@/lib/alert";
 import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 
@@ -98,7 +99,16 @@ export default function CompanyDetailsScreen() {
         address,
       });
 
-      Alert.alert(
+      // Track company details update
+      trackEvent(AnalyticsEvents.COMPANY_DETAILS_UPDATED, {
+        hasCompanyName: !!companyName,
+        hasEmail: !!email,
+        hasPhone: !!phone,
+        hasWebsite: !!website,
+        hasAddress: !!address,
+      });
+
+      showAlert(
         "Saved",
         "Your company details have been saved.",
         [
@@ -110,19 +120,19 @@ export default function CompanyDetailsScreen() {
       );
     } catch (error) {
       console.error("Failed to save company details:", error);
-      Alert.alert("Error", "Could not save company details. Please try again.");
+      showAlert("Error", "Could not save company details. Please try again.");
     }
   };
 
   const handleLogoUpload = () => {
     if (!isPro) {
-      Alert.alert(
+      showAlert(
         "Pro Feature",
         "Company logo upload is available for Pro subscribers. Upgrade to unlock professional branding features.",
         [{ text: "OK" }]
       );
     } else {
-      Alert.alert("Coming Soon", "Logo upload will be available soon");
+      showAlert("Coming Soon", "Logo upload will be available soon");
     }
   };
 
