@@ -1,7 +1,6 @@
 // lib/spreadsheet.ts
 // Spreadsheet export utility (CSV format - works in Excel, Google Sheets, Numbers, etc.)
 
-import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import type { Quote } from './types';
@@ -92,25 +91,6 @@ function generateQuoteCSV(quote: Quote): string {
 }
 
 /**
- * Download CSV file in browser (web only)
- */
-function downloadCSVInBrowser(csvContent: string, fileName: string): void {
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-
-  link.setAttribute('href', url);
-  link.setAttribute('download', fileName);
-  link.style.visibility = 'hidden';
-
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  URL.revokeObjectURL(url);
-}
-
-/**
  * Generate and share a CSV spreadsheet of the quote
  */
 export async function generateAndShareSpreadsheet(quote: Quote): Promise<void> {
@@ -121,14 +101,6 @@ export async function generateAndShareSpreadsheet(quote: Quote): Promise<void> {
     // Create file name - sanitize to avoid invalid characters
     const safeName = (quote.name || 'Quote').replace(/[^a-z0-9_\-\s]/gi, '_');
     const fileName = `${safeName}_${new Date().toISOString().split('T')[0]}.csv`;
-
-    // Web: Use browser download
-    if (Platform.OS === 'web') {
-      downloadCSVInBrowser(csvContent, fileName);
-      return;
-    }
-
-    // Mobile: Use expo-file-system and expo-sharing
     const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
 
     // Write CSV file (encoding defaults to utf8)
