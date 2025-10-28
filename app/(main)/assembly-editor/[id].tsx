@@ -47,14 +47,9 @@ export default function AssemblyEditorScreen() {
           setAssembly(asm);
           setAssemblyName(asm.name);
 
-          // Load existing items into selection
-          const map = new Map<string, number>();
-          asm.items.forEach((item) => {
-            if (typeof item.qty === "number") {
-              map.set(item.productId, item.qty);
-            }
-          });
-          setSelectedProducts(map);
+          // Don't populate selectedProducts with existing items
+          // selectedProducts should only contain NEW items being added
+          // Existing items are stored in assembly.items
         }
       } finally {
         setLoading(false);
