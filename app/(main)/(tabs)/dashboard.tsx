@@ -5,7 +5,7 @@ import { listQuotes, type Quote } from "@/lib/quotes";
 import { QuoteStatusMeta } from "@/lib/types";
 import { calculateTotal } from "@/lib/validation";
 import { loadPreferences, type DashboardPreferences } from "@/lib/preferences";
-import { deleteQuote, saveQuote, updateQuote } from "@/lib/quotes";
+import { deleteQuote, saveQuote, updateQuote, duplicateQuote } from "@/lib/quotes";
 import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
@@ -132,6 +132,14 @@ export default function Dashboard() {
     await updateQuote(quote.id, { pinned: !quote.pinned });
   }, []);
 
+  const handleDuplicate = useCallback(async (quote: Quote) => {
+    const duplicated = await duplicateQuote(quote.id);
+    if (duplicated) {
+      // Reload list to show the duplicate
+      await load();
+    }
+  }, [load]);
+
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   if (loading) {
@@ -241,6 +249,7 @@ export default function Dashboard() {
                   item={quote}
                   onEdit={() => router.push(`/quote/${quote.id}/edit`)}
                   onDelete={() => handleDelete(quote)}
+                  onDuplicate={() => handleDuplicate(quote)}
                   onTogglePin={() => handleTogglePin(quote)}
                 />
               ))}
@@ -254,7 +263,7 @@ export default function Dashboard() {
               {recentQuotes.length === 0 ? (
                 <View style={styles.emptyStateSimple}>
                   <Text style={styles.emptyTextSimple}>
-                    No quotes yet. Tap the Quotes tab below to create your first quote.
+                    No quotes yet. Tap the + button above to create your first quote.
                   </Text>
                 </View>
               ) : (
@@ -264,6 +273,7 @@ export default function Dashboard() {
                     item={quote}
                     onEdit={() => router.push(`/quote/${quote.id}/edit`)}
                     onDelete={() => handleDelete(quote)}
+                    onDuplicate={() => handleDuplicate(quote)}
                     onTogglePin={() => handleTogglePin(quote)}
                   />
                 ))

@@ -12,6 +12,7 @@ import {
   safeJsonParse,
 } from "@/lib/errors";
 import { cache, CacheKeys } from "@/lib/cache";
+import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 
 /**
  * Internal map type for de-duplication
@@ -183,6 +184,13 @@ export async function createQuote(
 
   const normalized = normalizeQuote(newQuote);
   await saveQuote(normalized);
+
+  // Track quote creation
+  trackEvent(AnalyticsEvents.QUOTE_CREATED, {
+    hasName: !!name,
+    hasClient: !!clientName,
+  });
+
   return normalized;
 }
 
@@ -207,7 +215,9 @@ export async function saveQuote(quote: Quote): Promise<Quote> {
     updated.materialSubtotal = calculateMaterialSubtotal(updated.items);
     updated.total = updated.materialSubtotal + (updated.labor || 0);
 
-    if (index === -1) {
+    const isNew = index === -1;
+
+    if (isNew) {
       // New quote
       allQuotes.push(updated);
     } else {
@@ -216,6 +226,16 @@ export async function saveQuote(quote: Quote): Promise<Quote> {
     }
 
     await writeQuotes(allQuotes);
+
+    // Track quote update (not on create, as createQuote tracks that)
+    if (!isNew) {
+      trackEvent(AnalyticsEvents.QUOTE_UPDATED, {
+        itemCount: updated.items.length,
+        hasLabor: !!updated.labor,
+        total: updated.total,
+      });
+    }
+
     return updated;
   }, ErrorType.STORAGE);
 
@@ -265,6 +285,9 @@ export async function deleteQuote(id: string): Promise<void> {
     throw result.error;
   }
 
+  // Track quote deletion
+  trackEvent(AnalyticsEvents.QUOTE_DELETED);
+
   // Invalidate caches
   cache.invalidate(CacheKeys.quotes.all());
   cache.invalidate(CacheKeys.quotes.byId(id));
@@ -296,6 +319,12 @@ export async function duplicateQuote(id: string): Promise<Quote | null> {
     // Save the copy
     const allQuotes = await readAllQuotes();
     await writeQuotes([...allQuotes, copy]);
+
+    // Track quote duplication
+    trackEvent(AnalyticsEvents.QUOTE_DUPLICATED, {
+      originalItemCount: original.items.length,
+      originalTotal: original.total,
+    });
 
     return copy;
   }, ErrorType.STORAGE);
