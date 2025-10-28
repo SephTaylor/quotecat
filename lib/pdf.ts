@@ -5,6 +5,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import type { Quote } from './types';
 import type { CompanyDetails } from './preferences';
+import { trackEvent, AnalyticsEvents } from './app-analytics';
 
 export type PDFOptions = {
   includeBranding: boolean; // true for free tier, false for pro
@@ -99,11 +100,20 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
           padding: 0;
           box-sizing: border-box;
         }
+
+        @page {
+          margin: 50mm 15mm 20mm 15mm;
+        }
+
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-          padding: 24px;
+          padding: 0;
           color: #1a1a1a;
           line-height: 1.5;
+        }
+
+        .page-content {
+          padding: 24px;
         }
         .header {
           margin-bottom: 20px;
@@ -141,6 +151,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
           background: white;
           border: 1px solid #e5e5e5;
           border-radius: 8px;
+          page-break-inside: avoid;
         }
         th {
           background: #f9f9f9;
@@ -149,6 +160,14 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
           font-weight: 600;
           border-bottom: 2px solid #e5e5e5;
           font-size: 14px;
+        }
+
+        tr {
+          page-break-inside: avoid;
+        }
+
+        .section {
+          page-break-inside: avoid;
         }
         .totals-table {
           margin-left: auto;
@@ -188,6 +207,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
       </style>
     </head>
     <body>
+      <div class="page-content">
       ${brandingHeader}
 
       ${companyHeader}
@@ -248,6 +268,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
       </div>
 
       ${brandingFooter}
+      </div>
     </body>
     </html>
   `;
@@ -267,6 +288,15 @@ export async function generateAndSharePDF(
     // Generate PDF
     const { uri } = await Print.printToFileAsync({ html });
 
+    // Track PDF generation
+    trackEvent(AnalyticsEvents.PDF_GENERATED, {
+      quoteId: quote.id,
+      itemCount: quote.items?.length || 0,
+      total: quote.total,
+      includedBranding: options.includeBranding,
+      hasCompanyDetails: !!options.companyDetails,
+    });
+
     // Share PDF
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, {
@@ -274,11 +304,20 @@ export async function generateAndSharePDF(
         dialogTitle: `${quote.name || 'Quote'}.pdf`,
         UTI: 'com.adobe.pdf',
       });
+
+      // Track PDF sharing
+      trackEvent(AnalyticsEvents.PDF_SHARED, {
+        quoteId: quote.id,
+      });
     } else {
       throw new Error('Sharing is not available on this device');
     }
   } catch (error) {
     console.error('Error generating PDF:', error);
+    trackEvent(AnalyticsEvents.ERROR_OCCURRED, {
+      context: 'pdf_generation',
+      error: String(error),
+    });
     throw error;
   }
 }
