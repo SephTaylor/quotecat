@@ -1,7 +1,6 @@
 // lib/pdf.ts
 // PDF generation utility using expo-print
 
-import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import type { Quote } from './types';
@@ -103,10 +102,8 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         }
 
         @page {
-          ${Platform.OS === 'web'
-            ? 'margin: 20mm 15mm;' // Web: Smaller margins for better browser compatibility
-            : 'margin: 50mm 15mm 20mm 15mm;' // Mobile: Larger top margin
-          }
+          margin: 20mm 15mm; /* Standard margins for all platforms */
+          size: letter;
         }
 
         body {
@@ -155,10 +152,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
           background: white;
           border: 1px solid #e5e5e5;
           border-radius: 8px;
-          ${Platform.OS === 'web'
-            ? 'page-break-inside: auto;' // Web: Allow breaks for long tables
-            : 'page-break-inside: avoid;' // Mobile: Keep tables together
-          }
+          page-break-inside: auto; /* Allow page breaks in long tables */
         }
         th {
           background: #f9f9f9;
@@ -174,25 +168,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         }
 
         .section {
-          ${Platform.OS === 'web'
-            ? 'page-break-inside: auto;' // Web: Allow section breaks
-            : 'page-break-inside: avoid;' // Mobile: Keep sections together
-          }
-        }
-
-        /* Force page breaks for long content */
-        .materials-section {
-          ${Platform.OS === 'web'
-            ? 'page-break-after: auto; page-break-inside: auto;'
-            : ''
-          }
-        }
-
-        .breakdown-section {
-          ${Platform.OS === 'web'
-            ? 'page-break-before: auto;'
-            : ''
-          }
+          page-break-inside: auto; /* Allow page breaks in sections */
         }
         .totals-table {
           margin-left: auto;
@@ -244,7 +220,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
       </div>
 
       ${quote.items && quote.items.length > 0 ? `
-        <div class="section materials-section">
+        <div class="section">
           <div class="section-title">Materials</div>
           <table>
             <thead>
@@ -262,7 +238,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         </div>
       ` : ''}
 
-      <div class="section breakdown-section">
+      <div class="section">
         <div class="section-title">Cost Breakdown</div>
         <table class="totals-table">
           <tbody>
@@ -300,58 +276,6 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
 }
 
 /**
- * Generate PDF using html2pdf.js for web (proper multi-page support)
- */
-async function generateWebPDF(quote: Quote, options: PDFOptions): Promise<void> {
-  // Dynamically import html2pdf.js (only loads on web)
-  const html2pdf = (await import('html2pdf.js')).default;
-
-  // Generate HTML
-  const html = generateQuoteHTML(quote, options);
-
-  // Create a temporary container
-  const container = document.createElement('div');
-  container.innerHTML = html;
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
-  document.body.appendChild(container);
-
-  try {
-    const fileName = `${quote.name || 'Quote'}_${new Date().toISOString().split('T')[0]}.pdf`;
-
-    // Configure html2pdf for proper multi-page generation
-    await html2pdf()
-      .set({
-        margin: [20, 15, 20, 15], // top, right, bottom, left (in mm)
-        filename: fileName,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      })
-      .from(container)
-      .save();
-
-    // Track PDF generation
-    trackEvent(AnalyticsEvents.PDF_GENERATED, {
-      quoteId: quote.id,
-      itemCount: quote.items?.length || 0,
-      total: quote.total,
-      includedBranding: options.includeBranding,
-      hasCompanyDetails: !!options.companyDetails,
-    });
-
-    // Track PDF sharing (auto-downloaded on web)
-    trackEvent(AnalyticsEvents.PDF_SHARED, {
-      quoteId: quote.id,
-    });
-  } finally {
-    // Clean up
-    document.body.removeChild(container);
-  }
-}
-
-/**
  * Generate and share a PDF of the quote
  */
 export async function generateAndSharePDF(
@@ -359,14 +283,9 @@ export async function generateAndSharePDF(
   options: PDFOptions
 ): Promise<void> {
   try {
-    // Use html2pdf.js for web (proper multi-page support)
-    if (Platform.OS === 'web') {
-      await generateWebPDF(quote, options);
-      return;
-    }
-
-    // Mobile: Use expo-print (original implementation)
-    const html = generateQuoteHTML(quote, options);
+    // Generate PDF using expo-print
+    // On web: Opens browser print dialog
+    // On mobile: Creates PDF file
     const { uri } = await Print.printToFileAsync({ html });
 
     // Track PDF generation
