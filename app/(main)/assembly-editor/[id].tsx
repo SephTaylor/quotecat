@@ -34,6 +34,7 @@ export default function AssemblyEditorScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showExistingItems, setShowExistingItems] = useState(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -272,8 +273,79 @@ export default function AssemblyEditorScreen() {
 
           <View style={{ height: theme.spacing(2) }} />
 
+          {/* Existing Items Section */}
+          {assembly.items.length > 0 && (
+            <>
+              <Pressable
+                style={styles.existingItemsHeader}
+                onPress={() => setShowExistingItems(!showExistingItems)}
+              >
+                <Text style={styles.h2}>
+                  {showExistingItems ? "▾" : "▸"} Current Products ({assembly.items.length})
+                </Text>
+              </Pressable>
+              {showExistingItems && (
+                <View style={styles.existingItemsContainer}>
+                {assembly.items.map((item, index) => {
+                  const product = products.find((p) => p.id === item.productId);
+                  if (!product) return null;
+
+                  const qty = typeof item.qty === 'number' ? item.qty : 0;
+                  const isLast = index === assembly.items.length - 1;
+
+                  return (
+                    <View key={item.productId} style={[styles.existingItemRow, isLast && styles.existingItemRowLast]}>
+                      <View style={styles.productInfo}>
+                        <Text style={styles.productName}>{product.name}</Text>
+                        <Text style={styles.productMeta}>
+                          ${product.unitPrice.toFixed(2)} / {product.unit}
+                        </Text>
+                      </View>
+                      <View style={styles.stepper}>
+                        <Pressable
+                          style={styles.stepperButton}
+                          onPress={() => {
+                            // Decrement or remove from assembly
+                            const updatedItems = assembly.items
+                              .map((i) =>
+                                i.productId === item.productId
+                                  ? { ...i, qty: (typeof i.qty === 'number' ? i.qty : 0) - 1 }
+                                  : i
+                              )
+                              .filter((i) => (typeof i.qty === 'number' ? i.qty : 0) > 0);
+
+                            setAssembly({ ...assembly, items: updatedItems });
+                          }}
+                        >
+                          <Text style={styles.stepperText}>−</Text>
+                        </Pressable>
+                        <Text style={styles.qtyText}>{qty}</Text>
+                        <Pressable
+                          style={styles.stepperButton}
+                          onPress={() => {
+                            // Increment quantity
+                            const updatedItems = assembly.items.map((i) =>
+                              i.productId === item.productId
+                                ? { ...i, qty: (typeof i.qty === 'number' ? i.qty : 0) + 1 }
+                                : i
+                            );
+                            setAssembly({ ...assembly, items: updatedItems });
+                          }}
+                        >
+                          <Text style={styles.stepperText}>+</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                })}
+                </View>
+              )}
+              <View style={{ height: theme.spacing(3) }} />
+            </>
+          )}
+
           {/* Product Browser by Category */}
-          <Text style={styles.h2}>Add Products</Text>
+          <Text style={styles.h2}>Add More Products</Text>
           <FormInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -460,6 +532,29 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 14,
       fontWeight: "600",
       color: theme.colors.text,
+    },
+    // Existing items section
+    existingItemsHeader: {
+      marginBottom: theme.spacing(1),
+    },
+    existingItemsContainer: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(2),
+    },
+    existingItemRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: theme.spacing(1.5),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    existingItemRowLast: {
+      borderBottomWidth: 0,
     },
     // Selection indicator
     selectionIndicator: {

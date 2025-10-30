@@ -93,15 +93,13 @@ export default function QuoteReviewScreen() {
           companyDetails: companyDetails ?? undefined
         });
 
-        // Increment PDF count for free users
-        if (userState.tier === "free") {
-          const updatedState = {
-            ...userState,
-            pdfsThisMonth: userState.pdfsThisMonth + 1,
-          };
-          await saveUserState(updatedState);
-          setUserState(updatedState);
-        }
+        // Increment PDF count for all users (tracked even for pro, just not limited)
+        const updatedState = {
+          ...userState,
+          pdfsThisMonth: userState.pdfsThisMonth + 1,
+        };
+        await saveUserState(updatedState);
+        setUserState(updatedState);
 
         Alert.alert("Success!");
       } catch (error) {
@@ -204,15 +202,13 @@ export default function QuoteReviewScreen() {
         // Generate CSV spreadsheet
         await generateAndShareSpreadsheet(quote);
 
-        // Increment spreadsheet count for free users
-        if (userState.tier === "free") {
-          const updatedState = {
-            ...userState,
-            spreadsheetsThisMonth: userState.spreadsheetsThisMonth + 1,
-          };
-          await saveUserState(updatedState);
-          setUserState(updatedState);
-        }
+        // Increment spreadsheet count for all users (tracked even for pro, just not limited)
+        const updatedState = {
+          ...userState,
+          spreadsheetsThisMonth: userState.spreadsheetsThisMonth + 1,
+        };
+        await saveUserState(updatedState);
+        setUserState(updatedState);
 
         Alert.alert("Success!");
       } catch (error) {

@@ -73,14 +73,23 @@ export async function loadPreferences(): Promise<UserPreferences> {
       return getDefaultPreferences();
     }
 
-    const stored = JSON.parse(json) as Partial<UserPreferences>;
+    const stored = JSON.parse(json) as any;
+
+    // Migration: If dashboard properties are at top level (from old bug), migrate them
+    const dashboardData = stored.dashboard || {};
+    const keys = ['showStats', 'showValueTracking', 'showPinnedQuotes', 'showRecentQuotes', 'showQuickActions', 'recentQuotesCount'];
+    keys.forEach(key => {
+      if (stored[key] !== undefined && dashboardData[key] === undefined) {
+        dashboardData[key] = stored[key];
+      }
+    });
+
     // Merge with defaults to handle new preference fields
-    return {
+    const result: UserPreferences = {
       ...getDefaultPreferences(),
-      ...stored,
       dashboard: {
         ...getDefaultPreferences().dashboard,
-        ...stored.dashboard,
+        ...dashboardData,
       },
       privacy: {
         ...getDefaultPreferences().privacy,
@@ -91,6 +100,13 @@ export async function loadPreferences(): Promise<UserPreferences> {
         ...stored.company,
       },
     };
+
+    // Save migrated preferences back to storage to clean up
+    if (keys.some(key => stored[key] !== undefined)) {
+      await savePreferences(result);
+    }
+
+    return result;
   } catch (error) {
     console.error("Failed to load preferences:", error);
     return getDefaultPreferences();

@@ -13,6 +13,7 @@ import {
 } from "@/lib/errors";
 import { cache, CacheKeys } from "@/lib/cache";
 import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
+import { incrementQuoteCount, decrementQuoteCount } from "@/lib/user";
 
 /**
  * Internal map type for de-duplication
@@ -185,11 +186,14 @@ export async function createQuote(
   const normalized = normalizeQuote(newQuote);
   await saveQuote(normalized);
 
-  // Track quote creation
+  // Track quote creation analytics
   trackEvent(AnalyticsEvents.QUOTE_CREATED, {
-    hasName: !!name,
-    hasClient: !!clientName,
+    hasName: Boolean(name),
+    hasClient: Boolean(clientName),
   });
+
+  // Increment quote usage counter
+  await incrementQuoteCount();
 
   return normalized;
 }
@@ -226,16 +230,6 @@ export async function saveQuote(quote: Quote): Promise<Quote> {
     }
 
     await writeQuotes(allQuotes);
-
-    // Track quote update (not on create, as createQuote tracks that)
-    if (!isNew) {
-      trackEvent(AnalyticsEvents.QUOTE_UPDATED, {
-        itemCount: updated.items.length,
-        hasLabor: !!updated.labor,
-        total: updated.total,
-      });
-    }
-
     return updated;
   }, ErrorType.STORAGE);
 
@@ -243,6 +237,17 @@ export async function saveQuote(quote: Quote): Promise<Quote> {
     // Invalidate caches
     cache.invalidate(CacheKeys.quotes.all());
     cache.invalidate(CacheKeys.quotes.byId(result.data.id));
+
+    // Track quote updates (not creation - that's tracked in createQuote)
+    // If createdAt and updatedAt are different, it's an update
+    if (result.data.createdAt !== result.data.updatedAt) {
+      trackEvent(AnalyticsEvents.QUOTE_UPDATED, {
+        itemCount: result.data.items.length,
+        hasLabor: Boolean(result.data.labor),
+        total: result.data.total,
+      });
+    }
+
     return result.data;
   } else {
     logError(result.error, "saveQuote");
@@ -285,8 +290,11 @@ export async function deleteQuote(id: string): Promise<void> {
     throw result.error;
   }
 
-  // Track quote deletion
+  // Track quote deletion analytics
   trackEvent(AnalyticsEvents.QUOTE_DELETED);
+
+  // Decrement quote usage counter
+  await decrementQuoteCount();
 
   // Invalidate caches
   cache.invalidate(CacheKeys.quotes.all());
@@ -320,11 +328,14 @@ export async function duplicateQuote(id: string): Promise<Quote | null> {
     const allQuotes = await readAllQuotes();
     await writeQuotes([...allQuotes, copy]);
 
-    // Track quote duplication
+    // Track quote duplication analytics
     trackEvent(AnalyticsEvents.QUOTE_DUPLICATED, {
       originalItemCount: original.items.length,
       originalTotal: original.total,
     });
+
+    // Increment quote usage counter (duplicating creates a new quote)
+    await incrementQuoteCount();
 
     return copy;
   }, ErrorType.STORAGE);

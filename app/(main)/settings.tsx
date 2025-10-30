@@ -107,7 +107,7 @@ export default function Settings() {
         {
           text: "Continue",
           onPress: () => {
-            Linking.openURL("https://quotecat.ai/login");
+            Linking.openURL("https://quotecat.ai/signin");
           },
         },
       ],
@@ -117,7 +117,13 @@ export default function Settings() {
   const handleUpdatePreference = async (
     updates: Partial<DashboardPreferences>,
   ) => {
-    const updated = { ...preferences, ...updates };
+    const updated = {
+      ...preferences,
+      dashboard: {
+        ...preferences.dashboard,
+        ...updates
+      }
+    };
     setPreferences(updated);
     await updateDashboardPreferences(updates);
   };

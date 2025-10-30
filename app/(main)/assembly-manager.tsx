@@ -5,8 +5,8 @@ import { getUserState } from "@/lib/user";
 import { saveAssembly, useAssemblies, deleteAssembly, validateAssembly } from "@/modules/assemblies";
 import type { Assembly } from "@/modules/assemblies";
 import { useProducts } from "@/modules/catalog";
-import { Stack, useRouter } from "expo-router";
-import React, { useState } from "react";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
+import React, { useState, useCallback } from "react";
 import {
   Alert,
   FlatList,
@@ -42,6 +42,13 @@ export default function AssemblyManager() {
     };
     load();
   }, []);
+
+  // Reload assemblies when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload])
+  );
 
   // Validate all assemblies when products load
   React.useEffect(() => {
@@ -104,6 +111,29 @@ export default function AssemblyManager() {
     } catch (error) {
       console.error("Failed to create assembly:", error);
       Alert.alert("Error", "Could not create assembly. Please try again.");
+    }
+  };
+
+  const handleDuplicateAssembly = async (assembly: Assembly) => {
+    try {
+      // Create a copy with new ID and name
+      const duplicate: Assembly = {
+        ...assembly,
+        id: `custom-${Date.now()}`,
+        name: `${assembly.name} (Copy)`,
+      };
+
+      await saveAssembly(duplicate);
+      await reload();
+
+      Alert.alert(
+        "Assembly Duplicated",
+        `"${duplicate.name}" has been created.`,
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Failed to duplicate assembly:", error);
+      Alert.alert("Error", "Could not duplicate assembly. Please try again.");
     }
   };
 
@@ -228,6 +258,15 @@ export default function AssemblyManager() {
                 renderItem={({ item }) => {
                   const isInvalid = invalidAssemblies.has(item.id);
 
+                  const renderLeftActions = () => (
+                    <Pressable
+                      style={styles.duplicateAction}
+                      onPress={() => handleDuplicateAssembly(item)}
+                    >
+                      <Text style={styles.duplicateText}>Duplicate</Text>
+                    </Pressable>
+                  );
+
                   const renderRightActions = () => (
                     <Pressable
                       style={styles.deleteAction}
@@ -239,7 +278,9 @@ export default function AssemblyManager() {
 
                   return (
                     <Swipeable
+                      renderLeftActions={renderLeftActions}
                       renderRightActions={renderRightActions}
+                      overshootLeft={false}
                       overshootRight={false}
                     >
                       <Pressable
@@ -256,7 +297,10 @@ export default function AssemblyManager() {
                           </View>
                         </View>
                         <Text style={styles.assemblyMeta}>
-                          {item.items.length} material{item.items.length !== 1 ? "s" : ""}
+                          {(() => {
+                            const totalQty = item.items.reduce((sum, i) => sum + (typeof i.qty === 'number' ? i.qty : 0), 0);
+                            return `${totalQty} item${totalQty !== 1 ? "s" : ""} (${item.items.length} product${item.items.length !== 1 ? "s" : ""})`;
+                          })()}
                         </Text>
                         {isInvalid && (
                           <Text style={styles.warningText}>
@@ -264,7 +308,7 @@ export default function AssemblyManager() {
                           </Text>
                         )}
                         <Text style={styles.assemblyHint}>
-                          Tap to edit • Swipe to delete
+                          Tap to edit • Swipe left to duplicate • Swipe right to delete
                         </Text>
                       </Pressable>
                     </Swipeable>
@@ -481,6 +525,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#856404",
       marginTop: 4,
       letterSpacing: 0.5,
+    },
+    duplicateAction: {
+      backgroundColor: theme.colors.accent,
+      justifyContent: "center",
+      alignItems: "center",
+      width: 90,
+      borderRadius: theme.radius.lg,
+      marginBottom: theme.spacing(1.5),
+    },
+    duplicateText: {
+      color: "#000",
+      fontWeight: "700",
+      fontSize: 14,
     },
     deleteAction: {
       backgroundColor: theme.colors.danger,

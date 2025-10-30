@@ -148,7 +148,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         {
           text: "Continue",
           onPress: () => {
-            Linking.openURL("https://quotecat.ai/login");
+            Linking.openURL("https://quotecat.ai/signin");
           },
         },
       ],
