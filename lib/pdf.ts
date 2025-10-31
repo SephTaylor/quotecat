@@ -3,7 +3,7 @@
 
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import type { Quote } from './types';
 import type { CompanyDetails } from './preferences';
@@ -287,7 +287,7 @@ export async function generateAndSharePDF(
     // Generate HTML
     const html = generateQuoteHTML(quote, options);
 
-    // Generate PDF
+    // Generate PDF (creates temp file with UUID name)
     const { uri } = await Print.printToFileAsync({ html });
 
     // Track PDF generation
@@ -308,13 +308,21 @@ export async function generateAndSharePDF(
     const timePart = now.toTimeString().split(' ')[0].replace(/:/g, ''); // HHMMSS
     const fileName = `${projectPart}${clientPart} - ${datePart}-${timePart}.pdf`;
 
-    // Android fix: Copy to a persistent location to avoid email attachment issues
-    let shareUri = uri;
+    // Rename file to descriptive name for sharing
+    // On iOS, this sets the actual filename when shared
+    // On Android, we'll copy to a persistent location
+    const renamedPath = `${FileSystem.cacheDirectory}${fileName}`;
+    await FileSystem.copyAsync({
+      from: uri,
+      to: renamedPath,
+    });
+
+    // Android fix: Copy to document directory for email attachment support
+    let shareUri = renamedPath;
     if (Platform.OS === 'android') {
-      // Copy to document directory which persists and is accessible to other apps
       const persistentPath = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.copyAsync({
-        from: uri,
+        from: renamedPath,
         to: persistentPath,
       });
       shareUri = persistentPath;
@@ -336,11 +344,14 @@ export async function generateAndSharePDF(
       } finally {
         // Clean up temporary files regardless of share success/cancel
         try {
-          // Delete the temp file created by printToFileAsync (iOS always, Android original)
+          // Delete the original UUID file from printToFileAsync
           await FileSystem.deleteAsync(uri, { idempotent: true });
 
-          // On Android, also delete the persistent copy
-          if (Platform.OS === 'android' && shareUri !== uri) {
+          // Delete the renamed file in cache
+          await FileSystem.deleteAsync(renamedPath, { idempotent: true });
+
+          // On Android, also delete the persistent copy in document directory
+          if (Platform.OS === 'android') {
             await FileSystem.deleteAsync(shareUri, { idempotent: true });
           }
         } catch (cleanupError) {
