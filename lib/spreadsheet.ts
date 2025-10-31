@@ -98,12 +98,13 @@ export async function generateAndShareSpreadsheet(quote: Quote): Promise<void> {
     // Generate CSV content
     const csvContent = generateQuoteCSV(quote);
 
-    // Create descriptive file name: "ProjectName - ClientName - YYYY-MM-DD.csv"
+    // Create descriptive file name: "ProjectName - ClientName - YYYY-MM-DD - ID.csv"
     const sanitize = (str: string) => str.replace(/[^a-z0-9_\-\s]/gi, '_');
     const projectPart = sanitize(quote.name || 'Quote');
     const clientPart = quote.clientName ? ` - ${sanitize(quote.clientName)}` : '';
-    const datePart = new Date().toISOString().split('T')[0];
-    const fileName = `${projectPart}${clientPart} - ${datePart}.csv`;
+    const datePart = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const idPart = quote.id.substring(0, 8); // First 8 chars of ID for uniqueness
+    const fileName = `${projectPart}${clientPart} - ${datePart} - ${idPart}.csv`;
     const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
 
     // Write CSV file (encoding defaults to utf8)
