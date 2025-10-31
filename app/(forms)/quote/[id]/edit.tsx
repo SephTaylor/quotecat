@@ -215,7 +215,7 @@ export default function EditQuote() {
           headerLeft: () => (
             <Pressable
               onPress={handleGoBack}
-              style={{ paddingLeft: 16, paddingVertical: 8 }}
+              style={{ paddingLeft: 8, paddingVertical: 8 }}
             >
               <Text style={{ fontSize: 17, color: theme.colors.accent }}>
                 ‹ Back

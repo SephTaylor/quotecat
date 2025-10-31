@@ -2,6 +2,7 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import React, { PropsWithChildren, ReactNode } from "react";
 import { ScrollView, StyleSheet, View, ViewStyle } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = PropsWithChildren<{
   /** If true, wraps children in a ScrollView (recommended for forms) */
@@ -28,6 +29,7 @@ export default function FormScreen({
   bottomBarStyle,
 }: Props) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   const content = scroll ? (
@@ -45,7 +47,7 @@ export default function FormScreen({
     <View style={styles.root}>
       {content}
       {bottomBar ? (
-        <View style={[styles.bottomBar, bottomBarStyle]}>{bottomBar}</View>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, theme.spacing(2)) }, bottomBarStyle]}>{bottomBar}</View>
       ) : null}
     </View>
   );
