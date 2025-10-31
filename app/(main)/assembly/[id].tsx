@@ -168,6 +168,7 @@ export default function AssemblyCalculatorScreen() {
           options={{
             title: "Assembly Calculator",
             headerShown: true,
+            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
             headerBackTitle: "Assemblies",
             headerStyle: {
               backgroundColor: theme.colors.bg,
@@ -192,6 +193,7 @@ export default function AssemblyCalculatorScreen() {
           options={{
             title: "Assembly Calculator",
             headerShown: true,
+            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
             headerBackTitle: "Assemblies",
             headerStyle: {
               backgroundColor: theme.colors.bg,
@@ -219,6 +221,7 @@ export default function AssemblyCalculatorScreen() {
           options={{
             title: "Assembly Calculator",
             headerShown: true,
+            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
             headerBackTitle: "Assemblies",
             headerStyle: {
               backgroundColor: theme.colors.bg,

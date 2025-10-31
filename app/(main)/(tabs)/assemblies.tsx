@@ -232,6 +232,7 @@ export default function AssembliesScreen() {
         options={{
           title: "Assembly Library",
           headerShown: true,
+          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
           headerBackTitle: quoteId ? "Quote" : undefined,
           headerStyle: {
             backgroundColor: theme.colors.bg,

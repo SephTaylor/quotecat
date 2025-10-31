@@ -34,7 +34,7 @@ export default function NewQuote() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "New Quote" }} />
+      <Stack.Screen options={{ title: "New Quote", headerTitleAlign: 'center' }} />
 
       <Screen scroll>
         <View style={styles.container}>

@@ -52,6 +52,7 @@ export default function BuiltInAssembliesScreen() {
         options={{
           title: "Built-In Assemblies",
           headerShown: true,
+          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
           headerBackTitle: "Manager",
           headerStyle: { backgroundColor: theme.colors.bg },
           headerTintColor: theme.colors.accent,

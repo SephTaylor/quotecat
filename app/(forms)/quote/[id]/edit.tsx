@@ -245,9 +245,7 @@ export default function EditQuote() {
       <FormScreen
         scroll
         contentStyle={{
-          paddingHorizontal: theme.spacing(2),
-          paddingTop: theme.spacing(2),
-          paddingBottom: theme.spacing(2),
+          // FormScreen already provides default padding, no overrides needed
         }}
         bottomBar={
           <Pressable

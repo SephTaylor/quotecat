@@ -190,6 +190,7 @@ export default function AssemblyEditorScreen() {
           options={{
             title: "Edit Assembly",
             headerShown: true,
+            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
             headerBackTitle: "Back",
             headerStyle: { backgroundColor: theme.colors.bg },
             headerTintColor: theme.colors.accent,
@@ -210,6 +211,7 @@ export default function AssemblyEditorScreen() {
           options={{
             title: "Edit Assembly",
             headerShown: true,
+            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
             headerBackTitle: "Back",
             headerStyle: { backgroundColor: theme.colors.bg },
             headerTintColor: theme.colors.accent,
@@ -229,6 +231,7 @@ export default function AssemblyEditorScreen() {
         options={{
           title: "Edit Assembly",
           headerShown: true,
+          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
           headerBackTitle: "Back",
           headerStyle: { backgroundColor: theme.colors.bg },
           headerTintColor: theme.colors.accent,

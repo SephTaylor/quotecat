@@ -187,6 +187,7 @@ export default function AssemblyManager() {
         options={{
           title: "Assembly Manager",
           headerShown: true,
+          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
           headerBackTitle: "Pro Tools",
           headerStyle: {
             backgroundColor: theme.colors.bg,

@@ -57,6 +57,7 @@ export default function EditItems() {
         options={{
           title: "Edit Items",
           headerShown: true,
+          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },

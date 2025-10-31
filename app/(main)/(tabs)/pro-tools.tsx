@@ -68,7 +68,7 @@ export default function ProTools() {
   return (
     <>
       <Stack.Screen
-        options={{ title: "Pro Tools", headerBackVisible: false }}
+        options={{ title: "Pro Tools", headerBackVisible: false, headerTitleAlign: 'center' }}
       />
       <GradientBackground>
         <ScrollView contentContainerStyle={styles.scrollContent}>

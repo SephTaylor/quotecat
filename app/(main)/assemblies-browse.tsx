@@ -152,6 +152,7 @@ export default function AssembliesScreen() {
           options={{
             title: "Assembly Library",
             headerShown: true,
+            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
             headerBackTitle: quoteId ? "Quote" : "Back",
             headerLeft: quoteId ? () => (
               <Pressable
@@ -189,6 +190,7 @@ export default function AssembliesScreen() {
           options={{
             title: "Assembly Library",
             headerShown: true,
+            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
             headerBackTitle: quoteId ? "Quote" : "Back",
             headerLeft: quoteId ? () => (
               <Pressable
@@ -270,6 +272,7 @@ export default function AssembliesScreen() {
         options={{
           title: "Assembly Library",
           headerShown: true,
+          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
           headerBackTitle: quoteId ? "Quote" : "Back",
           headerLeft: quoteId ? () => (
             <Pressable
@@ -376,7 +379,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
       padding: theme.spacing(1),
-      marginBottom: theme.spacing(1),
+      marginBottom: theme.spacing(0.75), // Tighter spacing between assembly cards
       borderWidth: 1,
       borderColor: theme.colors.border,
     },

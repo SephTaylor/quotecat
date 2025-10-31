@@ -192,7 +192,7 @@ export default function QuotesList() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: "Quotes" }} />
+      <Stack.Screen options={{ title: "Quotes", headerTitleAlign: 'center' }} />
       <GradientBackground>
         {/* Status Filters */}
         <ScrollView

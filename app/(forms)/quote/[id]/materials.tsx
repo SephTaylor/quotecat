@@ -203,6 +203,7 @@ export default function QuoteMaterials() {
         options={{
           title: "Add/Edit Materials",
           headerShown: true,
+          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
