@@ -299,13 +299,14 @@ export async function generateAndSharePDF(
       hasCompanyDetails: !!options.companyDetails,
     });
 
-    // Create descriptive filename: "ProjectName - ClientName - YYYY-MM-DD - ID.pdf"
+    // Create descriptive filename: "ProjectName - ClientName - YYYY-MM-DD-HHMMSS.pdf"
     const sanitize = (str: string) => str.replace(/[^a-z0-9_\-\s]/gi, '_');
     const projectPart = sanitize(quote.name || 'Quote');
     const clientPart = quote.clientName ? ` - ${sanitize(quote.clientName)}` : '';
-    const datePart = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const idPart = quote.id.substring(0, 8); // First 8 chars of ID for uniqueness
-    const fileName = `${projectPart}${clientPart} - ${datePart} - ${idPart}.pdf`;
+    const now = new Date();
+    const datePart = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const timePart = now.toTimeString().split(' ')[0].replace(/:/g, ''); // HHMMSS
+    const fileName = `${projectPart}${clientPart} - ${datePart}-${timePart}.pdf`;
 
     // Android fix: Copy to a persistent location to avoid email attachment issues
     let shareUri = uri;
