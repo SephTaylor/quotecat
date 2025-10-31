@@ -25,6 +25,7 @@ export default function DrawerLayout() {
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={({ navigation }) => ({
         headerShown: true,
+        headerTitleAlign: 'center', // Center titles on all platforms (Android defaults to left)
         headerStyle: {
           backgroundColor: theme.colors.bg,
         },

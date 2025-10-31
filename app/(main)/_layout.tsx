@@ -6,9 +6,9 @@ import { useTheme } from "@/contexts/ThemeContext";
 
 /**
  * Main app layout:
- * - SafeAreaView respects device notches/status bar
+ * - SafeAreaView respects device notches/status bar/navigation bars
  * - Drawer navigation handles top edge (header shown)
- * - Only handles left/right edges
+ * - Handles left/right/bottom edges for proper Android nav bar support
  * - Stack navigator enables headers for non-tab screens like settings
  */
 export default function MainLayout() {
@@ -17,7 +17,7 @@ export default function MainLayout() {
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
-      edges={["left", "right"]}
+      edges={["left", "right", "bottom"]}
     >
       <Stack
         screenOptions={{
