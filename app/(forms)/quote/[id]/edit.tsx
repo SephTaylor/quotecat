@@ -212,10 +212,11 @@ export default function EditQuote() {
         options={{
           title: "Edit Quote",
           headerShown: true,
+          headerTitleAlign: 'center',
           headerLeft: () => (
             <Pressable
               onPress={handleGoBack}
-              style={{ paddingLeft: 8, paddingVertical: 8 }}
+              style={{ paddingLeft: 16, paddingVertical: 8 }}
             >
               <Text style={{ fontSize: 17, color: theme.colors.accent }}>
                 ‹ Back

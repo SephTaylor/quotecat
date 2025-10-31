@@ -113,11 +113,21 @@ export async function generateAndShareSpreadsheet(quote: Quote): Promise<void> {
 
     // Share CSV file
     if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(fileUri, {
-        mimeType: 'text/csv',
-        dialogTitle: fileName,
-        UTI: 'public.comma-separated-values-text',
-      });
+      try {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/csv',
+          dialogTitle: fileName,
+          UTI: 'public.comma-separated-values-text',
+        });
+      } finally {
+        // Clean up temporary file regardless of share success/cancel
+        try {
+          await FileSystem.deleteAsync(fileUri, { idempotent: true });
+        } catch (cleanupError) {
+          console.warn('Failed to clean up CSV file:', cleanupError);
+          // Don't throw - cleanup errors shouldn't affect user experience
+        }
+      }
     } else {
       throw new Error('Sharing is not available on this device');
     }

@@ -322,16 +322,32 @@ export async function generateAndSharePDF(
 
     // Share PDF
     if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(shareUri, {
-        mimeType: 'application/pdf',
-        dialogTitle: fileName,
-        UTI: 'com.adobe.pdf',
-      });
+      try {
+        await Sharing.shareAsync(shareUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: fileName,
+          UTI: 'com.adobe.pdf',
+        });
 
-      // Track PDF sharing
-      trackEvent(AnalyticsEvents.PDF_SHARED, {
-        quoteId: quote.id,
-      });
+        // Track PDF sharing
+        trackEvent(AnalyticsEvents.PDF_SHARED, {
+          quoteId: quote.id,
+        });
+      } finally {
+        // Clean up temporary files regardless of share success/cancel
+        try {
+          // Delete the temp file created by printToFileAsync (iOS always, Android original)
+          await FileSystem.deleteAsync(uri, { idempotent: true });
+
+          // On Android, also delete the persistent copy
+          if (Platform.OS === 'android' && shareUri !== uri) {
+            await FileSystem.deleteAsync(shareUri, { idempotent: true });
+          }
+        } catch (cleanupError) {
+          console.warn('Failed to clean up PDF files:', cleanupError);
+          // Don't throw - cleanup errors shouldn't affect user experience
+        }
+      }
     } else {
       throw new Error('Sharing is not available on this device');
     }

@@ -93,15 +93,10 @@ export default function QuoteReviewScreen() {
           companyDetails: companyDetails ?? undefined
         });
 
-        // Increment PDF count for all users (tracked even for pro, just not limited)
-        const updatedState = {
-          ...userState,
-          pdfsThisMonth: userState.pdfsThisMonth + 1,
-        };
-        await saveUserState(updatedState);
-        setUserState(updatedState);
+        // TODO: expo-sharing doesn't provide a way to detect if user cancelled
+        // For now, we don't increment the counter to avoid consuming exports on cancel
+        // Consider migrating to React Native's Share API which supports dismissedAction
 
-        Alert.alert("Success!");
       } catch (error) {
         Alert.alert("Error", "Failed to generate PDF. Please try again.");
         console.error("PDF generation error:", error);
@@ -202,15 +197,10 @@ export default function QuoteReviewScreen() {
         // Generate CSV spreadsheet
         await generateAndShareSpreadsheet(quote);
 
-        // Increment spreadsheet count for all users (tracked even for pro, just not limited)
-        const updatedState = {
-          ...userState,
-          spreadsheetsThisMonth: userState.spreadsheetsThisMonth + 1,
-        };
-        await saveUserState(updatedState);
-        setUserState(updatedState);
+        // TODO: expo-sharing doesn't provide a way to detect if user cancelled
+        // For now, we don't increment the counter to avoid consuming exports on cancel
+        // Consider migrating to React Native's Share API which supports dismissedAction
 
-        Alert.alert("Success!");
       } catch (error) {
         Alert.alert("Error", "Failed to generate spreadsheet. Please try again.");
         console.error("Spreadsheet generation error:", error);

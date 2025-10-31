@@ -16,6 +16,7 @@ function RootNavigator() {
         screenOptions={{
           headerShown: false, // Hidden by default, individual screens can override
           presentation: "card",
+          headerTitleAlign: 'center', // Center titles on all platforms (Android defaults to left)
         }}
       />
     </>
