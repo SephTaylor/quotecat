@@ -297,11 +297,17 @@ export async function generateAndSharePDF(
       hasCompanyDetails: !!options.companyDetails,
     });
 
+    // Create descriptive filename: "ProjectName - ClientName.pdf"
+    const sanitize = (str: string) => str.replace(/[^a-z0-9_\-\s]/gi, '_');
+    const projectPart = sanitize(quote.name || 'Quote');
+    const clientPart = quote.clientName ? ` - ${sanitize(quote.clientName)}` : '';
+    const fileName = `${projectPart}${clientPart}.pdf`;
+
     // Share PDF
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
-        dialogTitle: `${quote.name || 'Quote'}.pdf`,
+        dialogTitle: fileName,
         UTI: 'com.adobe.pdf',
       });
 

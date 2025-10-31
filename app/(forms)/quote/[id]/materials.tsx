@@ -41,7 +41,7 @@ export default function QuoteMaterials() {
     return map;
   }, [quoteItems, products, initialSelectionLoaded]);
 
-  const { selection, inc, dec, clear, units, setSelection } = useSelection(initialSelection);
+  const { selection, inc, dec, clear, units, setSelection, setQty } = useSelection(initialSelection);
 
   // Load quote items function
   const loadQuote = useCallback(async () => {
@@ -189,6 +189,7 @@ export default function QuoteMaterials() {
             selection={selection}
             onInc={inc}
             onDec={dec}
+            onSetQty={setQty}
             recentProductIds={[]}
           />
         </Screen>
@@ -255,6 +256,7 @@ export default function QuoteMaterials() {
           selection={selection}
           onInc={inc}
           onDec={dec}
+          onSetQty={setQty}
           recentProductIds={[]}
         />
       </Screen>

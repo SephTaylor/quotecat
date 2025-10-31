@@ -2,7 +2,7 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import type { Product } from "@/modules/catalog/seed";
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import type { Selection } from "./types";
 
 export type Category = { id: string; name: string };
@@ -12,6 +12,7 @@ export type MaterialsPickerProps = {
   selection: Selection;
   onInc(product: Product): void;
   onDec(product: Product): void;
+  onSetQty(product: Product, qty: number): void; // New: direct quantity setter
   recentProductIds?: string[]; // Optional: IDs of recently used products
 };
 
@@ -21,6 +22,7 @@ function MaterialsPicker({
   selection,
   onInc,
   onDec,
+  onSetQty,
   recentProductIds = [],
 }: MaterialsPickerProps) {
   const { theme } = useTheme();
@@ -29,6 +31,29 @@ function MaterialsPicker({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (catId: string) =>
     setExpanded((e) => ({ ...e, [catId]: !e[catId] }));
+
+  // Handler to prompt user for quantity input
+  const promptQuantity = (product: Product, currentQty: number) => {
+    Alert.prompt(
+      "Enter Quantity",
+      `How many ${product.name}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Set",
+          onPress: (value) => {
+            const qty = parseInt(value || "0", 10);
+            if (!isNaN(qty) && qty >= 0) {
+              onSetQty(product, qty);
+            }
+          },
+        },
+      ],
+      "plain-text",
+      currentQty.toString(),
+      "numeric"
+    );
+  };
 
   // Find recently used products from all categories
   const recentProducts = React.useMemo(() => {
@@ -73,7 +98,9 @@ function MaterialsPicker({
                     >
                       <Text style={styles.stepText}>–</Text>
                     </Pressable>
-                    <Text style={styles.qtyText}>{q}</Text>
+                    <Pressable onPress={() => promptQuantity(p, q)}>
+                      <Text style={[styles.qtyText, styles.qtyTextTappable]}>{q}</Text>
+                    </Pressable>
                     <Pressable
                       style={styles.stepBtn}
                       onPress={() => onInc(p)}
@@ -124,7 +151,9 @@ function MaterialsPicker({
                         >
                           <Text style={styles.stepText}>–</Text>
                         </Pressable>
-                        <Text style={styles.qtyText}>{q}</Text>
+                        <Pressable onPress={() => promptQuantity(p, q)}>
+                          <Text style={[styles.qtyText, styles.qtyTextTappable]}>{q}</Text>
+                        </Pressable>
                         <Pressable
                           style={styles.stepBtn}
                           onPress={() => onInc(p)}
@@ -226,10 +255,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     stepText: { fontSize: 18, fontWeight: "800", color: theme.colors.text },
     qtyText: {
-      minWidth: 20,
+      minWidth: 28,
       textAlign: "center",
       color: theme.colors.text,
       fontWeight: "700",
+    },
+    qtyTextTappable: {
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.bg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      overflow: "hidden",
     },
   });
 }

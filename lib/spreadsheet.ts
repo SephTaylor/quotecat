@@ -98,9 +98,12 @@ export async function generateAndShareSpreadsheet(quote: Quote): Promise<void> {
     // Generate CSV content
     const csvContent = generateQuoteCSV(quote);
 
-    // Create file name - sanitize to avoid invalid characters
-    const safeName = (quote.name || 'Quote').replace(/[^a-z0-9_\-\s]/gi, '_');
-    const fileName = `${safeName}_${new Date().toISOString().split('T')[0]}.csv`;
+    // Create descriptive file name: "ProjectName - ClientName - YYYY-MM-DD.csv"
+    const sanitize = (str: string) => str.replace(/[^a-z0-9_\-\s]/gi, '_');
+    const projectPart = sanitize(quote.name || 'Quote');
+    const clientPart = quote.clientName ? ` - ${sanitize(quote.clientName)}` : '';
+    const datePart = new Date().toISOString().split('T')[0];
+    const fileName = `${projectPart}${clientPart} - ${datePart}.csv`;
     const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
 
     // Write CSV file (encoding defaults to utf8)
