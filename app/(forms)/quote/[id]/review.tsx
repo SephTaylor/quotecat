@@ -10,10 +10,11 @@ import {
   View,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
 import { useTheme } from "@/contexts/ThemeContext";
-import { getUserState, saveUserState } from "@/lib/user";
+import { getUserState } from "@/lib/user";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
 import type { UserState } from "@/lib/user";
 import { generateAndSharePDF } from "@/lib/pdf";
@@ -24,6 +25,7 @@ export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const qid = Array.isArray(params.id) ? params.id[0] : (params.id ?? null);
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -50,7 +52,7 @@ export default function QuoteReviewScreen() {
     })();
   }, [qid]);
 
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const styles = React.useMemo(() => createStyles(theme, insets), [theme, insets]);
 
   // Calculate totals
   const materialsFromItems = quote?.items?.reduce(
@@ -426,7 +428,7 @@ export default function QuoteReviewScreen() {
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bottom: number }) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -648,6 +650,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     bottomBar: {
       flexDirection: "row",
       padding: theme.spacing(2),
+      paddingBottom: Math.max(theme.spacing(2), insets.bottom), // Respect Android nav bar
       backgroundColor: theme.colors.bg,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
