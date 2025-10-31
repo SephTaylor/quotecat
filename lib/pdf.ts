@@ -3,6 +3,8 @@
 
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import type { Quote } from './types';
 import type { CompanyDetails } from './preferences';
 import { trackEvent, AnalyticsEvents } from './app-analytics';
@@ -303,9 +305,21 @@ export async function generateAndSharePDF(
     const clientPart = quote.clientName ? ` - ${sanitize(quote.clientName)}` : '';
     const fileName = `${projectPart}${clientPart}.pdf`;
 
+    // Android fix: Copy to a persistent location to avoid email attachment issues
+    let shareUri = uri;
+    if (Platform.OS === 'android') {
+      // Copy to document directory which persists and is accessible to other apps
+      const persistentPath = `${FileSystem.documentDirectory}${fileName}`;
+      await FileSystem.copyAsync({
+        from: uri,
+        to: persistentPath,
+      });
+      shareUri = persistentPath;
+    }
+
     // Share PDF
     if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, {
+      await Sharing.shareAsync(shareUri, {
         mimeType: 'application/pdf',
         dialogTitle: fileName,
         UTI: 'com.adobe.pdf',
