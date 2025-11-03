@@ -141,3 +141,85 @@ export type Assembly = {
   }>;
   defaults?: Record<string, number>; // Default variable values
 };
+
+/**
+ * Invoice status for payment tracking
+ */
+export type InvoiceStatus =
+  | "unpaid" // Invoice sent, awaiting payment
+  | "partial" // Partially paid
+  | "paid" // Fully paid
+  | "overdue"; // Past due date
+
+/**
+ * Status metadata for invoice UI display
+ */
+export const InvoiceStatusMeta: Record<
+  InvoiceStatus,
+  { label: string; color: string; description: string }
+> = {
+  unpaid: {
+    label: "Unpaid",
+    color: "#FF9500",
+    description: "Invoice sent, awaiting payment",
+  },
+  partial: {
+    label: "Partial",
+    color: "#5856D6",
+    description: "Partially paid",
+  },
+  paid: {
+    label: "Paid",
+    color: "#34C759",
+    description: "Fully paid",
+  },
+  overdue: {
+    label: "Overdue",
+    color: "#FF3B30",
+    description: "Past due date",
+  },
+};
+
+/**
+ * Invoice stored in AsyncStorage
+ * Created from a quote, tracks payment status
+ */
+export type Invoice = {
+  id: ID;
+  quoteId: ID; // Reference to original quote
+  invoiceNumber: string; // Auto-generated: INV-001, INV-002, etc.
+
+  // Quote data (copied at time of invoice creation)
+  name: string;
+  clientName?: string;
+  items: QuoteItem[];
+  labor: number;
+  materialEstimate?: number;
+  overhead?: number;
+  markupPercent?: number;
+  notes?: string;
+
+  // Invoice-specific fields
+  invoiceDate: string; // ISO 8601 date
+  dueDate: string; // ISO 8601 date
+  status: InvoiceStatus;
+  paidDate?: string; // ISO 8601 date when fully paid
+  paidAmount?: number; // For partial payments
+
+  // Percentage/partial invoice support
+  percentage?: number; // e.g., 50 for 50% deposit invoice
+  isPartialInvoice?: boolean; // True if this is a deposit/partial invoice
+
+  // Metadata
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+  currency: CurrencyCode;
+
+  // Forward-compatible: allow extra fields
+  [key: string]: any;
+};
+
+/**
+ * Partial invoice for updates
+ */
+export type InvoiceUpdate = Partial<Invoice> & { id: ID };

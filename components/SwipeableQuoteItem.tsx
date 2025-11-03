@@ -1,12 +1,16 @@
 // components/SwipeableQuoteItem.tsx
-import React, { useRef } from "react";
-import { Animated, StyleSheet, Text, View, Pressable } from "react-native";
+import React, { useRef, useState } from "react";
+import { Animated, StyleSheet, Text, View, Pressable, ActivityIndicator, Alert } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import type { Quote } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
 import { calculateTotal } from "@/lib/validation";
 import { useTheme } from "@/contexts/ThemeContext";
+import { generateAndSharePDF } from "@/lib/pdf";
+import { loadPreferences } from "@/lib/preferences";
+import { getUserState } from "@/lib/user";
+import { getCachedLogo } from "@/lib/logo";
 
 type SwipeableQuoteItemProps = {
   item: Quote;
@@ -20,6 +24,7 @@ export const SwipeableQuoteItem = React.memo(
   ({ item, onEdit, onDelete, onDuplicate, onTogglePin }: SwipeableQuoteItemProps) => {
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
+    const [isExporting, setIsExporting] = useState(false);
     const total = calculateTotal(item);
     const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -27,6 +32,43 @@ export const SwipeableQuoteItem = React.memo(
       if (onTogglePin) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onTogglePin();
+      }
+    };
+
+    const handleExportPDF = async () => {
+      try {
+        setIsExporting(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        swipeableRef.current?.close();
+
+        // Load user state, preferences, and logo
+        const [userState, prefs] = await Promise.all([
+          getUserState(),
+          loadPreferences(),
+        ]);
+
+        // Try to load logo (note: in current implementation, logo requires userId from Supabase auth)
+        // For now, logo will be null since auth isn't implemented yet
+        let logo = null;
+        try {
+          logo = await getCachedLogo();
+        } catch {
+          // Logo loading failed, continue without it
+        }
+
+        // Generate and share PDF
+        await generateAndSharePDF(item, {
+          includeBranding: userState.tier === "free",
+          companyDetails: prefs.company,
+          logoBase64: logo?.base64,
+        });
+      } catch (error) {
+        Alert.alert(
+          "Export Failed",
+          error instanceof Error ? error.message : "Failed to export PDF"
+        );
+      } finally {
+        setIsExporting(false);
       }
     };
 
@@ -67,12 +109,6 @@ export const SwipeableQuoteItem = React.memo(
         extrapolate: "clamp",
       });
 
-      const handleEdit = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        swipeableRef.current?.close();
-        onEdit();
-      };
-
       const handleDuplicate = () => {
         if (onDuplicate) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -85,8 +121,16 @@ export const SwipeableQuoteItem = React.memo(
         <Animated.View
           style={[styles.actionsContainer, { transform: [{ translateX }] }]}
         >
-          <Pressable style={styles.editButton} onPress={handleEdit}>
-            <Text style={styles.actionText}>Edit</Text>
+          <Pressable
+            style={styles.exportButton}
+            onPress={handleExportPDF}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Text style={styles.actionText}>Export PDF</Text>
+            )}
           </Pressable>
           {onDuplicate && (
             <Pressable style={styles.duplicateButton} onPress={handleDuplicate}>
@@ -111,7 +155,7 @@ export const SwipeableQuoteItem = React.memo(
           onPress={onEdit}
           accessibilityLabel={`Quote: ${item.name || "Untitled"}`}
           accessibilityRole="button"
-          accessibilityHint="Double tap to edit. Swipe left for delete, duplicate. Swipe right to pin or unpin."
+          accessibilityHint="Double tap to edit. Swipe left for export PDF and duplicate. Swipe right to delete."
         >
           <View style={styles.header}>
             <View style={styles.titleRow}>
@@ -251,8 +295,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       width: 100,
       borderRadius: theme.radius.lg,
     },
-    editButton: {
-      backgroundColor: "#007AFF",
+    exportButton: {
+      backgroundColor: "#34C759", // Green for export action
       justifyContent: "center",
       alignItems: "center",
       width: 100,

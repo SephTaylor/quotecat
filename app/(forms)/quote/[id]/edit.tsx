@@ -19,7 +19,10 @@ import {
   useRouter,
 } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View, KeyboardAvoidingView, Platform } from "react-native";
+import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
+import { UndoSnackbar } from "@/components/UndoSnackbar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function EditQuote() {
   const { theme } = useTheme();
@@ -39,6 +42,11 @@ export default function EditQuote() {
   const [notes, setNotes] = useState<string>(""); // Notes / additional details
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
+
+  // Undo functionality for material deletion
+  const [showUndoSnackbar, setShowUndoSnackbar] = useState(false);
+  const [deletedItem, setDeletedItem] = useState<QuoteItem | null>(null);
+  const [deletedItemIndex, setDeletedItemIndex] = useState<number>(-1);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -199,6 +207,45 @@ export default function EditQuote() {
     setEditingQty("");
   };
 
+  // Handle material deletion with undo functionality
+  const handleDeleteItem = async (itemId: string) => {
+    if (!id) return;
+
+    const itemIndex = items.findIndex((item) => getItemId(item) === itemId);
+    if (itemIndex === -1) return;
+
+    const itemToDelete = items[itemIndex];
+    setDeletedItem(itemToDelete);
+    setDeletedItemIndex(itemIndex);
+
+    const updatedItems = items.filter((item) => getItemId(item) !== itemId);
+    setItems(updatedItems);
+    await updateQuote(id, { items: updatedItems });
+
+    setShowUndoSnackbar(true);
+  };
+
+  // Handle undo of material deletion
+  const handleUndoDelete = async () => {
+    if (!id || !deletedItem || deletedItemIndex === -1) return;
+
+    const restoredItems = [...items];
+    restoredItems.splice(deletedItemIndex, 0, deletedItem);
+    setItems(restoredItems);
+    await updateQuote(id, { items: restoredItems });
+
+    setDeletedItem(null);
+    setDeletedItemIndex(-1);
+    setShowUndoSnackbar(false);
+  };
+
+  // Handle dismissal of undo snackbar
+  const handleDismissUndo = () => {
+    setShowUndoSnackbar(false);
+    setDeletedItem(null);
+    setDeletedItemIndex(-1);
+  };
+
   const formatLaborInput = (text: string) => {
     // Remove non-numeric characters except decimal point
     const cleaned = text.replace(/[^0-9.]/g, "");
@@ -254,7 +301,6 @@ export default function EditQuote() {
     <>
       <Stack.Screen
         options={{
-          title: "Edit Quote",
           headerShown: true,
           headerTitleAlign: 'center',
           headerLeft: () => (
@@ -277,13 +323,20 @@ export default function EditQuote() {
               </Text>
             </Pressable>
           ),
+          headerTitle: () => (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ fontSize: 17, fontWeight: "700", color: theme.colors.text }}>
+                Edit Quote
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.accent, marginTop: 2 }}>
+                Total: ${calculations.total.toFixed(2)}
+              </Text>
+            </View>
+          ),
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
           headerTintColor: theme.colors.accent,
-          headerTitleStyle: {
-            color: theme.colors.text,
-          },
         }}
       />
       <FormScreen
@@ -376,59 +429,27 @@ export default function EditQuote() {
 
         {items.length > 0 && (
           <>
-            <View style={styles.itemsList}>
+            <GestureHandlerRootView style={styles.itemsList}>
               {items.map((item, index) => (
-                <View
+                <SwipeableMaterialItem
                   key={item.id}
-                  style={[
-                    styles.itemRow,
-                    index === items.length - 1 && { borderBottomWidth: 0 },
-                  ]}
-                >
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemPrice}>
-                      ${item.unitPrice.toFixed(2)} each
-                    </Text>
-                  </View>
-
-                  <View style={styles.itemControls}>
-                    <View style={styles.stepper}>
-                      <Pressable
-                        style={styles.stepBtn}
-                        onPress={() => handleUpdateItemQty(getItemId(item), -1)}
-                      >
-                        <Text style={styles.stepText}>−</Text>
-                      </Pressable>
-                      {editingItemId === getItemId(item) ? (
-                        <TextInput
-                          style={styles.qtyInput}
-                          value={editingQty}
-                          onChangeText={handleQtyChange}
-                          onBlur={() => handleFinishEditingQty(getItemId(item))}
-                          keyboardType="number-pad"
-                          selectTextOnFocus
-                          autoFocus
-                        />
-                      ) : (
-                        <Pressable onPress={() => handleStartEditingQty(getItemId(item), item.qty)}>
-                          <Text style={styles.qtyText}>{item.qty}</Text>
-                        </Pressable>
-                      )}
-                      <Pressable
-                        style={styles.stepBtn}
-                        onPress={() => handleUpdateItemQty(getItemId(item), 1)}
-                      >
-                        <Text style={styles.stepText}>+</Text>
-                      </Pressable>
-                    </View>
-                    <Text style={styles.itemTotal}>
-                      ${(item.unitPrice * item.qty).toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
+                  item={{
+                    id: getItemId(item),
+                    name: item.name,
+                    unitPrice: item.unitPrice,
+                    qty: item.qty,
+                  }}
+                  onDelete={() => handleDeleteItem(getItemId(item))}
+                  isLastItem={index === items.length - 1}
+                  editingItemId={editingItemId}
+                  editingQty={editingQty}
+                  onStartEditingQty={handleStartEditingQty}
+                  onFinishEditingQty={handleFinishEditingQty}
+                  onQtyChange={handleQtyChange}
+                  onUpdateQty={handleUpdateItemQty}
+                />
               ))}
-            </View>
+            </GestureHandlerRootView>
             <View style={{ height: theme.spacing(2) }} />
           </>
         )}
@@ -462,7 +483,7 @@ export default function EditQuote() {
 
               router.push(`/quote/${id}/materials`);
             }}
-            style={{
+            style={({ pressed }) => ({
               flex: 1,
               borderWidth: 1,
               borderColor: theme.colors.border,
@@ -471,7 +492,8 @@ export default function EditQuote() {
               height: 48,
               alignItems: "center",
               justifyContent: "center",
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
             <Text style={{ fontWeight: "800", color: theme.colors.text }}>
               Add materials
@@ -495,7 +517,7 @@ export default function EditQuote() {
               // Navigate to assembly library with quote context
               router.push(`/(main)/assemblies-browse?quoteId=${id}` as any);
             }}
-            style={{
+            style={({ pressed }) => ({
               flex: 1,
               borderWidth: 1,
               borderColor: theme.colors.accent,
@@ -504,7 +526,8 @@ export default function EditQuote() {
               height: 48,
               alignItems: "center",
               justifyContent: "center",
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
             <Text style={{ fontWeight: "800", color: theme.colors.accent }}>
               Add from Assembly
@@ -634,6 +657,13 @@ export default function EditQuote() {
           </View>
         </View>
       </FormScreen>
+
+      <UndoSnackbar
+        visible={showUndoSnackbar}
+        message={`Removed ${deletedItem?.name || "item"}`}
+        onUndo={handleUndoDelete}
+        onDismiss={handleDismissUndo}
+      />
     </>
   );
 }

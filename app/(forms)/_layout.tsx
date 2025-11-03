@@ -1,6 +1,7 @@
 // app/(forms)/_layout.tsx
 import { Stack } from "expo-router";
 import React from "react";
+import { Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -16,7 +17,7 @@ export default function FormsLayout() {
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
-      edges={["top", "left", "right"]}
+      edges={Platform.OS === "android" ? ["left", "right"] : ["top", "left", "right"]}
     >
       <Stack
         screenOptions={{

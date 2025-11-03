@@ -7,6 +7,7 @@ import {
   loadPreferences,
   savePreferences,
   updateDashboardPreferences,
+  updateInvoiceSettings,
   resetPreferences,
   type DashboardPreferences,
   type UserPreferences,
@@ -60,6 +61,7 @@ export default function Settings() {
     appearance: false,
     dashboard: false,
     quoteDefaults: false,
+    invoiceSettings: false,
     privacy: false,
     comingSoon: false,
     about: false,
@@ -730,6 +732,92 @@ export default function Settings() {
                     🔒 Upgrade to Pro or Premium to add your logo to PDFs
                   </Text>
                 )}
+              </View>
+            </View>
+          </CollapsibleSection>
+
+          {/* Invoice Settings Section */}
+          <CollapsibleSection
+            title="Invoice Settings"
+            isExpanded={expandedSections.invoiceSettings}
+            onToggle={() => toggleSection('invoiceSettings')}
+            theme={theme}
+          >
+            <View style={styles.defaultsContainer}>
+              {/* Invoice Number Prefix */}
+              <View style={styles.defaultItem}>
+                <View style={styles.defaultItemHeader}>
+                  <Ionicons name="receipt-outline" size={20} color={theme.colors.accent} />
+                  <Text style={styles.defaultItemTitle}>Invoice Number Format</Text>
+                </View>
+                <Text style={styles.defaultItemDescription}>
+                  Customize your invoice numbering system. Next invoice will be: {preferences.invoice?.prefix || 'INV'}-{String(preferences.invoice?.nextNumber || 1).padStart(3, '0')}
+                </Text>
+                <Pressable
+                  style={styles.defaultItemButton}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Invoice Prefix',
+                      'Enter prefix for invoice numbers (e.g., INV, 2025, ABC):',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Save',
+                          onPress: async (value) => {
+                            if (value && value.trim()) {
+                              const updated = await updateInvoiceSettings({ prefix: value.trim().toUpperCase() });
+                              setPreferences(updated);
+                            }
+                          },
+                        },
+                      ],
+                      'plain-text',
+                      preferences.invoice?.prefix || 'INV'
+                    );
+                  }}
+                >
+                  <Text style={styles.defaultItemButtonText}>Change Prefix</Text>
+                </Pressable>
+              </View>
+
+              {/* Next Invoice Number */}
+              <View style={[styles.defaultItem, styles.defaultItemLast]}>
+                <View style={styles.defaultItemHeader}>
+                  <Ionicons name="keypad-outline" size={20} color={theme.colors.accent} />
+                  <Text style={styles.defaultItemTitle}>Next Invoice Number</Text>
+                </View>
+                <Text style={styles.defaultItemDescription}>
+                  Set the starting number for your next invoice. This auto-increments after each invoice.
+                </Text>
+                <Pressable
+                  style={styles.defaultItemButton}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Next Invoice Number',
+                      'Enter the next invoice number:',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Save',
+                          onPress: async (value) => {
+                            const num = parseInt(value || '1', 10);
+                            if (num > 0) {
+                              const updated = await updateInvoiceSettings({ nextNumber: num });
+                              setPreferences(updated);
+                            } else {
+                              Alert.alert('Invalid Number', 'Please enter a number greater than 0');
+                            }
+                          },
+                        },
+                      ],
+                      'plain-text',
+                      String(preferences.invoice?.nextNumber || 1),
+                      'number-pad'
+                    );
+                  }}
+                >
+                  <Text style={styles.defaultItemButtonText}>Change Number</Text>
+                </Pressable>
               </View>
             </View>
           </CollapsibleSection>

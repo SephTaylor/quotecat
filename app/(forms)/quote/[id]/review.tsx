@@ -9,6 +9,10 @@ import {
   Text,
   View,
   Alert,
+  ActionSheetIOS,
+  Platform,
+  Modal,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getQuoteById } from "@/lib/quotes";
@@ -21,6 +25,7 @@ import { generateAndSharePDF } from "@/lib/pdf";
 import { generateAndShareSpreadsheet } from "@/lib/spreadsheet";
 import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
 import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
+import { createInvoiceFromQuote } from "@/lib/invoices";
 
 export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -35,6 +40,8 @@ export default function QuoteReviewScreen() {
   const [logo, setLogo] = useState<CompanyLogo | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingSpreadsheet, setIsExportingSpreadsheet] = useState(false);
+  const [showPercentageModal, setShowPercentageModal] = useState(false);
+  const [percentageInput, setPercentageInput] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -240,6 +247,135 @@ export default function QuoteReviewScreen() {
     }
   };
 
+  const handleCreateInvoice = async (percentage: number) => {
+    if (!quote) return;
+
+    try {
+      const invoice = await createInvoiceFromQuote(quote.id, percentage);
+      const isPartial = percentage !== 100;
+      Alert.alert(
+        "Success!",
+        `${isPartial ? percentage + '% down payment invoice' : 'Invoice'} ${invoice.invoiceNumber} created successfully!`,
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to create invoice",
+        [{ text: "OK" }]
+      );
+    }
+  };
+
+  const handleDepositInvoice = () => {
+    if (Platform.OS === "ios") {
+      Alert.prompt(
+        "Down Payment Invoice",
+        "Enter the down payment percentage (1-99):",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Create",
+            onPress: (value) => {
+              const percentage = parseInt(value || "0", 10);
+              if (percentage > 0 && percentage < 100) {
+                handleCreateInvoice(percentage);
+              } else {
+                Alert.alert("Invalid Percentage", "Please enter a number between 1 and 99.");
+              }
+            },
+          },
+        ],
+        "plain-text",
+        "",
+        "number-pad"
+      );
+    } else {
+      // Android - show custom modal with text input
+      setPercentageInput("");
+      setShowPercentageModal(true);
+    }
+  };
+
+  const handlePercentageSubmit = () => {
+    const percentage = parseInt(percentageInput || "0", 10);
+    if (percentage > 0 && percentage < 100) {
+      setShowPercentageModal(false);
+      handleCreateInvoice(percentage);
+    } else {
+      Alert.alert("Invalid Percentage", "Please enter a number between 1 and 99.");
+    }
+  };
+
+  const showExportMenu = () => {
+    const options = [
+      "Export as PDF",
+      "Export as CSV",
+      "Create Full Invoice",
+      "Create Down Payment Invoice",
+      "Cancel",
+    ];
+
+    const handleSelection = (buttonIndex: number) => {
+      switch (buttonIndex) {
+        case 0: // PDF
+          handleExportPDF();
+          break;
+        case 1: // CSV
+          handleExportSpreadsheet();
+          break;
+        case 2: // Full Invoice
+          handleCreateInvoice(100);
+          break;
+        case 3: // Down Payment Invoice
+          handleDepositInvoice();
+          break;
+        default:
+          // Cancel
+          break;
+      }
+    };
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: 4,
+          title: "Export Options",
+        },
+        handleSelection
+      );
+    } else {
+      // Android - use Alert with buttons (limited to 3 for best UX, show as nested menus)
+      Alert.alert(
+        "Export Options",
+        "Choose an export format",
+        [
+          { text: "Export as PDF", onPress: () => handleExportPDF() },
+          { text: "Export as CSV", onPress: () => handleExportSpreadsheet() },
+          {
+            text: "Create Invoice...",
+            onPress: () => {
+              // Show invoice submenu
+              Alert.alert(
+                "Create Invoice",
+                "Select invoice type",
+                [
+                  { text: "Full Invoice", onPress: () => handleCreateInvoice(100) },
+                  { text: "Down Payment Invoice", onPress: () => handleDepositInvoice() },
+                  { text: "Cancel", style: "cancel" },
+                ],
+                { cancelable: true }
+              );
+            }
+          },
+          { text: "Cancel", style: "cancel" },
+        ],
+        { cancelable: true }
+      );
+    }
+  };
+
   return (
     <>
       <Stack.Screen
@@ -412,22 +548,12 @@ export default function QuoteReviewScreen() {
       {/* Bottom Bar */}
       <View style={styles.bottomBar}>
         <Pressable
-          style={[styles.buttonSmall, styles.buttonPrimary, isExporting && styles.buttonDisabled]}
-          onPress={handleExportPDF}
-          disabled={isExporting}
+          style={[styles.buttonLarge, styles.buttonPrimary, (isExporting || isExportingSpreadsheet) && styles.buttonDisabled]}
+          onPress={showExportMenu}
+          disabled={isExporting || isExportingSpreadsheet}
         >
           <Text style={styles.buttonPrimaryText}>
-            {isExporting ? "..." : "PDF"}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.buttonSmall, styles.buttonPrimary, isExportingSpreadsheet && styles.buttonDisabled]}
-          onPress={handleExportSpreadsheet}
-          disabled={isExportingSpreadsheet}
-        >
-          <Text style={styles.buttonPrimaryText}>
-            {isExportingSpreadsheet ? "..." : "CSV"}
+            {(isExporting || isExportingSpreadsheet) ? "..." : "Export"}
           </Text>
         </Pressable>
 
@@ -438,6 +564,51 @@ export default function QuoteReviewScreen() {
           <Text style={styles.buttonSecondaryText}>Done</Text>
         </Pressable>
       </View>
+
+      {/* Percentage Input Modal (Android) */}
+      <Modal
+        visible={showPercentageModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPercentageModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowPercentageModal(false)}
+        >
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.modalTitle}>Down Payment Invoice</Text>
+            <Text style={styles.modalDescription}>Enter the down payment percentage (1-99):</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={percentageInput}
+              onChangeText={setPercentageInput}
+              keyboardType="number-pad"
+              placeholder="e.g., 50"
+              placeholderTextColor={theme.colors.muted}
+              autoFocus
+              maxLength={2}
+            />
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => setShowPercentageModal(false)}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonCreate]}
+                onPress={handlePercentageSubmit}
+              >
+                <Text style={styles.modalButtonCreateText}>Create</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </>
   );
 }
@@ -684,6 +855,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       alignItems: "center",
       justifyContent: "center",
     },
+    buttonLarge: {
+      flex: 2,
+      height: 48,
+      borderRadius: theme.radius.xl,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     buttonSecondary: {
       backgroundColor: theme.colors.card,
       borderWidth: 1,
@@ -706,6 +884,75 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     },
     buttonDisabled: {
       opacity: 0.5,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: theme.spacing(3),
+    },
+    modalContent: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(3),
+      width: "100%",
+      maxWidth: 400,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+    },
+    modalDescription: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(2),
+    },
+    modalInput: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      fontSize: 16,
+      color: theme.colors.text,
+      marginBottom: theme.spacing(2),
+    },
+    modalButtons: {
+      flexDirection: "row",
+      gap: theme.spacing(2),
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: theme.spacing(1.5),
+      borderRadius: theme.radius.md,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalButtonCancel: {
+      backgroundColor: theme.colors.bg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalButtonCancelText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    modalButtonCreate: {
+      backgroundColor: theme.colors.accent,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalButtonCreateText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
     },
   });
 }

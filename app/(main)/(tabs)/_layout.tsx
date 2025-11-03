@@ -70,7 +70,12 @@ export default function DrawerLayout() {
           headerRight: () => (
             <Pressable
               onPress={handleCreateNewQuote}
-              style={{ marginRight: 16, padding: 4 }}
+              style={({ pressed }) => ({
+                marginRight: 16,
+                padding: 8,
+                borderRadius: 20,
+                backgroundColor: pressed ? 'rgba(255, 140, 0, 0.15)' : 'transparent',
+              })}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="add" size={32} color={theme.colors.accent} />
@@ -89,11 +94,26 @@ export default function DrawerLayout() {
           headerRight: () => (
             <Pressable
               onPress={handleCreateNewQuote}
-              style={{ marginRight: 16, padding: 4 }}
+              style={({ pressed }) => ({
+                marginRight: 16,
+                padding: 8,
+                borderRadius: 20,
+                backgroundColor: pressed ? 'rgba(255, 140, 0, 0.15)' : 'transparent',
+              })}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="add" size={32} color={theme.colors.accent} />
             </Pressable>
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="invoices"
+        options={{
+          title: "Invoices",
+          drawerLabel: "Invoices",
+          drawerIcon: ({ color, size }: IconProps) => (
+            <Ionicons name="receipt-outline" size={size} color={color} />
           ),
         }}
       />
@@ -176,7 +196,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
     <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerContent}>
       <View style={styles.drawerHeader}>
         <Text style={styles.appTitle}>QuoteCat</Text>
-        <Text style={styles.appSubtitle}>Quotes with Claws</Text>
+        <Text style={styles.appSubtitle}>Quote Faster, Zero BS.</Text>
         {isSignedIn && userEmail && (
           <Text style={styles.userEmail}>{userEmail}</Text>
         )}

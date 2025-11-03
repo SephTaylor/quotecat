@@ -1,7 +1,7 @@
 // modules/core/ui/FormScreen.tsx
 import { useTheme } from "@/contexts/ThemeContext";
 import React, { PropsWithChildren, ReactNode } from "react";
-import { ScrollView, StyleSheet, View, ViewStyle } from "react-native";
+import { ScrollView, StyleSheet, View, ViewStyle, KeyboardAvoidingView, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = PropsWithChildren<{
@@ -44,12 +44,17 @@ export default function FormScreen({
   );
 
   return (
-    <View style={styles.root}>
-      {content}
-      {bottomBar ? (
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, theme.spacing(2)) }, bottomBarStyle]}>{bottomBar}</View>
-      ) : null}
-    </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.root}>
+        {content}
+        {bottomBar ? (
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, theme.spacing(2)) }, bottomBarStyle]}>{bottomBar}</View>
+        ) : null}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -59,7 +64,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     content: {
       flexGrow: 1,
       paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(2),
+      paddingTop: Platform.OS === 'android' ? theme.spacing(1) : theme.spacing(2),
       paddingBottom: theme.spacing(2),
     },
     bottomBar: {

@@ -25,10 +25,16 @@ export type CompanyDetails = {
   logoUrl?: string; // Optional logo URL
 };
 
+export type InvoiceSettings = {
+  prefix: string; // e.g., "INV", "2025", etc.
+  nextNumber: number; // Next invoice number to use
+};
+
 export type UserPreferences = {
   dashboard: DashboardPreferences;
   privacy: PrivacyPreferences;
   company: CompanyDetails;
+  invoice: InvoiceSettings;
   // Add more preference categories as needed
   // notifications: NotificationPreferences;
   // appearance: AppearancePreferences;
@@ -59,6 +65,10 @@ export function getDefaultPreferences(): UserPreferences {
       website: "",
       address: "",
       logoUrl: undefined,
+    },
+    invoice: {
+      prefix: "INV",
+      nextNumber: 1,
     },
   };
 }
@@ -98,6 +108,10 @@ export async function loadPreferences(): Promise<UserPreferences> {
       company: {
         ...getDefaultPreferences().company,
         ...stored.company,
+      },
+      invoice: {
+        ...getDefaultPreferences().invoice,
+        ...stored.invoice,
       },
     };
 
@@ -155,6 +169,24 @@ export async function updateCompanyDetails(
     ...prefs,
     company: {
       ...prefs.company,
+      ...updates,
+    },
+  };
+  await savePreferences(updated);
+  return updated;
+}
+
+/**
+ * Update invoice settings
+ */
+export async function updateInvoiceSettings(
+  updates: Partial<InvoiceSettings>,
+): Promise<UserPreferences> {
+  const prefs = await loadPreferences();
+  const updated: UserPreferences = {
+    ...prefs,
+    invoice: {
+      ...prefs.invoice,
       ...updates,
     },
   };
