@@ -7,6 +7,8 @@ import {
   updateInvoice,
   type Invoice,
 } from "@/lib/invoices";
+import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
+import { loadPreferences } from "@/lib/preferences";
 import { canAccessAssemblies } from "@/lib/features";
 import { getUserState } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -114,8 +116,26 @@ export default function InvoicesList() {
   }, [deletedInvoice]);
 
   const handleExportInvoice = useCallback(async (invoice: Invoice) => {
-    // TODO: Implement invoice PDF export
-    Alert.alert("Export Invoice", "Invoice PDF export coming soon!");
+    try {
+      // Load user preferences to check tier and get company details
+      const prefs = await loadPreferences();
+      const user = await getUserState();
+      const isPro = canAccessAssemblies(user);
+
+      const pdfOptions: PDFOptions = {
+        includeBranding: !isPro, // Free tier shows branding
+        companyDetails: prefs.company,
+      };
+
+      await generateAndShareInvoicePDF(invoice, pdfOptions);
+      Alert.alert("Success!", "Invoice exported successfully");
+    } catch (error) {
+      console.error("Failed to export invoice PDF:", error);
+      Alert.alert(
+        "Export Failed",
+        error instanceof Error ? error.message : "Failed to export PDF"
+      );
+    }
   }, []);
 
   const handleUpdateStatus = useCallback(async (invoice: Invoice) => {
@@ -140,9 +160,8 @@ export default function InvoicesList() {
   }, [load]);
 
   const handleViewInvoice = useCallback((invoice: Invoice) => {
-    // TODO: Navigate to invoice detail screen
-    Alert.alert("View Invoice", "Invoice detail screen coming soon!");
-  }, []);
+    router.push(`/invoice/${invoice.id}` as any);
+  }, [router]);
 
   // Filter invoices based on search query and status
   const filteredInvoices = React.useMemo(() => {
