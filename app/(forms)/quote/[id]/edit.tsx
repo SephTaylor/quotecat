@@ -19,7 +19,7 @@ import {
   useRouter,
 } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 export default function EditQuote() {
   const { theme } = useTheme();
@@ -37,6 +37,8 @@ export default function EditQuote() {
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [markupPercent, setMarkupPercent] = useState<string>(""); // Markup percentage
   const [notes, setNotes] = useState<string>(""); // Notes / additional details
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingQty, setEditingQty] = useState<string>("");
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -153,6 +155,48 @@ export default function EditQuote() {
 
     // Save to storage
     await updateQuote(id, { items: updatedItems });
+  };
+
+  const handleStartEditingQty = (itemId: string, currentQty: number) => {
+    setEditingItemId(itemId);
+    setEditingQty(""); // Start with empty input so user doesn't have to clear
+  };
+
+  const handleQtyChange = (text: string) => {
+    // Only allow numbers
+    const cleaned = text.replace(/[^0-9]/g, '');
+    setEditingQty(cleaned);
+  };
+
+  const handleFinishEditingQty = async (itemId: string) => {
+    if (!id) return;
+
+    const newQty = parseInt(editingQty, 10);
+
+    // Only update if valid number was entered and it's greater than 0
+    if (!isNaN(newQty) && newQty > 0) {
+      const updatedItems = items.map((item) => {
+        const currentId = getItemId(item);
+        if (currentId === itemId) {
+          return { ...item, qty: newQty };
+        }
+        return item;
+      });
+      setItems(updatedItems);
+      await updateQuote(id, { items: updatedItems });
+    } else if (!isNaN(newQty) && newQty === 0) {
+      // Only delete if explicitly set to 0
+      const updatedItems = items.filter((item) => {
+        const currentId = getItemId(item);
+        return currentId !== itemId;
+      });
+      setItems(updatedItems);
+      await updateQuote(id, { items: updatedItems });
+    }
+    // If invalid/empty (isNaN), do nothing - keep original value
+
+    setEditingItemId(null);
+    setEditingQty("");
   };
 
   const formatLaborInput = (text: string) => {
@@ -356,7 +400,21 @@ export default function EditQuote() {
                       >
                         <Text style={styles.stepText}>−</Text>
                       </Pressable>
-                      <Text style={styles.qtyText}>{item.qty}</Text>
+                      {editingItemId === getItemId(item) ? (
+                        <TextInput
+                          style={styles.qtyInput}
+                          value={editingQty}
+                          onChangeText={handleQtyChange}
+                          onBlur={() => handleFinishEditingQty(getItemId(item))}
+                          keyboardType="number-pad"
+                          selectTextOnFocus
+                          autoFocus
+                        />
+                      ) : (
+                        <Pressable onPress={() => handleStartEditingQty(getItemId(item), item.qty)}>
+                          <Text style={styles.qtyText}>{item.qty}</Text>
+                        </Pressable>
+                      )}
                       <Pressable
                         style={styles.stepBtn}
                         onPress={() => handleUpdateItemQty(getItemId(item), 1)}
@@ -718,6 +776,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
       fontWeight: "700",
       fontSize: 14,
+    },
+    qtyInput: {
+      minWidth: 40,
+      height: 36,
+      textAlign: "center",
+      color: theme.colors.text,
+      fontWeight: "700",
+      fontSize: 14,
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.accent,
+      paddingHorizontal: 4,
+      paddingVertical: 0,
+      textAlignVertical: "center",
     },
     itemTotal: {
       fontSize: 14,

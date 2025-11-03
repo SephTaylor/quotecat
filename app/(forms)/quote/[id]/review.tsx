@@ -20,6 +20,7 @@ import type { UserState } from "@/lib/user";
 import { generateAndSharePDF } from "@/lib/pdf";
 import { generateAndShareSpreadsheet } from "@/lib/spreadsheet";
 import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
+import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 
 export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -31,6 +32,7 @@ export default function QuoteReviewScreen() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [userState, setUserState] = useState<UserState | null>(null);
   const [companyDetails, setCompanyDetails] = useState<CompanyDetails | null>(null);
+  const [logo, setLogo] = useState<CompanyLogo | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingSpreadsheet, setIsExportingSpreadsheet] = useState(false);
 
@@ -46,6 +48,16 @@ export default function QuoteReviewScreen() {
         setQuote(q ?? null);
         setUserState(user);
         setCompanyDetails(prefs.company);
+
+        // Load logo if user is signed in
+        if (user.userId) {
+          try {
+            const companyLogo = await getCompanyLogo(user.userId);
+            setLogo(companyLogo);
+          } catch (error) {
+            console.error("Failed to load logo:", error);
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -92,7 +104,8 @@ export default function QuoteReviewScreen() {
         // Generate PDF with or without branding based on tier
         await generateAndSharePDF(quote, {
           includeBranding: userState.tier === "free",
-          companyDetails: companyDetails ?? undefined
+          companyDetails: companyDetails ?? undefined,
+          logoBase64: logo?.base64
         });
 
         // TODO: expo-sharing doesn't provide a way to detect if user cancelled

@@ -22,9 +22,12 @@ import {
   Switch,
   Text,
   View,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
+import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
 
 export default function Settings() {
   const { mode, theme, setThemeMode } = useTheme();
@@ -45,6 +48,10 @@ export default function Settings() {
       shareAnonymousUsage: false,
     },
   });
+
+  // Logo state
+  const [logo, setLogo] = useState<CompanyLogo | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Track expanded sections
   const [expandedSections, setExpandedSections] = useState({
@@ -74,7 +81,82 @@ export default function Settings() {
     setUserEmail(user.email);
     setUserState(user);
     setPreferences(fullPrefs);
+
+    // Load logo if user is signed in
+    if (user.userId) {
+      try {
+        const companyLogo = await getCompanyLogo(user.userId);
+        setLogo(companyLogo);
+      } catch (error) {
+        console.error("Failed to load logo:", error);
+      }
+    }
   }, []);
+
+  const handleUploadLogo = async () => {
+    if (!isPro) {
+      Alert.alert(
+        "Pro Feature",
+        "Logo upload is available for Pro and Premium users. Upgrade to add your company logo to PDFs.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Learn More",
+            onPress: () => {
+              Linking.openURL("https://quotecat.ai/pricing");
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    if (!userState?.userId) {
+      Alert.alert("Error", "Please sign in to upload a logo.");
+      return;
+    }
+
+    try {
+      setUploadingLogo(true);
+      const uploadedLogo = await uploadCompanyLogo(userState.userId);
+      setLogo(uploadedLogo);
+      Alert.alert("Success", "Logo uploaded successfully!");
+    } catch (error) {
+      console.error("Failed to upload logo:", error);
+      Alert.alert("Error", error instanceof Error ? error.message : "Failed to upload logo");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    if (!userState?.userId) return;
+
+    Alert.alert(
+      "Delete Logo",
+      "Are you sure you want to delete your company logo?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setUploadingLogo(true);
+              await deleteLogo(userState.userId!);
+              setLogo(null);
+              Alert.alert("Success", "Logo deleted successfully");
+            } catch (error) {
+              console.error("Failed to delete logo:", error);
+              Alert.alert("Error", "Failed to delete logo");
+            } finally {
+              setUploadingLogo(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -552,7 +634,7 @@ export default function Settings() {
           >
             <View style={styles.defaultsContainer}>
               {/* Company Details - All-in-One Editor */}
-              <View style={[styles.defaultItem, styles.defaultItemLast]}>
+              <View style={styles.defaultItem}>
                 <View style={styles.defaultItemHeader}>
                   <Ionicons name="business-outline" size={20} color={theme.colors.accent} />
                   <Text style={styles.defaultItemTitle}>Company Details</Text>
@@ -581,6 +663,73 @@ export default function Settings() {
                     {preferences.company?.companyName ? "Edit Details" : "Set Up Company Details"}
                   </Text>
                 </Pressable>
+              </View>
+
+              {/* Company Logo Upload */}
+              <View style={[styles.defaultItem, styles.defaultItemLast]}>
+                <View style={styles.defaultItemHeader}>
+                  <Ionicons name="image-outline" size={20} color={theme.colors.accent} />
+                  <Text style={styles.defaultItemTitle}>Company Logo</Text>
+                  {!isPro && (
+                    <View style={styles.proBadge}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.defaultItemDescription}>
+                  Add your company logo to appear on all PDF quotes. Logo will be resized and optimized automatically.
+                </Text>
+
+                {/* Logo Preview */}
+                {logo && logo.localUri && (
+                  <View style={styles.logoPreviewContainer}>
+                    <Image
+                      source={{ uri: logo.localUri }}
+                      style={styles.logoPreview}
+                      resizeMode="contain"
+                    />
+                  </View>
+                )}
+
+                {/* Upload/Delete Buttons */}
+                <View style={styles.logoButtonsContainer}>
+                  <Pressable
+                    style={[
+                      styles.defaultItemButton,
+                      !isPro && styles.defaultItemButtonDisabled,
+                      { flex: 1 }
+                    ]}
+                    onPress={handleUploadLogo}
+                    disabled={uploadingLogo || !isPro}
+                  >
+                    {uploadingLogo ? (
+                      <ActivityIndicator size="small" color="#000" />
+                    ) : (
+                      <Text style={[
+                        styles.defaultItemButtonText,
+                        !isPro && styles.defaultItemButtonTextDisabled
+                      ]}>
+                        {logo ? "Change Logo" : "Upload Logo"}
+                      </Text>
+                    )}
+                  </Pressable>
+
+                  {logo && isPro && (
+                    <Pressable
+                      style={[styles.defaultItemButton, styles.deleteLogoButton]}
+                      onPress={handleDeleteLogo}
+                      disabled={uploadingLogo}
+                    >
+                      <Text style={styles.deleteLogoButtonText}>Delete</Text>
+                    </Pressable>
+                  )}
+                </View>
+
+                {!isPro && (
+                  <Text style={styles.proFeatureNote}>
+                    🔒 Upgrade to Pro or Premium to add your logo to PDFs
+                  </Text>
+                )}
               </View>
             </View>
           </CollapsibleSection>
@@ -1097,6 +1246,41 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginHorizontal: theme.spacing(2),
       marginBottom: theme.spacing(2),
       lineHeight: 18,
+    },
+    // Logo upload styles
+    logoPreviewContainer: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.sm,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(1.5),
+      alignItems: "center",
+      justifyContent: "center",
+      height: 120,
+    },
+    logoPreview: {
+      width: "100%",
+      height: "100%",
+    },
+    logoButtonsContainer: {
+      flexDirection: "row",
+      gap: theme.spacing(1),
+    },
+    deleteLogoButton: {
+      backgroundColor: "#FF3B30",
+      flex: 0,
+      paddingHorizontal: theme.spacing(2),
+    },
+    deleteLogoButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#FFF",
+    },
+    proFeatureNote: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      fontStyle: "italic",
+      marginTop: theme.spacing(1),
+      textAlign: "center",
     },
   });
 }

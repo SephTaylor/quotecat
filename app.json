@@ -15,6 +15,7 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "ai.quotecat.app",
+      "icon": "./assets/images/icon.png",
       "supportsTablet": true,
       "splash": {
         "image": "./assets/images/qc-splash-tsnt-2048-text.png",

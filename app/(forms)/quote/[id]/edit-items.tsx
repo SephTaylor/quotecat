@@ -3,7 +3,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { getQuoteById, updateQuote } from "@/lib/quotes";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Text, View, StyleSheet, Pressable, ScrollView } from "react-native";
+import { Text, View, StyleSheet, Pressable, ScrollView, TextInput } from "react-native";
 import type { QuoteItem } from "@/lib/types";
 
 export default function EditItems() {
@@ -11,6 +11,8 @@ export default function EditItems() {
   const router = useRouter();
   const { theme } = useTheme();
   const [items, setItems] = useState<QuoteItem[]>([]);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingQty, setEditingQty] = useState<string>("");
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -44,6 +46,48 @@ export default function EditItems() {
 
     // Save to storage
     await updateQuote(id, { items: updatedItems });
+  };
+
+  const handleStartEditingQty = (itemId: string, currentQty: number) => {
+    setEditingItemId(itemId);
+    setEditingQty(""); // Start with empty input so user doesn't have to clear
+  };
+
+  const handleQtyChange = (text: string) => {
+    // Only allow numbers
+    const cleaned = text.replace(/[^0-9]/g, '');
+    setEditingQty(cleaned);
+  };
+
+  const handleFinishEditingQty = async (itemId: string) => {
+    if (!id) return;
+
+    const newQty = parseInt(editingQty, 10);
+
+    // Only update if valid number was entered and it's greater than 0
+    if (!isNaN(newQty) && newQty > 0) {
+      const updatedItems = items.map((item) => {
+        const currentId = item.productId || item.id;
+        if (currentId === itemId) {
+          return { ...item, qty: newQty };
+        }
+        return item;
+      });
+      setItems(updatedItems);
+      await updateQuote(id, { items: updatedItems });
+    } else if (!isNaN(newQty) && newQty === 0) {
+      // Only delete if explicitly set to 0
+      const updatedItems = items.filter((item) => {
+        const currentId = item.productId || item.id;
+        return currentId !== itemId;
+      });
+      setItems(updatedItems);
+      await updateQuote(id, { items: updatedItems });
+    }
+    // If invalid/empty (isNaN), do nothing - keep original value
+
+    setEditingItemId(null);
+    setEditingQty("");
   };
 
   const totalCost = items.reduce(
@@ -103,7 +147,21 @@ export default function EditItems() {
                         >
                           <Text style={styles.stepText}>−</Text>
                         </Pressable>
-                        <Text style={styles.qtyText}>{item.qty}</Text>
+                        {editingItemId === (item.productId || item.id) ? (
+                          <TextInput
+                            style={styles.qtyInput}
+                            value={editingQty}
+                            onChangeText={handleQtyChange}
+                            onBlur={() => handleFinishEditingQty(item.productId || item.id || '')}
+                            keyboardType="number-pad"
+                            selectTextOnFocus
+                            autoFocus
+                          />
+                        ) : (
+                          <Pressable onPress={() => handleStartEditingQty(item.productId || item.id || '', item.qty)}>
+                            <Text style={styles.qtyText}>{item.qty}</Text>
+                          </Pressable>
+                        )}
                         <Pressable
                           style={styles.stepBtn}
                           onPress={() => handleUpdateItemQty(item.productId || item.id || '', 1)}
@@ -226,6 +284,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
       fontWeight: "700",
       fontSize: 16,
+    },
+    qtyInput: {
+      minWidth: 40,
+      height: 36,
+      textAlign: "center",
+      color: theme.colors.text,
+      fontWeight: "700",
+      fontSize: 16,
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.accent,
+      paddingHorizontal: 4,
+      paddingVertical: 0,
+      textAlignVertical: "center",
     },
     itemTotal: {
       fontSize: 14,

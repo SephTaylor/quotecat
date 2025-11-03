@@ -12,13 +12,14 @@ import { trackEvent, AnalyticsEvents } from './app-analytics';
 export type PDFOptions = {
   includeBranding: boolean; // true for free tier, false for pro
   companyDetails?: CompanyDetails;
+  logoBase64?: string; // Base64 encoded logo image
 };
 
 /**
  * Generate HTML for the quote PDF
  */
 function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
-  const { includeBranding, companyDetails } = options;
+  const { includeBranding, companyDetails, logoBase64 } = options;
 
   // Calculate totals
   const materialsFromItems = quote.items?.reduce(
@@ -79,16 +80,23 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
     </div>
   ` : '';
 
-  // Company header with details
+  // Logo HTML for top left corner
+  const logoHTML = logoBase64 ? `
+    <div style="position: absolute; top: 24px; left: 24px; max-width: 200px; max-height: 80px;">
+      <img src="data:image/png;base64,${logoBase64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+    </div>
+  ` : '';
+
+  // Company header with details (adjusted for logo if present)
   const companyHeader = companyDetails && (companyDetails.companyName || companyDetails.email || companyDetails.phone || companyDetails.website || companyDetails.address) ? `
-    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px;">
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; ${logoBase64 ? 'margin-top: 100px;' : ''}">
       ${companyDetails.companyName ? `<div style="font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #000;">${companyDetails.companyName}</div>` : ''}
       ${companyDetails.email ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Email: ${companyDetails.email}</div>` : ''}
       ${companyDetails.phone ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Phone: ${companyDetails.phone}</div>` : ''}
       ${companyDetails.website ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Website: ${companyDetails.website}</div>` : ''}
       ${companyDetails.address ? `<div style="font-size: 13px; color: #666;">${companyDetails.address}</div>` : ''}
     </div>
-  ` : '';
+  ` : (logoBase64 ? '<div style="margin-top: 100px;"></div>' : '');
 
   return `
     <!DOCTYPE html>
@@ -116,6 +124,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
 
         .page-content {
           padding: 24px;
+          position: relative;
         }
         .header {
           margin-bottom: 20px;
@@ -210,6 +219,8 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
     </head>
     <body>
       <div class="page-content">
+      ${logoHTML}
+
       ${brandingHeader}
 
       ${companyHeader}
