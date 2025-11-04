@@ -6,6 +6,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 QuoteCat is a React Native Expo app for creating and managing construction quotes. It allows users to build quotes from a product catalog, manage materials, calculate labor costs, and generate PDFs. The app uses local AsyncStorage for persistence with plans to migrate to Supabase.
 
+## Website Deployment (CRITICAL)
+
+**IMPORTANT:** The quotecat.ai website is hosted on Netlify and deploys from the `integration/all-features` branch, NOT `main`.
+
+- **Production branch:** `integration/all-features`
+- **Website files:** `website/` directory
+- **Hosting:** Netlify
+- **Domain:** quotecat.ai (migrated from GoDaddy to Netlify)
+- **Forms:** Netlify Forms enabled for beta signups
+
+When making website changes:
+1. Work in `integration/all-features` branch (or merge to it before pushing)
+2. Push to `integration/all-features` to trigger Netlify deploy
+3. Deploys typically take 10-15 seconds
+4. Check Netlify dashboard for deploy status
+
 ## Commands
 
 ### Development
