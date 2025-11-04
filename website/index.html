@@ -937,7 +937,7 @@
                     <span class="logo-text">QuoteCat</span>
                 </a>
                 <div class="header-nav">
-                    <span class="status-badge">Beta Coming Soon</span>
+                    <span class="status-badge">Now Available</span>
                     <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
                         <span class="hamburger-line"></span>
                         <span class="hamburger-line"></span>
@@ -989,7 +989,7 @@
                     <span class="value-prop">Win more bids</span>
                     <span class="value-prop">Look professional</span>
                 </div>
-                <a href="mailto:hello@quotecat.ai" class="cta-button">Join the Waitlist</a>
+                <a href="#beta-signup" class="cta-button">Join Beta Testing</a>
             </div>
         </div>
     </section>
@@ -1116,13 +1116,48 @@
         </div>
     </section>
 
-    <!-- CTA Section -->
-    <section class="cta-section">
+    <!-- Beta Signup Section -->
+    <section class="cta-section" id="beta-signup">
         <div class="container">
             <div class="cta-box">
-                <h2>Ready to Win More Bids?</h2>
-                <p>Join the waitlist and be among the first to quote faster, look more professional, and win more jobs.</p>
-                <a href="mailto:hello@quotecat.ai" class="cta-button-white">Get Early Access</a>
+                <h2>Join the Beta</h2>
+                <p>Get early access to QuoteCat. We'll send you TestFlight (iOS) or Play Store (Android) access within 24 hours.</p>
+
+                <form name="beta-signup" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="beta-success.html" style="max-width: 500px; margin: 32px auto 0;">
+                    <input type="hidden" name="form-name" value="beta-signup">
+                    <p style="display: none;">
+                        <label>Don't fill this out: <input name="bot-field"></label>
+                    </p>
+
+                    <div style="margin-bottom: 20px;">
+                        <input
+                            type="email"
+                            name="email"
+                            placeholder="your@email.com"
+                            required
+                            style="width: 100%; padding: 16px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95); font-size: 16px; color: #1f2937; font-weight: 500;"
+                        >
+                    </div>
+
+                    <div style="margin-bottom: 24px; display: flex; gap: 12px; justify-content: center;">
+                        <label style="flex: 1; cursor: pointer;">
+                            <input type="radio" name="phone-type" value="iOS" required style="margin-right: 8px;">
+                            <span style="font-weight: 600; font-size: 16px;">📱 iOS</span>
+                        </label>
+                        <label style="flex: 1; cursor: pointer;">
+                            <input type="radio" name="phone-type" value="Android" required style="margin-right: 8px;">
+                            <span style="font-weight: 600; font-size: 16px;">🤖 Android</span>
+                        </label>
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="cta-button-white"
+                        style="width: 100%; border: none; cursor: pointer;"
+                    >
+                        Get Beta Access
+                    </button>
+                </form>
             </div>
         </div>
     </section>
