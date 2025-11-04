@@ -183,7 +183,7 @@ export default function InvoiceDetailScreen() {
   );
   const subtotal =
     itemsTotal +
-    invoice.labor +
+    (invoice.labor || 0) +
     (invoice.materialEstimate || 0) +
     (invoice.overhead || 0);
   const markup = invoice.markupPercent
@@ -233,7 +233,7 @@ export default function InvoiceDetailScreen() {
             <View style={styles.headerRow}>
               <View>
                 <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
-                {invoice.isPartialInvoice && (
+                {invoice.isPartialInvoice && invoice.percentage && (
                   <Text style={styles.partialBadge}>{invoice.percentage}% Down Payment</Text>
                 )}
               </View>
@@ -320,12 +320,12 @@ export default function InvoiceDetailScreen() {
               </View>
             )}
 
-            {invoice.markupPercent && invoice.markupPercent > 0 && (
+            {invoice.markupPercent != null && invoice.markupPercent > 0 && (
               <>
                 <View style={styles.divider} />
                 <View style={styles.costRow}>
                   <Text style={styles.costLabel}>
-                    Markup ({invoice.markupPercent}%)
+                    Markup ({invoice.markupPercent.toFixed(0)}%)
                   </Text>
                   <Text style={styles.costValue}>${markup.toFixed(2)}</Text>
                 </View>
