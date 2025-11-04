@@ -4,7 +4,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } from "@react-navigation/drawer";
-import { View, Text, StyleSheet, Pressable, Alert, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, Alert, Linking, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { getUserState } from "@/lib/user";
 import { createNewQuote } from "@/lib/quotes";
@@ -195,7 +195,14 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   return (
     <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerContent}>
       <View style={styles.drawerHeader}>
-        <Text style={styles.appTitle}>QuoteCat</Text>
+        <View style={styles.appTitleContainer}>
+          <Image
+            source={require("@/assets/images/drew.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.appTitle}>QuoteCat</Text>
+        </View>
         <Text style={styles.appSubtitle}>Quote Faster, Zero BS.</Text>
         {isSignedIn && userEmail && (
           <Text style={styles.userEmail}>{userEmail}</Text>
@@ -244,11 +251,20 @@ function createDrawerStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderBottomColor: theme.colors.border,
       marginBottom: 8,
     },
+    appTitleContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 4,
+    },
+    logo: {
+      width: 40,
+      height: 40,
+    },
     appTitle: {
       fontSize: 28,
       fontWeight: "800",
       color: theme.colors.accent,
-      marginBottom: 4,
     },
     appSubtitle: {
       fontSize: 14,
