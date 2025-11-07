@@ -1,14 +1,14 @@
-# Retailer Data Import Guide
+# Product Data Import Guide
 
 ## Quick Start (When Data Arrives)
 
-### Step 1: Receive Data from RetailGators
+### Step 1: Receive Data from Xbyte
 They should send you a file like:
 - `homedepot_products.csv`
 - `lowes_products.json`
 - `menards_data.csv`
 
-Save it to `C:\Users\Kelli\Documents\quotecat\data\`
+Save it to `C:\Users\SephT\Documents\quotecat\data\`
 
 ---
 
@@ -137,7 +137,7 @@ GROUP BY retailer, category_id;
 ### Problem: Import script shows validation errors
 
 **Solution:** Check the errors shown in terminal:
-- Missing fields? → Contact RetailGators for complete data
+- Missing fields? → Contact Xbyte for complete data
 - Unknown categories? → Add mappings to `CATEGORY_MAP` in import script
 - Unknown units? → Add mappings to `UNIT_MAP` in import script
 
@@ -168,13 +168,13 @@ DELETE FROM products WHERE retailer = 'homedepot';
 **Solution:**
 - Spot-check against retailer website
 - Check if prices need decimal adjustment (cents vs dollars)
-- Verify RetailGators data format
+- Verify Xbyte data format
 
 ---
 
 ## Daily Updates
 
-When RetailGators sends daily price updates:
+When Xbyte sends daily price updates:
 
 ### Option A: Delta Updates (Preferred)
 If they send only changed products:
@@ -270,12 +270,12 @@ GROUP BY retailer;
 ## Need Help?
 
 **Common Issues:**
-1. **File format wrong** → Ask RetailGators for CSV with headers
+1. **File format wrong** → Ask Xbyte for CSV with headers
 2. **Categories don't match** → Update CATEGORY_MAP in import script
 3. **App crashes** → Check for null values in required fields
 4. **Prices in cents** → Multiply by 0.01 in import script
 
 **Contact:**
-- RetailGators support for data issues
+- Xbyte support for data issues
 - Check RETAILER_DATA_SPEC.md for required format
 - Review validation errors in import script output
