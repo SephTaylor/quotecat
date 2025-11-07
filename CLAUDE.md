@@ -427,13 +427,36 @@ User creates quotes with real-time pricing
 - ✅ Data spec for RetailGators (`supabase/RETAILER_DATA_SPEC.md`)
 - ✅ Product type updated with optional `retailer` and `dataSource` fields
 
+### 📝 For New Claude Sessions
+
+**When starting a new conversation, read:**
+1. This entire CLAUDE.md file (you're reading it now!)
+2. Recent commits: `git log --oneline -5` and `git log -1 --format=full`
+3. Retailer import docs: `supabase/IMPORT_GUIDE.md` and `supabase/RETAILER_DATA_SPEC.md`
+4. Current branch status: `git status`
+
+**Key context to understand:**
+- App is LIVE and working with 368 AI products syncing from Supabase
+- Retailer data pipeline is BUILT and ready to execute when data arrives
+- Waiting on RetailGators to negotiate 3k SKUs/retailer pricing
+- Next major work: Auth screens + cloud sync (Phase 1)
+- All monetization must go through website (NOT in-app) to avoid Apple's 30% cut
+
 ### ⏳ Waiting For
 
 **RetailGators Response (Nov 4, 2024):**
-- Inquiry sent with 5 key questions (legal, sample, updates, pilot, scope)
-- Detailed requirements sent (3 retailers, 7 categories, ~2-3k SKUs, daily updates)
-- Expected response: 24-48 hours
-- Waiting for: Legal posture answer, sample CSV, pricing proposal, pilot terms
+- **Initial inquiry:** Sent with 5 key questions (legal, sample, updates, pilot, scope)
+- **Detailed requirements:** Sent (3 retailers, 7 categories, ~2-3k SKUs, daily updates)
+- **Latest discussion:** Clarified we need **~3,000 SKUs per retailer (9,000 total)** for comprehensive live catalog
+  - Original offer: 10k SKUs per retailer = $900/month (likely overkill - 30k total products)
+  - Our analysis: Need 1,500-2,000 per retailer minimum, 3k gives us healthy buffer
+  - **Action needed:** Follow up to negotiate pricing for 3k/retailer (estimate $300-400/month)
+- **Waiting for:**
+  - Legal posture answer (indemnity vs "as-is")
+  - Sample CSV with all required fields
+  - Pricing for 3k SKUs/retailer tier
+  - 30-day pilot terms
+  - Daily update delivery method
 
 **Official API Responses:**
 - Menards: webedi@menards.com, sppurchasing@menards.com (emails sent)
@@ -447,40 +470,47 @@ User creates quotes with real-time pricing
 
 ### 🔜 Next Steps (Priority Order)
 
+**New Laptop Setup (COMPLETE ✅):**
+- ✅ Cloned repository to new laptop
+- ✅ Installed Node.js, npm, Git
+- ✅ Created .env with Supabase credentials
+- ✅ App running successfully with product sync working
+- ✅ All recent work committed and pushed to `integration/all-features`
+
 **Immediate (This Week):**
-1. **Review RetailGators response** - Evaluate legal, sample data, pricing
+1. **Follow up with RetailGators** - Negotiate pricing for 3k SKUs/retailer (~$300-400/month vs $900)
 2. **Decide on data source** - RetailGators pilot vs wait for official APIs
-3. Apple Developer activation
+3. **Apple Developer activation** - Check status, ready for TestFlight build
 4. Build iOS app with EAS
 5. Submit to TestFlight
 
-**When RetailGators Data Arrives (1-2 days):**
-1. Run migration 004 in Supabase (adds retailer field)
-2. Test import script with sample CSV
-3. Import full dataset (2-3k products)
+**When RetailGators Data Arrives:**
+1. Run migration 004 in Supabase (adds retailer field) - **Ready to execute**
+2. Test import script with sample CSV - **Script built: `supabase/import_retailer_data.ts`**
+3. Import full dataset (3k SKUs × 3 retailers = 9k products)
 4. Add retailer badges to product picker UI
 5. Test sync in app
-6. Update status messaging ("Powered by RetailGators" disclaimer)
+6. Update status messaging ("Pricing data provided by RetailGators" disclaimer)
 
-**Phase 1 (Next 1-2 Weeks):**
+**Phase 1 - Auth & Cloud Sync (Next 1-2 Weeks):**
 1. Login/signup screens
 2. Supabase auth integration
-3. Tier checking in app
-4. Auto-migration (local → cloud)
-5. Basic cloud sync
+3. Tier checking in app (Free/Pro/Premium)
+4. Auto-migration (local → cloud for Pro/Premium users)
+5. Basic cloud sync with conflict resolution
 
-**Phase 2 (2-4 Weeks):**
-1. Landing page (quotecat.app)
+**Phase 2 - Monetization (2-4 Weeks):**
+1. Landing page (quotecat.app) with pricing and founder urgency
 2. Stripe payment integration
-3. Spots remaining counter
-4. Email automation
+3. Spots remaining counter (100 Premium, 500 Pro)
+4. Email automation (welcome, credentials, tier unlock)
 5. Founder pricing launch
 
-**Phase 3 (1-2 Months):**
+**Phase 3 - Public Launch (1-2 Months):**
 1. Retailer data integration complete (RetailGators OR official APIs)
 2. Daily price update automation
 3. Quote Wizard (Premium feature)
-4. Public launch
+4. Public launch with App Store listing
 
 ---
 
