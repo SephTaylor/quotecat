@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuoteCat - Professional Construction Quotes in Minutes</title>
+    <meta name="description" content="Mobile app for contractors to create professional quotes fast. Build quotes, manage materials, calculate costs, and generate PDFs on the go.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --text: #1f2937;
+            --text-light: #6b7280;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 180px; /* Account for sticky header */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #ffffff;
+            background: linear-gradient(to bottom,
+                #1a1a1a 0%,
+                #2d2d2d 25%,
+                #1f1f1f 50%,
+                #2d2d2d 75%,
+                #1a1a1a 100%
+            );
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 16px 0;
+            backdrop-filter: blur(10px);
+            background: rgba(20, 20, 20, 0.95);
+            border-bottom: 1px solid rgba(249, 115, 22, 0.3);
+            position: relative;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .header-nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        /* Hamburger Menu */
+        .hamburger {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .hamburger-line {
+            width: 100%;
+            height: 2px;
+            background: #f97316;
+            transition: all 0.3s;
+            border-radius: 2px;
+        }
+
+        .hamburger:hover .hamburger-line {
+            background: #ea580c;
+        }
+
+        /* Mobile Menu Overlay */
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 300px;
+            height: 100vh;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .mobile-menu.open {
+            right: 0;
+        }
+
+        .mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .mobile-menu-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .close-menu {
+            width: 32px;
+            height: 32px;
+            background: none;
+            border: none;
+            color: #f97316;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .close-menu:hover {
+            color: #ea580c;
+        }
+
+        .mobile-menu-content {
+            padding: 24px;
+        }
+
+        .menu-section {
+            margin-bottom: 32px;
+        }
+
+        .menu-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        .menu-link {
+            display: block;
+            padding: 12px 0;
+            color: #e5e7eb;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+            transition: color 0.2s;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-link:last-child {
+            border-bottom: none;
+        }
+
+        .menu-link:hover {
+            color: #f97316;
+        }
+
+        .menu-link:active {
+            color: #ea580c;
+        }
+
+        .menu-signin-button {
+            display: block;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+        }
+
+        .menu-signin-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+        }
+
+        /* Overlay backdrop */
+        .menu-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 999;
+        }
+
+        .menu-backdrop.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .logo:hover {
+            opacity: 0.85;
+        }
+
+        .logo img {
+            height: 100px;
+            width: auto;
+            margin-right: -20px;
+        }
+
+        .logo-text {
+            font-size: 42px;
+            font-weight: 400;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.2);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 60px 0 80px;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.2;
+            color: #ffffff;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #d1d5db;
+            margin-bottom: 32px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .value-props {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-bottom: 48px;
+            flex-wrap: wrap;
+        }
+
+        .value-prop {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            color: #e5e7eb;
+            font-weight: 500;
+        }
+
+        .value-prop::before {
+            content: '✓';
+            color: #f97316;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 20px 48px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 18px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(249, 115, 22, 0.4);
+        }
+
+        /* Problem Section */
+        .problem-section {
+            padding: 60px 0 80px;
+            background: linear-gradient(to bottom,
+                rgba(30, 30, 30, 0.5) 0%,
+                rgba(45, 45, 45, 0.3) 100%
+            );
+        }
+
+        .problem-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .problem-title {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .problem-text {
+            font-size: 18px;
+            color: #d1d5db;
+            line-height: 1.7;
+            margin-bottom: 40px;
+        }
+
+        .pain-points {
+            list-style: none;
+            margin-top: 32px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .pain-point {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            color: #e5e7eb;
+            font-size: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pain-point:last-child {
+            border-bottom: none;
+        }
+
+        .pain-point-icon {
+            font-size: 20px;
+            color: #f97316;
+            min-width: 24px;
+        }
+
+        .pain-point-text {
+            font-weight: 500;
+            color: #e5e7eb;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 60px 0 80px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #ffffff;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 16px;
+            color: #d1d5db;
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 32px;
+        }
+
+        .feature-card {
+            padding: 32px 28px;
+            background: white;
+            border-radius: 16px;
+            border: 2px solid rgba(249, 115, 22, 0.1);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(249, 115, 22, 0.15);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+            box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+            flex-shrink: 0;
+        }
+
+        .feature-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .feature-card p {
+            color: var(--text-light);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        /* Tiers Section */
+        .tiers {
+            padding: 60px 0 80px;
+            background: linear-gradient(to bottom,
+                rgba(30, 30, 30, 0.3) 0%,
+                rgba(45, 45, 45, 0.5) 100%
+            );
+        }
+
+        .tiers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 32px;
+            margin-top: 64px;
+        }
+
+        .tier-card {
+            background: white;
+            border: 2px solid rgba(249, 115, 22, 0.1);
+            border-radius: 24px;
+            padding: 48px 36px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .tier-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .tier-card.featured {
+            background: white;
+            border-color: var(--primary);
+            border-width: 3px;
+            box-shadow: 0 8px 32px rgba(249, 115, 22, 0.3);
+            transform: scale(1.05);
+        }
+
+        .tier-card.featured:hover {
+            transform: scale(1.05) translateY(-4px);
+        }
+
+        .tier-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 16px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+        }
+
+        .tier-drew-icon {
+            width: 120px;
+            height: 120px;
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .tier-card.featured .tier-drew-icon {
+            opacity: 0.15;
+        }
+
+        .tier-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+
+        .tier-description {
+            color: var(--text-light);
+            margin-bottom: 24px;
+            font-size: 16px;
+        }
+
+        .tier-features {
+            text-align: left;
+            margin-top: 32px;
+            list-style: none;
+        }
+
+        .tier-features li {
+            padding: 12px 0;
+            color: var(--text);
+            font-weight: 500;
+            border-bottom: 1px solid rgba(249, 115, 22, 0.1);
+        }
+
+        .tier-features li:last-child {
+            border-bottom: none;
+        }
+
+        .tier-features li::before {
+            content: '✓';
+            color: #f97316;
+            font-weight: bold;
+            margin-right: 12px;
+            font-size: 18px;
+        }
+
+        /* FAQ Section */
+        .faq {
+            padding: 60px 0 80px;
+            background: linear-gradient(to bottom,
+                rgba(30, 30, 30, 0.3) 0%,
+                rgba(45, 45, 45, 0.5) 100%
+            );
+        }
+
+        .faq-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        .faq-item {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            border: 2px solid rgba(249, 115, 22, 0.1);
+            transition: all 0.3s;
+        }
+
+        .faq-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(249, 115, 22, 0.15);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        .faq-question {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .faq-answer {
+            font-size: 15px;
+            color: var(--text-light);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .faq-answer a {
+            color: #f97316;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .faq-answer a:hover {
+            text-decoration: underline;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 60px 0 80px;
+            text-align: center;
+        }
+
+        .cta-box {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 64px 48px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            border-radius: 32px;
+            box-shadow: 0 12px 48px rgba(249, 115, 22, 0.3);
+        }
+
+        .cta-box h2 {
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .cta-box p {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 32px;
+        }
+
+        .cta-button-white {
+            display: inline-block;
+            padding: 20px 48px;
+            background: white;
+            color: #f97316;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 18px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .cta-button-white:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 0 40px;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            color: white;
+            text-align: center;
+        }
+
+        footer a {
+            color: #f97316;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            /* Header adjustments */
+            header {
+                padding: 12px 0;
+            }
+
+            .header-content {
+                gap: 12px;
+            }
+
+            .header-nav {
+                gap: 16px;
+            }
+
+            .nav-link {
+                font-size: 14px;
+            }
+
+            .logo img {
+                height: 60px;
+                margin-right: -12px;
+            }
+
+            .logo-text {
+                font-size: 28px;
+            }
+
+            .status-badge {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+
+            /* Typography */
+            h1 {
+                font-size: 32px;
+                line-height: 1.3;
+            }
+
+            .subtitle {
+                font-size: 16px;
+            }
+
+            .section-title {
+                font-size: 28px;
+            }
+
+            .problem-title {
+                font-size: 28px;
+            }
+
+            .problem-text {
+                font-size: 16px;
+            }
+
+            /* Spacing */
+            .container {
+                padding: 0 16px;
+            }
+
+            .header-container {
+                padding: 0 16px;
+            }
+
+            .hero {
+                padding: 40px 0 60px;
+            }
+
+            .features, .tiers, .problem-section, .cta-section {
+                padding: 40px 0 60px;
+            }
+
+            /* Feature cards */
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .feature-card {
+                padding: 24px 20px;
+            }
+
+            .feature-header {
+                gap: 12px;
+            }
+
+            .feature-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+
+            .feature-card h3 {
+                font-size: 16px;
+            }
+
+            .feature-card p {
+                font-size: 14px;
+            }
+
+            /* Value props */
+            .value-props {
+                flex-direction: column;
+                gap: 12px;
+                margin-bottom: 32px;
+            }
+
+            .value-prop {
+                font-size: 14px;
+            }
+
+            /* Buttons */
+            .cta-button {
+                padding: 16px 36px;
+                font-size: 16px;
+            }
+
+            .cta-button-white {
+                padding: 16px 36px;
+                font-size: 16px;
+            }
+
+            /* CTA box */
+            .cta-box {
+                padding: 32px 20px;
+            }
+
+            .cta-box h2 {
+                font-size: 24px;
+            }
+
+            .cta-box p {
+                font-size: 14px;
+            }
+
+            /* Tier cards */
+            .tiers-grid {
+                grid-template-columns: 1fr;
+                gap: 24px;
+                margin-top: 40px;
+            }
+
+            .tier-card {
+                padding: 36px 24px;
+            }
+
+            .tier-card.featured {
+                transform: none;
+                border-width: 2px;
+            }
+
+            .tier-card.featured:hover {
+                transform: translateY(-2px);
+            }
+
+            .tier-badge {
+                font-size: 11px;
+                padding: 5px 14px;
+            }
+
+            .tier-name {
+                font-size: 22px;
+            }
+
+            .tier-description {
+                font-size: 14px;
+            }
+
+            .tier-features li {
+                font-size: 14px;
+                padding: 10px 0;
+            }
+
+            .tier-drew-icon {
+                width: 80px;
+                height: 80px;
+            }
+
+            /* FAQ */
+            .faq {
+                padding: 40px 0 60px;
+            }
+
+            .faq-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+                margin-top: 32px;
+            }
+
+            .faq-item {
+                padding: 20px;
+            }
+
+            .faq-question {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+
+            .faq-answer {
+                font-size: 14px;
+            }
+
+            /* Footer */
+            footer {
+                padding: 60px 0 40px;
+            }
+
+            footer p {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <img src="logo.png" alt="QuoteCat Logo">
+                    <span class="logo-text">QuoteCat</span>
+                </a>
+                <div class="header-nav">
+                    <a href="#beta-signup" class="status-badge" style="text-decoration: none; cursor: pointer;">Join Beta Now</a>
+                    <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Menu Backdrop -->
+    <div class="menu-backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+            <span class="mobile-menu-title">Menu</span>
+            <button class="close-menu" onclick="toggleMenu()" aria-label="Close">&times;</button>
+        </div>
+        <div class="mobile-menu-content">
+            <a href="signin.html" class="menu-signin-button">Sign In</a>
+            <div class="menu-section">
+                <div class="menu-section-title">Navigation</div>
+                <a href="index.html" class="menu-link">Home</a>
+                <a href="faq.html" class="menu-link">FAQ</a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">Resources</div>
+                <a href="privacy.html" class="menu-link">Privacy Policy</a>
+                <a href="terms.html" class="menu-link">Terms of Service</a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">Contact</div>
+                <a href="mailto:hello@quotecat.ai" class="menu-link">Email Support</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Stop Losing Jobs to <span class="highlight">Slow Quotes</span></h1>
+                <p class="subtitle">
+                    The first mobile quoting app built specifically for contractors. Create professional, accurate quotes in minutes while you're still on the job site.
+                </p>
+                <div class="value-props">
+                    <span class="value-prop">Quote in 5 minutes</span>
+                    <span class="value-prop">Win more bids</span>
+                    <span class="value-prop">Look professional</span>
+                </div>
+                <a href="#beta-signup" class="cta-button">Join Beta Testing</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem-section">
+        <div class="container">
+            <div class="problem-content">
+                <h2 class="problem-title">You're Losing Money on Every Delayed Quote</h2>
+                <p class="problem-text">
+                    Traditional quoting means:<br>
+                    - Going home.<br>
+                    - Booting up your laptop.<br>
+                    - Spending hours in spreadsheets.
+                </p>
+                <p class="problem-text">
+                    By then, your client already hired someone faster.
+                </p>
+                <p class="problem-text">
+                    QuoteCat puts professional quoting right in your pocket—quote on-site in minutes.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Everything You Need, Nothing You Don't</h2>
+            <p class="section-subtitle">Built by developers who understand construction. No bloat, no complicated menus, just fast quoting.</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">5m</div>
+                        <h3>Quote in 5 Minutes</h3>
+                    </div>
+                    <p>Pick products, add labor, done. While other contractors are still driving home, you've already sent a professional quote and moved on to the next job.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">100+</div>
+                        <h3>Real Product Catalog</h3>
+                    </div>
+                    <p>100+ construction materials with actual prices. Framing, drywall, electrical, plumbing, roofing. No more guessing, no more spreadsheets.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">$</div>
+                        <h3>Automatic Math</h3>
+                    </div>
+                    <p>Never lose money on bad calculations again. Labor, materials, overhead, and markup calculated instantly. Your price, your profit.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">PDF</div>
+                        <h3>Professional PDFs</h3>
+                    </div>
+                    <p>Client-ready quotes with your company branding. Look like a pro, even if it's your first year in business. Email or text instantly.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">+</div>
+                        <h3>Job Templates</h3>
+                    </div>
+                    <p>Quote a bathroom remodel? Save it as a template. Next bathroom? Done in 2 minutes. Work smarter, not harder.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">☁</div>
+                        <h3>Cloud Backup</h3>
+                    </div>
+                    <p>Your quotes backed up automatically. Switch between phone and tablet seamlessly. Your business data, always safe and accessible.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tiers Section -->
+    <section class="tiers">
+        <div class="container">
+            <h2 class="section-title">Start Free, Upgrade When You're Ready</h2>
+            <p class="section-subtitle">Try QuoteCat risk-free. No credit card required for free tier.</p>
+            <div class="tiers-grid">
+                <div class="tier-card">
+                    <img src="drew-card.png" alt="" class="tier-drew-icon">
+                    <div class="tier-name">Free</div>
+                    <div class="tier-description">Perfect for testing the waters</div>
+                    <ul class="tier-features">
+                        <li>25 quotes per month</li>
+                        <li>5 PDF exports</li>
+                        <li>Full product catalog</li>
+                        <li>Professional templates</li>
+                        <li>Local storage only</li>
+                    </ul>
+                </div>
+                <div class="tier-card featured">
+                    <img src="drew-card.png" alt="" class="tier-drew-icon">
+                    <span class="tier-badge">Most Popular</span>
+                    <div class="tier-name">Pro</div>
+                    <div class="tier-description">For contractors who mean business</div>
+                    <ul class="tier-features">
+                        <li>Unlimited quotes & exports</li>
+                        <li>Custom job templates</li>
+                        <li>Cloud backup & sync</li>
+                        <li>Multi-device access</li>
+                        <li>Company branding</li>
+                        <li>Priority email support</li>
+                    </ul>
+                </div>
+                <div class="tier-card">
+                    <img src="drew-card.png" alt="" class="tier-drew-icon">
+                    <div class="tier-name">Premium</div>
+                    <div class="tier-description">Complete business toolkit</div>
+                    <ul class="tier-features">
+                        <li>Everything in Pro</li>
+                        <li>Company logo on quotes</li>
+                        <li>Quote Wizard (AI-assisted)</li>
+                        <li>Advanced analytics</li>
+                        <li>Team collaboration</li>
+                        <li>Priority phone support</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Beta Signup Section -->
+    <section class="cta-section" id="beta-signup">
+        <div class="container">
+            <div class="cta-box">
+                <h2>Join the Beta</h2>
+                <p>Get early access to QuoteCat. We'll send you TestFlight (iOS) or Play Store (Android) access within 24 hours.</p>
+
+                <form name="beta-signup" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="beta-success.html" style="max-width: 500px; margin: 32px auto 0;">
+                    <input type="hidden" name="form-name" value="beta-signup">
+                    <p style="display: none;">
+                        <label>Don't fill this out: <input name="bot-field"></label>
+                    </p>
+
+                    <div style="margin-bottom: 20px;">
+                        <input
+                            type="email"
+                            name="email"
+                            placeholder="your@email.com"
+                            required
+                            style="width: 100%; padding: 16px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95); font-size: 16px; color: #1f2937; font-weight: 500;"
+                        >
+                    </div>
+
+                    <div style="margin-bottom: 24px; display: flex; gap: 12px; justify-content: center;">
+                        <label style="flex: 1; cursor: pointer;">
+                            <input type="radio" name="phone-type" value="iOS" required style="margin-right: 8px;">
+                            <span style="font-weight: 600; font-size: 16px;">📱 iOS</span>
+                        </label>
+                        <label style="flex: 1; cursor: pointer;">
+                            <input type="radio" name="phone-type" value="Android" required style="margin-right: 8px;">
+                            <span style="font-weight: 600; font-size: 16px;">🤖 Android</span>
+                        </label>
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="cta-button-white"
+                        style="width: 100%; border: none; cursor: pointer;"
+                    >
+                        Get Beta Access
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p style="margin-bottom: 20px;">
+                <strong>QuoteCat</strong> - Built for contractors, by developers who care.
+            </p>
+            <p style="color: #9ca3af;">
+                Questions? Email us at <a href="mailto:hello@quotecat.ai">hello@quotecat.ai</a>
+            </p>
+            <p style="margin-top: 40px; font-size: 14px; color: #6b7280;">
+                &copy; 2025 QuoteCat.ai. All rights reserved. |
+                <a href="faq.html">FAQ</a> |
+                <a href="privacy.html">Privacy Policy</a> |
+                <a href="terms.html">Terms of Service</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const backdrop = document.getElementById('menuBackdrop');
+            menu.classList.toggle('open');
+            backdrop.classList.toggle('open');
+        }
+
+        // Handle smooth scrolling with offset for sticky header
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href === '#') return; // Skip if just "#"
+
+                e.preventDefault();
+                const target = document.querySelector(href);
+                if (target) {
+                    const headerOffset = 150; // Height of sticky header + padding
+                    const elementPosition = target.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+
+                    // Close menu if open
+                    const menu = document.getElementById('mobileMenu');
+                    if (menu.classList.contains('open')) {
+                        toggleMenu();
+                    }
+                }
+            });
+        });
+
+        // Close menu on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const menu = document.getElementById('mobileMenu');
+                if (menu.classList.contains('open')) {
+                    toggleMenu();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

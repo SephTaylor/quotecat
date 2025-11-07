@@ -7,6 +7,7 @@ import {
   StyleSheet,
   View,
   ViewStyle,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -20,6 +21,10 @@ type ScreenProps = PropsWithChildren<{
   style?: ViewStyle;
   /** Extra styles for the inner content container */
   contentStyle?: ViewStyle;
+  /** Pull-to-refresh is refreshing */
+  refreshing?: boolean;
+  /** Pull-to-refresh callback */
+  onRefresh?: () => void;
 }>;
 
 /**
@@ -34,6 +39,8 @@ export default function Screen({
   withBottomBar = false,
   style,
   contentStyle,
+  refreshing = false,
+  onRefresh,
 }: ScreenProps) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -46,6 +53,16 @@ export default function Screen({
         withBottomBar && styles.withBottomBar,
         contentStyle,
       ]}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.accent}
+            colors={[theme.colors.accent]}
+          />
+        ) : undefined
+      }
     >
       {children}
     </ScrollView>
@@ -64,7 +81,7 @@ export default function Screen({
   return (
     <SafeAreaView
       style={[styles.root, style]}
-      edges={["top", "left", "right", "bottom"]}
+      edges={["left", "right", "bottom"]}
     >
       <KeyboardAvoidingView
         style={styles.root}
@@ -84,7 +101,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     // Use simple, consistent spacing (adjust if you have a theme helper)
     content: {
-      paddingTop: 8,
+      paddingTop: 0,
       paddingHorizontal: 16,
       paddingBottom: 16,
       flexGrow: 1,

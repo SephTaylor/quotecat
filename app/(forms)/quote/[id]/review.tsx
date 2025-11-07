@@ -453,6 +453,19 @@ export default function QuoteReviewScreen() {
           </View>
         )}
 
+        {/* Pricing Disclaimer */}
+        {quote.items && quote.items.length > 0 && (
+          <View style={styles.disclaimerCard}>
+            <Text style={styles.disclaimerIcon}>⚠️</Text>
+            <View style={styles.disclaimerTextContainer}>
+              <Text style={styles.disclaimerTitle}>Estimated Pricing</Text>
+              <Text style={styles.disclaimerText}>
+                Material prices are AI-estimated based on 2025 market averages. Always verify current pricing with your supplier before finalizing quotes.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Totals Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cost Breakdown</Text>
@@ -709,6 +722,35 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       borderWidth: 1,
       borderColor: theme.colors.border,
       overflow: "hidden",
+    },
+    disclaimerCard: {
+      flexDirection: "row",
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(3),
+      alignItems: "flex-start",
+    },
+    disclaimerIcon: {
+      fontSize: 24,
+      marginRight: theme.spacing(1.5),
+      marginTop: 2,
+    },
+    disclaimerTextContainer: {
+      flex: 1,
+    },
+    disclaimerTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    disclaimerText: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      lineHeight: 16,
     },
     itemRow: {
       flexDirection: "row",

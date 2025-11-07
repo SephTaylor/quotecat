@@ -6,13 +6,18 @@ export type Product = {
   name: string;
   unit: string; // "ea", "sheet", "10ft", "box"
   unitPrice: number; // baseline seed price
+  retailer?: string; // Optional: "homedepot", "lowes", "menards", etc.
+  dataSource?: string; // Optional: "ai_estimated", "retailer_scraped", etc.
 };
 
 export const CATEGORIES: Category[] = [
   { id: "framing", name: "Framing" },
+  { id: "fasteners", name: "Fasteners" },
   { id: "drywall", name: "Drywall" },
   { id: "electrical", name: "Electrical" },
   { id: "plumbing", name: "Plumbing" },
+  { id: "roofing", name: "Roofing" },
+  { id: "masonry", name: "Masonry" },
 ];
 
 export const PRODUCTS_SEED: Record<string, Product[]> = {

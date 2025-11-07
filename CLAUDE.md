@@ -250,6 +250,14 @@ Quote UI components accept optional `onPress`/`onLongPress` handlers. When omitt
 
 ## 🗄️ Database Architecture (Supabase)
 
+### Supabase Instance
+
+- **Project:** QuoteCat Production
+- **URL:** Configured in `.env` as `EXPO_PUBLIC_SUPABASE_URL`
+- **Auth:** Anonymous key in `.env` as `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- **Region:** US-based
+- **Access:** Supabase dashboard at supabase.com
+
 ### Tables (9 total)
 
 **User & Subscription:**
@@ -263,9 +271,24 @@ Quote UI components accept optional `onPress`/`onLongPress` handlers. When omitt
 
 **Product Catalog (Supplier API):**
 6. `suppliers` - Lowe's, Home Depot, Menards, 1Build
-7. `categories` - Product categories (Framing, Drywall, etc.)
-8. `products` - Full product catalog with real-time pricing
+7. `categories` - Product categories (Framing, Drywall, etc.) - **✅ Seeded with 7 categories**
+8. `products` - Full product catalog with real-time pricing - **✅ Seeded with 368 AI products**
 9. `product_prices` - Price history tracking
+
+### Current Product Catalog Status (Nov 2024)
+
+**Live in Supabase:**
+- 368 AI-estimated products across 7 categories
+- Categories: Framing, Fasteners, Drywall, Electrical, Plumbing, Roofing, Masonry
+- All products marked as `data_source: 'ai_estimated'`
+- App syncs from Supabase via pull-to-refresh
+- Smart status indicator shows "Online (Up to date)" when synced
+
+**Ready for Retailer Data:**
+- Migration 004 prepared (adds `retailer` field to products table) - **NOT run yet**
+- Import script ready: `supabase/import_retailer_data.ts`
+- Documentation: `supabase/IMPORT_GUIDE.md`, `supabase/RETAILER_DATA_SPEC.md`
+- When retailer data arrives: Run migration 004 → Import CSV → Sync to app
 
 ### Security
 
@@ -287,7 +310,7 @@ All tables have Row-Level Security (RLS):
 ### Architecture
 
 ```
-Supplier APIs (Lowe's, HD, Menards, 1Build)
+Supplier APIs (Lowe's, HD, Menards, 1Build) OR RetailGators (web scraping service)
     ↓
 Supabase (products & categories tables) ← Central catalog
     ↓
@@ -298,23 +321,33 @@ User creates quotes with real-time pricing
 
 ### Data Flow
 
-1. **Background Job (daily):** 1Build API → Supabase products table
+1. **Background Job (daily):** Supplier API OR RetailGators CSV → Supabase products table
 2. **App startup:** Supabase products → AsyncStorage cache
 3. **User creates quote:** Reads from AsyncStorage (fast, offline)
 4. **Periodic sync (when online):** Check Supabase for price updates
 
 ### Target Suppliers
 
-- **1Build** (Primary - aggregates multiple suppliers)
-- **Lowe's** (Direct API)
-- **Home Depot** (Direct API)
-- **Menards** (Direct API)
+**Official APIs (Preferred):**
+- **1Build** (Primary - aggregates multiple suppliers) - outreach sent
+- **Lowe's** (Direct API) - exploring
+- **Home Depot** (Direct API) - exploring
+- **Menards** (Direct API) - emails sent to webedi@menards.com, sppurchasing@menards.com
+
+**Interim Solution (RetailGators):**
+- **RetailGators** (Web scraping service, Houston TX, 51-200 employees)
+- Provides Menards, Home Depot, Lowe's product & pricing data
+- $300/month BASIC plan (10,000 SKUs, daily updates)
+- Use case: Bootstrap with real data while pursuing official partnerships
+- Status: **Inquiry sent Nov 4, 2024** - awaiting response (see "Waiting For" section)
 
 ### Product Data Structure
 
 - Real-time pricing and availability
 - Product images and descriptions
 - SKU, category, supplier info
+- Retailer identifier (homedepot, lowes, menards)
+- Data source tracking (ai_estimated, retailer_scraped, api_live, user_submitted)
 - Stock quantities
 - Last sync timestamp
 
@@ -354,18 +387,21 @@ User creates quotes with real-time pricing
 
 ---
 
-## 🚀 Current Status (Jan 2025)
+## 🚀 Current Status (Nov 2024)
 
 ### ✅ Complete
 
 **MVP Features:**
 - Quote management (create, edit, delete, duplicate)
-- Product catalog (100+ construction products)
+- Product catalog (368 AI-estimated products across 7 categories)
 - PDF/CSV export with company branding
 - Assembly system (Pro feature)
 - Dashboard with value tracking
 - Light/dark mode with gradients
 - Swipe gestures, pin quotes, status workflow
+- Pull-to-refresh product sync
+- Smart status indicator for sync state
+- Product search with auto-expanding categories
 
 **Technical:**
 - React Native + Expo SDK 54
@@ -378,10 +414,31 @@ User creates quotes with real-time pricing
 **Database:**
 - Supabase project set up
 - All 9 tables created with RLS
+- 7 categories seeded (Framing, Fasteners, Drywall, Electrical, Plumbing, Roofing, Masonry)
+- 368 AI products seeded and syncing to app
 - Migration files documented
 - Helper functions implemented
 
-### ⏳ In Progress
+**Retailer Data Pipeline (Prepared):**
+- ✅ Migration 004 created (adds retailer field + multi-retailer support)
+- ✅ Import script built (`supabase/import_retailer_data.ts`)
+- ✅ Data validation with category/unit mapping
+- ✅ Import documentation (`supabase/IMPORT_GUIDE.md`)
+- ✅ Data spec for RetailGators (`supabase/RETAILER_DATA_SPEC.md`)
+- ✅ Product type updated with optional `retailer` and `dataSource` fields
+
+### ⏳ Waiting For
+
+**RetailGators Response (Nov 4, 2024):**
+- Inquiry sent with 5 key questions (legal, sample, updates, pilot, scope)
+- Detailed requirements sent (3 retailers, 7 categories, ~2-3k SKUs, daily updates)
+- Expected response: 24-48 hours
+- Waiting for: Legal posture answer, sample CSV, pricing proposal, pilot terms
+
+**Official API Responses:**
+- Menards: webedi@menards.com, sppurchasing@menards.com (emails sent)
+- 1Build: Outreach sent
+- Parallel track while exploring RetailGators
 
 **Apple Developer:**
 - Payment processed ($99/year)
@@ -391,13 +448,21 @@ User creates quotes with real-time pricing
 ### 🔜 Next Steps (Priority Order)
 
 **Immediate (This Week):**
-1. Apple Developer activation
-2. Build iOS app with EAS
-3. Submit to TestFlight
-4. Add beta testers
-5. Gather feedback
+1. **Review RetailGators response** - Evaluate legal, sample data, pricing
+2. **Decide on data source** - RetailGators pilot vs wait for official APIs
+3. Apple Developer activation
+4. Build iOS app with EAS
+5. Submit to TestFlight
 
-**Phase 1 (Next Week):**
+**When RetailGators Data Arrives (1-2 days):**
+1. Run migration 004 in Supabase (adds retailer field)
+2. Test import script with sample CSV
+3. Import full dataset (2-3k products)
+4. Add retailer badges to product picker UI
+5. Test sync in app
+6. Update status messaging ("Powered by RetailGators" disclaimer)
+
+**Phase 1 (Next 1-2 Weeks):**
 1. Login/signup screens
 2. Supabase auth integration
 3. Tier checking in app
@@ -412,11 +477,10 @@ User creates quotes with real-time pricing
 5. Founder pricing launch
 
 **Phase 3 (1-2 Months):**
-1. 1Build API integration
-2. Supplier product sync
-3. Real-time pricing updates
-4. Quote Wizard (Premium feature)
-5. Public launch
+1. Retailer data integration complete (RetailGators OR official APIs)
+2. Daily price update automation
+3. Quote Wizard (Premium feature)
+4. Public launch
 
 ---
 
@@ -431,8 +495,8 @@ User creates quotes with real-time pricing
 ### Supplier API Tables
 - `products` and `categories` tables in Supabase are for supplier API data
 - DO NOT delete these tables
-- Currently seeded from `modules/catalog/seed.ts` (in-memory)
-- Will be populated by 1Build API sync job later
+- Currently seeded with 368 AI-estimated products
+- Will be replaced/augmented by retailer data (RetailGators) or official APIs
 
 ### Data Migration
 - Free users stay 100% local (no forced cloud)
@@ -445,6 +509,36 @@ User creates quotes with real-time pricing
 - Price locked forever for early adopters
 - Raise prices at customer milestones, not time-based
 - Grandfathering creates loyalty and urgency
+
+### RetailGators Data Strategy (Nov 2024)
+
+**Context:** Need real retailer pricing quickly. Official APIs slow to respond. Found RetailGators (web scraping service).
+
+**Balanced Approach:**
+- Use RetailGators for 30-day pilot to bootstrap with real data
+- Label clearly in UI: "Pricing data provided by RetailGators - verify at retailer checkout"
+- Continue pursuing official API partnerships in parallel (Menards, 1Build, Lowe's, HD)
+- Internal development/testing use initially
+- Evaluate legal stance, data quality, reliability during pilot
+- Transition to official APIs when available
+
+**Guardrails:**
+- Request sample data (10-20 SKUs) before committing
+- Confirm legal indemnity stance in writing
+- Start with 30-day pilot (not annual commitment)
+- Pull only construction categories (not full catalog)
+- Document data source and dates for audit trail
+- Keep "verify at checkout" disclaimers in UI
+- Monitor for any retailer pushback
+
+**Key Questions Sent to RetailGators:**
+1. Legal posture - indemnity or "as-is"?
+2. Sample CSV with all required fields
+3. Daily update delivery method (API vs file)
+4. 30-day pilot option
+5. Category filtering (construction only)
+
+**Philosophy:** Scrappy founder bootstrap (speed) + protective guardrails (don't blow a hole in the hull). Not shady, filling a gap retailers left.
 
 ---
 

@@ -22,10 +22,11 @@ export default function QuoteMaterials() {
   const router = useRouter();
   const { theme } = useTheme();
 
-  const { products, loading } = useProducts();
+  const { products, loading, lastSync, syncing, refresh } = useProducts();
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [initialSelectionLoaded, setInitialSelectionLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Create initial selection from quote items
   const initialSelection = useMemo(() => {
@@ -70,6 +71,13 @@ export default function QuoteMaterials() {
   useEffect(() => {
     loadQuote();
   }, [loadQuote]);
+
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refresh(); // Sync products from Supabase
+    setRefreshing(false);
+  }, [refresh]);
 
 
   // Reload when returning from edit-items screen
@@ -182,7 +190,7 @@ export default function QuoteMaterials() {
             },
           }}
         />
-        <Screen scroll>
+        <Screen scroll refreshing={refreshing} onRefresh={onRefresh}>
           <MaterialsPicker
             categories={CATEGORIES}
             itemsByCategory={{}}
@@ -214,7 +222,7 @@ export default function QuoteMaterials() {
         }}
       />
 
-      <Screen scroll>
+      <Screen scroll refreshing={refreshing} onRefresh={onRefresh}>
         {quoteItems.length > 0 && (
           <View style={styles(theme).quoteItemsIndicator}>
             <View style={styles(theme).indicatorContent}>
@@ -259,6 +267,8 @@ export default function QuoteMaterials() {
           onDec={dec}
           onSetQty={setQty}
           recentProductIds={[]}
+          lastSync={lastSync}
+          syncing={syncing}
         />
       </Screen>
 

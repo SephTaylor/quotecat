@@ -14,6 +14,8 @@ export type MaterialsPickerProps = {
   onDec(product: Product): void;
   onSetQty(product: Product, qty: number): void; // New: direct quantity setter
   recentProductIds?: string[]; // Optional: IDs of recently used products
+  lastSync?: Date | null; // Last sync timestamp from Supabase
+  syncing?: boolean; // Is currently syncing
 };
 
 function MaterialsPicker({
@@ -24,6 +26,8 @@ function MaterialsPicker({
   onDec,
   onSetQty,
   recentProductIds = [],
+  lastSync = null,
+  syncing = false,
 }: MaterialsPickerProps) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -31,6 +35,9 @@ function MaterialsPicker({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (catId: string) =>
     setExpanded((e) => ({ ...e, [catId]: !e[catId] }));
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
 
   // State for inline editing
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -65,12 +72,57 @@ function MaterialsPicker({
       .slice(0, 5); // Show max 5 recent products
   }, [recentProductIds, itemsByCategory]);
 
+  // Filter products by search query
+  const filteredItemsByCategory = React.useMemo(() => {
+    if (!searchQuery.trim()) return itemsByCategory;
+
+    const query = searchQuery.toLowerCase();
+    const filtered: Record<string, Product[]> = {};
+
+    Object.entries(itemsByCategory).forEach(([catId, products]) => {
+      const matches = products.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.id.toLowerCase().includes(query)
+      );
+      if (matches.length > 0) {
+        filtered[catId] = matches;
+      }
+    });
+
+    return filtered;
+  }, [itemsByCategory, searchQuery]);
+
+  // Generate status message
+  const statusMessage = React.useMemo(() => {
+    if (syncing) return { text: "Syncing...", icon: "🔄", color: theme.colors.accent };
+    if (lastSync) {
+      const hoursAgo = Math.floor((Date.now() - lastSync.getTime()) / (1000 * 60 * 60));
+      if (hoursAgo < 1) return { text: "Online (Up to date)", icon: "✅", color: theme.colors.success || "#4ade80" };
+      if (hoursAgo < 24) return { text: `Online (Updated ${hoursAgo}h ago)`, icon: "✅", color: theme.colors.success || "#4ade80" };
+      return { text: `Pull down to sync (${Math.floor(hoursAgo / 24)}d ago)`, icon: "⚠️", color: theme.colors.warning || "#fbbf24" };
+    }
+    return { text: "Pull down to sync", icon: "📱", color: theme.colors.muted };
+  }, [syncing, lastSync, theme]);
+
   return (
     <View style={styles.content}>
-      <Text style={styles.h1}>Add Materials</Text>
-      <Text style={styles.helper}>
-        Seed-only catalog. Categories start collapsed.
-      </Text>
+      {/* Status Indicator */}
+      <View style={styles.statusBadge}>
+        <Text style={[styles.statusText, { color: statusMessage.color }]}>
+          {statusMessage.icon} {statusMessage.text}
+        </Text>
+      </View>
+
+      {/* Search Bar */}
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search products..."
+        placeholderTextColor={theme.colors.muted}
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
 
       {/* Recently Used Section */}
       {recentProducts.length > 0 && (
@@ -128,8 +180,9 @@ function MaterialsPicker({
       )}
 
       {categories.map((cat) => {
-        const open = !!expanded[cat.id];
-        const items = itemsByCategory[cat.id] ?? [];
+        const open = !!expanded[cat.id] || searchQuery.trim().length > 0; // Auto-expand when searching
+        const items = filteredItemsByCategory[cat.id] ?? [];
+        if (items.length === 0) return null; // Hide empty categories when searching
         return (
           <View key={cat.id} style={styles.catCard}>
             <Pressable style={styles.catHeader} onPress={() => toggle(cat.id)}>
@@ -200,7 +253,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     content: {
       paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(2),
+      paddingTop: 0,
       paddingBottom: theme.spacing(8),
     },
     h1: { fontSize: 18, fontWeight: "800", color: theme.colors.text },
@@ -209,6 +262,32 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 12,
       marginTop: 4,
       marginBottom: 12,
+    },
+    statusBadge: {
+      marginTop: theme.spacing(0.5),
+      marginBottom: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(1.5),
+      paddingVertical: theme.spacing(0.75),
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignSelf: "center",
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    searchInput: {
+      height: 44,
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 2,
+      borderColor: theme.colors.text,
+      paddingHorizontal: theme.spacing(2),
+      fontSize: 16,
+      color: theme.colors.text,
+      marginBottom: theme.spacing(2),
     },
 
     recentCard: {
