@@ -284,11 +284,11 @@ Quote UI components accept optional `onPress`/`onLongPress` handlers. When omitt
 - App syncs from Supabase via pull-to-refresh
 - Smart status indicator shows "Online (Up to date)" when synced
 
-**Ready for Retailer Data:**
+**Ready for Xbyte Data:**
 - Migration 004 prepared (adds `retailer` field to products table) - **NOT run yet**
 - Import script ready: `supabase/import_retailer_data.ts`
 - Documentation: `supabase/IMPORT_GUIDE.md`, `supabase/RETAILER_DATA_SPEC.md`
-- When retailer data arrives: Run migration 004 → Import CSV → Sync to app
+- When Xbyte data arrives: Run migration 004 → Import data → Sync to app
 
 ### Security
 
@@ -310,7 +310,7 @@ All tables have Row-Level Security (RLS):
 ### Architecture
 
 ```
-Supplier APIs (Lowe's, HD, Menards, 1Build) OR RetailGators (web scraping service)
+Supplier APIs (Lowe's, HD, Menards, 1Build) OR Xbyte (data provider)
     ↓
 Supabase (products & categories tables) ← Central catalog
     ↓
@@ -321,7 +321,7 @@ User creates quotes with real-time pricing
 
 ### Data Flow
 
-1. **Background Job (daily):** Supplier API OR RetailGators CSV → Supabase products table
+1. **Background Job (daily):** Supplier API OR Xbyte data → Supabase products table
 2. **App startup:** Supabase products → AsyncStorage cache
 3. **User creates quote:** Reads from AsyncStorage (fast, offline)
 4. **Periodic sync (when online):** Check Supabase for price updates
@@ -334,12 +334,11 @@ User creates quotes with real-time pricing
 - **Home Depot** (Direct API) - exploring
 - **Menards** (Direct API) - emails sent to webedi@menards.com, sppurchasing@menards.com
 
-**Interim Solution (RetailGators):**
-- **RetailGators** (Web scraping service, Houston TX, 51-200 employees)
-- Provides Menards, Home Depot, Lowe's product & pricing data
-- $300/month BASIC plan (10,000 SKUs, daily updates)
+**Interim Solution (Xbyte):**
+- **Xbyte** (Data provider)
+- Provides product & pricing data for construction materials
 - Use case: Bootstrap with real data while pursuing official partnerships
-- Status: **Inquiry sent Nov 4, 2024** - awaiting response (see "Waiting For" section)
+- Status: **Sample data expected in a few days**
 
 ### Product Data Structure
 
@@ -419,12 +418,12 @@ User creates quotes with real-time pricing
 - Migration files documented
 - Helper functions implemented
 
-**Retailer Data Pipeline (Prepared):**
+**Product Data Pipeline (Prepared):**
 - ✅ Migration 004 created (adds retailer field + multi-retailer support)
 - ✅ Import script built (`supabase/import_retailer_data.ts`)
 - ✅ Data validation with category/unit mapping
 - ✅ Import documentation (`supabase/IMPORT_GUIDE.md`)
-- ✅ Data spec for RetailGators (`supabase/RETAILER_DATA_SPEC.md`)
+- ✅ Data spec documented (`supabase/RETAILER_DATA_SPEC.md`)
 - ✅ Product type updated with optional `retailer` and `dataSource` fields
 
 ### 📝 For New Claude Sessions
@@ -432,41 +431,38 @@ User creates quotes with real-time pricing
 **When starting a new conversation, read:**
 1. This entire CLAUDE.md file (you're reading it now!)
 2. Recent commits: `git log --oneline -5` and `git log -1 --format=full`
-3. Retailer import docs: `supabase/IMPORT_GUIDE.md` and `supabase/RETAILER_DATA_SPEC.md`
+3. Product import docs: `supabase/IMPORT_GUIDE.md` and `supabase/RETAILER_DATA_SPEC.md`
 4. Current branch status: `git status`
 
 **Key context to understand:**
-- App is LIVE and working with 368 AI products syncing from Supabase
-- Retailer data pipeline is BUILT and ready to execute when data arrives
-- Waiting on RetailGators to negotiate 3k SKUs/retailer pricing
+- App is LIVE in TestFlight (iOS) and Google Play testing (Android)
+- App working with 368 AI products syncing from Supabase
+- Product data pipeline is BUILT and ready to execute when Xbyte data arrives
+- Waiting on Xbyte sample data (expected in a few days)
 - Next major work: Auth screens + cloud sync (Phase 1)
 - All monetization must go through website (NOT in-app) to avoid Apple's 30% cut
 
 ### ⏳ Waiting For
 
-**RetailGators Response (Nov 4, 2024):**
-- **Initial inquiry:** Sent with 5 key questions (legal, sample, updates, pilot, scope)
-- **Detailed requirements:** Sent (3 retailers, 7 categories, ~2-3k SKUs, daily updates)
-- **Latest discussion:** Clarified we need **~3,000 SKUs per retailer (9,000 total)** for comprehensive live catalog
-  - Original offer: 10k SKUs per retailer = $900/month (likely overkill - 30k total products)
-  - Our analysis: Need 1,500-2,000 per retailer minimum, 3k gives us healthy buffer
-  - **Action needed:** Follow up to negotiate pricing for 3k/retailer (estimate $300-400/month)
-- **Waiting for:**
-  - Legal posture answer (indemnity vs "as-is")
-  - Sample CSV with all required fields
-  - Pricing for 3k SKUs/retailer tier
-  - 30-day pilot terms
-  - Daily update delivery method
+**Xbyte Sample Data:**
+- **Status:** Expected in a few days
+- **Purpose:** Real product & pricing data for construction materials
+- **Action when received:**
+  - Review data format and fields
+  - Run migration 004 in Supabase (adds retailer field)
+  - Test import script with sample data
+  - Evaluate data quality and coverage
 
 **Official API Responses:**
 - Menards: webedi@menards.com, sppurchasing@menards.com (emails sent)
 - 1Build: Outreach sent
-- Parallel track while exploring RetailGators
+- Parallel track while working with Xbyte
 
-**Apple Developer:**
-- Payment processed ($99/year)
-- Account pending activation (24-48 hours)
-- Ready for TestFlight build when approved
+**App Distribution:**
+- ✅ TestFlight (iOS): LIVE and accepting beta testers
+- ✅ Google Play Testing (Android): LIVE and accepting beta testers
+- Apple Developer account: Active
+- Google Play Console: Active
 
 ### 🔜 Next Steps (Priority Order)
 
@@ -478,19 +474,19 @@ User creates quotes with real-time pricing
 - ✅ All recent work committed and pushed to `integration/all-features`
 
 **Immediate (This Week):**
-1. **Follow up with RetailGators** - Negotiate pricing for 3k SKUs/retailer (~$300-400/month vs $900)
-2. **Decide on data source** - RetailGators pilot vs wait for official APIs
-3. **Apple Developer activation** - Check status, ready for TestFlight build
-4. Build iOS app with EAS
-5. Submit to TestFlight
+1. **Wait for Xbyte sample data** - Expected in a few days
+2. **Continue beta testing** - Monitor TestFlight and Google Play feedback
+3. Work on auth screens (login/signup)
+4. Plan cloud sync implementation
 
-**When RetailGators Data Arrives:**
-1. Run migration 004 in Supabase (adds retailer field) - **Ready to execute**
-2. Test import script with sample CSV - **Script built: `supabase/import_retailer_data.ts`**
-3. Import full dataset (3k SKUs × 3 retailers = 9k products)
-4. Add retailer badges to product picker UI
-5. Test sync in app
-6. Update status messaging ("Pricing data provided by RetailGators" disclaimer)
+**When Xbyte Data Arrives:**
+1. Review data format and fields
+2. Run migration 004 in Supabase (adds retailer field) - **Ready to execute**
+3. Test import script with sample data - **Script built: `supabase/import_retailer_data.ts`**
+4. Import full dataset
+5. Add retailer badges to product picker UI (if applicable)
+6. Test sync in app
+7. Update status messaging with appropriate data source disclaimer
 
 **Phase 1 - Auth & Cloud Sync (Next 1-2 Weeks):**
 1. Login/signup screens
@@ -507,10 +503,10 @@ User creates quotes with real-time pricing
 5. Founder pricing launch
 
 **Phase 3 - Public Launch (1-2 Months):**
-1. Retailer data integration complete (RetailGators OR official APIs)
+1. Product data integration complete (Xbyte OR official APIs)
 2. Daily price update automation
 3. Quote Wizard (Premium feature)
-4. Public launch with App Store listing
+4. Public launch with full App Store and Google Play listing
 
 ---
 
@@ -526,7 +522,7 @@ User creates quotes with real-time pricing
 - `products` and `categories` tables in Supabase are for supplier API data
 - DO NOT delete these tables
 - Currently seeded with 368 AI-estimated products
-- Will be replaced/augmented by retailer data (RetailGators) or official APIs
+- Will be replaced/augmented by product data (Xbyte) or official APIs
 
 ### Data Migration
 - Free users stay 100% local (no forced cloud)
@@ -540,35 +536,26 @@ User creates quotes with real-time pricing
 - Raise prices at customer milestones, not time-based
 - Grandfathering creates loyalty and urgency
 
-### RetailGators Data Strategy (Nov 2024)
+### Product Data Strategy (Nov 2024)
 
-**Context:** Need real retailer pricing quickly. Official APIs slow to respond. Found RetailGators (web scraping service).
+**Context:** Need real product pricing quickly. Official APIs slow to respond. Working with Xbyte for product data.
 
-**Balanced Approach:**
-- Use RetailGators for 30-day pilot to bootstrap with real data
-- Label clearly in UI: "Pricing data provided by RetailGators - verify at retailer checkout"
+**Approach:**
+- Use Xbyte data to bootstrap with real product information
+- Label data source appropriately in UI with disclaimers as needed
 - Continue pursuing official API partnerships in parallel (Menards, 1Build, Lowe's, HD)
-- Internal development/testing use initially
-- Evaluate legal stance, data quality, reliability during pilot
+- Evaluate data quality and coverage when sample arrives
 - Transition to official APIs when available
 
-**Guardrails:**
-- Request sample data (10-20 SKUs) before committing
-- Confirm legal indemnity stance in writing
-- Start with 30-day pilot (not annual commitment)
-- Pull only construction categories (not full catalog)
-- Document data source and dates for audit trail
-- Keep "verify at checkout" disclaimers in UI
-- Monitor for any retailer pushback
+**Data Integration Plan:**
+- Review sample data format and fields
+- Test import pipeline with sample
+- Evaluate data quality, coverage, and pricing accuracy
+- Document data source and update dates for audit trail
+- Add appropriate disclaimers in UI
+- Monitor user feedback on data accuracy
 
-**Key Questions Sent to RetailGators:**
-1. Legal posture - indemnity or "as-is"?
-2. Sample CSV with all required fields
-3. Daily update delivery method (API vs file)
-4. 30-day pilot option
-5. Category filtering (construction only)
-
-**Philosophy:** Scrappy founder bootstrap (speed) + protective guardrails (don't blow a hole in the hull). Not shady, filling a gap retailers left.
+**Philosophy:** Bootstrap quickly with available data sources while pursuing official partnerships. Transparency with users about data sources.
 
 ---
 
