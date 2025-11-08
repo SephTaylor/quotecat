@@ -6,8 +6,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } from "@react-navigation/drawer";
 import { View, Text, StyleSheet, Pressable, Alert, Linking, Image } from "react-native";
 import { useRouter } from "expo-router";
-import { getUserState } from "@/lib/user";
 import { createNewQuote } from "@/lib/quotes";
+import { signOut as authSignOut, getCurrentUserEmail, isAuthenticated } from "@/lib/auth";
 
 type IconProps = { color: string; size: number };
 
@@ -153,27 +153,21 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   // Load user state
   React.useEffect(() => {
     const load = async () => {
-      const user = await getUserState();
-      setUserEmail(user.email);
-      setIsSignedIn(!!user.email);
+      const authenticated = await isAuthenticated();
+      if (authenticated) {
+        const email = await getCurrentUserEmail();
+        setUserEmail(email || undefined);
+        setIsSignedIn(true);
+      } else {
+        setUserEmail(undefined);
+        setIsSignedIn(false);
+      }
     };
     load();
   }, []);
 
   const handleSignIn = () => {
-    Alert.alert(
-      "Sign In",
-      "You'll be redirected to quotecat.ai to sign in to your account.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Continue",
-          onPress: () => {
-            Linking.openURL("https://quotecat.ai/signin");
-          },
-        },
-      ],
-    );
+    router.push("/(auth)/sign-in" as any);
   };
 
   const handleSignOut = () => {
@@ -182,11 +176,10 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       {
         text: "Sign Out",
         style: "destructive",
-        onPress: () => {
-          // TODO: Implement sign out logic
+        onPress: async () => {
+          await authSignOut();
           setIsSignedIn(false);
           setUserEmail(undefined);
-          Alert.alert("Signed Out", "You have been signed out successfully.");
         },
       },
     ]);

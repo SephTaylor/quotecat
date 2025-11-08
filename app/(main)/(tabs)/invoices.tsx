@@ -4,6 +4,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import {
   deleteInvoice,
   listInvoices,
+  saveInvoice,
   updateInvoice,
   type Invoice,
 } from "@/lib/invoices";
@@ -18,6 +19,7 @@ import { InvoiceStatusMeta } from "@/lib/types";
 import {
   Alert,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -43,6 +45,7 @@ export default function InvoicesList() {
   const [isPro, setIsPro] = useState(false);
   const [deletedInvoice, setDeletedInvoice] = useState<Invoice | null>(null);
   const [showUndo, setShowUndo] = useState(false);
+  const [editingStatusForInvoice, setEditingStatusForInvoice] = useState<Invoice | null>(null);
 
   const load = useCallback(async () => {
     const user = await getUserState();
@@ -138,30 +141,48 @@ export default function InvoicesList() {
     }
   }, []);
 
-  const handleUpdateStatus = useCallback(async (invoice: Invoice) => {
-    const statusOptions: InvoiceStatus[] = ["unpaid", "partial", "paid", "overdue"];
-    const currentIndex = statusOptions.indexOf(invoice.status);
+  const handleUpdateStatus = useCallback((invoice: Invoice) => {
+    setEditingStatusForInvoice(invoice);
+  }, []);
 
-    const buttons = statusOptions.map((status) => ({
-      text: InvoiceStatusMeta[status].label,
-      onPress: async () => {
-        await updateInvoice(invoice.id, { status });
-        await load();
-      },
-    }));
-
-    buttons.push({ text: "Cancel", onPress: () => {}, style: "cancel" } as any);
-
-    Alert.alert(
-      "Update Status",
-      `Current status: ${InvoiceStatusMeta[invoice.status].label}`,
-      buttons
-    );
-  }, [load]);
+  const handleSaveStatus = useCallback(async (newStatus: InvoiceStatus) => {
+    if (!editingStatusForInvoice) return;
+    try {
+      await updateInvoice(editingStatusForInvoice.id, { status: newStatus });
+      await load();
+      setEditingStatusForInvoice(null);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update status");
+    }
+  }, [editingStatusForInvoice, load]);
 
   const handleViewInvoice = useCallback((invoice: Invoice) => {
     router.push(`/invoice/${invoice.id}` as any);
   }, [router]);
+
+  const handleCopyInvoice = useCallback(async (invoice: Invoice) => {
+    try {
+      // Create a copy of the invoice with a new ID and number
+      const now = new Date().toISOString();
+      const newInvoice: Invoice = {
+        ...invoice,
+        id: `inv_${Date.now()}`,
+        invoiceNumber: `${invoice.invoiceNumber}-COPY`,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // Save the copied invoice
+      await saveInvoice(newInvoice);
+
+      // Reload the list
+      await load();
+
+      Alert.alert("Success", "Invoice copied successfully");
+    } catch (error) {
+      Alert.alert("Error", "Failed to copy invoice");
+    }
+  }, [load]);
 
   // Filter invoices based on search query and status
   const filteredInvoices = React.useMemo(() => {
@@ -284,6 +305,7 @@ export default function InvoicesList() {
               onDelete={() => handleDeleteInvoice(item)}
               onExport={() => handleExportInvoice(item)}
               onUpdateStatus={() => handleUpdateStatus(item)}
+              onCopy={() => handleCopyInvoice(item)}
             />
           )}
           ListEmptyComponent={
@@ -314,6 +336,51 @@ export default function InvoicesList() {
             setDeletedInvoice(null);
           }}
         />
+
+        {/* Status Selector Modal */}
+        <Modal
+          visible={editingStatusForInvoice !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingStatusForInvoice(null)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setEditingStatusForInvoice(null)}
+          >
+            <View style={styles.modalContainer}>
+              <Pressable
+                style={styles.statusModal}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <Text style={styles.modalTitle}>Update Status</Text>
+                <Text style={styles.modalSubtitle}>
+                  Current: {editingStatusForInvoice ? InvoiceStatusMeta[editingStatusForInvoice.status].label : ''}
+                </Text>
+
+                {(["unpaid", "partial", "paid", "overdue"] as const).map((status) => (
+                  <Pressable
+                    key={status}
+                    style={[
+                      styles.statusOption,
+                      editingStatusForInvoice?.status === status && styles.statusOptionActive,
+                    ]}
+                    onPress={() => handleSaveStatus(status)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusOptionText,
+                        editingStatusForInvoice?.status === status && styles.statusOptionTextActive,
+                      ]}
+                    >
+                      {InvoiceStatusMeta[status].label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
       </GradientBackground>
     </GestureHandlerRootView>
   );
@@ -455,6 +522,63 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: "#000",
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContainer: {
+      width: "100%",
+      paddingHorizontal: theme.spacing(3),
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    statusModal: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(3),
+      width: "100%",
+      maxWidth: 400,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+      textAlign: "center",
+    },
+    modalSubtitle: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(2),
+      textAlign: "center",
+    },
+    statusOption: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      marginBottom: theme.spacing(1),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    statusOptionActive: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    statusOptionText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      textAlign: "center",
+    },
+    statusOptionTextActive: {
+      color: "#000",
+      fontWeight: "700",
     },
   });
 }

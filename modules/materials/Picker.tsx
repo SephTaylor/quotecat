@@ -92,27 +92,8 @@ function MaterialsPicker({
     return filtered;
   }, [itemsByCategory, searchQuery]);
 
-  // Generate status message
-  const statusMessage = React.useMemo(() => {
-    if (syncing) return { text: "Syncing...", icon: "🔄", color: theme.colors.accent };
-    if (lastSync) {
-      const hoursAgo = Math.floor((Date.now() - lastSync.getTime()) / (1000 * 60 * 60));
-      if (hoursAgo < 1) return { text: "Online (Up to date)", icon: "✅", color: theme.colors.success || "#4ade80" };
-      if (hoursAgo < 24) return { text: `Online (Updated ${hoursAgo}h ago)`, icon: "✅", color: theme.colors.success || "#4ade80" };
-      return { text: `Pull down to sync (${Math.floor(hoursAgo / 24)}d ago)`, icon: "⚠️", color: theme.colors.warning || "#fbbf24" };
-    }
-    return { text: "Pull down to sync", icon: "📱", color: theme.colors.muted };
-  }, [syncing, lastSync, theme]);
-
   return (
     <View style={styles.content}>
-      {/* Status Indicator */}
-      <View style={styles.statusBadge}>
-        <Text style={[styles.statusText, { color: statusMessage.color }]}>
-          {statusMessage.icon} {statusMessage.text}
-        </Text>
-      </View>
-
       {/* Search Bar */}
       <TextInput
         style={styles.searchInput}
@@ -262,21 +243,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 12,
       marginTop: 4,
       marginBottom: 12,
-    },
-    statusBadge: {
-      marginTop: theme.spacing(0.5),
-      marginBottom: theme.spacing(1.5),
-      paddingHorizontal: theme.spacing(1.5),
-      paddingVertical: theme.spacing(0.75),
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      alignSelf: "center",
-    },
-    statusText: {
-      fontSize: 12,
-      fontWeight: "600",
     },
     searchInput: {
       height: 44,

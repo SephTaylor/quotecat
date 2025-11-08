@@ -8,9 +8,11 @@ import {
   savePreferences,
   updateDashboardPreferences,
   updateInvoiceSettings,
+  updateNotificationPreferences,
   resetPreferences,
   type DashboardPreferences,
   type UserPreferences,
+  type NotificationPreferences,
 } from "@/lib/preferences";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -29,6 +31,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
+import { signOut } from "@/lib/auth";
 
 export default function Settings() {
   const { mode, theme, setThemeMode } = useTheme();
@@ -62,6 +65,7 @@ export default function Settings() {
     dashboard: false,
     quoteDefaults: false,
     invoiceSettings: false,
+    notifications: false,
     privacy: false,
     comingSoon: false,
     about: false,
@@ -183,19 +187,7 @@ export default function Settings() {
   };
 
   const handleSignIn = () => {
-    Alert.alert(
-      "Sign In",
-      "You'll be redirected to quotecat.ai to sign in to your account.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Continue",
-          onPress: () => {
-            Linking.openURL("https://quotecat.ai/signin");
-          },
-        },
-      ],
-    );
+    router.push("/(auth)/sign-in" as any);
   };
 
   const handleUpdatePreference = async (
@@ -822,6 +814,68 @@ export default function Settings() {
             </View>
           </CollapsibleSection>
 
+          {/* Notifications Section */}
+          <CollapsibleSection
+            title="Notifications"
+            isExpanded={expandedSections.notifications}
+            onToggle={() => toggleSection('notifications')}
+            theme={theme}
+          >
+            <View style={styles.card}>
+              {/* Invoice Notifications */}
+              <View style={styles.notificationGroup}>
+                <View style={styles.notificationGroupHeader}>
+                  <Ionicons name="receipt-outline" size={18} color={theme.colors.accent} />
+                  <Text style={styles.notificationGroupTitle}>Invoice Notifications</Text>
+                </View>
+                <Text style={styles.notificationGroupDescription}>
+                  Get notified about invoice due dates and status changes
+                </Text>
+              </View>
+
+              <SettingRow
+                label="Overdue Invoices"
+                value={preferences.notifications?.invoiceOverdue || false}
+                onToggle={async (value) => {
+                  const updated = await updateNotificationPreferences({ invoiceOverdue: value });
+                  setPreferences(updated);
+                }}
+                theme={theme}
+                compact
+              />
+
+              <SettingRow
+                label="Due Soon (3 days)"
+                value={preferences.notifications?.invoiceDueSoon || false}
+                onToggle={async (value) => {
+                  const updated = await updateNotificationPreferences({ invoiceDueSoon: value });
+                  setPreferences(updated);
+                }}
+                theme={theme}
+                compact
+              />
+
+              <SettingRow
+                label="Due Today"
+                value={preferences.notifications?.invoiceDueToday || false}
+                onToggle={async (value) => {
+                  const updated = await updateNotificationPreferences({ invoiceDueToday: value });
+                  setPreferences(updated);
+                }}
+                theme={theme}
+                compact
+                isLast
+              />
+
+              {/* Info note */}
+              <View style={styles.notificationNote}>
+                <Text style={styles.notificationNoteText}>
+                  Feature coming soon
+                </Text>
+              </View>
+            </View>
+          </CollapsibleSection>
+
           {/* Privacy & Data Section */}
           <CollapsibleSection
             title="Privacy & Data"
@@ -982,17 +1036,22 @@ function SettingRow({
   onToggle,
   isLast = false,
   theme,
+  compact = false,
 }: {
   label: string;
   value: boolean;
   onToggle: (value: boolean) => void;
   isLast?: boolean;
   theme: ReturnType<typeof useTheme>["theme"];
+  compact?: boolean;
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <View style={[styles.settingButton, isLast && styles.settingButtonLast]}>
+    <View style={[
+      compact ? styles.settingButtonCompact : styles.settingButton,
+      isLast && styles.settingButtonLast
+    ]}>
       <Text style={styles.settingButtonText}>{label}</Text>
       <Switch
         value={value}
@@ -1075,6 +1134,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       justifyContent: "space-between",
       alignItems: "center",
       padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    settingButtonCompact: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.25),
+      paddingHorizontal: theme.spacing(2),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
@@ -1368,6 +1436,40 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.muted,
       fontStyle: "italic",
       marginTop: theme.spacing(1),
+      textAlign: "center",
+    },
+    // Notification section styles
+    notificationGroup: {
+      paddingHorizontal: theme.spacing(2),
+      paddingTop: theme.spacing(1),
+      paddingBottom: theme.spacing(0.5),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    notificationGroupHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(0.5),
+      marginBottom: 2,
+    },
+    notificationGroupTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    notificationGroupDescription: {
+      fontSize: 11,
+      color: theme.colors.muted,
+      lineHeight: 14,
+    },
+    notificationNote: {
+      paddingHorizontal: theme.spacing(2),
+      paddingTop: theme.spacing(0.75),
+      paddingBottom: theme.spacing(1.5),
+    },
+    notificationNoteText: {
+      fontSize: 11,
+      color: theme.colors.muted,
       textAlign: "center",
     },
   });

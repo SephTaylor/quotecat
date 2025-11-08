@@ -13,7 +13,9 @@ import {
   Platform,
   Modal,
   TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
@@ -42,6 +44,9 @@ export default function QuoteReviewScreen() {
   const [isExportingSpreadsheet, setIsExportingSpreadsheet] = useState(false);
   const [showPercentageModal, setShowPercentageModal] = useState(false);
   const [percentageInput, setPercentageInput] = useState("");
+  const [showDueDateModal, setShowDueDateModal] = useState(false);
+  const [selectedDueDate, setSelectedDueDate] = useState<Date>(new Date());
+  const [pendingInvoicePercentage, setPendingInvoicePercentage] = useState<number>(100);
 
   useEffect(() => {
     (async () => {
@@ -247,15 +252,25 @@ export default function QuoteReviewScreen() {
     }
   };
 
-  const handleCreateInvoice = async (percentage: number) => {
+  const showDueDatePicker = (percentage: number) => {
+    // Set default due date to 30 days from now
+    const defaultDueDate = new Date();
+    defaultDueDate.setDate(defaultDueDate.getDate() + 30);
+    setSelectedDueDate(defaultDueDate);
+    setPendingInvoicePercentage(percentage);
+    setShowDueDateModal(true);
+  };
+
+  const handleCreateInvoice = async () => {
     if (!quote) return;
 
     try {
-      const invoice = await createInvoiceFromQuote(quote.id, percentage);
-      const isPartial = percentage !== 100;
+      const invoice = await createInvoiceFromQuote(quote.id, pendingInvoicePercentage, selectedDueDate);
+      const isPartial = pendingInvoicePercentage !== 100;
+      setShowDueDateModal(false);
       Alert.alert(
         "Success!",
-        `${isPartial ? percentage + '% down payment invoice' : 'Invoice'} ${invoice.invoiceNumber} created successfully!`,
+        `${isPartial ? pendingInvoicePercentage + '% down payment invoice' : 'Invoice'} ${invoice.invoiceNumber} created successfully!`,
         [{ text: "OK" }]
       );
     } catch (error) {
@@ -275,11 +290,11 @@ export default function QuoteReviewScreen() {
         [
           { text: "Cancel", style: "cancel" },
           {
-            text: "Create",
+            text: "Next",
             onPress: (value) => {
               const percentage = parseInt(value || "0", 10);
               if (percentage > 0 && percentage < 100) {
-                handleCreateInvoice(percentage);
+                showDueDatePicker(percentage);
               } else {
                 Alert.alert("Invalid Percentage", "Please enter a number between 1 and 99.");
               }
@@ -301,7 +316,7 @@ export default function QuoteReviewScreen() {
     const percentage = parseInt(percentageInput || "0", 10);
     if (percentage > 0 && percentage < 100) {
       setShowPercentageModal(false);
-      handleCreateInvoice(percentage);
+      showDueDatePicker(percentage);
     } else {
       Alert.alert("Invalid Percentage", "Please enter a number between 1 and 99.");
     }
@@ -325,7 +340,7 @@ export default function QuoteReviewScreen() {
           handleExportSpreadsheet();
           break;
         case 2: // Full Invoice
-          handleCreateInvoice(100);
+          showDueDatePicker(100);
           break;
         case 3: // Down Payment Invoice
           handleDepositInvoice();
@@ -361,7 +376,7 @@ export default function QuoteReviewScreen() {
                 "Create Invoice",
                 "Select invoice type",
                 [
-                  { text: "Full Invoice", onPress: () => handleCreateInvoice(100) },
+                  { text: "Full Invoice", onPress: () => showDueDatePicker(100) },
                   { text: "Down Payment Invoice", onPress: () => handleDepositInvoice() },
                   { text: "Cancel", style: "cancel" },
                 ],
@@ -449,19 +464,6 @@ export default function QuoteReviewScreen() {
                   </Text>
                 </View>
               ))}
-            </View>
-          </View>
-        )}
-
-        {/* Pricing Disclaimer */}
-        {quote.items && quote.items.length > 0 && (
-          <View style={styles.disclaimerCard}>
-            <Text style={styles.disclaimerIcon}>⚠️</Text>
-            <View style={styles.disclaimerTextContainer}>
-              <Text style={styles.disclaimerTitle}>Estimated Pricing</Text>
-              <Text style={styles.disclaimerText}>
-                Material prices are AI-estimated based on 2025 market averages. Always verify current pricing with your supplier before finalizing quotes.
-              </Text>
             </View>
           </View>
         )}
@@ -622,6 +624,59 @@ export default function QuoteReviewScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Due Date Picker - iOS */}
+      {Platform.OS === "ios" && showDueDateModal && (
+        <Modal
+          visible={showDueDateModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowDueDateModal(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowDueDateModal(false)}
+          >
+            <Pressable
+              style={styles.datePickerModal}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <Pressable onPress={() => setShowDueDateModal(false)}>
+                  <Text style={styles.modalCancel}>Cancel</Text>
+                </Pressable>
+                <Text style={styles.modalTitle}>Select Due Date</Text>
+                <Pressable onPress={handleCreateInvoice}>
+                  <Text style={styles.modalDone}>Create</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={selectedDueDate}
+                mode="date"
+                display="spinner"
+                onChange={(event, date) => date && setSelectedDueDate(date)}
+                textColor={theme.colors.text}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      {/* Due Date Picker - Android */}
+      {Platform.OS === "android" && showDueDateModal && (
+        <DateTimePicker
+          value={selectedDueDate}
+          mode="date"
+          display="default"
+          onChange={(event, date) => {
+            setShowDueDateModal(false);
+            if (event.type === "set" && date) {
+              setSelectedDueDate(date);
+              handleCreateInvoice();
+            }
+          }}
+        />
+      )}
     </>
   );
 }
@@ -722,35 +777,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       borderWidth: 1,
       borderColor: theme.colors.border,
       overflow: "hidden",
-    },
-    disclaimerCard: {
-      flexDirection: "row",
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      borderWidth: 2,
-      borderColor: theme.colors.accent,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(3),
-      alignItems: "flex-start",
-    },
-    disclaimerIcon: {
-      fontSize: 24,
-      marginRight: theme.spacing(1.5),
-      marginTop: 2,
-    },
-    disclaimerTextContainer: {
-      flex: 1,
-    },
-    disclaimerTitle: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: theme.colors.text,
-      marginBottom: 4,
-    },
-    disclaimerText: {
-      fontSize: 12,
-      color: theme.colors.muted,
-      lineHeight: 16,
     },
     itemRow: {
       flexDirection: "row",
@@ -930,9 +956,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     modalOverlay: {
       flex: 1,
       backgroundColor: "rgba(0, 0, 0, 0.5)",
-      justifyContent: "center",
-      alignItems: "center",
-      padding: theme.spacing(3),
+      justifyContent: "flex-end",
     },
     modalContent: {
       backgroundColor: theme.colors.card,
@@ -995,6 +1019,38 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       fontSize: 16,
       fontWeight: "700",
       color: "#000",
+    },
+    modalContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: theme.spacing(3),
+    },
+    datePickerModal: {
+      backgroundColor: theme.colors.card,
+      borderTopLeftRadius: theme.radius.xl,
+      borderTopRightRadius: theme.radius.xl,
+      width: "100%",
+      paddingBottom: theme.spacing(4),
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    modalCancel: {
+      fontSize: 16,
+      color: theme.colors.muted,
+      fontWeight: "600",
+    },
+    modalDone: {
+      fontSize: 16,
+      color: theme.colors.accent,
+      fontWeight: "700",
     },
   });
 }

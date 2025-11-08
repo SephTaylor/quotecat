@@ -174,6 +174,33 @@ export default function QuoteMaterials() {
     [id, selection, router, clear],
   );
 
+  // Calculate status for header
+  const statusIcon = React.useMemo(() => {
+    if (syncing) return "🔄";
+    if (lastSync) {
+      const hoursAgo = Math.floor((Date.now() - lastSync.getTime()) / (1000 * 60 * 60));
+      if (hoursAgo < 24) return "✅";
+      return "⚠️";
+    }
+    return "📱";
+  }, [syncing, lastSync]);
+
+  const statusMessage = React.useMemo(() => {
+    if (syncing) return "Syncing product catalog from cloud...";
+    if (lastSync) {
+      const hoursAgo = Math.floor((Date.now() - lastSync.getTime()) / (1000 * 60 * 60));
+      if (hoursAgo < 1) return "Online (Up to date)\n\nProduct catalog is current.";
+      if (hoursAgo < 24) return `Online (Updated ${hoursAgo}h ago)\n\nProduct catalog is recent.`;
+      const daysAgo = Math.floor(hoursAgo / 24);
+      return `Sync recommended\n\nLast updated ${daysAgo} day${daysAgo > 1 ? 's' : ''} ago.\nPull down to refresh.`;
+    }
+    return "Not synced\n\nPull down to sync product catalog from cloud.";
+  }, [syncing, lastSync]);
+
+  const showStatusInfo = () => {
+    Alert.alert("Product Catalog Status", statusMessage);
+  };
+
   if (loading) {
     return (
       <>
@@ -188,6 +215,11 @@ export default function QuoteMaterials() {
             headerTitleStyle: {
               color: theme.colors.text,
             },
+            headerRight: () => (
+              <Pressable onPress={showStatusInfo} style={{ marginRight: 16, padding: 4 }}>
+                <Text style={{ fontSize: 18 }}>{statusIcon}</Text>
+              </Pressable>
+            ),
           }}
         />
         <Screen scroll refreshing={refreshing} onRefresh={onRefresh}>
@@ -219,12 +251,20 @@ export default function QuoteMaterials() {
           headerTitleStyle: {
             color: theme.colors.text,
           },
+          headerRight: () => (
+            <Pressable onPress={showStatusInfo} style={{ marginRight: 16, padding: 4 }}>
+              <Text style={{ fontSize: 18 }}>{statusIcon}</Text>
+            </Pressable>
+          ),
         }}
       />
 
       <Screen scroll refreshing={refreshing} onRefresh={onRefresh}>
         {quoteItems.length > 0 && (
-          <View style={styles(theme).quoteItemsIndicator}>
+          <Pressable
+            style={styles(theme).quoteItemsIndicator}
+            onPress={() => id && router.push(`/quote/${id}/edit-items`)}
+          >
             <View style={styles(theme).indicatorContent}>
               <View style={styles(theme).indicatorTextContainer}>
                 <Text style={styles(theme).indicatorText}>
@@ -243,14 +283,11 @@ export default function QuoteMaterials() {
                     .toFixed(2)}
                 </Text>
               </View>
-              <Pressable
-                style={styles(theme).editButton}
-                onPress={() => id && router.push(`/quote/${id}/edit-items`)}
-              >
+              <View style={styles(theme).editButton}>
                 <Text style={styles(theme).editButtonText}>Edit</Text>
-              </Pressable>
+              </View>
             </View>
-          </View>
+          </Pressable>
         )}
 
         {showSuccessMessage && (

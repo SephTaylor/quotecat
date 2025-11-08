@@ -1,6 +1,6 @@
 // app/(main)/invoice/[id].tsx
 // Invoice detail/view screen
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,13 +8,19 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
+  Platform,
+  Modal,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableOpacity,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
-import { GradientBackground } from "@/components/GradientBackground";
 import { Ionicons } from "@expo/vector-icons";
-import type { Invoice } from "@/lib/types";
+import type { Invoice, InvoiceStatus } from "@/lib/types";
 import { InvoiceStatusMeta } from "@/lib/types";
 import {
   getInvoiceById,
@@ -25,7 +31,7 @@ import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
-import { BottomBar } from "@/modules/core/ui";
+import { FormScreen } from "@/modules/core/ui";
 
 export default function InvoiceDetailScreen() {
   const router = useRouter();
@@ -35,6 +41,23 @@ export default function InvoiceDetailScreen() {
 
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+
+  // Editing states
+  const [editingDueDate, setEditingDueDate] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [editingClientName, setEditingClientName] = useState(false);
+  const [editingProjectName, setEditingProjectName] = useState(false);
+  const [editingInvoiceNumber, setEditingInvoiceNumber] = useState(false);
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [tempDueDate, setTempDueDate] = useState<Date>(new Date());
+  const [tempNotes, setTempNotes] = useState("");
+  const [tempClientName, setTempClientName] = useState("");
+  const [tempProjectName, setTempProjectName] = useState("");
+  const [tempInvoiceNumber, setTempInvoiceNumber] = useState("");
+
+  // Refs for TextInput focus
+  const projectInputRef = useRef<TextInput>(null);
+  const clientInputRef = useRef<TextInput>(null);
 
   const loadInvoice = useCallback(async () => {
     if (!invoiceId) return;
@@ -78,25 +101,20 @@ export default function InvoiceDetailScreen() {
     }
   }, [invoice]);
 
-  const handleUpdateStatus = useCallback(async () => {
+  const handleUpdateStatus = useCallback(() => {
     if (!invoice) return;
+    setEditingStatus(true);
+  }, [invoice]);
 
-    const statusOptions = ["unpaid", "partial", "paid", "overdue"] as const;
-    const buttons = statusOptions.map((status) => ({
-      text: InvoiceStatusMeta[status].label,
-      onPress: async () => {
-        await updateInvoice(invoice.id, { status });
-        await loadInvoice();
-      },
-    }));
-
-    buttons.push({ text: "Cancel", onPress: () => {}, style: "cancel" } as any);
-
-    Alert.alert(
-      "Update Status",
-      `Current status: ${InvoiceStatusMeta[invoice.status].label}`,
-      buttons
-    );
+  const handleSaveStatus = useCallback(async (newStatus: InvoiceStatus) => {
+    if (!invoice) return;
+    try {
+      await updateInvoice(invoice.id, { status: newStatus });
+      await loadInvoice();
+      setEditingStatus(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update status");
+    }
   }, [invoice, loadInvoice]);
 
   const handleDelete = useCallback(() => {
@@ -119,6 +137,105 @@ export default function InvoiceDetailScreen() {
     );
   }, [invoice, router]);
 
+  // Edit handlers
+  const handleEditDueDate = useCallback(() => {
+    if (!invoice) return;
+    const dueDate = new Date(invoice.dueDate);
+    setTempDueDate(dueDate);
+    setEditingDueDate(true);
+  }, [invoice]);
+
+  const handleSaveDueDate = useCallback(async (date: Date) => {
+    if (!invoice) return;
+    try {
+      await updateInvoice(invoice.id, { dueDate: date.toISOString() });
+      await loadInvoice();
+      setEditingDueDate(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update due date");
+    }
+  }, [invoice, loadInvoice]);
+
+  const handleEditNotes = useCallback(() => {
+    if (!invoice) return;
+    setTempNotes(invoice.notes || "");
+    setEditingNotes(true);
+  }, [invoice]);
+
+  const handleSaveNotes = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      await updateInvoice(invoice.id, { notes: tempNotes });
+      await loadInvoice();
+      setEditingNotes(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update notes");
+    }
+  }, [invoice, tempNotes, loadInvoice]);
+
+  const handleEditClientName = useCallback(() => {
+    if (!invoice) return;
+    setTempClientName(invoice.clientName || "");
+    setEditingClientName(true);
+    // Android: manually focus after modal opens
+    if (Platform.OS === 'android') {
+      setTimeout(() => clientInputRef.current?.focus(), 100);
+    }
+  }, [invoice]);
+
+  const handleSaveClientName = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      await updateInvoice(invoice.id, { clientName: tempClientName });
+      await loadInvoice();
+      setEditingClientName(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update client name");
+    }
+  }, [invoice, tempClientName, loadInvoice]);
+
+  const handleEditProjectName = useCallback(() => {
+    if (!invoice) return;
+    setTempProjectName(invoice.name || "");
+    setEditingProjectName(true);
+    // Android: manually focus after modal opens
+    if (Platform.OS === 'android') {
+      setTimeout(() => projectInputRef.current?.focus(), 100);
+    }
+  }, [invoice]);
+
+  const handleSaveProjectName = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      await updateInvoice(invoice.id, { name: tempProjectName });
+      await loadInvoice();
+      setEditingProjectName(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update project name");
+    }
+  }, [invoice, tempProjectName, loadInvoice]);
+
+  const handleEditInvoiceNumber = useCallback(() => {
+    if (!invoice) return;
+    setTempInvoiceNumber(invoice.invoiceNumber || "");
+    setEditingInvoiceNumber(true);
+    // Android: manually focus after modal opens
+    if (Platform.OS === 'android') {
+      setTimeout(() => projectInputRef.current?.focus(), 100);
+    }
+  }, [invoice]);
+
+  const handleSaveInvoiceNumber = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      await updateInvoice(invoice.id, { invoiceNumber: tempInvoiceNumber });
+      await loadInvoice();
+      setEditingInvoiceNumber(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update invoice number");
+    }
+  }, [invoice, tempInvoiceNumber, loadInvoice]);
+
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   if (loading) {
@@ -138,11 +255,9 @@ export default function InvoiceDetailScreen() {
             },
           }}
         />
-        <GradientBackground>
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={theme.colors.accent} />
-          </View>
-        </GradientBackground>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={theme.colors.accent} />
+        </View>
       </>
     );
   }
@@ -164,14 +279,12 @@ export default function InvoiceDetailScreen() {
             },
           }}
         />
-        <GradientBackground>
-          <View style={styles.center}>
-            <Text style={styles.emptyTitle}>Invoice not found</Text>
-            <Text style={styles.emptyDescription}>
-              This invoice may have been deleted
-            </Text>
-          </View>
-        </GradientBackground>
+        <View style={styles.center}>
+          <Text style={styles.emptyTitle}>Invoice not found</Text>
+          <Text style={styles.emptyDescription}>
+            This invoice may have been deleted
+          </Text>
+        </View>
       </>
     );
   }
@@ -214,6 +327,16 @@ export default function InvoiceDetailScreen() {
           title: invoice.invoiceNumber,
           headerShown: true,
           headerTitleAlign: "center",
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.back()}
+              style={{ paddingLeft: 16, paddingVertical: 8 }}
+            >
+              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
+                ‹ Back
+              </Text>
+            </Pressable>
+          ),
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -223,21 +346,40 @@ export default function InvoiceDetailScreen() {
           },
         }}
       />
-      <GradientBackground>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+      <FormScreen
+        scroll
+        bottomBar={
+          <View style={styles.bottomButtons}>
+            <Pressable style={styles.exportButton} onPress={handleExportPDF}>
+              <Ionicons name="document-outline" size={24} color="#000" />
+              <Text style={styles.exportButtonText}>Export PDF</Text>
+            </Pressable>
+
+            <Pressable style={styles.deleteButton} onPress={handleDelete}>
+              <Ionicons name="trash-outline" size={24} color="#FFF" />
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </Pressable>
+          </View>
+        }
+        bottomBarStyle={{
+          paddingTop: theme.spacing(1),
+          paddingBottom: theme.spacing(1),
+        }}
+      >
           {/* Header Card */}
           <View style={styles.headerCard}>
-            <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
-                {invoice.isPartialInvoice && invoice.percentage && (
-                  <Text style={styles.partialBadge}>{invoice.percentage}% Down Payment</Text>
-                )}
+            {invoice.isPartialInvoice && invoice.percentage && (
+              <View style={styles.partialBadgeContainer}>
+                <Text style={styles.partialBadge}>{invoice.percentage}% Down Payment</Text>
               </View>
-              <View
+            )}
+            <View style={styles.headerRow}>
+              <Pressable onPress={handleEditInvoiceNumber} style={styles.invoiceNumberContainer}>
+                <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
+                <Text style={styles.editTextSmall}>Edit</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleUpdateStatus}
                 style={[
                   styles.statusBadge,
                   { backgroundColor: `${statusMeta.color}20` },
@@ -246,25 +388,58 @@ export default function InvoiceDetailScreen() {
                 <Text style={[styles.statusText, { color: statusMeta.color }]}>
                   {statusMeta.label}
                 </Text>
-              </View>
+              </Pressable>
             </View>
 
-            <Text style={styles.invoiceName}>{invoice.name}</Text>
-            {invoice.clientName && (
-              <Text style={styles.clientName}>{invoice.clientName}</Text>
-            )}
+            <View style={styles.dividerLight} />
 
+            {/* Project Name - Editable */}
+            <Pressable
+              style={styles.editableRow}
+              onPress={handleEditProjectName}
+            >
+              <View style={styles.editableRowContent}>
+                <Text style={styles.infoLabel}>Project</Text>
+                <Text style={styles.infoValue}>{invoice.name}</Text>
+              </View>
+              <Text style={styles.editText}>Edit</Text>
+            </Pressable>
+
+            {/* Client Name - Editable */}
+            <Pressable
+              style={styles.editableRow}
+              onPress={handleEditClientName}
+            >
+              <View style={styles.editableRowContent}>
+                <Text style={styles.infoLabel}>Client</Text>
+                <Text style={[styles.infoValue, !invoice.clientName && styles.infoPlaceholder]}>
+                  {invoice.clientName || "Tap to add"}
+                </Text>
+              </View>
+              <Text style={styles.editText}>Edit</Text>
+            </Pressable>
+
+            <View style={styles.dividerLight} />
+
+            {/* Dates */}
             <View style={styles.dateRow}>
-              <View>
+              <View style={styles.dateColumn}>
                 <Text style={styles.dateLabel}>Invoice Date</Text>
                 <Text style={styles.dateValue}>{formattedInvoiceDate}</Text>
               </View>
-              <View style={styles.dateRight}>
-                <Text style={[styles.dateLabel, styles.dateRightText]}>Due Date</Text>
-                <Text style={[styles.dateValue, styles.dateRightText]}>
+              <TouchableOpacity
+                onPress={handleEditDueDate}
+                style={styles.editableDateColumn}
+                activeOpacity={0.7}
+              >
+                <View style={styles.dueDateHeader}>
+                  <Text style={styles.dateLabel}>Due Date</Text>
+                  <Text style={styles.editText}>Edit</Text>
+                </View>
+                <Text style={styles.dateValue}>
                   {formattedDueDate}
                 </Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -334,42 +509,328 @@ export default function InvoiceDetailScreen() {
           </View>
 
           {/* Notes */}
-          {invoice.notes && (
-            <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.section}
+            onPress={handleEditNotes}
+            activeOpacity={0.9}
+          >
+            <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Notes</Text>
-              <Text style={styles.notesText}>{invoice.notes}</Text>
+              <Text style={styles.editText}>Edit</Text>
             </View>
-          )}
+            <Text style={[styles.notesText, !invoice.notes && styles.notesPlaceholder]}>
+              {invoice.notes || "Tap to add notes"}
+            </Text>
+          </TouchableOpacity>
 
           {/* Total */}
           <View style={styles.totalCard}>
             <Text style={styles.totalLabel}>Total Amount</Text>
             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
           </View>
+      </FormScreen>
 
-          {/* Spacer for bottom bar */}
-          <View style={{ height: 100 }} />
-        </ScrollView>
-
-        <BottomBar>
-          <View style={styles.bottomButtons}>
-            <Pressable style={styles.iconButton} onPress={handleUpdateStatus}>
-              <Ionicons name="checkmark-circle-outline" size={24} color="#FFF" />
-              <Text style={styles.iconButtonText}>Status</Text>
+        {/* Edit Modals */}
+        {/* Due Date Picker */}
+        {editingDueDate && Platform.OS === 'ios' && (
+          <Modal
+            visible={editingDueDate}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setEditingDueDate(false)}
+          >
+            <Pressable
+              style={styles.modalOverlay}
+              onPress={() => setEditingDueDate(false)}
+            >
+              <Pressable
+                style={styles.datePickerModal}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <View style={styles.modalHeader}>
+                  <Pressable onPress={() => setEditingDueDate(false)}>
+                    <Text style={styles.modalCancel}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.modalTitle}>Select Due Date</Text>
+                  <Pressable onPress={() => handleSaveDueDate(tempDueDate)}>
+                    <Text style={styles.modalDone}>Done</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={tempDueDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={(event, date) => date && setTempDueDate(date)}
+                  textColor={theme.colors.text}
+                />
+              </Pressable>
             </Pressable>
+          </Modal>
+        )}
 
-            <Pressable style={styles.exportButton} onPress={handleExportPDF}>
-              <Ionicons name="document-outline" size={24} color="#000" />
-              <Text style={styles.exportButtonText}>Export PDF</Text>
-            </Pressable>
+        {/* Android Date Picker (Native calendar) */}
+        {editingDueDate && Platform.OS === 'android' && (
+          <DateTimePicker
+            value={tempDueDate}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              setEditingDueDate(false);
+              if (event.type === 'set' && date) {
+                handleSaveDueDate(date);
+              }
+            }}
+          />
+        )}
 
-            <Pressable style={styles.iconButton} onPress={handleDelete}>
-              <Ionicons name="trash-outline" size={24} color="#FFF" />
-              <Text style={styles.iconButtonText}>Delete</Text>
+        {/* Notes Editor */}
+        <Modal
+          visible={editingNotes}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setEditingNotes(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <Pressable
+              style={styles.modalOverlayInner}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingNotes(false);
+              }}
+            >
+              <Pressable
+                style={styles.textEditorModal}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <View style={styles.modalHeader}>
+                  <Pressable onPress={() => setEditingNotes(false)}>
+                    <Text style={styles.modalCancel}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.modalTitle}>Edit Notes</Text>
+                  <Pressable onPress={handleSaveNotes}>
+                    <Text style={styles.modalDone}>Save</Text>
+                  </Pressable>
+                </View>
+                <TextInput
+                  style={styles.textEditor}
+                  value={tempNotes}
+                  onChangeText={setTempNotes}
+                  placeholder="Add notes..."
+                  placeholderTextColor={theme.colors.muted}
+                  multiline
+                  autoFocus
+                  textAlignVertical="top"
+                />
+              </Pressable>
             </Pressable>
-          </View>
-        </BottomBar>
-      </GradientBackground>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Project Name Editor */}
+        <Modal
+          visible={editingProjectName}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingProjectName(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlayCentered}
+          >
+            <Pressable
+              style={styles.modalOverlayInner}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingProjectName(false);
+              }}
+            >
+              <View style={styles.inputModalContainer}>
+                <Pressable
+                  style={styles.inputModal}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <Text style={styles.modalTitleCentered}>Project Name</Text>
+                  <TextInput
+                    ref={projectInputRef}
+                    style={styles.textInput}
+                    value={tempProjectName}
+                    onChangeText={setTempProjectName}
+                    placeholder="Enter project name"
+                    placeholderTextColor={theme.colors.muted}
+                    autoFocus={Platform.OS === 'ios'}
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonCancel]}
+                      onPress={() => setEditingProjectName(false)}
+                    >
+                      <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonSave]}
+                      onPress={handleSaveProjectName}
+                    >
+                      <Text style={styles.modalButtonSaveText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Invoice Number Editor */}
+        <Modal
+          visible={editingInvoiceNumber}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingInvoiceNumber(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlayCentered}
+          >
+            <Pressable
+              style={styles.modalOverlayInner}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingInvoiceNumber(false);
+              }}
+            >
+              <View style={styles.inputModalContainer}>
+                <Pressable
+                  style={styles.inputModal}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <Text style={styles.modalTitleCentered}>Invoice Number</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={tempInvoiceNumber}
+                    onChangeText={setTempInvoiceNumber}
+                    placeholder="Enter invoice number"
+                    placeholderTextColor={theme.colors.muted}
+                    autoFocus={Platform.OS === 'ios'}
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonCancel]}
+                      onPress={() => setEditingInvoiceNumber(false)}
+                    >
+                      <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonSave]}
+                      onPress={handleSaveInvoiceNumber}
+                    >
+                      <Text style={styles.modalButtonSaveText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Client Name Editor */}
+        <Modal
+          visible={editingClientName}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingClientName(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlayCentered}
+          >
+            <Pressable
+              style={styles.modalOverlayInner}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingClientName(false);
+              }}
+            >
+              <View style={styles.inputModalContainer}>
+                <Pressable
+                  style={styles.inputModal}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <Text style={styles.modalTitleCentered}>Client Name</Text>
+                  <TextInput
+                    ref={clientInputRef}
+                    style={styles.textInput}
+                    value={tempClientName}
+                    onChangeText={setTempClientName}
+                    placeholder="Enter client name"
+                    placeholderTextColor={theme.colors.muted}
+                    autoFocus={Platform.OS === 'ios'}
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonCancel]}
+                      onPress={() => setEditingClientName(false)}
+                    >
+                      <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonSave]}
+                      onPress={handleSaveClientName}
+                    >
+                      <Text style={styles.modalButtonSaveText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Status Selector */}
+        <Modal
+          visible={editingStatus}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingStatus(false)}
+        >
+          <Pressable
+            style={styles.modalOverlayCentered}
+            onPress={() => setEditingStatus(false)}
+          >
+            <View style={styles.inputModalContainer}>
+              <Pressable
+                style={styles.statusModal}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <Text style={styles.modalTitleCentered}>Update Status</Text>
+                <Text style={styles.statusModalSubtitle}>
+                  Current: {InvoiceStatusMeta[invoice?.status || "unpaid"].label}
+                </Text>
+
+                {(["unpaid", "partial", "paid", "overdue"] as const).map((status) => (
+                  <Pressable
+                    key={status}
+                    style={[
+                      styles.statusOption,
+                      invoice?.status === status && styles.statusOptionActive,
+                    ]}
+                    onPress={() => handleSaveStatus(status)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusOptionText,
+                        invoice?.status === status && styles.statusOptionTextActive,
+                      ]}
+                    >
+                      {InvoiceStatusMeta[status].label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
     </>
   );
 }
@@ -394,17 +855,26 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.muted,
       textAlign: "center",
     },
-    scrollContent: {
-      padding: theme.spacing(3),
-      paddingBottom: theme.spacing(12),
-    },
     headerCard: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
-      padding: theme.spacing(3),
+      padding: theme.spacing(2),
       marginBottom: theme.spacing(3),
       borderWidth: 1,
       borderColor: theme.colors.border,
+    },
+    partialBadgeContainer: {
+      alignSelf: "flex-start",
+      backgroundColor: `${theme.colors.accent}20`,
+      paddingHorizontal: theme.spacing(1.5),
+      paddingVertical: theme.spacing(0.5),
+      borderRadius: theme.radius.sm,
+      marginBottom: theme.spacing(1.5),
+    },
+    partialBadge: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: theme.colors.accent,
     },
     headerRow: {
       flexDirection: "row",
@@ -412,16 +882,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       alignItems: "flex-start",
       marginBottom: theme.spacing(2),
     },
+    invoiceNumberContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+    },
     invoiceNumber: {
       fontSize: 24,
       fontWeight: "700",
       color: theme.colors.accent,
-      marginBottom: theme.spacing(0.5),
     },
-    partialBadge: {
+    editTextSmall: {
       fontSize: 12,
       fontWeight: "600",
       color: theme.colors.accent,
+      opacity: 0.7,
     },
     statusBadge: {
       paddingHorizontal: theme.spacing(1.5),
@@ -438,33 +913,75 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
       marginBottom: theme.spacing(0.5),
     },
-    clientName: {
-      fontSize: 15,
+    dividerLight: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: theme.spacing(1.5),
+    },
+    infoRow: {
+      marginBottom: theme.spacing(1),
+    },
+    infoLabel: {
+      fontSize: 12,
+      fontWeight: "600",
       color: theme.colors.muted,
-      marginBottom: theme.spacing(2),
+      textTransform: "uppercase",
+      marginBottom: 4,
+      letterSpacing: 0.5,
+    },
+    infoValue: {
+      fontSize: 15,
+      fontWeight: "500",
+      color: theme.colors.text,
+    },
+    infoPlaceholder: {
+      color: theme.colors.muted,
+      fontStyle: "italic",
+    },
+    editableRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(1),
+    },
+    editableRowContent: {
+      flex: 1,
+    },
+    editText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.accent,
     },
     dateRow: {
       flexDirection: "row",
       justifyContent: "space-between",
-      paddingTop: theme.spacing(2),
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
+      gap: theme.spacing(2),
+    },
+    dateColumn: {
+      flex: 1,
+    },
+    editableDateColumn: {
+      flex: 1,
+      minHeight: 50,
     },
     dateLabel: {
       fontSize: 12,
+      fontWeight: "600",
       color: theme.colors.muted,
+      textTransform: "uppercase",
       marginBottom: 4,
+      letterSpacing: 0.5,
     },
     dateValue: {
       fontSize: 14,
       fontWeight: "600",
       color: theme.colors.text,
     },
-    dateRight: {
-      alignItems: "flex-end",
-    },
-    dateRightText: {
-      textAlign: "right",
+    dueDateHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 4,
     },
     section: {
       backgroundColor: theme.colors.card,
@@ -478,6 +995,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
+      marginBottom: theme.spacing(2),
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: theme.spacing(2),
     },
     lineItem: {
@@ -545,11 +1068,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
       lineHeight: 20,
     },
+    notesPlaceholder: {
+      color: theme.colors.muted,
+      fontStyle: "italic",
+    },
     totalCard: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
       padding: theme.spacing(3),
-      marginBottom: theme.spacing(3),
+      marginBottom: 0,
       borderWidth: 2,
       borderColor: theme.colors.accent,
     },
@@ -566,28 +1093,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     bottomButtons: {
       flexDirection: "row",
-      gap: theme.spacing(2),
+      gap: theme.spacing(1),
       width: "100%",
-    },
-    iconButton: {
-      flex: 1,
-      backgroundColor: theme.colors.muted,
-      borderRadius: theme.radius.md,
-      paddingVertical: theme.spacing(1.5),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    iconButtonText: {
-      fontSize: 12,
-      fontWeight: "600",
-      color: "#FFF",
-      marginTop: 4,
     },
     exportButton: {
       flex: 2,
       backgroundColor: theme.colors.accent,
       borderRadius: theme.radius.md,
-      paddingVertical: theme.spacing(1.5),
+      paddingVertical: theme.spacing(1.25),
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
@@ -597,6 +1110,192 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: "#000",
+    },
+    deleteButton: {
+      flex: 1,
+      backgroundColor: "#ef4444",
+      borderRadius: theme.radius.md,
+      paddingVertical: theme.spacing(1.25),
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: theme.spacing(0.75),
+    },
+    deleteButtonText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#FFF",
+    },
+    // Modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-end",
+    },
+    modalOverlayCentered: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalOverlayInner: {
+      flex: 1,
+      width: "100%",
+      justifyContent: "inherit",
+      alignItems: "inherit",
+    },
+    datePickerModal: {
+      backgroundColor: theme.colors.card,
+      borderTopLeftRadius: theme.radius.xl,
+      borderTopRightRadius: theme.radius.xl,
+      width: "100%",
+      paddingBottom: theme.spacing(4),
+    },
+    textEditorModal: {
+      backgroundColor: theme.colors.card,
+      borderTopLeftRadius: theme.radius.xl,
+      borderTopRightRadius: theme.radius.xl,
+      width: "100%",
+      height: "50%",
+      padding: theme.spacing(2),
+    },
+    inputModalContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: theme.spacing(3),
+    },
+    inputModal: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(3),
+      width: "100%",
+      maxWidth: 400,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(2),
+    },
+    modalTitleCentered: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(2),
+      textAlign: "center",
+    },
+    modalCancel: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    modalDone: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.accent,
+    },
+    textEditor: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(2),
+      fontSize: 16,
+      color: theme.colors.text,
+      marginTop: theme.spacing(2),
+    },
+    textInput: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      fontSize: 16,
+      color: theme.colors.text,
+      marginBottom: theme.spacing(2),
+    },
+    modalButtons: {
+      flexDirection: "row",
+      gap: theme.spacing(2),
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: theme.spacing(1.5),
+      borderRadius: theme.radius.md,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalButtonCancel: {
+      backgroundColor: theme.colors.bg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalButtonCancelText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    modalButtonSave: {
+      backgroundColor: theme.colors.accent,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalButtonSaveText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
+    },
+    statusModal: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(3),
+      width: "100%",
+      maxWidth: 400,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    statusModalSubtitle: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(2),
+      textAlign: "center",
+    },
+    statusOption: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      marginBottom: theme.spacing(1),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    statusOptionActive: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    statusOptionText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      textAlign: "center",
+    },
+    statusOptionTextActive: {
+      color: "#000",
+      fontWeight: "700",
     },
   });
 }

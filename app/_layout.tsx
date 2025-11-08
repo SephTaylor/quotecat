@@ -2,9 +2,11 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { useEffect } from "react";
 import { initAnalytics, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
+import { initializeAuth } from "@/lib/auth";
 
 function RootNavigator() {
   const { mode } = useTheme();
@@ -25,17 +27,22 @@ function RootNavigator() {
 
 export default function RootLayout() {
   useEffect(() => {
-    // Initialize analytics on app start
-    initAnalytics().then(() => {
-      trackEvent(AnalyticsEvents.APP_OPENED);
-    });
+    // Initialize analytics and auth on app start
+    Promise.all([
+      initAnalytics().then(() => {
+        trackEvent(AnalyticsEvents.APP_OPENED);
+      }),
+      initializeAuth(), // Auto-login if session exists
+    ]);
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <RootNavigator />
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <RootNavigator />
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -1,9 +1,10 @@
 // app/(forms)/quote/[id]/edit-items.tsx
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { getQuoteById, updateQuote } from "@/lib/quotes";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Text, View, StyleSheet, Pressable, ScrollView, TextInput } from "react-native";
+import { Text, View, StyleSheet, Pressable, ScrollView, TextInput, Animated } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import type { QuoteItem } from "@/lib/types";
 
 export default function EditItems() {
@@ -90,6 +91,46 @@ export default function EditItems() {
     setEditingQty("");
   };
 
+  const handleDeleteItem = async (itemId: string) => {
+    if (!id) return;
+
+    const updatedItems = items.filter((item) => {
+      const currentId = item.productId || item.id;
+      return currentId !== itemId;
+    });
+    setItems(updatedItems);
+    await updateQuote(id, { items: updatedItems });
+  };
+
+  const renderRightActions = (itemId: string) => (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    const trans = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [0, 100],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View
+        style={[
+          styles.deleteAction,
+          {
+            transform: [{ translateX: trans }],
+          },
+        ]}
+      >
+        <Pressable
+          style={styles.deleteButton}
+          onPress={() => handleDeleteItem(itemId)}
+        >
+          <Text style={styles.deleteText}>Delete</Text>
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
   const totalCost = items.reduce(
     (sum, item) => sum + item.unitPrice * item.qty,
     0
@@ -125,55 +166,60 @@ export default function EditItems() {
             <ScrollView style={styles.scrollView}>
               <View style={styles.itemsList}>
                 {items.map((item, index) => (
-                  <View
+                  <Swipeable
                     key={item.id}
-                    style={[
-                      styles.itemRow,
-                      index === items.length - 1 && { borderBottomWidth: 0 },
-                    ]}
+                    renderRightActions={renderRightActions(item.productId || item.id || '')}
+                    overshootRight={false}
                   >
-                    <View style={styles.itemInfo}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemPrice}>
-                        ${item.unitPrice.toFixed(2)} each
-                      </Text>
-                    </View>
-
-                    <View style={styles.itemControls}>
-                      <View style={styles.stepper}>
-                        <Pressable
-                          style={styles.stepBtn}
-                          onPress={() => handleUpdateItemQty(item.productId || item.id || '', -1)}
-                        >
-                          <Text style={styles.stepText}>−</Text>
-                        </Pressable>
-                        {editingItemId === (item.productId || item.id) ? (
-                          <TextInput
-                            style={styles.qtyInput}
-                            value={editingQty}
-                            onChangeText={handleQtyChange}
-                            onBlur={() => handleFinishEditingQty(item.productId || item.id || '')}
-                            keyboardType="number-pad"
-                            selectTextOnFocus
-                            autoFocus
-                          />
-                        ) : (
-                          <Pressable onPress={() => handleStartEditingQty(item.productId || item.id || '', item.qty)}>
-                            <Text style={styles.qtyText}>{item.qty}</Text>
-                          </Pressable>
-                        )}
-                        <Pressable
-                          style={styles.stepBtn}
-                          onPress={() => handleUpdateItemQty(item.productId || item.id || '', 1)}
-                        >
-                          <Text style={styles.stepText}>+</Text>
-                        </Pressable>
+                    <View
+                      style={[
+                        styles.itemRow,
+                        index === items.length - 1 && { borderBottomWidth: 0 },
+                      ]}
+                    >
+                      <View style={styles.itemInfo}>
+                        <Text style={styles.itemName}>{item.name}</Text>
+                        <Text style={styles.itemPrice}>
+                          ${item.unitPrice.toFixed(2)} each
+                        </Text>
                       </View>
-                      <Text style={styles.itemTotal}>
-                        ${(item.unitPrice * item.qty).toFixed(2)}
-                      </Text>
+
+                      <View style={styles.itemControls}>
+                        <View style={styles.stepper}>
+                          <Pressable
+                            style={styles.stepBtn}
+                            onPress={() => handleUpdateItemQty(item.productId || item.id || '', -1)}
+                          >
+                            <Text style={styles.stepText}>−</Text>
+                          </Pressable>
+                          {editingItemId === (item.productId || item.id) ? (
+                            <TextInput
+                              style={styles.qtyInput}
+                              value={editingQty}
+                              onChangeText={handleQtyChange}
+                              onBlur={() => handleFinishEditingQty(item.productId || item.id || '')}
+                              keyboardType="number-pad"
+                              selectTextOnFocus
+                              autoFocus
+                            />
+                          ) : (
+                            <Pressable onPress={() => handleStartEditingQty(item.productId || item.id || '', item.qty)}>
+                              <Text style={styles.qtyText}>{item.qty}</Text>
+                            </Pressable>
+                          )}
+                          <Pressable
+                            style={styles.stepBtn}
+                            onPress={() => handleUpdateItemQty(item.productId || item.id || '', 1)}
+                          >
+                            <Text style={styles.stepText}>+</Text>
+                          </Pressable>
+                        </View>
+                        <Text style={styles.itemTotal}>
+                          ${(item.unitPrice * item.qty).toFixed(2)}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
+                  </Swipeable>
                 ))}
               </View>
 
@@ -239,6 +285,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       padding: theme.spacing(2),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
     },
     itemInfo: {
       flex: 1,
@@ -346,6 +393,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "800",
       color: "#000",
+    },
+    deleteAction: {
+      backgroundColor: "#ef4444",
+      justifyContent: "center",
+      alignItems: "flex-end",
+      width: 100,
+    },
+    deleteButton: {
+      justifyContent: "center",
+      alignItems: "center",
+      width: 100,
+      height: "100%",
+    },
+    deleteText: {
+      color: "#fff",
+      fontWeight: "700",
+      fontSize: 14,
     },
   });
 }
