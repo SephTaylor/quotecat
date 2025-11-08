@@ -30,13 +30,22 @@ export type InvoiceSettings = {
   nextNumber: number; // Next invoice number to use
 };
 
+export type NotificationPreferences = {
+  invoiceOverdue: boolean; // Notify when invoice becomes overdue
+  invoiceDueSoon: boolean; // Notify 3 days before due date
+  invoiceDueToday: boolean; // Notify on due date
+  // Future options:
+  // paymentReceived: boolean;
+  // quoteReminders: boolean;
+};
+
 export type UserPreferences = {
   dashboard: DashboardPreferences;
   privacy: PrivacyPreferences;
   company: CompanyDetails;
   invoice: InvoiceSettings;
+  notifications: NotificationPreferences;
   // Add more preference categories as needed
-  // notifications: NotificationPreferences;
   // appearance: AppearancePreferences;
 };
 
@@ -69,6 +78,11 @@ export function getDefaultPreferences(): UserPreferences {
     invoice: {
       prefix: "INV",
       nextNumber: 1,
+    },
+    notifications: {
+      invoiceOverdue: false,
+      invoiceDueSoon: false,
+      invoiceDueToday: false,
     },
   };
 }
@@ -112,6 +126,10 @@ export async function loadPreferences(): Promise<UserPreferences> {
       invoice: {
         ...getDefaultPreferences().invoice,
         ...stored.invoice,
+      },
+      notifications: {
+        ...getDefaultPreferences().notifications,
+        ...stored.notifications,
       },
     };
 
@@ -187,6 +205,24 @@ export async function updateInvoiceSettings(
     ...prefs,
     invoice: {
       ...prefs.invoice,
+      ...updates,
+    },
+  };
+  await savePreferences(updated);
+  return updated;
+}
+
+/**
+ * Update notification preferences
+ */
+export async function updateNotificationPreferences(
+  updates: Partial<NotificationPreferences>,
+): Promise<UserPreferences> {
+  const prefs = await loadPreferences();
+  const updated: UserPreferences = {
+    ...prefs,
+    notifications: {
+      ...prefs.notifications,
       ...updates,
     },
   };

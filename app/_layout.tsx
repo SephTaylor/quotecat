@@ -2,10 +2,11 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { useEffect } from "react";
-// TEMPORARILY DISABLED: PostHog crashing on iOS
-// import { initAnalytics, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
+import { initAnalytics, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
+import { initializeAuth } from "@/lib/auth";
 
 function RootNavigator() {
   const { mode } = useTheme();
@@ -26,21 +27,22 @@ function RootNavigator() {
 
 export default function RootLayout() {
   useEffect(() => {
-    // Auth initialization moved to lazy load (only when user signs in or uses Pro features)
-    // This prevents hanging on app startup if Supabase is misconfigured
-    // Product catalog sync still works (public read, no auth needed)
-
-    // TEMPORARILY DISABLED: PostHog crashing on iOS with RN 0.81 + Hermes
-    // initAnalytics().then(() => {
-    //   trackEvent(AnalyticsEvents.APP_OPENED);
-    // });
+    // Initialize analytics and auth on app start
+    Promise.all([
+      initAnalytics().then(() => {
+        trackEvent(AnalyticsEvents.APP_OPENED);
+      }),
+      initializeAuth(), // Auto-login if session exists
+    ]);
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <RootNavigator />
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <RootNavigator />
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -24,10 +24,8 @@ async function generateInvoiceNumber(): Promise<string> {
 
 /**
  * Check if an invoice is overdue and update its status if needed
- * NOTE: Updates status in memory only, does not save to storage
- * This prevents infinite recursion with updateInvoice -> getInvoiceById -> listInvoices
  */
-function checkAndUpdateOverdueStatus(invoice: Invoice): Invoice {
+async function checkAndUpdateOverdueStatus(invoice: Invoice): Promise<Invoice> {
   // Only check unpaid and partial invoices
   if (invoice.status !== "unpaid" && invoice.status !== "partial") {
     return invoice;
@@ -39,55 +37,49 @@ function checkAndUpdateOverdueStatus(invoice: Invoice): Invoice {
   const dueDate = new Date(invoice.dueDate);
   dueDate.setHours(0, 0, 0, 0);
 
-  // If due date has passed, mark as overdue (in memory only)
+  // If due date has passed, mark as overdue
   if (dueDate < today) {
-    return { ...invoice, status: "overdue" as const };
+    const updated = { ...invoice, status: "overdue" as const };
+    await updateInvoice(invoice.id, { status: "overdue" });
+    return updated;
   }
 
   return invoice;
 }
 
 /**
- * Load raw invoices from storage without any processing
- * Internal helper function
+ * List all invoices, sorted by most recent first
+ * Automatically updates overdue invoices
  */
-async function loadInvoicesRaw(): Promise<Invoice[]> {
+export async function listInvoices(): Promise<Invoice[]> {
   try {
     const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
     if (!json) return [];
-    return JSON.parse(json) as Invoice[];
+
+    let invoices = JSON.parse(json) as Invoice[];
+
+    // Check and update overdue statuses
+    invoices = await Promise.all(invoices.map(checkAndUpdateOverdueStatus));
+
+    return invoices.sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   } catch (error) {
-    console.error("Failed to load invoices:", error);
+    console.error("Failed to list invoices:", error);
     return [];
   }
 }
 
 /**
- * List all invoices, sorted by most recent first
- * Automatically updates overdue invoices in memory
- */
-export async function listInvoices(): Promise<Invoice[]> {
-  const invoices = await loadInvoicesRaw();
-
-  // Check and update overdue statuses (in memory only)
-  const invoicesWithOverdue = invoices.map(checkAndUpdateOverdueStatus);
-
-  return invoicesWithOverdue.sort((a, b) =>
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-}
-
-/**
  * Get invoice by ID
- * Optimized: loads directly from storage without processing all invoices
- * Automatically updates overdue status if needed (in memory)
+ * Automatically updates overdue status if needed
  */
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
-  const invoices = await loadInvoicesRaw();
+  const invoices = await listInvoices();
   const invoice = invoices.find((inv) => inv.id === id) || null;
 
   if (invoice) {
-    return checkAndUpdateOverdueStatus(invoice);
+    return await checkAndUpdateOverdueStatus(invoice);
   }
 
   return null;
@@ -95,10 +87,9 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
 
 /**
  * Save invoice (create or update)
- * Optimized: uses raw loader without unnecessary processing
  */
 export async function saveInvoice(invoice: Invoice): Promise<void> {
-  const invoices = await loadInvoicesRaw();
+  const invoices = await listInvoices();
   const existingIndex = invoices.findIndex((inv) => inv.id === invoice.id);
 
   const now = new Date().toISOString();
@@ -119,10 +110,9 @@ export async function saveInvoice(invoice: Invoice): Promise<void> {
 
 /**
  * Delete invoice by ID
- * Optimized: uses raw loader without unnecessary processing
  */
 export async function deleteInvoice(id: string): Promise<void> {
-  const invoices = await loadInvoicesRaw();
+  const invoices = await listInvoices();
   const filtered = invoices.filter((inv) => inv.id !== id);
   await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(filtered));
 }
@@ -131,10 +121,12 @@ export async function deleteInvoice(id: string): Promise<void> {
  * Create invoice from quote
  * @param quoteId - ID of the quote to create invoice from
  * @param percentage - Percentage of quote total (default 100 = full invoice, 50 = 50% deposit)
+ * @param customDueDate - Optional custom due date (defaults to 30 days from now)
  */
 export async function createInvoiceFromQuote(
   quoteId: string,
-  percentage: number = 100
+  percentage: number = 100,
+  customDueDate?: Date
 ): Promise<Invoice> {
   const quote = await getQuoteById(quoteId);
   if (!quote) {
@@ -143,8 +135,10 @@ export async function createInvoiceFromQuote(
 
   const invoiceNumber = await generateInvoiceNumber();
   const now = new Date().toISOString();
-  const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + 30); // Default: 30 days from now
+  const dueDate = customDueDate || new Date();
+  if (!customDueDate) {
+    dueDate.setDate(dueDate.getDate() + 30); // Default: 30 days from now
+  }
 
   // Calculate amounts based on percentage
   const multiplier = percentage / 100;

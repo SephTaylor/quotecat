@@ -15,7 +15,7 @@ function BottomBar({ children }: BottomBarProps) {
     <View
       style={[
         styles.bar,
-        { paddingBottom: Math.max(insets.bottom, theme.spacing(2)) },
+        { paddingBottom: Math.max(insets.bottom, theme.spacing(1)) },
       ]}
     >
       <View style={styles.row}>{children}</View>
@@ -29,7 +29,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
       backgroundColor: theme.colors.card,
-      paddingTop: theme.spacing(1.5),
+      paddingTop: theme.spacing(1),
       paddingHorizontal: theme.spacing(2),
     },
     row: { flexDirection: "row", gap: theme.spacing(1) },
