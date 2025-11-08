@@ -401,6 +401,18 @@ User creates quotes with real-time pricing
 - Pull-to-refresh product sync
 - Smart status indicator for sync state
 - Product search with auto-expanding categories
+- Invoice management (create from quotes, track payments, automatic overdue status)
+- Notification settings UI (placeholders for future invoice notifications)
+
+**Authentication (Apple-Compliant) - ✅ COMPLETE:**
+- ✅ Sign-in screen in app (email + password)
+- ✅ Supabase authentication with session persistence
+- ✅ Auto-login on app launch via `initializeAuth()`
+- ✅ Tier fetching from Supabase profiles table (free/pro/premium)
+- ✅ Session tokens stored in AsyncStorage
+- ✅ NO sign-up in app (Apple compliance - all account creation on website)
+- ✅ "Don't have an account? Visit quotecat.ai" link opens Safari
+- ✅ Real auth integrated in drawer, settings, and Pro feature checks
 
 **Technical:**
 - React Native + Expo SDK 54
@@ -409,6 +421,7 @@ User creates quotes with real-time pricing
 - EAS Build configured
 - 0 lint errors/warnings
 - Version 1.1.0
+- Supabase auth fully integrated
 
 **Database:**
 - Supabase project set up
@@ -417,6 +430,7 @@ User creates quotes with real-time pricing
 - 368 AI products seeded and syncing to app
 - Migration files documented
 - Helper functions implemented
+- RLS policies configured for profiles, quotes, assemblies, etc.
 
 **Product Data Pipeline (Prepared):**
 - ✅ Migration 004 created (adds retailer field + multi-retailer support)
@@ -439,7 +453,8 @@ User creates quotes with real-time pricing
 - App working with 368 AI products syncing from Supabase
 - Product data pipeline is BUILT and ready to execute when Xbyte data arrives
 - Waiting on Xbyte sample data (expected in a few days)
-- Next major work: Auth screens + cloud sync (Phase 1)
+- **Authentication is COMPLETE and Apple-compliant** (sign-in only, no sign-up in app)
+- **Next major work:** Website sign-up + Stripe payment integration
 - All monetization must go through website (NOT in-app) to avoid Apple's 30% cut
 
 ### ⏳ Waiting For
@@ -466,18 +481,33 @@ User creates quotes with real-time pricing
 
 ### 🔜 Next Steps (Priority Order)
 
-**New Laptop Setup (COMPLETE ✅):**
-- ✅ Cloned repository to new laptop
-- ✅ Installed Node.js, npm, Git
-- ✅ Created .env with Supabase credentials
-- ✅ App running successfully with product sync working
-- ✅ All recent work committed and pushed to `integration/all-features`
+**Authentication & Payments (IN PROGRESS - Current Focus):**
+
+**App Side (✅ COMPLETE):**
+- ✅ Sign-in screen with Supabase auth
+- ✅ Session persistence (AsyncStorage)
+- ✅ Auto-login on app launch
+- ✅ Tier checking and Pro feature unlocking
+- ✅ Apple-compliant (NO sign-up, NO pricing, NO payments in app)
+- ✅ Directs users to quotecat.ai for account creation
+
+**Website Side (🚧 NEXT UP):**
+- ❌ **Need to build:** Account creation flow on quotecat.ai
+  - Sign-up form that creates Supabase user + profile (free tier)
+  - Stripe checkout for Pro/Premium purchases
+  - Account creation on successful payment
+  - Email automation (send credentials after signup/payment)
+
+**Decision Needed:**
+- **Option A:** Free users download app, no account needed. Only paid users create accounts on website.
+- **Option B:** Free users can optionally create account on website for cloud backup. Paid users create account + pay.
+- **Current lean:** Option A (simplest for launch)
 
 **Immediate (This Week):**
 1. **Wait for Xbyte sample data** - Expected in a few days
 2. **Continue beta testing** - Monitor TestFlight and Google Play feedback
-3. Work on auth screens (login/signup)
-4. Plan cloud sync implementation
+3. **Build website payment flow** (signup + Stripe integration)
+4. Set up email automation for credentials
 
 **When Xbyte Data Arrives:**
 1. Review data format and fields
@@ -488,35 +518,67 @@ User creates quotes with real-time pricing
 6. Test sync in app
 7. Update status messaging with appropriate data source disclaimer
 
-**Phase 1 - Auth & Cloud Sync (Next 1-2 Weeks):**
-1. Login/signup screens
-2. Supabase auth integration
-3. Tier checking in app (Free/Pro/Premium)
-4. Auto-migration (local → cloud for Pro/Premium users)
-5. Basic cloud sync with conflict resolution
+**Phase 1 - Website Payments (Next 1-2 Weeks):**
+1. ✅ App sign-in screen (DONE)
+2. ❌ Website sign-up form (creates Supabase account)
+3. ❌ Stripe integration (Pro/Premium checkout)
+4. ❌ Email automation (send credentials)
+5. ❌ Test full flow: Website signup → Email → App login → Pro unlock
 
-**Phase 2 - Monetization (2-4 Weeks):**
-1. Landing page (quotecat.app) with pricing and founder urgency
-2. Stripe payment integration
-3. Spots remaining counter (100 Premium, 500 Pro)
-4. Email automation (welcome, credentials, tier unlock)
-5. Founder pricing launch
+**Phase 2 - Cloud Sync (2-3 Weeks):**
+1. Auto-migration (local → cloud for Pro/Premium users)
+2. Bi-directional sync with conflict resolution
+3. Multi-device support
+4. Cloud backup for quotes and assemblies
 
 **Phase 3 - Public Launch (1-2 Months):**
 1. Product data integration complete (Xbyte OR official APIs)
 2. Daily price update automation
 3. Quote Wizard (Premium feature)
-4. Public launch with full App Store and Google Play listing
+4. Founder pricing campaign (100 Premium spots, 500 Pro spots)
+5. Public launch with full App Store and Google Play listing
 
 ---
 
 ## ⚠️ Critical Gotchas
 
-### Apple In-App Purchase
-- **DO NOT** add pricing to the app in Phase 1
-- All payment must flow through website → Stripe
-- App can only check tier and unlock features
-- See "Business Model" section above
+### Apple In-App Purchase Compliance (CRITICAL)
+
+**✅ Current Implementation (Compliant):**
+- App has sign-in screen ONLY (no sign-up)
+- NO pricing displayed anywhere in app
+- NO payment buttons or upgrade flows
+- NO "Buy Pro" or "Subscribe" language
+- Sign-in screen shows: "Don't have an account? Visit quotecat.ai" → Opens Safari
+- All account creation and payments happen on website (Stripe)
+
+**User Flow (Apple-Compliant):**
+1. **Free users:** Download app → Use immediately (no account needed, all local)
+2. **Want Pro?** Tap locked feature → "This is a Pro feature" → "Learn More" → Opens quotecat.ai in Safari
+3. **On website:** User creates account + pays via Stripe
+4. **Back in app:** User signs in → Supabase checks tier → Pro unlocks
+5. **Session persists:** User stays logged in between app launches
+
+**What's Allowed:**
+- ✅ "Sign In" button and screen
+- ✅ Showing locked features with "🔒 Pro Feature" badge
+- ✅ "Learn More" button that opens website in Safari
+- ✅ Session persistence (auto-login)
+- ✅ Tier checking (free/pro/premium)
+
+**What's NOT Allowed:**
+- ❌ Sign-up form in app
+- ❌ Any pricing ($29, $79, etc.) displayed in app
+- ❌ "Upgrade", "Buy Pro", "Subscribe" buttons in app
+- ❌ Payment forms or Stripe checkout in app
+- ❌ Urgency messaging with pricing in app
+
+**Files Implementing This:**
+- `app/(auth)/sign-in.tsx` - Sign-in only, no sign-up
+- `lib/auth.ts` - Supabase auth service
+- `app/_layout.tsx` - Auto-login on launch
+- `app/(main)/(tabs)/_layout.tsx` - Drawer with sign-in button
+- `app/(main)/settings.tsx` - Settings with sign-in option
 
 ### Supplier API Tables
 - `products` and `categories` tables in Supabase are for supplier API data
