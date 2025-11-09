@@ -595,6 +595,73 @@
             font-size: 18px;
         }
 
+        .tier-price {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--text);
+            margin: 16px 0 8px;
+        }
+
+        .tier-price-small {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .tier-price-period {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        .tier-button {
+            width: 100%;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+            margin-top: 24px;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+
+        .tier-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        }
+
+        .tier-button:active {
+            transform: translateY(0);
+        }
+
+        .tier-button-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            box-shadow: none;
+        }
+
+        .tier-button-outline:hover {
+            background: rgba(249, 115, 22, 0.05);
+            box-shadow: 0 4px 16px rgba(249, 115, 22, 0.15);
+        }
+
+        .tier-note {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 12px;
+            text-align: center;
+            font-style: italic;
+        }
+
         /* FAQ Section */
         .faq {
             padding: 60px 0 80px;
@@ -1077,6 +1144,8 @@
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <div class="tier-name">Free</div>
                     <div class="tier-description">Perfect for testing the waters</div>
+                    <div class="tier-price">$0</div>
+                    <div class="tier-price-period">Forever</div>
                     <ul class="tier-features">
                         <li>25 quotes per month</li>
                         <li>5 PDF exports</li>
@@ -1084,12 +1153,15 @@
                         <li>Professional templates</li>
                         <li>Local storage only</li>
                     </ul>
+                    <a href="#beta-signup" class="tier-button tier-button-outline">Get Started Free</a>
                 </div>
                 <div class="tier-card featured">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <span class="tier-badge">Most Popular</span>
                     <div class="tier-name">Pro</div>
                     <div class="tier-description">For contractors who mean business</div>
+                    <div class="tier-price">$29<span class="tier-price-small">/mo</span></div>
+                    <div class="tier-price-period">Founder pricing - First 500 spots</div>
                     <ul class="tier-features">
                         <li>Unlimited quotes & exports</li>
                         <li>Custom job templates</li>
@@ -1098,11 +1170,15 @@
                         <li>Company branding</li>
                         <li>Priority email support</li>
                     </ul>
+                    <button onclick="handleGetPro()" class="tier-button">Get Pro Now</button>
+                    <div class="tier-note">Regular price: $99/mo after 500 spots filled</div>
                 </div>
                 <div class="tier-card">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <div class="tier-name">Premium</div>
                     <div class="tier-description">Complete business toolkit</div>
+                    <div class="tier-price">$79<span class="tier-price-small">/mo</span></div>
+                    <div class="tier-price-period">Founder pricing - First 100 spots</div>
                     <ul class="tier-features">
                         <li>Everything in Pro</li>
                         <li>Company logo on quotes</li>
@@ -1111,6 +1187,8 @@
                         <li>Team collaboration</li>
                         <li>Priority phone support</li>
                     </ul>
+                    <button onclick="handleGetPremium()" class="tier-button">Get Premium Now</button>
+                    <div class="tier-note">Regular price: $199/mo after 100 spots filled</div>
                 </div>
             </div>
         </div>
@@ -1224,6 +1302,17 @@
                 }
             }
         });
+
+        // Payment handlers (will be replaced with Stripe checkout)
+        function handleGetPro() {
+            // TODO: Replace with Stripe checkout session
+            alert('Stripe checkout coming soon!\n\nFor now, email hello@quotecat.ai to get Pro access.');
+        }
+
+        function handleGetPremium() {
+            // TODO: Replace with Stripe checkout session
+            alert('Stripe checkout coming soon!\n\nFor now, email hello@quotecat.ai to get Premium access.');
+        }
     </script>
 </body>
 </html>
