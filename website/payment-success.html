@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - QuoteCat</title>
+    <meta name="description" content="Your QuoteCat subscription is now active!">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --text: #1f2937;
+            --text-light: #6b7280;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #ffffff;
+            background: linear-gradient(to bottom,
+                #1a1a1a 0%,
+                #2d2d2d 50%,
+                #1a1a1a 100%
+            );
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .success-container {
+            max-width: 600px;
+            background: white;
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 48px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-light);
+            margin-bottom: 32px;
+        }
+
+        .info-box {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            text-align: left;
+        }
+
+        .info-box h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 16px;
+        }
+
+        .info-box p {
+            color: var(--text-light);
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        .info-box strong {
+            color: var(--text);
+        }
+
+        .steps {
+            text-align: left;
+            margin: 24px 0;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-right: 16px;
+        }
+
+        .step-text {
+            color: var(--text-light);
+            padding-top: 4px;
+        }
+
+        .download-links {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin: 32px 0;
+        }
+
+        .download-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+        }
+
+        .download-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 24px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .success-container {
+                padding: 32px 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .subtitle {
+                font-size: 16px;
+            }
+
+            .download-links {
+                flex-direction: column;
+            }
+
+            .download-button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-icon">✓</div>
+        <h1>Payment Successful!</h1>
+        <p class="subtitle">Welcome to QuoteCat Pro! Your account is being set up.</p>
+
+        <div class="info-box">
+            <h2>Check Your Email</h2>
+            <p>We've sent your login credentials to the email address you provided. It should arrive within a few minutes.</p>
+            <p><strong>Next Steps:</strong></p>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-text">Check your email for login credentials</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-text">Download the QuoteCat app (iOS or Android)</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-text">Sign in with your credentials</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-text">Start creating professional quotes!</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="download-links">
+            <a href="#" class="download-button">
+                📱 Download for iOS
+            </a>
+            <a href="#" class="download-button">
+                🤖 Download for Android
+            </a>
+        </div>
+
+        <p style="color: var(--text-light); font-size: 14px; margin-top: 24px;">
+            Don't see the email? Check your spam folder or <a href="mailto:hello@quotecat.ai" style="color: var(--primary);">contact us</a>.
+        </p>
+
+        <a href="index.html" class="back-link">← Back to Home</a>
+    </div>
+
+    <script>
+        // Get session ID from URL (optional - for tracking)
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+
+        if (sessionId) {
+            console.log('Stripe session ID:', sessionId);
+            // You could send this to analytics or log it
+        }
+    </script>
+</body>
+</html>

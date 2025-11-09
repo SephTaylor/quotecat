@@ -1303,15 +1303,77 @@
             }
         });
 
-        // Payment handlers (will be replaced with Stripe checkout)
-        function handleGetPro() {
-            // TODO: Replace with Stripe checkout session
-            alert('Stripe checkout coming soon!\n\nFor now, email hello@quotecat.ai to get Pro access.');
+        // Payment handlers - Create Stripe checkout session
+        async function handleGetPro() {
+            await createCheckoutSession('pro');
         }
 
-        function handleGetPremium() {
-            // TODO: Replace with Stripe checkout session
-            alert('Stripe checkout coming soon!\n\nFor now, email hello@quotecat.ai to get Premium access.');
+        async function handleGetPremium() {
+            await createCheckoutSession('premium');
+        }
+
+        async function createCheckoutSession(tier) {
+            // Get email from user
+            const email = prompt('Enter your email address to continue:');
+            if (!email) return;
+
+            // Validate email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Please enter a valid email address.');
+                return;
+            }
+
+            // Ask for billing period
+            const period = confirm('Monthly billing?\n\nClick OK for Monthly ($' + (tier === 'premium' ? '79' : '29') + '/mo)\nClick Cancel for Yearly ($' + (tier === 'premium' ? '790' : '290') + '/yr - Save 2 months!)');
+
+            // Determine price ID based on tier and period
+            // You'll replace these with your actual Stripe price IDs after creating products
+            let priceId;
+            if (tier === 'pro') {
+                priceId = period ? 'STRIPE_PRO_MONTHLY_PRICE_ID' : 'STRIPE_PRO_YEARLY_PRICE_ID';
+            } else {
+                priceId = period ? 'STRIPE_PREMIUM_MONTHLY_PRICE_ID' : 'STRIPE_PREMIUM_YEARLY_PRICE_ID';
+            }
+
+            // Show loading indicator
+            const originalButton = event.target;
+            originalButton.disabled = true;
+            originalButton.textContent = 'Creating checkout...';
+
+            try {
+                // Call Supabase Edge Function to create checkout session
+                const response = await fetch('YOUR_SUPABASE_FUNCTION_URL/create-checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        priceId: priceId,
+                        email: email,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create checkout session');
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Redirect to Stripe Checkout
+                window.location.href = data.url;
+            } catch (error) {
+                console.error('Checkout error:', error);
+                alert('Sorry, there was an error creating your checkout session. Please try again or email hello@quotecat.ai for help.');
+
+                // Reset button
+                originalButton.disabled = false;
+                originalButton.textContent = tier === 'premium' ? 'Get Premium Now' : 'Get Pro Now';
+            }
         }
     </script>
 </body>
