@@ -163,9 +163,11 @@ Website will auto-deploy on Netlify in ~15 seconds.
    https://eouikzjzsartaabvlbee.supabase.co/functions/v1/stripe-webhook
    ```
 4. **Events to send:** Select these events:
-   - `checkout.session.completed`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
+   - `checkout.session.completed` - New subscription created
+   - `customer.subscription.updated` - Subscription changed
+   - `customer.subscription.deleted` - Subscription cancelled
+   - `invoice.paid` - Monthly payment succeeded
+   - `invoice.payment_failed` - Payment failed (notify customer)
 5. Click **Add endpoint**
 
 ### 5.2 Get Webhook Secret
@@ -225,7 +227,31 @@ Complete the checkout.
 3. Use email and password from logs
 4. Pro features should unlock ✅
 
-## Step 7: Set Up Email Automation (Optional but Recommended)
+## Step 7: Configure Customer Portal
+
+The customer portal lets users manage their own subscriptions (update payment, cancel, etc.).
+
+### 7.1 Configure Portal Settings
+
+1. Go to Stripe Dashboard → Settings → Customer portal
+2. Enable the features you want:
+   - ✅ Update payment method (recommended)
+   - ✅ Cancel subscription (recommended)
+   - ✅ Update subscription (optional - for upgrades)
+3. Set the default redirect URL to your website
+4. Save settings
+
+### 7.2 Deploy Portal Function (Optional)
+
+If you want users to access the portal from within the app:
+
+```bash
+supabase functions deploy create-portal-session
+```
+
+This function requires authentication (user must be signed in).
+
+## Step 8: Set Up Email Automation (Optional but Recommended)
 
 Right now, passwords are only logged. Let's send them via email.
 
@@ -247,7 +273,7 @@ Right now, passwords are only logged. Let's send them via email.
 
 Similar process, use SendGrid API instead.
 
-## Step 8: Go Live (When Ready)
+## Step 9: Go Live (When Ready)
 
 ### 8.1 Switch to Live Mode
 

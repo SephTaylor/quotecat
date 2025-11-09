@@ -199,6 +199,62 @@ serve(async (req) => {
         break;
       }
 
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice;
+        console.log('Invoice paid:', invoice.id);
+
+        // Continue to provision subscription - payment successful
+        // Update last payment date in profile
+        const customerId = invoice.customer as string;
+
+        const { data: users, error: userError } = await supabase.auth.admin.listUsers();
+        if (userError) throw userError;
+
+        const user = users.users.find(
+          (u) => u.user_metadata?.stripe_customer_id === customerId
+        );
+
+        if (user) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
+
+          if (updateError) throw updateError;
+          console.log('Payment recorded for user:', user.id);
+        }
+
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice;
+        console.log('Invoice payment failed:', invoice.id);
+
+        // Notify customer to update payment method
+        const customerId = invoice.customer as string;
+
+        const { data: users, error: userError } = await supabase.auth.admin.listUsers();
+        if (userError) throw userError;
+
+        const user = users.users.find(
+          (u) => u.user_metadata?.stripe_customer_id === customerId
+        );
+
+        if (user) {
+          // TODO: Send email notification to update payment method
+          console.log('⚠️ Payment failed for user:', user.id);
+          console.log('Email:', user.email);
+
+          // You can send them to customer portal to update payment
+          // Or send email with link to update payment method
+        }
+
+        break;
+      }
+
       default:
         console.log('Unhandled event type:', event.type);
     }
