@@ -1328,12 +1328,11 @@
             const period = confirm('Monthly billing?\n\nClick OK for Monthly ($' + (tier === 'premium' ? '79' : '29') + '/mo)\nClick Cancel for Yearly ($' + (tier === 'premium' ? '790' : '290') + '/yr - Save 2 months!)');
 
             // Determine price ID based on tier and period
-            // You'll replace these with your actual Stripe price IDs after creating products
             let priceId;
             if (tier === 'pro') {
-                priceId = period ? 'STRIPE_PRO_MONTHLY_PRICE_ID' : 'STRIPE_PRO_YEARLY_PRICE_ID';
+                priceId = period ? 'price_1SRYudEJ6nOeXQImORnpOn57' : 'price_1SRYxvEJ6nOeXQImgcguc1Tb';
             } else {
-                priceId = period ? 'STRIPE_PREMIUM_MONTHLY_PRICE_ID' : 'STRIPE_PREMIUM_YEARLY_PRICE_ID';
+                priceId = period ? 'price_1SRYzJEJ6nOeXQImUR9ZE9dg' : 'price_1SRYzpEJ6nOeXQImLJcob9DI';
             }
 
             // Show loading indicator
@@ -1343,7 +1342,7 @@
 
             try {
                 // Call Supabase Edge Function to create checkout session
-                const response = await fetch('YOUR_SUPABASE_FUNCTION_URL/create-checkout', {
+                const response = await fetch('https://eouikzjzsartaabvlbee.supabase.co/functions/v1/create-checkout', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
