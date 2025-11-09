@@ -54,85 +54,43 @@ serve(async (req) => {
           break;
         }
 
-        // Generate a random password for the user
-        const password = generatePassword();
+        await createUserAccount(email, tier, session.customer as string, session.subscription as string);
 
-        // Create user in Supabase Auth
-        const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-          email: email,
-          password: password,
-          email_confirm: true,
-          user_metadata: {
-            tier: tier,
-            stripe_customer_id: session.customer,
-            stripe_subscription_id: session.subscription,
-          },
-        });
+        break;
+      }
 
-        if (userError) {
-          console.error('Error creating user:', userError);
-          throw userError;
+      case 'customer.subscription.created': {
+        const subscription = event.data.object as Stripe.Subscription;
+        console.log('Processing customer.subscription.created:', subscription.id);
+
+        // This is a backup - if checkout.session.completed somehow didn't fire
+        // Only create account if user doesn't exist yet
+        const customerId = subscription.customer as string;
+
+        // Check if user already exists
+        const { data: users, error: userError } = await supabase.auth.admin.listUsers();
+        if (userError) throw userError;
+
+        const existingUser = users.users.find(
+          (u) => u.user_metadata?.stripe_customer_id === customerId
+        );
+
+        if (!existingUser) {
+          console.log('User not found, creating from subscription event');
+
+          // Get customer email from Stripe
+          const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
+          const email = customer.email;
+          const tier = subscription.metadata?.tier || 'pro';
+
+          if (email) {
+            await createUserAccount(email, tier, customerId, subscription.id);
+          } else {
+            console.error('No email found for customer:', customerId);
+          }
+        } else {
+          console.log('User already exists, skipping account creation');
         }
-
-        console.log('User created:', userData.user.id);
-
-        // Create profile in profiles table
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userData.user.id,
-            email: email,
-            tier: tier,
-            pricing_tier: 'founder',
-            created_at: new Date().toISOString(),
-          });
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-          throw profileError;
-        }
-
-        console.log('Profile created for user:', userData.user.id);
-
-        // TODO: Send welcome email with credentials
-        // For now, log the credentials (REMOVE IN PRODUCTION)
-        console.log('=== NEW USER CREDENTIALS ===');
-        console.log('Email:', email);
-        console.log('Password:', password);
-        console.log('Tier:', tier);
-        console.log('============================');
-
-        // You can use Resend, SendGrid, or other email service here
-        // Example with Resend (when you set it up):
-        /*
-        const resendApiKey = Deno.env.get('RESEND_API_KEY');
-        if (resendApiKey) {
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${resendApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              from: 'QuoteCat <onboarding@quotecat.ai>',
-              to: email,
-              subject: `Welcome to QuoteCat ${tier === 'premium' ? 'Premium' : 'Pro'}!`,
-              html: `
-                <h1>Welcome to QuoteCat ${tier === 'premium' ? 'Premium' : 'Pro'}!</h1>
-                <p>Your account has been created. Here are your credentials:</p>
-                <p><strong>Email:</strong> ${email}<br>
-                <strong>Password:</strong> ${password}</p>
-                <p>Download the app and sign in to unlock your ${tier} features:</p>
-                <ul>
-                  <li>iOS: [TestFlight link]</li>
-                  <li>Android: [Play Store link]</li>
-                </ul>
-                <p>We recommend changing your password after your first login in the app settings.</p>
-              `,
-            }),
-          });
-        }
-        */
 
         break;
       }
@@ -283,4 +241,92 @@ function generatePassword(): string {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return password;
+}
+
+// Create user account (shared function for checkout and subscription events)
+async function createUserAccount(
+  email: string,
+  tier: string,
+  stripeCustomerId: string,
+  stripeSubscriptionId: string
+): Promise<void> {
+  // Generate a random password for the user
+  const password = generatePassword();
+
+  // Create user in Supabase Auth
+  const { data: userData, error: userError } = await supabase.auth.admin.createUser({
+    email: email,
+    password: password,
+    email_confirm: true,
+    user_metadata: {
+      tier: tier,
+      stripe_customer_id: stripeCustomerId,
+      stripe_subscription_id: stripeSubscriptionId,
+    },
+  });
+
+  if (userError) {
+    console.error('Error creating user:', userError);
+    throw userError;
+  }
+
+  console.log('User created:', userData.user.id);
+
+  // Create profile in profiles table
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .insert({
+      id: userData.user.id,
+      email: email,
+      tier: tier,
+      pricing_tier: 'founder',
+      created_at: new Date().toISOString(),
+    });
+
+  if (profileError) {
+    console.error('Error creating profile:', profileError);
+    throw profileError;
+  }
+
+  console.log('Profile created for user:', userData.user.id);
+
+  // TODO: Send welcome email with credentials
+  // For now, log the credentials (REMOVE IN PRODUCTION)
+  console.log('=== NEW USER CREDENTIALS ===');
+  console.log('Email:', email);
+  console.log('Password:', password);
+  console.log('Tier:', tier);
+  console.log('============================');
+
+  // You can use Resend, SendGrid, or other email service here
+  // Example with Resend (when you set it up):
+  /*
+  const resendApiKey = Deno.env.get('RESEND_API_KEY');
+  if (resendApiKey) {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'QuoteCat <onboarding@quotecat.ai>',
+        to: email,
+        subject: `Welcome to QuoteCat ${tier === 'premium' ? 'Premium' : 'Pro'}!`,
+        html: `
+          <h1>Welcome to QuoteCat ${tier === 'premium' ? 'Premium' : 'Pro'}!</h1>
+          <p>Your account has been created. Here are your credentials:</p>
+          <p><strong>Email:</strong> ${email}<br>
+          <strong>Password:</strong> ${password}</p>
+          <p>Download the app and sign in to unlock your ${tier} features:</p>
+          <ul>
+            <li>iOS: [TestFlight link]</li>
+            <li>Android: [Play Store link]</li>
+          </ul>
+          <p>We recommend changing your password after your first login in the app settings.</p>
+        `,
+      }),
+    });
+  }
+  */
 }
