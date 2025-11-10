@@ -14,13 +14,14 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+  Linking,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
 import { useTheme } from "@/contexts/ThemeContext";
-import { getUserState } from "@/lib/user";
+import { getUserState, incrementPdfCount } from "@/lib/user";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
 import type { UserState } from "@/lib/user";
 import { generateAndSharePDF } from "@/lib/pdf";
@@ -120,9 +121,13 @@ export default function QuoteReviewScreen() {
           logoBase64: logo?.base64
         });
 
-        // TODO: expo-sharing doesn't provide a way to detect if user cancelled
-        // For now, we don't increment the counter to avoid consuming exports on cancel
-        // Consider migrating to React Native's Share API which supports dismissedAction
+        // Increment counter for free users after successful generation
+        if (userState.tier === "free") {
+          await incrementPdfCount();
+          // Reload user state to update counter display
+          const updatedState = await getUserState();
+          setUserState(updatedState);
+        }
 
       } catch (error) {
         Alert.alert("Error", "Failed to generate PDF. Please try again.");
@@ -133,10 +138,10 @@ export default function QuoteReviewScreen() {
     };
 
     // Show remaining for free users
-    if (userState.tier === "free" && remaining !== undefined) {
+    if (userState.tier === "free" && remaining !== undefined && !isNaN(remaining)) {
       Alert.alert(
         "Export PDF",
-        `This will use 1 of your ${remaining} remaining PDF exports this month.\n\nFree PDFs include QuoteCat branding. Upgrade to Pro for unlimited exports with your own branding.`,
+        `This will use 1 of your ${remaining} remaining exports.\n\nFree PDFs include QuoteCat branding.`,
         [
           { text: "Cancel", style: "cancel" },
           { text: "Export", onPress: exportPDF }
@@ -198,20 +203,23 @@ export default function QuoteReviewScreen() {
   }
 
   const pdfRemaining = userState ? getQuotaRemaining(userState, "pdfs") : 0;
-  const spreadsheetRemaining = userState ? getQuotaRemaining(userState, "spreadsheets") : 0;
-  const isPro = userState?.tier === "pro";
+  const isPro = userState?.tier === "pro" || userState?.tier === "premium";
 
   const handleExportSpreadsheet = async () => {
     if (!userState || !quote) return;
 
-    const { allowed, reason, remaining } = canExportSpreadsheet(userState);
+    const { allowed, reason } = canExportSpreadsheet(userState);
 
     if (!allowed) {
       Alert.alert(
-        "Limit Reached",
+        "Pro Feature",
         reason,
         [
-          { text: "OK", style: "cancel" }
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Learn More",
+            onPress: () => Linking.openURL("https://quotecat.ai")
+          }
         ]
       );
       return;
@@ -535,26 +543,18 @@ export default function QuoteReviewScreen() {
               <Text style={styles.promoTitle}>Free Tier</Text>
             </View>
             <Text style={styles.promoText}>
-              {pdfRemaining} PDF export{pdfRemaining !== 1 ? "s" : ""} remaining this month
-            </Text>
-            <Text style={styles.promoText}>
-              {spreadsheetRemaining} spreadsheet export{spreadsheetRemaining !== 1 ? "s" : ""} remaining this month
+              {pdfRemaining} client export{pdfRemaining !== 1 ? "s" : ""} remaining
             </Text>
             <Text style={styles.promoSubtext}>
-              Upgrade for unlimited exports, custom branding, and more
+              Create unlimited drafts. Pro tier unlocks unlimited exports and custom branding.
             </Text>
             <Pressable
               style={styles.upgradeButton}
               onPress={() => {
-                // TODO: Navigate to upgrade screen or website
-                Alert.alert(
-                  "Upgrade to Pro",
-                  "Get unlimited PDF and spreadsheet exports, remove QuoteCat branding, and unlock premium features.\n\nVisit https://www.quotecat.ai to learn more.",
-                  [{ text: "OK" }]
-                );
+                Linking.openURL("https://quotecat.ai");
               }}
             >
-              <Text style={styles.upgradeButtonText}>Learn About Pro</Text>
+              <Text style={styles.upgradeButtonText}>Learn More</Text>
             </Pressable>
           </View>
         )}

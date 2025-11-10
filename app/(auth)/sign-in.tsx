@@ -16,7 +16,7 @@ import { Stack, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
-import { activateProTier } from "@/lib/user";
+import { activateProTier, activatePremiumTier } from "@/lib/user";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -53,10 +53,13 @@ export default function SignInScreen() {
           // Default to free if profile doesn't exist yet
           Alert.alert("Success", "Signed in successfully");
         } else if (profile) {
-          // Update local user state
-          if (profile.tier === "pro" || profile.tier === "premium") {
+          // Update local user state based on Supabase tier
+          if (profile.tier === "premium") {
+            await activatePremiumTier(profile.email);
+          } else if (profile.tier === "pro") {
             await activateProTier(profile.email);
           }
+          // Free tier users don't need activation (already default)
           Alert.alert("Success", "Signed in successfully");
         }
 

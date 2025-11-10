@@ -2,7 +2,7 @@
 // Settings and profile management
 import { useTheme } from "@/contexts/ThemeContext";
 import { canAccessAssemblies } from "@/lib/features";
-import { getUserState, activateProTier, deactivateProTier, FREE_LIMITS, type UserState } from "@/lib/user";
+import { getUserState, FREE_LIMITS, type UserState } from "@/lib/user";
 import {
   loadPreferences,
   savePreferences,
@@ -59,7 +59,6 @@ export default function Settings() {
 
   // Track expanded sections
   const [expandedSections, setExpandedSections] = useState({
-    debug: false,
     usage: false,
     appearance: false,
     dashboard: false,
@@ -190,6 +189,10 @@ export default function Settings() {
     router.push("/(auth)/sign-in" as any);
   };
 
+  const handleUpgrade = () => {
+    Linking.openURL("https://quotecat.ai");
+  };
+
   const handleUpdatePreference = async (
     updates: Partial<DashboardPreferences>,
   ) => {
@@ -290,118 +293,6 @@ export default function Settings() {
             </View>
           </View>
 
-          {/* ⚠️ TESTER DEBUG SECTION ⚠️ */}
-          <CollapsibleSection
-            title="🧪 Tester Tools"
-            isExpanded={expandedSections.debug}
-            onToggle={() => toggleSection('debug')}
-            theme={theme}
-            titleColor={theme.colors.accent}
-          >
-            <View style={[styles.card, { borderColor: theme.colors.accent, borderWidth: 2 }]}>
-              <Pressable
-                style={styles.settingButton}
-                onPress={async () => {
-                  const user = await getUserState();
-                  if (user.tier === "free") {
-                    await activateProTier("debug@test.com");
-                    Alert.alert("Debug", "Switched to PRO tier");
-                  } else {
-                    await deactivateProTier();
-                    Alert.alert("Debug", "Switched to FREE tier");
-                  }
-                  await load(); // Reload to update UI
-                }}
-              >
-                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
-                  Toggle Free/Pro Tier
-                </Text>
-                <Text style={styles.settingValue}>
-                  {isPro ? "PRO → FREE" : "FREE → PRO"}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.settingButton}
-                onPress={async () => {
-                  Alert.alert(
-                    "Reset Assemblies?",
-                    "This will reset all assemblies to the latest seed data. Any custom assemblies will be lost.",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Reset",
-                        style: "destructive",
-                        onPress: async () => {
-                          try {
-                            const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-                            const { ASSEMBLY_KEYS } = await import("@/lib/storageKeys");
-                            const { ASSEMBLIES_SEED } = await import("@/modules/assemblies");
-
-                            // Clear existing assemblies
-                            await AsyncStorage.removeItem(ASSEMBLY_KEYS.CACHE);
-
-                            // Reinitialize with seed data
-                            await AsyncStorage.setItem(
-                              ASSEMBLY_KEYS.CACHE,
-                              JSON.stringify(ASSEMBLIES_SEED)
-                            );
-
-                            Alert.alert("Success", "Assemblies reset to seed data");
-                          } catch (error) {
-                            console.error("Failed to reset assemblies:", error);
-                            Alert.alert("Error", "Failed to reset assemblies");
-                          }
-                        },
-                      },
-                    ]
-                  );
-                }}
-              >
-                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
-                  Reset Assemblies to Seed
-                </Text>
-                <Text style={[styles.settingValue, { color: '#FF3B30' }]}>
-                  Destructive
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.settingButton, styles.settingButtonLast]}
-                onPress={async () => {
-                  Alert.alert(
-                    "Reset Products?",
-                    "This will reset all products to the latest seed data and clear the Supabase sync cache.",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Reset",
-                        style: "destructive",
-                        onPress: async () => {
-                          try {
-                            const { clearProductCache } = await import("@/modules/catalog/productService");
-                            await clearProductCache();
-                            Alert.alert("Success", "Products cache cleared. Restart app to reinitialize.");
-                          } catch (error) {
-                            console.error("Failed to reset products:", error);
-                            Alert.alert("Error", "Failed to reset products");
-                          }
-                        },
-                      },
-                    ]
-                  );
-                }}
-              >
-                <Text style={[styles.settingButtonText, { fontWeight: '700' }]}>
-                  Reset Products to Seed
-                </Text>
-                <Text style={[styles.settingValue, { color: '#FF3B30' }]}>
-                  Destructive
-                </Text>
-              </Pressable>
-            </View>
-          </CollapsibleSection>
-
           {/* Usage & Limits Section */}
           {userState && (
             <CollapsibleSection
@@ -411,70 +302,22 @@ export default function Settings() {
               theme={theme}
             >
               <View style={styles.card}>
-                {/* Quotes */}
+                {/* Draft Quotes */}
                 <View style={styles.usageRow}>
                   <View style={styles.usageHeader}>
-                    <Text style={styles.usageLabel}>Quotes Created</Text>
-                    <Text style={styles.usageValue}>
-                      {isPro
-                        ? `${userState.quotesUsed} (Unlimited)`
-                        : `${userState.quotesUsed} / ${FREE_LIMITS.quotes}`}
-                    </Text>
+                    <Text style={styles.usageLabel}>Draft Quotes</Text>
+                    <Text style={styles.usageValue}>Unlimited ✨</Text>
                   </View>
-                  {!isPro && (
-                    <View style={styles.progressBarContainer}>
-                      <View
-                        style={[
-                          styles.progressBar,
-                          {
-                            width: `${Math.min(
-                              100,
-                              (userState.quotesUsed / FREE_LIMITS.quotes) * 100
-                            )}%`,
-                          },
-                        ]}
-                      />
-                    </View>
-                  )}
                 </View>
 
                 {/* PDF Exports */}
-                <View style={styles.usageRow}>
-                  <View style={styles.usageHeader}>
-                    <Text style={styles.usageLabel}>PDF Exports (This Month)</Text>
-                    <Text style={styles.usageValue}>
-                      {isPro
-                        ? `${userState.pdfsThisMonth} (Unlimited)`
-                        : `${userState.pdfsThisMonth} / ${FREE_LIMITS.pdfsPerMonth}`}
-                    </Text>
-                  </View>
-                  {!isPro && (
-                    <View style={styles.progressBarContainer}>
-                      <View
-                        style={[
-                          styles.progressBar,
-                          {
-                            width: `${Math.min(
-                              100,
-                              (userState.pdfsThisMonth / FREE_LIMITS.pdfsPerMonth) * 100
-                            )}%`,
-                          },
-                        ]}
-                      />
-                    </View>
-                  )}
-                </View>
-
-                {/* CSV Exports */}
                 <View style={[styles.usageRow, styles.usageRowLast]}>
                   <View style={styles.usageHeader}>
-                    <Text style={styles.usageLabel}>
-                      CSV Exports (This Month)
-                    </Text>
+                    <Text style={styles.usageLabel}>Client Exports</Text>
                     <Text style={styles.usageValue}>
                       {isPro
-                        ? `${userState.spreadsheetsThisMonth} (Unlimited)`
-                        : `${userState.spreadsheetsThisMonth} / ${FREE_LIMITS.spreadsheetsPerMonth}`}
+                        ? `${userState.pdfsExported} (Unlimited)`
+                        : `${userState.pdfsExported} / ${FREE_LIMITS.pdfsTotal}`}
                     </Text>
                   </View>
                   {!isPro && (
@@ -485,9 +328,7 @@ export default function Settings() {
                           {
                             width: `${Math.min(
                               100,
-                              (userState.spreadsheetsThisMonth /
-                                FREE_LIMITS.spreadsheetsPerMonth) *
-                                100
+                              (userState.pdfsExported / FREE_LIMITS.pdfsTotal) * 100
                             )}%`,
                           },
                         ]}
@@ -632,11 +473,16 @@ export default function Settings() {
                 <View style={styles.defaultItemHeader}>
                   <Ionicons name="business-outline" size={20} color={theme.colors.accent} />
                   <Text style={styles.defaultItemTitle}>Company Details</Text>
+                  {!isPro && (
+                    <View style={styles.proBadge}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={styles.defaultItemDescription}>
-                  Set your company name, contact info, and logo. These appear on all quotes and PDFs.
+                  Add your company name, contact info, and address to all quotes and PDFs.
                 </Text>
-                {preferences.company && (preferences.company.companyName || preferences.company.email || preferences.company.phone) && (
+                {isPro && preferences.company && (preferences.company.companyName || preferences.company.email || preferences.company.phone) && (
                   <View style={styles.previewBox}>
                     {preferences.company.companyName && (
                       <Text style={styles.previewText}>📍 {preferences.company.companyName}</Text>
@@ -649,14 +495,26 @@ export default function Settings() {
                     )}
                   </View>
                 )}
-                <Pressable
-                  style={styles.defaultItemButton}
-                  onPress={() => router.push("/(main)/company-details")}
-                >
-                  <Text style={styles.defaultItemButtonText}>
-                    {preferences.company?.companyName ? "Edit Details" : "Set Up Company Details"}
-                  </Text>
-                </Pressable>
+                {isPro ? (
+                  <Pressable
+                    style={styles.defaultItemButton}
+                    onPress={() => router.push("/(main)/company-details")}
+                  >
+                    <Text style={styles.defaultItemButtonText}>
+                      {preferences.company?.companyName ? "Edit Details" : "Set Up Company Details"}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={[styles.defaultItemButton, styles.defaultItemButtonLocked]}
+                    onPress={handleUpgrade}
+                  >
+                    <Ionicons name="lock-closed" size={16} color="#666" style={{ marginRight: 6 }} />
+                    <Text style={[styles.defaultItemButtonText, { color: "#666" }]}>
+                      Pro Feature
+                    </Text>
+                  </Pressable>
+                )}
               </View>
 
               {/* Company Logo Upload */}
@@ -1208,9 +1066,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingVertical: theme.spacing(1),
       paddingHorizontal: theme.spacing(2),
       alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "center",
     },
     defaultItemButtonDisabled: {
       backgroundColor: theme.colors.border,
+    },
+    defaultItemButtonLocked: {
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
     defaultItemButtonText: {
       fontSize: 14,

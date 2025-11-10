@@ -642,6 +642,37 @@
             transform: translateY(0);
         }
 
+        .tier-button-secondary {
+            background: #6b7280;
+            box-shadow: 0 4px 16px rgba(107, 114, 128, 0.3);
+        }
+
+        .tier-button-secondary:hover {
+            background: #4b5563;
+            box-shadow: 0 6px 20px rgba(107, 114, 128, 0.4);
+        }
+
+        .tier-card-coming-soon {
+            opacity: 0.95;
+            position: relative;
+        }
+
+        .coming-soon-badge {
+            position: absolute;
+            top: 20px;
+            right: -10px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            padding: 8px 24px;
+            font-weight: 800;
+            font-size: 12px;
+            letter-spacing: 1px;
+            transform: rotate(3deg);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+            border-radius: 4px;
+            z-index: 10;
+        }
+
         .tier-button-outline {
             background: transparent;
             border: 2px solid var(--primary);
@@ -1323,8 +1354,8 @@
                     <div class="tier-price">$0</div>
                     <div class="tier-price-period">Forever</div>
                     <ul class="tier-features">
-                        <li>25 quotes per month</li>
-                        <li>5 PDF exports</li>
+                        <li>Unlimited draft quotes</li>
+                        <li>10 client exports</li>
                         <li>Full product catalog</li>
                         <li>Professional templates</li>
                         <li>Local storage only</li>
@@ -1349,12 +1380,13 @@
                     <button onclick="handleGetPro()" class="tier-button">Get Pro Now</button>
                     <div class="tier-note">Regular price: $99/mo after 500 spots filled</div>
                 </div>
-                <div class="tier-card">
+                <div class="tier-card tier-card-coming-soon">
+                    <div class="coming-soon-badge">LAUNCHING SOON</div>
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <div class="tier-name">Premium</div>
                     <div class="tier-description">Complete business toolkit</div>
-                    <div class="tier-price">$79<span class="tier-price-small">/mo</span></div>
-                    <div class="tier-price-period">Founder pricing - First 100 spots</div>
+                    <div class="tier-price">Coming Soon</div>
+                    <div class="tier-price-period">Be the first to know when it launches</div>
                     <ul class="tier-features">
                         <li>Everything in Pro</li>
                         <li>Company logo on quotes</li>
@@ -1363,8 +1395,8 @@
                         <li>Team collaboration</li>
                         <li>Priority phone support</li>
                     </ul>
-                    <button onclick="handleGetPremium()" class="tier-button">Get Premium Now</button>
-                    <div class="tier-note">Regular price: $199/mo after 100 spots filled</div>
+                    <button onclick="openPremiumNotifyModal()" class="tier-button tier-button-secondary">Notify Me</button>
+                    <div class="tier-note">$79/mo founder pricing - First 100 spots only</div>
                 </div>
             </div>
         </div>
@@ -1657,6 +1689,66 @@
             </div>
         </div>
     </div>
+
+    <!-- Premium Notify Modal -->
+    <div id="premiumNotifyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Get Notified: Premium Launch</div>
+                <div class="modal-subtitle">Be the first to access Premium features</div>
+            </div>
+            <form name="premium-notify" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="premium-notify-success.html">
+                <input type="hidden" name="form-name" value="premium-notify">
+                <p style="display: none;">
+                    <label>Don't fill this out: <input name="bot-field"></label>
+                </p>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label" for="premiumEmailInput">Email Address</label>
+                        <input type="email" id="premiumEmailInput" name="email" class="form-input" placeholder="you@example.com" required>
+                    </div>
+                    <div style="padding: 16px; background: rgba(255, 140, 0, 0.1); border-radius: 8px; margin-top: 16px;">
+                        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1f2937;">
+                            <strong style="color: #FF8C00;">Premium Features Coming Soon:</strong><br>
+                            • Quote Wizard (AI-assisted quoting)<br>
+                            • Advanced analytics & reporting<br>
+                            • Team collaboration tools<br>
+                            • Priority phone support<br>
+                            <br>
+                            <strong>Founder pricing: $79/mo</strong> (First 100 spots only)
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="modal-button modal-button-secondary" onclick="closePremiumNotifyModal()">Cancel</button>
+                    <button type="submit" class="modal-button modal-button-primary">Notify Me</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Premium Notify Modal Functions
+        function openPremiumNotifyModal() {
+            const modal = document.getElementById('premiumNotifyModal');
+            modal.classList.add('active');
+            document.getElementById('premiumEmailInput').value = '';
+        }
+
+        function closePremiumNotifyModal() {
+            const modal = document.getElementById('premiumNotifyModal');
+            modal.classList.remove('active');
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('premiumNotifyModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closePremiumNotifyModal();
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>

@@ -5,23 +5,27 @@ import type { UserState } from "./user";
 import { FREE_LIMITS } from "./user";
 
 /**
- * Check if user can create a new quote
+ * Check if user has Pro or Premium tier (Premium includes all Pro features)
+ */
+function hasPaidTier(user: UserState): boolean {
+  return user.tier === "pro" || user.tier === "premium";
+}
+
+/**
+ * Check if user has Premium tier specifically
+ */
+function hasPremiumTier(user: UserState): boolean {
+  return user.tier === "premium";
+}
+
+/**
+ * Check if user can create a new quote (always allowed - unlimited drafts)
  */
 export function canCreateQuote(user: UserState): {
   allowed: boolean;
   reason?: string;
 } {
-  if (user.tier === "pro") {
-    return { allowed: true };
-  }
-
-  if (user.quotesUsed >= FREE_LIMITS.quotes) {
-    return {
-      allowed: false,
-      reason: `You've reached the free limit of ${FREE_LIMITS.quotes} quotes. Upgrade to Pro for unlimited quotes.`,
-    };
-  }
-
+  // Free users have unlimited draft quotes
   return { allowed: true };
 }
 
@@ -33,16 +37,16 @@ export function canExportPDF(user: UserState): {
   reason?: string;
   remaining?: number;
 } {
-  if (user.tier === "pro") {
+  if (hasPaidTier(user)) {
     return { allowed: true };
   }
 
-  const remaining = FREE_LIMITS.pdfsPerMonth - user.pdfsThisMonth;
+  const remaining = FREE_LIMITS.pdfsTotal - user.pdfsExported;
 
   if (remaining <= 0) {
     return {
       allowed: false,
-      reason: `You've used all ${FREE_LIMITS.pdfsPerMonth} free PDF exports this month. Upgrade to Pro for unlimited exports.`,
+      reason: `You've used all ${FREE_LIMITS.pdfsTotal} free exports. Upgrade to Pro for unlimited exports.`,
       remaining: 0,
     };
   }
@@ -51,49 +55,65 @@ export function canExportPDF(user: UserState): {
 }
 
 /**
- * Check if user can export a spreadsheet
+ * Check if user can export a spreadsheet (CSV) - Pro feature only
  */
 export function canExportSpreadsheet(user: UserState): {
   allowed: boolean;
   reason?: string;
   remaining?: number;
 } {
-  if (user.tier === "pro") {
+  if (hasPaidTier(user)) {
     return { allowed: true };
   }
 
-  const remaining = FREE_LIMITS.spreadsheetsPerMonth - user.spreadsheetsThisMonth;
-
-  if (remaining <= 0) {
-    return {
-      allowed: false,
-      reason: `You've used your ${FREE_LIMITS.spreadsheetsPerMonth} free spreadsheet export this month. Upgrade to Pro for unlimited exports.`,
-      remaining: 0,
-    };
-  }
-
-  return { allowed: true, remaining };
+  // CSV export is Pro-only (no free tier access)
+  return {
+    allowed: false,
+    reason: "CSV export is available for Pro and Premium accounts.",
+    remaining: 0,
+  };
 }
 
 /**
- * Check if user can access assemblies library
+ * Check if user can access assemblies library (Pro/Premium feature)
  */
 export function canAccessAssemblies(user: UserState): boolean {
-  return user.tier === "pro";
+  return hasPaidTier(user);
 }
 
 /**
- * Check if user can access cloud sync
+ * Check if user can access cloud sync (Pro/Premium feature)
  */
 export function canAccessCloudSync(user: UserState): boolean {
-  return user.tier === "pro";
+  return hasPaidTier(user);
 }
 
 /**
- * Check if user can access dashboard value tracking
+ * Check if user can access dashboard value tracking (Pro/Premium feature)
  */
 export function canAccessValueTracking(user: UserState): boolean {
-  return user.tier === "pro";
+  return hasPaidTier(user);
+}
+
+/**
+ * Check if user can access Quote Wizard (Premium-only feature)
+ */
+export function canAccessQuoteWizard(user: UserState): boolean {
+  return hasPremiumTier(user);
+}
+
+/**
+ * Check if user can use branded PDFs (Premium-only feature)
+ */
+export function canUseBrandedPDFs(user: UserState): boolean {
+  return hasPremiumTier(user);
+}
+
+/**
+ * Check if user can access advanced analytics (Premium-only feature)
+ */
+export function canAccessAdvancedAnalytics(user: UserState): boolean {
+  return hasPremiumTier(user);
 }
 
 /**
@@ -101,22 +121,14 @@ export function canAccessValueTracking(user: UserState): boolean {
  */
 export function getQuotaRemaining(
   user: UserState,
-  resource: "quotes" | "pdfs" | "spreadsheets",
+  resource: "pdfs",
 ): number {
-  if (user.tier === "pro") {
+  if (hasPaidTier(user)) {
     return Infinity;
   }
 
-  if (resource === "quotes") {
-    return Math.max(0, FREE_LIMITS.quotes - user.quotesUsed);
-  }
-
   if (resource === "pdfs") {
-    return Math.max(0, FREE_LIMITS.pdfsPerMonth - user.pdfsThisMonth);
-  }
-
-  if (resource === "spreadsheets") {
-    return Math.max(0, FREE_LIMITS.spreadsheetsPerMonth - user.spreadsheetsThisMonth);
+    return Math.max(0, FREE_LIMITS.pdfsTotal - user.pdfsExported);
   }
 
   return 0;
@@ -126,11 +138,10 @@ export function getQuotaRemaining(
  * Get user-friendly message about upgrade benefits for a specific feature
  */
 export function getUpgradeMessage(
-  feature: "quotes" | "pdf" | "assemblies" | "cloud" | "value",
+  feature: "pdf" | "assemblies" | "cloud" | "value",
 ): string {
   const messages = {
-    quotes: "Upgrade to Pro for unlimited quotes",
-    pdf: "Upgrade to Pro for unlimited PDF exports with custom branding",
+    pdf: "Upgrade to Pro for unlimited client exports with custom branding",
     assemblies:
       "Assemblies are a Pro feature. Access pre-built calculators for all trades.",
     cloud: "Cloud backup and sync is a Pro feature. Never lose your quotes.",
@@ -144,12 +155,11 @@ export function getUpgradeMessage(
  * Check if user should see upgrade prompts
  */
 export function shouldShowUpgradePrompt(user: UserState): boolean {
-  if (user.tier === "pro") return false;
+  if (hasPaidTier(user)) return false;
 
-  // Show when approaching limits
-  const quotesRemaining = getQuotaRemaining(user, "quotes");
+  // Show when approaching PDF export limit
   const pdfsRemaining = getQuotaRemaining(user, "pdfs");
 
-  // Show prompt when 70% of quota is used
-  return quotesRemaining <= 3 || pdfsRemaining <= 1;
+  // Show prompt when only 1 PDF export remaining
+  return pdfsRemaining <= 1;
 }

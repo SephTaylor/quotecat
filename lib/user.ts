@@ -3,24 +3,22 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type UserTier = "free" | "pro";
+export type UserTier = "free" | "pro" | "premium";
 
 export type UserState = {
   tier: UserTier;
   email?: string;
-  quotesUsed: number;
-  pdfsThisMonth: number;
-  spreadsheetsThisMonth: number;
-  lastPdfResetDate: string; // ISO date for monthly reset
+  // Unlimited draft quotes - no counter needed
+  pdfsExported: number;  // Total PDF exports (not monthly)
   // Pro user fields
   proActivatedAt?: string;
   proExpiresAt?: string; // For trial/subscription tracking
 };
 
 export const FREE_LIMITS = {
-  quotes: 10,
-  pdfsPerMonth: 3,
-  spreadsheetsPerMonth: 1,
+  pdfsTotal: 10,  // Total client exports
+  // Unlimited draft quotes
+  // CSV export is Pro-only
 } as const;
 
 const USER_STATE_KEY = "@quotecat/user_state";
@@ -34,9 +32,18 @@ export async function getUserState(): Promise<UserState> {
     if (!json) {
       return getDefaultUserState();
     }
-    const state = JSON.parse(json) as UserState;
-    // Reset PDF count if month has changed
-    return resetPdfCountIfNeeded(state);
+    const state = JSON.parse(json) as any;
+
+    // Migrate old user state to new structure
+    const migratedState: UserState = {
+      tier: state.tier || "free",
+      email: state.email,
+      pdfsExported: state.pdfsExported ?? state.pdfsThisMonth ?? 0, // Migrate from old field
+      proActivatedAt: state.proActivatedAt,
+      proExpiresAt: state.proExpiresAt,
+    };
+
+    return migratedState;
   } catch (error) {
     console.error("Failed to load user state:", error);
     return getDefaultUserState();
@@ -56,61 +63,13 @@ export async function saveUserState(state: UserState): Promise<void> {
 
 /**
  * Default state for new users
- * NOTE: Default tier is "pro" for TestFlight beta testing
+ * NOTE: Default tier is "free" - users must sign in with paid account for Pro features
  */
 function getDefaultUserState(): UserState {
   return {
-    tier: "pro", // TestFlight: Start as Pro so testers can test all features
-    quotesUsed: 0,
-    pdfsThisMonth: 0,
-    spreadsheetsThisMonth: 0,
-    lastPdfResetDate: new Date().toISOString(),
+    tier: "free", // Default to free - Pro tier activated via Supabase authentication
+    pdfsExported: 0,  // Total exports (not monthly)
   };
-}
-
-/**
- * Reset PDF and spreadsheet counts if we're in a new month
- */
-function resetPdfCountIfNeeded(state: UserState): UserState {
-  const lastReset = new Date(state.lastPdfResetDate);
-  const now = new Date();
-
-  // Check if month or year has changed
-  if (
-    lastReset.getMonth() !== now.getMonth() ||
-    lastReset.getFullYear() !== now.getFullYear()
-  ) {
-    return {
-      ...state,
-      pdfsThisMonth: 0,
-      spreadsheetsThisMonth: 0,
-      lastPdfResetDate: now.toISOString(),
-    };
-  }
-
-  return state;
-}
-
-/**
- * Increment quote usage counter
- */
-export async function incrementQuoteCount(): Promise<void> {
-  const state = await getUserState();
-  await saveUserState({
-    ...state,
-    quotesUsed: state.quotesUsed + 1,
-  });
-}
-
-/**
- * Decrement quote usage counter (when quote is deleted)
- */
-export async function decrementQuoteCount(): Promise<void> {
-  const state = await getUserState();
-  await saveUserState({
-    ...state,
-    quotesUsed: Math.max(0, state.quotesUsed - 1),
-  });
 }
 
 /**
@@ -120,18 +79,7 @@ export async function incrementPdfCount(): Promise<void> {
   const state = await getUserState();
   await saveUserState({
     ...state,
-    pdfsThisMonth: state.pdfsThisMonth + 1,
-  });
-}
-
-/**
- * Increment spreadsheet export counter
- */
-export async function incrementSpreadsheetCount(): Promise<void> {
-  const state = await getUserState();
-  await saveUserState({
-    ...state,
-    spreadsheetsThisMonth: state.spreadsheetsThisMonth + 1,
+    pdfsExported: state.pdfsExported + 1,
   });
 }
 
@@ -143,6 +91,19 @@ export async function activateProTier(email: string): Promise<void> {
   await saveUserState({
     ...state,
     tier: "pro",
+    email,
+    proActivatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Activate Premium tier (called after successful login from website)
+ */
+export async function activatePremiumTier(email: string): Promise<void> {
+  const state = await getUserState();
+  await saveUserState({
+    ...state,
+    tier: "premium",
     email,
     proActivatedAt: new Date().toISOString(),
   });

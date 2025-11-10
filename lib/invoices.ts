@@ -24,8 +24,10 @@ async function generateInvoiceNumber(): Promise<string> {
 
 /**
  * Check if an invoice is overdue and update its status if needed
+ * NOTE: Updates status in memory only, does not save to storage
+ * This prevents infinite recursion with updateInvoice -> getInvoiceById -> listInvoices
  */
-async function checkAndUpdateOverdueStatus(invoice: Invoice): Promise<Invoice> {
+function checkAndUpdateOverdueStatus(invoice: Invoice): Invoice {
   // Only check unpaid and partial invoices
   if (invoice.status !== "unpaid" && invoice.status !== "partial") {
     return invoice;
@@ -37,11 +39,9 @@ async function checkAndUpdateOverdueStatus(invoice: Invoice): Promise<Invoice> {
   const dueDate = new Date(invoice.dueDate);
   dueDate.setHours(0, 0, 0, 0);
 
-  // If due date has passed, mark as overdue
+  // If due date has passed, mark as overdue (in memory only)
   if (dueDate < today) {
-    const updated = { ...invoice, status: "overdue" as const };
-    await updateInvoice(invoice.id, { status: "overdue" });
-    return updated;
+    return { ...invoice, status: "overdue" as const };
   }
 
   return invoice;
@@ -49,7 +49,7 @@ async function checkAndUpdateOverdueStatus(invoice: Invoice): Promise<Invoice> {
 
 /**
  * List all invoices, sorted by most recent first
- * Automatically updates overdue invoices
+ * Automatically updates overdue invoices in memory
  */
 export async function listInvoices(): Promise<Invoice[]> {
   try {
@@ -58,8 +58,8 @@ export async function listInvoices(): Promise<Invoice[]> {
 
     let invoices = JSON.parse(json) as Invoice[];
 
-    // Check and update overdue statuses
-    invoices = await Promise.all(invoices.map(checkAndUpdateOverdueStatus));
+    // Check and update overdue statuses (in memory only)
+    invoices = invoices.map(checkAndUpdateOverdueStatus);
 
     return invoices.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -72,14 +72,14 @@ export async function listInvoices(): Promise<Invoice[]> {
 
 /**
  * Get invoice by ID
- * Automatically updates overdue status if needed
+ * Automatically updates overdue status if needed (in memory)
  */
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
   const invoices = await listInvoices();
   const invoice = invoices.find((inv) => inv.id === id) || null;
 
   if (invoice) {
-    return await checkAndUpdateOverdueStatus(invoice);
+    return checkAndUpdateOverdueStatus(invoice);
   }
 
   return null;
