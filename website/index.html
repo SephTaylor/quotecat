@@ -992,6 +992,182 @@
                 font-size: 14px;
             }
         }
+
+        /* Checkout Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .modal-subtitle {
+            font-size: 16px;
+            color: var(--text-light);
+        }
+
+        .modal-body {
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .billing-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .billing-option {
+            padding: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .billing-option:hover {
+            border-color: var(--primary);
+            background: #fff7ed;
+        }
+
+        .billing-option.selected {
+            border-color: var(--primary);
+            background: #fff7ed;
+        }
+
+        .billing-option-period {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .billing-option-price {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .billing-option-savings {
+            font-size: 12px;
+            color: #16a34a;
+            font-weight: 600;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-button {
+            flex: 1;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .modal-button-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .modal-button-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .modal-button-primary:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .modal-button-secondary {
+            background: white;
+            color: var(--text);
+            border: 2px solid #e5e7eb;
+        }
+
+        .modal-button-secondary:hover {
+            background: #f9fafb;
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-size: 14px;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -1304,41 +1480,111 @@
         });
 
         // Payment handlers - Create Stripe checkout session
-        async function handleGetPro() {
-            await createCheckoutSession('pro');
+        // Modal state
+        let currentTier = 'pro';
+        let selectedPeriod = 'monthly';
+
+        function handleGetPro() {
+            openCheckoutModal('pro');
         }
 
-        async function handleGetPremium() {
-            await createCheckoutSession('premium');
+        function handleGetPremium() {
+            openCheckoutModal('premium');
         }
 
-        async function createCheckoutSession(tier) {
-            // Get email from user
-            const email = prompt('Enter your email address to continue:');
-            if (!email) return;
+        function openCheckoutModal(tier) {
+            currentTier = tier;
+            const modal = document.getElementById('checkoutModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const monthlyPrice = document.getElementById('monthlyPrice');
+            const yearlyPrice = document.getElementById('yearlyPrice');
+
+            // Update modal content based on tier
+            modalTitle.textContent = tier === 'pro' ? 'Get Pro' : 'Get Premium';
+            monthlyPrice.textContent = tier === 'pro' ? '$29' : '$79';
+            yearlyPrice.textContent = tier === 'pro' ? '$290' : '$790';
+
+            // Reset form
+            document.getElementById('emailInput').value = '';
+            document.getElementById('emailError').style.display = 'none';
+            selectedPeriod = 'monthly';
+            document.getElementById('monthlyOption').classList.add('selected');
+            document.getElementById('yearlyOption').classList.remove('selected');
+
+            // Show modal
+            modal.classList.add('active');
+        }
+
+        function closeCheckoutModal() {
+            const modal = document.getElementById('checkoutModal');
+            modal.classList.remove('active');
+        }
+
+        // Handle billing option selection
+        document.addEventListener('DOMContentLoaded', function() {
+            const monthlyOption = document.getElementById('monthlyOption');
+            const yearlyOption = document.getElementById('yearlyOption');
+
+            monthlyOption.addEventListener('click', function() {
+                selectedPeriod = 'monthly';
+                monthlyOption.classList.add('selected');
+                yearlyOption.classList.remove('selected');
+            });
+
+            yearlyOption.addEventListener('click', function() {
+                selectedPeriod = 'yearly';
+                yearlyOption.classList.add('selected');
+                monthlyOption.classList.remove('selected');
+            });
+
+            // Close modal when clicking outside
+            document.getElementById('checkoutModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeCheckoutModal();
+                }
+            });
+
+            // Handle Enter key in email input
+            document.getElementById('emailInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    proceedToCheckout();
+                }
+            });
+        });
+
+        async function proceedToCheckout() {
+            const emailInput = document.getElementById('emailInput');
+            const emailError = document.getElementById('emailError');
+            const continueButton = document.getElementById('continueButton');
+            const email = emailInput.value.trim();
 
             // Validate email
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email) {
+                emailError.textContent = 'Please enter your email address';
+                emailError.style.display = 'block';
+                return;
+            }
             if (!emailRegex.test(email)) {
-                alert('Please enter a valid email address.');
+                emailError.textContent = 'Please enter a valid email address';
+                emailError.style.display = 'block';
                 return;
             }
 
-            // Ask for billing period
-            const period = confirm('Monthly billing?\n\nClick OK for Monthly ($' + (tier === 'premium' ? '79' : '29') + '/mo)\nClick Cancel for Yearly ($' + (tier === 'premium' ? '790' : '290') + '/yr - Save 2 months!)');
+            // Hide error
+            emailError.style.display = 'none';
 
             // Determine price ID based on tier and period
             let priceId;
-            if (tier === 'pro') {
-                priceId = period ? 'price_1SRYudEJ6nOeXQImORnpOn57' : 'price_1SRYxvEJ6nOeXQImgcguc1Tb';
+            if (currentTier === 'pro') {
+                priceId = selectedPeriod === 'monthly' ? 'price_1SRYudEJ6nOeXQImORnpOn57' : 'price_1SRYxvEJ6nOeXQImgcguc1Tb';
             } else {
-                priceId = period ? 'price_1SRYzJEJ6nOeXQImUR9ZE9dg' : 'price_1SRYzpEJ6nOeXQImLJcob9DI';
+                priceId = selectedPeriod === 'monthly' ? 'price_1SRYzJEJ6nOeXQImUR9ZE9dg' : 'price_1SRYzpEJ6nOeXQImLJcob9DI';
             }
 
-            // Show loading indicator
-            const originalButton = event.target;
-            originalButton.disabled = true;
-            originalButton.textContent = 'Creating checkout...';
+            // Show loading state
+            continueButton.disabled = true;
+            continueButton.textContent = 'Creating checkout...';
 
             try {
                 // Call Supabase Edge Function to create checkout session
@@ -1367,13 +1613,50 @@
                 window.location.href = data.url;
             } catch (error) {
                 console.error('Checkout error:', error);
-                alert('Sorry, there was an error creating your checkout session. Please try again or email hello@quotecat.ai for help.');
+                emailError.textContent = 'Sorry, there was an error. Please try again or email hello@quotecat.ai for help.';
+                emailError.style.display = 'block';
 
                 // Reset button
-                originalButton.disabled = false;
-                originalButton.textContent = tier === 'premium' ? 'Get Premium Now' : 'Get Pro Now';
+                continueButton.disabled = false;
+                continueButton.textContent = 'Continue to Checkout';
             }
         }
     </script>
+
+    <!-- Checkout Modal -->
+    <div id="checkoutModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Get Pro</div>
+                <div class="modal-subtitle">Start your founder pricing subscription</div>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="emailInput">Email Address</label>
+                    <input type="email" id="emailInput" class="form-input" placeholder="you@example.com">
+                    <div id="emailError" class="error-message" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Billing Period</label>
+                    <div class="billing-options">
+                        <div class="billing-option selected" data-period="monthly" id="monthlyOption">
+                            <div class="billing-option-period">Monthly</div>
+                            <div class="billing-option-price" id="monthlyPrice">$29</div>
+                        </div>
+                        <div class="billing-option" data-period="yearly" id="yearlyOption">
+                            <div class="billing-option-period">Yearly</div>
+                            <div class="billing-option-price" id="yearlyPrice">$290</div>
+                            <div class="billing-option-savings">Save 2 months!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-button modal-button-secondary" onclick="closeCheckoutModal()">Cancel</button>
+                <button class="modal-button modal-button-primary" id="continueButton" onclick="proceedToCheckout()">Continue to Checkout</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
