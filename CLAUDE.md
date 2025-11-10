@@ -338,7 +338,15 @@ User creates quotes with real-time pricing
 - **Xbyte** (Data provider)
 - Provides product & pricing data for construction materials
 - Use case: Bootstrap with real data while pursuing official partnerships
-- Status: **Sample data expected in a few days**
+- **Status (Nov 10, 2024):** ✅ Sample data received and reviewed, feedback email sent
+  - Received sample from Home Depot, Lowe's, Menards (20 products each)
+  - **Critical feedback:** Missing "Unit" field (EA, LF, SF, BOX, etc.) - MUST HAVE for quoting
+  - Sample included non-construction items (toys) - need construction categories only
+  - Requested updated sample: 100-200 products per retailer with Unit field
+  - **Production scope clarified:** 2,000-5,000 products per retailer across construction categories
+  - **Update frequency:** Daily preferred (overnight), weekly acceptable
+  - **Delivery method:** API strongly preferred, webhook acceptable, file drop workable
+  - **Next step:** Waiting for updated sample before discussing commercials
 
 ### Product Data Structure
 
@@ -463,6 +471,18 @@ User creates quotes with real-time pricing
 - ✅ Kept only 8 actively used images in assets/images
 - ✅ Clean, minimal assets directory
 
+**Xbyte Data Integration (🚧 IN PROGRESS - Nov 10, 2024):**
+- ✅ Received initial sample data from Home Depot, Lowe's, Menards (20 products each)
+- ✅ Reviewed sample data quality (product names, prices, URLs, stock - excellent)
+- ✅ Identified critical issues:
+  - Missing "Unit" field (EA, LF, SF, BOX, etc.) - BLOCKER for import
+  - Non-construction items in sample (toys, rubber ducks)
+  - Inconsistent timestamp formats across retailers
+- ✅ Drafted comprehensive feedback email to Xbyte team
+- ✅ Clarified production scope: 2,000-5,000 products per retailer
+- ✅ Specified requirements: Daily updates (preferred), API delivery (preferred)
+- ⏳ Waiting for updated sample with Unit field before proceeding
+
 ### 📝 For New Claude Sessions
 
 **When starting a new conversation, read:**
@@ -474,8 +494,8 @@ User creates quotes with real-time pricing
 **Key context to understand:**
 - App is LIVE in TestFlight (iOS) and Google Play testing (Android)
 - App working with 368 AI products syncing from Supabase
-- Product data pipeline is BUILT and ready to execute when Xbyte data arrives
-- Waiting on Xbyte sample data (expected in a few days)
+- **Xbyte sample data received and reviewed** (Nov 10) - missing critical "Unit" field, waiting for updated sample
+- Product data pipeline is BUILT and ready to execute when updated Xbyte data arrives
 - **Authentication is COMPLETE and Apple-compliant** (sign-in only, no sign-up in app)
 - **Free tier limits updated:** Unlimited draft quotes, 10 client exports total (not monthly)
 - **Premium tier features expanded:** Contract generation, payment collection, job profit tracking, change orders
@@ -484,14 +504,20 @@ User creates quotes with real-time pricing
 
 ### ⏳ Waiting For
 
-**Xbyte Sample Data:**
-- **Status:** Expected in a few days
-- **Purpose:** Real product & pricing data for construction materials
-- **Action when received:**
-  - Review data format and fields
+**Xbyte Updated Sample Data:**
+- **Status (Nov 10, 2024):** Feedback email sent, waiting for updated sample
+- **What we received:** Initial sample from HD/Lowe's/Menards (20 products each)
+- **What we need:** Updated sample with Unit field (100-200 products each, construction only)
+- **Critical issue:** Missing "Unit" field (EA, LF, SF, BOX, etc.) - blockers for import
+- **Other issues:** Non-construction items in sample, inconsistent timestamp formats
+- **Action when updated sample received:**
+  - Verify Unit field is present and accurate
+  - Test import script with larger sample
+  - Validate category mapping
+  - Confirm data quality meets requirements
+  - Discuss commercials and finalize agreement
   - Run migration 004 in Supabase (adds retailer field)
-  - Test import script with sample data
-  - Evaluate data quality and coverage
+  - Import production dataset (2,000-5,000 products per retailer)
 
 **Official API Responses:**
 - Menards: webedi@menards.com, sppurchasing@menards.com (emails sent)
@@ -535,14 +561,17 @@ User creates quotes with real-time pricing
 4. Set up email automation for credentials
 5. Consider fixing app download 404 errors on success page (apps not publicly published yet)
 
-**When Xbyte Data Arrives:**
-1. Review data format and fields
-2. Run migration 004 in Supabase (adds retailer field) - **Ready to execute**
-3. Test import script with sample data - **Script built: `supabase/import_retailer_data.ts`**
-4. Import full dataset
-5. Add retailer badges to product picker UI (if applicable)
-6. Test sync in app
-7. Update status messaging with appropriate data source disclaimer
+**When Xbyte Updated Sample Arrives:**
+1. ✅ Review initial sample - DONE (Nov 10) - identified missing Unit field
+2. ⏳ Test updated sample with Unit field - WAITING FOR XBYTE
+3. Validate category mapping and data quality
+4. Run migration 004 in Supabase (adds retailer field) - **Ready to execute**
+5. Test import script with sample data - **Script built: `supabase/import_retailer_data.ts`**
+6. Discuss commercials and finalize agreement with Xbyte
+7. Import production dataset (2,000-5,000 products per retailer)
+8. Add retailer badges to product picker UI (if applicable)
+9. Test sync in app
+10. Update status messaging with appropriate data source disclaimer
 
 **Phase 1 - Website Payments (Next 1-2 Weeks):**
 1. ✅ App sign-in screen (DONE)
