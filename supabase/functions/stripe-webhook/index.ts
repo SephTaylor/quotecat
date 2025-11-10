@@ -2,11 +2,15 @@
 // Handles Stripe webhook events and creates Supabase accounts
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import Stripe from 'https://esm.sh/stripe@14.3.0?target=deno';
+import Stripe from 'https://esm.sh/stripe@14?target=denonext';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Create crypto provider for Deno
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
+
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2023-10-16',
+  apiVersion: '2024-11-20.acacia',
+  httpClient: Stripe.createFetchHttpClient(),
 });
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -28,7 +32,14 @@ serve(async (req) => {
 
   try {
     const body = await req.text();
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    // Use constructEventAsync with crypto provider for Deno
+    event = await stripe.webhooks.constructEventAsync(
+      body,
+      signature,
+      webhookSecret,
+      undefined,
+      cryptoProvider
+    );
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return new Response(
