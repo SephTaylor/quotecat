@@ -440,6 +440,29 @@ User creates quotes with real-time pricing
 - ✅ Data spec documented (`supabase/RETAILER_DATA_SPEC.md`)
 - ✅ Product type updated with optional `retailer` and `dataSource` fields
 
+**Free Tier & Feature Gating (✅ COMPLETE - Nov 10, 2024):**
+- ✅ Unlimited draft quotes for all users
+- ✅ 10 client exports total (changed from monthly to lifetime limit)
+- ✅ CSV export is Pro-only (no free tier access)
+- ✅ Company details editing locked for Pro/Premium users
+- ✅ User state migration from old monthly limits to total limits
+- ✅ PDF export counter properly increments after generation
+- ✅ All alerts are Apple-compliant (no pricing/upgrade language)
+- ✅ Premium tier support added to all feature checks
+
+**Premium Tier Positioning (✅ UPDATED - Nov 10, 2024):**
+- ✅ Premium shown as "Coming Soon" with email collection
+- ✅ Premium notification modal with Netlify form integration
+- ✅ Premium success page (premium-notify-success.html)
+- ✅ Expanded features: Contract generation, payment collection, job profit tracking, change orders
+- ✅ Positioned as "Complete Business Toolkit" (quote → contract → payment → profit)
+- ✅ Email collection for Premium launch announcement
+
+**Asset Cleanup (✅ COMPLETE - Nov 10, 2024):**
+- ✅ Moved 17 unused images to OneDrive backup folder
+- ✅ Kept only 8 actively used images in assets/images
+- ✅ Clean, minimal assets directory
+
 ### 📝 For New Claude Sessions
 
 **When starting a new conversation, read:**
@@ -454,6 +477,8 @@ User creates quotes with real-time pricing
 - Product data pipeline is BUILT and ready to execute when Xbyte data arrives
 - Waiting on Xbyte sample data (expected in a few days)
 - **Authentication is COMPLETE and Apple-compliant** (sign-in only, no sign-up in app)
+- **Free tier limits updated:** Unlimited draft quotes, 10 client exports total (not monthly)
+- **Premium tier features expanded:** Contract generation, payment collection, job profit tracking, change orders
 - **Next major work:** Website sign-up + Stripe payment integration
 - All monetization must go through website (NOT in-app) to avoid Apple's 30% cut
 
@@ -506,8 +531,9 @@ User creates quotes with real-time pricing
 **Immediate (This Week):**
 1. **Wait for Xbyte sample data** - Expected in a few days
 2. **Continue beta testing** - Monitor TestFlight and Google Play feedback
-3. **Build website payment flow** (signup + Stripe integration)
+3. **Build website payment flow** (signup + Stripe integration) - NEXT PRIORITY
 4. Set up email automation for credentials
+5. Consider fixing app download 404 errors on success page (apps not publicly published yet)
 
 **When Xbyte Data Arrives:**
 1. Review data format and fields
