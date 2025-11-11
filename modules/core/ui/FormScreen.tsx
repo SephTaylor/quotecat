@@ -60,7 +60,7 @@ export default function FormScreen({
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: "transparent" },
+    root: { flex: 1, backgroundColor: theme.colors.bg },
     content: {
       flexGrow: 1,
       paddingHorizontal: theme.spacing(2),
