@@ -23,14 +23,16 @@ export const SwipeableInvoiceItem = React.memo(
     const styles = React.useMemo(() => createStyles(theme), [theme]);
     const statusMeta = InvoiceStatusMeta[item.status];
 
-    // Calculate total (same logic as quote total)
-    const itemsTotal = item.items.reduce(
-      (sum, lineItem) => sum + lineItem.unitPrice * lineItem.qty,
-      0,
-    );
-    const subtotal = itemsTotal + item.labor + (item.materialEstimate || 0) + (item.overhead || 0);
-    const markup = item.markupPercent ? subtotal * (item.markupPercent / 100) : 0;
-    const total = subtotal + markup;
+    // Calculate total (memoized to prevent recalculation on every render)
+    const total = React.useMemo(() => {
+      const itemsTotal = item.items.reduce(
+        (sum, lineItem) => sum + lineItem.unitPrice * lineItem.qty,
+        0,
+      );
+      const subtotal = itemsTotal + item.labor + (item.materialEstimate || 0) + (item.overhead || 0);
+      const markup = item.markupPercent ? subtotal * (item.markupPercent / 100) : 0;
+      return subtotal + markup;
+    }, [item.items, item.labor, item.materialEstimate, item.overhead, item.markupPercent]);
 
     // Format due date
     const dueDate = new Date(item.dueDate);

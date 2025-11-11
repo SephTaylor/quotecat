@@ -43,6 +43,8 @@ export default function InvoicesList() {
   const [isPro, setIsPro] = useState(false);
   const [deletedInvoice, setDeletedInvoice] = useState<Invoice | null>(null);
   const [showUndo, setShowUndo] = useState(false);
+  const [editingStatusForInvoice, setEditingStatusForInvoice] = useState<Invoice | null>(null);
+  const deleteTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const load = useCallback(async () => {
     const user = await getUserState();
@@ -64,6 +66,15 @@ export default function InvoicesList() {
       load();
     }, [load]),
   );
+
+  // Clean up delete timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (deleteTimeoutRef.current) {
+        clearTimeout(deleteTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -89,26 +100,36 @@ export default function InvoicesList() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
+            // Clear any existing timeout
+            if (deleteTimeoutRef.current) {
+              clearTimeout(deleteTimeoutRef.current);
+            }
+
             setDeletedInvoice(invoice);
             setInvoices((prev) => prev.filter((inv) => inv.id !== invoice.id));
             setShowUndo(true);
 
             // Auto-dismiss undo after 5 seconds and permanently delete
-            setTimeout(async () => {
-              if (deletedInvoice?.id === invoice.id) {
-                await deleteInvoice(invoice.id);
-                setDeletedInvoice(null);
-                setShowUndo(false);
-              }
+            deleteTimeoutRef.current = setTimeout(async () => {
+              await deleteInvoice(invoice.id);
+              setDeletedInvoice(null);
+              setShowUndo(false);
+              deleteTimeoutRef.current = null;
             }, 5000);
           },
         },
       ]
     );
-  }, [deletedInvoice]);
+  }, []);
 
   const handleUndoDelete = useCallback(async () => {
     if (deletedInvoice) {
+      // Clear the pending delete timeout
+      if (deleteTimeoutRef.current) {
+        clearTimeout(deleteTimeoutRef.current);
+        deleteTimeoutRef.current = null;
+      }
+
       setInvoices((prev) => [...prev, deletedInvoice]);
       setDeletedInvoice(null);
       setShowUndo(false);
