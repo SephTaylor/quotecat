@@ -639,24 +639,29 @@ export default function Settings() {
                 />
               </View>
 
-              {mode === "light" && (
-                <View style={[styles.settingButton, { borderTopWidth: 1, borderTopColor: theme.colors.border }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.settingButtonText}>Gradient Style</Text>
-                    <Text style={styles.settingSubtext}>
-                      {gradientMode === "warm" ? "Warm (Orange)" : "Neutral (Gray)"}
-                    </Text>
-                  </View>
-                  <Switch
-                    value={gradientMode === "neutral"}
-                    onValueChange={(value) =>
-                      setGradientMode(value ? "neutral" : "warm")
-                    }
-                    trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
-                    thumbColor="#FFFFFF"
-                  />
+              <View style={[styles.settingButton, { borderTopWidth: 1, borderTopColor: theme.colors.border }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingButtonText, mode === "dark" && { color: theme.colors.muted }]}>
+                    Gradient Style
+                  </Text>
+                  <Text style={styles.settingSubtext}>
+                    {mode === "dark"
+                      ? "Only available in light mode"
+                      : gradientMode === "warm"
+                      ? "Warm (Orange)"
+                      : "Neutral (Gray)"}
+                  </Text>
                 </View>
-              )}
+                <Switch
+                  value={gradientMode === "neutral"}
+                  onValueChange={(value) =>
+                    setGradientMode(value ? "neutral" : "warm")
+                  }
+                  disabled={mode === "dark"}
+                  trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
             </View>
           </CollapsibleSection>
 
