@@ -427,6 +427,11 @@ async function createUserAccount(
           </div>
 
           <div class="content">
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
+              <p style="color: #92400e; font-weight: 600; margin: 0 0 8px 0;">📬 Found this email in spam?</p>
+              <p style="color: #78350f; font-size: 14px; margin: 0;">Please mark it as "Not Spam" so you don't miss important updates about your account!</p>
+            </div>
+
             <p>Congratulations! Your QuoteCat ${tierName} account is ready to go.</p>
 
             <div class="credentials-box">
