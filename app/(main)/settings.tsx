@@ -500,7 +500,7 @@ export default function Settings() {
                       <Text style={styles.teamSuggestionTitle}>Using multiple devices?</Text>
                     </View>
                     <Text style={styles.teamSuggestionText}>
-                      Upgrade to Team for multi-user accounts, quote assignments, and activity tracking.
+                      Team tier includes multi-user accounts, quote assignments, and activity tracking.
                     </Text>
                     <Pressable
                       style={styles.teamSuggestionButton}
@@ -560,14 +560,14 @@ export default function Settings() {
                   <Ionicons name="cloud-offline-outline" size={48} color={theme.colors.muted} />
                   <Text style={styles.proFeatureTitle}>Cloud Sync is a Pro Feature</Text>
                   <Text style={styles.proFeatureDescription}>
-                    Upgrade to Pro or Premium to automatically back up your quotes to the cloud and sync across all your devices.
+                    Automatically back up your quotes to the cloud and sync across all your devices with a Pro subscription.
                   </Text>
                   <Pressable
                     style={styles.proFeatureButton}
                     onPress={userEmail ? handleManageAccount : handleSignIn}
                   >
                     <Text style={styles.proFeatureButtonText}>
-                      {userEmail ? 'Upgrade to Pro' : 'Sign In'}
+                      {userEmail ? 'Manage Subscription' : 'Sign In'}
                     </Text>
                   </Pressable>
                 </View>
