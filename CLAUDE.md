@@ -212,25 +212,61 @@ Quote UI components accept optional `onPress`/`onLongPress` handlers. When omitt
 - ❌ Urgency messaging with pricing ("Only 47 spots at $29!")
 - ❌ Price comparisons
 
-### Pricing Tiers (As of Jan 2025)
+### Pricing Structure (Modular - Nov 2024)
+
+**Philosophy:** Pay for what you use - users, then features. No forced bundling.
+
+#### Base Tiers (User Count)
 
 **Free Tier:**
 - Price: $0
-- Features: Unlimited quotes (local only), 25 quotes/month, 5 PDF exports/month, 2 CSV exports/month
+- 1 user, local only
+- 10 PDF exports total lifetime
 - No assemblies, no cloud sync
 
 **Pro Tier - Founder Pricing:**
-- Price: $29/mo or $290/yr (first 500 customers, locked forever)
-- Regular price: $99/mo or $990/yr
-- Features: Everything in Free + unlimited exports, custom assemblies, cloud sync, multi-device, company branding
+- Price: $29/mo (first 500 customers, locked forever)
+- Regular price: $99/mo
+- 1 user, cloud sync, unlimited exports, custom assemblies
 
-**Premium Tier - Founder Pricing:**
-- Price: $79/mo or $790/yr (first 100 customers, locked forever)
-- Regular price: $199/mo or $1,990/yr
-- Features: Everything in Pro + company logo on PDFs, Quote Wizard, advanced analytics, team collaboration (future), priority support
+**Team Tier:**
+- Price: $149/mo (no founder discount - teams have budget)
+- 5 users with separate accounts (not shared logins)
+- All Pro features for the team
+- Team collaboration: quote assignments, activity log, permissions
+- Launches when device tracking shows demand
+
+#### Feature Add-on (Works with Pro OR Team)
+
+**Premium Add-on - Founder Pricing:**
+- Price: +$29/mo (first 100 customers, locked forever)
+- Regular price: +$50/mo
+- Adds to Pro OR Team base tier
+- Features: Company logo on PDFs, Quote Wizard (AI), advanced analytics, priority support
+
+#### Pricing Examples
+
+```
+Solo contractor, basic needs:
+→ Pro: $29/mo founder ($99/mo regular)
+
+Solo contractor, wants AI:
+→ Pro + Premium: $58/mo founder ($149/mo regular)
+
+3-person team, basic needs:
+→ Team: $149/mo
+
+3-person team, wants AI:
+→ Team + Premium: $178/mo founder ($199/mo regular)
+```
+
+**Founder Pricing Caps:**
+- Pro: First 500 customers at $29/mo forever
+- Premium add-on: First 100 customers at +$29/mo forever
+- After caps: Pro jumps to $99/mo, Premium to +$50/mo
 
 **Price Increase Triggers:**
-- Primary: Hit customer cap (100 Pro = $49, 500 Pro = $99)
+- Primary: Hit customer cap (500 Pro, 100 Premium)
 - Secondary: 90 days from TestFlight launch
 - Backup: High conversion rate (>20%) for 30 days
 
