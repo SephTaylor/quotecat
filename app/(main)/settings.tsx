@@ -102,8 +102,7 @@ export default function Settings() {
     cloudSync: false,
     appearance: false,
     dashboard: false,
-    quoteDefaults: false,
-    invoiceSettings: false,
+    businessInfo: false,
     notifications: false,
     privacy: false,
     comingSoon: false,
@@ -740,18 +739,18 @@ export default function Settings() {
             </Pressable>
           </CollapsibleSection>
 
-          {/* Quote Defaults Section */}
+          {/* Business Information Section */}
           <CollapsibleSection
-            title="Quote Defaults"
-            isExpanded={expandedSections.quoteDefaults}
-            onToggle={() => toggleSection('quoteDefaults')}
+            title="Business Information"
+            isExpanded={expandedSections.businessInfo}
+            onToggle={() => toggleSection('businessInfo')}
             theme={theme}
           >
             <View style={styles.defaultsContainer}>
-              {/* Company Details - All-in-One Editor */}
+              {/* Company Details */}
               <View style={styles.defaultItem}>
                 <View style={styles.defaultItemHeader}>
-                  <Ionicons name="business-outline" size={20} color={theme.colors.accent} />
+                  <Ionicons name="business-outline" size={18} color={theme.colors.accent} />
                   <Text style={styles.defaultItemTitle}>Company Details</Text>
                   {!isPro && (
                     <View style={styles.proBadge}>
@@ -760,7 +759,7 @@ export default function Settings() {
                   )}
                 </View>
                 <Text style={styles.defaultItemDescription}>
-                  Add your company name, contact info, and address to all quotes and PDFs.
+                  Add your company name, contact info, and address to quotes and invoices.
                 </Text>
                 {isPro && preferences.company && (preferences.company.companyName || preferences.company.email || preferences.company.phone) && (
                   <View style={styles.previewBox}>
@@ -781,7 +780,7 @@ export default function Settings() {
                     onPress={() => router.push("/(main)/company-details")}
                   >
                     <Text style={styles.defaultItemButtonText}>
-                      {preferences.company?.companyName ? "Edit Details" : "Set Up Company Details"}
+                      {preferences.company?.companyName ? "Edit Details" : "Set Up"}
                     </Text>
                   </Pressable>
                 ) : (
@@ -797,10 +796,10 @@ export default function Settings() {
                 )}
               </View>
 
-              {/* Company Logo Upload */}
-              <View style={[styles.defaultItem, styles.defaultItemLast]}>
+              {/* Company Logo */}
+              <View style={styles.defaultItem}>
                 <View style={styles.defaultItemHeader}>
-                  <Ionicons name="image-outline" size={20} color={theme.colors.accent} />
+                  <Ionicons name="image-outline" size={18} color={theme.colors.accent} />
                   <Text style={styles.defaultItemTitle}>Company Logo</Text>
                   {!isPro && (
                     <View style={styles.proBadge}>
@@ -809,10 +808,9 @@ export default function Settings() {
                   )}
                 </View>
                 <Text style={styles.defaultItemDescription}>
-                  Add your company logo to appear on all PDF quotes. Logo will be resized and optimized automatically.
+                  Add your logo to quotes and invoices. Automatically resized and optimized.
                 </Text>
 
-                {/* Logo Preview */}
                 {logo && logo.localUri && (
                   <View style={styles.logoPreviewContainer}>
                     <Image
@@ -823,7 +821,6 @@ export default function Settings() {
                   </View>
                 )}
 
-                {/* Upload/Delete Buttons */}
                 <View style={styles.logoButtonsContainer}>
                   <Pressable
                     style={[
@@ -841,7 +838,7 @@ export default function Settings() {
                         styles.defaultItemButtonText,
                         !isPro && styles.defaultItemButtonTextDisabled
                       ]}>
-                        {logo ? "Change Logo" : "Upload Logo"}
+                        {logo ? "Change" : "Upload"}
                       </Text>
                     )}
                   </Pressable>
@@ -856,98 +853,116 @@ export default function Settings() {
                     </Pressable>
                   )}
                 </View>
-
-                {!isPro && (
-                  <Text style={styles.proFeatureNote}>
-                    🔒 Upgrade to Pro or Premium to add your logo to PDFs
-                  </Text>
-                )}
               </View>
-            </View>
-          </CollapsibleSection>
 
-          {/* Invoice Settings Section */}
-          <CollapsibleSection
-            title="Invoice Settings"
-            isExpanded={expandedSections.invoiceSettings}
-            onToggle={() => toggleSection('invoiceSettings')}
-            theme={theme}
-          >
-            <View style={styles.defaultsContainer}>
-              {/* Invoice Number Prefix */}
+              {/* Invoice Number Format */}
               <View style={styles.defaultItem}>
                 <View style={styles.defaultItemHeader}>
-                  <Ionicons name="receipt-outline" size={20} color={theme.colors.accent} />
+                  <Ionicons name="receipt-outline" size={18} color={theme.colors.accent} />
                   <Text style={styles.defaultItemTitle}>Invoice Number Format</Text>
+                  {!isPro && (
+                    <View style={styles.proBadge}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={styles.defaultItemDescription}>
-                  Customize your invoice numbering system. Next invoice will be: {preferences.invoice?.prefix || 'INV'}-{String(preferences.invoice?.nextNumber || 1).padStart(3, '0')}
+                  Next invoice: {preferences.invoice?.prefix || 'INV'}-{String(preferences.invoice?.nextNumber || 1).padStart(3, '0')}
                 </Text>
-                <Pressable
-                  style={styles.defaultItemButton}
-                  onPress={() => {
-                    Alert.prompt(
-                      'Invoice Prefix',
-                      'Enter prefix for invoice numbers (e.g., INV, 2025, ABC):',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Save',
-                          onPress: async (value) => {
-                            if (value && value.trim()) {
-                              const updated = await updateInvoiceSettings({ prefix: value.trim().toUpperCase() });
-                              setPreferences(updated);
-                            }
+                {isPro ? (
+                  <Pressable
+                    style={styles.defaultItemButton}
+                    onPress={() => {
+                      Alert.prompt(
+                        'Invoice Prefix',
+                        'Enter prefix for invoice numbers (e.g., INV, 2025, ABC):',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Save',
+                            onPress: async (value) => {
+                              if (value && value.trim()) {
+                                const updated = await updateInvoiceSettings({ prefix: value.trim().toUpperCase() });
+                                setPreferences(updated);
+                              }
+                            },
                           },
-                        },
-                      ],
-                      'plain-text',
-                      preferences.invoice?.prefix || 'INV'
-                    );
-                  }}
-                >
-                  <Text style={styles.defaultItemButtonText}>Change Prefix</Text>
-                </Pressable>
+                        ],
+                        'plain-text',
+                        preferences.invoice?.prefix || 'INV'
+                      );
+                    }}
+                  >
+                    <Text style={styles.defaultItemButtonText}>Change Prefix</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={[styles.defaultItemButton, styles.defaultItemButtonLocked]}
+                    onPress={handleUpgrade}
+                  >
+                    <Ionicons name="lock-closed" size={16} color="#666" style={{ marginRight: 6 }} />
+                    <Text style={[styles.defaultItemButtonText, { color: "#666" }]}>
+                      Pro Feature
+                    </Text>
+                  </Pressable>
+                )}
               </View>
 
               {/* Next Invoice Number */}
               <View style={[styles.defaultItem, styles.defaultItemLast]}>
                 <View style={styles.defaultItemHeader}>
-                  <Ionicons name="keypad-outline" size={20} color={theme.colors.accent} />
+                  <Ionicons name="keypad-outline" size={18} color={theme.colors.accent} />
                   <Text style={styles.defaultItemTitle}>Next Invoice Number</Text>
+                  {!isPro && (
+                    <View style={styles.proBadge}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={styles.defaultItemDescription}>
-                  Set the starting number for your next invoice. This auto-increments after each invoice.
+                  Starting number for invoices. Auto-increments after each invoice.
                 </Text>
-                <Pressable
-                  style={styles.defaultItemButton}
-                  onPress={() => {
-                    Alert.prompt(
-                      'Next Invoice Number',
-                      'Enter the next invoice number:',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Save',
-                          onPress: async (value) => {
-                            const num = parseInt(value || '1', 10);
-                            if (num > 0) {
-                              const updated = await updateInvoiceSettings({ nextNumber: num });
-                              setPreferences(updated);
-                            } else {
-                              Alert.alert('Invalid Number', 'Please enter a number greater than 0');
-                            }
+                {isPro ? (
+                  <Pressable
+                    style={styles.defaultItemButton}
+                    onPress={() => {
+                      Alert.prompt(
+                        'Next Invoice Number',
+                        'Enter the next invoice number:',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Save',
+                            onPress: async (value) => {
+                              const num = parseInt(value || '1', 10);
+                              if (num > 0) {
+                                const updated = await updateInvoiceSettings({ nextNumber: num });
+                                setPreferences(updated);
+                              } else {
+                                Alert.alert('Invalid Number', 'Please enter a number greater than 0');
+                              }
+                            },
                           },
-                        },
-                      ],
-                      'plain-text',
-                      String(preferences.invoice?.nextNumber || 1),
-                      'number-pad'
-                    );
-                  }}
-                >
-                  <Text style={styles.defaultItemButtonText}>Change Number</Text>
-                </Pressable>
+                        ],
+                        'plain-text',
+                        String(preferences.invoice?.nextNumber || 1),
+                        'number-pad'
+                      );
+                    }}
+                  >
+                    <Text style={styles.defaultItemButtonText}>Change Number</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={[styles.defaultItemButton, styles.defaultItemButtonLocked]}
+                    onPress={handleUpgrade}
+                  >
+                    <Ionicons name="lock-closed" size={16} color="#666" style={{ marginRight: 6 }} />
+                    <Text style={[styles.defaultItemButtonText, { color: "#666" }]}>
+                      Pro Feature
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             </View>
           </CollapsibleSection>
@@ -1208,11 +1223,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       backgroundColor: theme.colors.bg,
     },
     scrollContent: {
-      padding: theme.spacing(3),
+      padding: theme.spacing(2),
       paddingBottom: theme.spacing(2),
     },
     section: {
-      marginBottom: theme.spacing(3),
+      marginBottom: theme.spacing(2),
     },
     sectionHeader: {
       flexDirection: "row",
@@ -1236,7 +1251,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       overflow: "hidden",
     },
     accountHeader: {
-      padding: theme.spacing(2),
+      padding: theme.spacing(1.5),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
@@ -1271,7 +1286,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      padding: theme.spacing(2),
+      padding: theme.spacing(1.5),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
@@ -1308,14 +1323,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     proLock: {
       fontSize: 14,
     },
-    // Quote Defaults redesign
+    // Business Information redesign
     defaultsContainer: {
-      gap: theme.spacing(2),
+      gap: theme.spacing(1.5),
     },
     defaultItem: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.md,
-      padding: theme.spacing(2),
+      padding: theme.spacing(1.5),
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
@@ -1325,20 +1340,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     defaultItemHeader: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.spacing(1),
-      marginBottom: theme.spacing(1),
+      gap: theme.spacing(0.75),
+      marginBottom: theme.spacing(0.5),
     },
     defaultItemTitle: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: "700",
       color: theme.colors.text,
       flex: 1,
     },
     defaultItemDescription: {
-      fontSize: 13,
+      fontSize: 12,
       color: theme.colors.muted,
-      marginBottom: theme.spacing(1.5),
-      lineHeight: 18,
+      marginBottom: theme.spacing(1),
+      lineHeight: 16,
     },
     defaultItemButton: {
       backgroundColor: theme.colors.accent,
@@ -1380,14 +1395,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     previewBox: {
       backgroundColor: theme.colors.bg,
       borderRadius: theme.radius.sm,
-      padding: theme.spacing(1.5),
-      marginBottom: theme.spacing(1.5),
-      gap: theme.spacing(0.5),
+      padding: theme.spacing(1),
+      marginBottom: theme.spacing(1),
+      gap: theme.spacing(0.25),
     },
     previewText: {
-      fontSize: 13,
+      fontSize: 12,
       color: theme.colors.text,
-      lineHeight: 18,
+      lineHeight: 16,
     },
     chipContainer: {
       flexDirection: "column",
@@ -1552,11 +1567,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     logoPreviewContainer: {
       backgroundColor: theme.colors.bg,
       borderRadius: theme.radius.sm,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(1.5),
+      padding: theme.spacing(1),
+      marginBottom: theme.spacing(1),
       alignItems: "center",
       justifyContent: "center",
-      height: 120,
+      height: 80,
     },
     logoPreview: {
       width: "100%",
