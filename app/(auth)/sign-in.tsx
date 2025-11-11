@@ -27,6 +27,36 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert("Email Required", "Please enter your email address to reset your password");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: 'quotecat://auth/callback',
+      });
+
+      if (error) throw error;
+
+      Alert.alert(
+        "Check Your Email",
+        `We've sent a password reset link to ${email.trim()}. Click the link in the email to set a new password.`,
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Password reset error:", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to send reset email. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSignIn = async () => {
     if (!email.trim() || !password) {
       Alert.alert("Error", "Please enter your email and password");
@@ -198,6 +228,14 @@ export default function SignInScreen() {
                 )}
               </Pressable>
 
+              <Pressable
+                onPress={handleForgotPassword}
+                disabled={loading}
+                style={{ alignItems: 'center', marginTop: 12 }}
+              >
+                <Text style={styles.forgotPasswordLink}>Forgot Password?</Text>
+              </Pressable>
+
               <View style={styles.footer}>
                 <Text style={styles.footerText}>Don't have an account? </Text>
                 <Pressable
@@ -284,6 +322,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.muted,
     },
     footerLink: {
+      fontSize: 14,
+      color: theme.colors.accent,
+      fontWeight: "600",
+    },
+    forgotPasswordLink: {
       fontSize: 14,
       color: theme.colors.accent,
       fontWeight: "600",
