@@ -41,6 +41,7 @@ export type NotificationPreferences = {
 };
 
 export type AppearancePreferences = {
+  themeMode: "light" | "dark"; // Light or dark mode
   gradientMode: GradientMode; // "warm" (orange) or "neutral" (gray)
 };
 
@@ -89,6 +90,7 @@ export function getDefaultPreferences(): UserPreferences {
       invoiceDueToday: false,
     },
     appearance: {
+      themeMode: "light", // Default to light mode
       gradientMode: "warm", // Default to warm (orange) gradient
     },
   };

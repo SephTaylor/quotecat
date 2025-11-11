@@ -26,12 +26,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const loadThemePreference = async () => {
     try {
       const prefs = await loadPreferences();
-      const savedMode = prefs.appearance?.gradientMode || "warm";
-      setGradientModeState(savedMode);
+      const savedThemeMode = prefs.appearance?.themeMode || "light";
+      const savedGradientMode = prefs.appearance?.gradientMode || "warm";
 
-      // Mode is still stored separately for backwards compatibility
-      // but we'll use preferences for gradient mode
-      setTheme(getTheme(mode, savedMode));
+      setMode(savedThemeMode);
+      setGradientModeState(savedGradientMode);
+      setTheme(getTheme(savedThemeMode, savedGradientMode));
     } catch (error) {
       console.error("Failed to load theme preference:", error);
     }
@@ -41,6 +41,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       setMode(newMode);
       setTheme(getTheme(newMode, gradientMode));
+
+      // Save to preferences
+      const prefs = await loadPreferences();
+      prefs.appearance.themeMode = newMode;
+      await savePreferences(prefs);
     } catch (error) {
       console.error("Failed to save theme preference:", error);
     }
