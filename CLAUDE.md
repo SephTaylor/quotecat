@@ -422,7 +422,7 @@ User creates quotes with real-time pricing
 - ✅ "Don't have an account? Visit quotecat.ai" link opens Safari
 - ✅ Real auth integrated in drawer, settings, and Pro feature checks
 
-**Stripe Integration (✅ COMPLETE - Nov 10, 2024):**
+**Stripe Integration & Email Automation (✅ COMPLETE - Nov 10, 2024):**
 - ✅ Stripe checkout configured on website
 - ✅ Webhook endpoint created (Supabase Edge Function)
 - ✅ Webhook signature verification working (using Web Crypto API for Deno)
@@ -431,6 +431,15 @@ User creates quotes with real-time pricing
 - ✅ Profile tier updates based on checkout.session.completed event
 - ✅ End-to-end flow tested: Website → Payment → Webhook → Supabase user created
 - ✅ Verified in Supabase profiles table
+- ✅ **Email automation via Resend (COMPLETE)**
+  - Professional HTML welcome email with QuoteCat branding
+  - Sends login credentials (email + temporary password)
+  - Includes app download links (iOS/Android)
+  - Lists tier-specific features
+  - Security reminder to change password
+  - Domain verified: quotecat.ai → welcome@quotecat.ai
+  - Free tier: 3,000 emails/month (sufficient for founder pricing launch)
+  - Email sends automatically after user account creation
 
 **Technical:**
 - React Native + Expo SDK 54
@@ -490,7 +499,7 @@ User creates quotes with real-time pricing
 - ✅ User account creation in Supabase profiles table on successful payment
 - ✅ Tier assignment working (user created with tier='pro')
 - ✅ End-to-end flow verified: Website purchase → Webhook → Supabase user → App login works
-- ⏳ TODO: Email automation to send credentials after payment
+- ✅ Email automation integrated (see Email Automation section below)
 
 **Xbyte Data Integration (🚧 IN PROGRESS - Nov 10, 2024):**
 - ✅ Received initial sample data from Home Depot, Lowe's, Menards (20 products each)
@@ -503,6 +512,19 @@ User creates quotes with real-time pricing
 - ✅ Clarified production scope: 2,000-5,000 products per retailer
 - ✅ Specified requirements: Daily updates (preferred), API delivery (preferred)
 - ⏳ Waiting for updated sample with Unit field before proceeding
+- 📧 Xbyte confirmed team is working on corrections
+
+**Email Automation (✅ COMPLETE - Nov 10, 2024):**
+- ✅ Signed up for Resend (free tier: 3,000 emails/month)
+- ✅ Added Resend API key to Supabase Edge Function secrets
+- ✅ Built professional HTML email template with QuoteCat branding
+- ✅ Integrated email sending into webhook after user creation
+- ✅ Added DNS record to Netlify: `resend._domainkey.quotecat.ai`
+- ✅ Domain verified in Resend ✅
+- ✅ Email automation LIVE and ready
+- ✅ Flow working: Payment → User created → Welcome email sent automatically
+- Email includes: Credentials, app download links, tier features, security reminder
+- Sends from: `QuoteCat <welcome@quotecat.ai>`
 
 ### 📝 For New Claude Sessions
 
@@ -515,13 +537,15 @@ User creates quotes with real-time pricing
 **Key context to understand:**
 - App is LIVE in TestFlight (iOS) and Google Play testing (Android)
 - App working with 368 AI products syncing from Supabase
-- **Xbyte sample data received and reviewed** (Nov 10) - missing critical "Unit" field, waiting for updated sample
+- **Xbyte sample data received and reviewed** (Nov 10) - team working on corrections, waiting for updated sample
 - Product data pipeline is BUILT and ready to execute when updated Xbyte data arrives
 - **Authentication is COMPLETE and Apple-compliant** (sign-in only, no sign-up in app)
 - **Stripe integration is COMPLETE** (Nov 10) - webhooks working, user creation tested, payment flow verified
+- **Email automation is COMPLETE** (Nov 10) - professional welcome emails via Resend, domain verified, LIVE
+- **Complete payment flow working:** Website → Payment → User created → Welcome email → App login
 - **Free tier limits updated:** Unlimited draft quotes, 10 client exports total (not monthly)
 - **Premium tier features expanded:** Contract generation, payment collection, job profit tracking, change orders
-- **Next major work:** Email automation for sending credentials after payment
+- **Next major work:** Wait for Xbyte updated sample, test end-to-end purchase flow
 - All monetization must go through website (NOT in-app) to avoid Apple's 30% cut
 
 ### ⏳ Waiting For
@@ -576,12 +600,13 @@ User creates quotes with real-time pricing
 - **Option B:** Free users can optionally create account on website for cloud backup. Paid users create account + pay.
 - **Current lean:** Option A (simplest for launch)
 
-**Immediate (This Week):**
-1. **Wait for Xbyte sample data** - Expected in a few days
-2. **Continue beta testing** - Monitor TestFlight and Google Play feedback
-3. **Build website payment flow** (signup + Stripe integration) - NEXT PRIORITY
-4. Set up email automation for credentials
-5. Consider fixing app download 404 errors on success page (apps not publicly published yet)
+**Immediate (Next Steps):**
+1. ✅ **Payment infrastructure COMPLETE** - Stripe + Email automation working
+2. ⏳ **Wait for Xbyte updated sample** - Team working on corrections
+3. **Test end-to-end purchase flow** - Make test purchase, verify email, test app login
+4. **Continue beta testing** - Monitor TestFlight and Google Play feedback
+5. **Plan founder pricing launch** - When Xbyte data ready
+6. Consider fixing app download 404 errors on success page (apps not publicly published yet - low priority)
 
 **When Xbyte Updated Sample Arrives:**
 1. ✅ Review initial sample - DONE (Nov 10) - identified missing Unit field
@@ -595,14 +620,18 @@ User creates quotes with real-time pricing
 9. Test sync in app
 10. Update status messaging with appropriate data source disclaimer
 
-**Phase 1 - Website Payments (IN PROGRESS):**
+**Phase 1 - Website Payments (✅ COMPLETE - Nov 10, 2024):**
 1. ✅ App sign-in screen (DONE - Nov 9)
 2. ✅ Stripe checkout integration (DONE - Nov 10)
 3. ✅ Webhook endpoint and signature verification (DONE - Nov 10)
 4. ✅ User creation in Supabase on payment (DONE - Nov 10)
 5. ✅ End-to-end payment flow tested (DONE - Nov 10)
-6. ❌ Email automation (send credentials after signup/payment) - NEXT UP
-7. ❌ Improve success page messaging (currently shows 404 for app downloads)
+6. ✅ Email automation via Resend (DONE - Nov 10)
+   - Professional HTML welcome email
+   - Sends credentials automatically
+   - Domain verified: welcome@quotecat.ai
+   - LIVE and ready for customers
+7. ⏳ Improve success page messaging (currently shows 404 for app downloads - low priority)
 
 **Phase 2 - Cloud Sync (2-3 Weeks):**
 1. Auto-migration (local → cloud for Pro/Premium users)
