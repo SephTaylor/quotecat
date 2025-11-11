@@ -123,7 +123,20 @@ export default function SignInScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen
+        options={{
+          title: "Sign In",
+          headerShown: true,
+          headerTitleAlign: 'center',
+          headerStyle: {
+            backgroundColor: theme.colors.bg,
+          },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: {
+            color: theme.colors.text,
+          },
+        }}
+      />
       <GradientBackground>
         <KeyboardAvoidingView
           style={styles.container}
@@ -183,14 +196,6 @@ export default function SignInScreen() {
                   <Text style={styles.footerLink}>Visit quotecat.ai</Text>
                 </Pressable>
               </View>
-
-              <Pressable
-                style={styles.backButton}
-                onPress={() => router.back()}
-                disabled={loading}
-              >
-                <Text style={styles.backButtonText}>Back to App</Text>
-              </Pressable>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -270,15 +275,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     footerLink: {
       fontSize: 14,
       color: theme.colors.accent,
-      fontWeight: "600",
-    },
-    backButton: {
-      alignItems: "center",
-      paddingVertical: theme.spacing(1.5),
-    },
-    backButtonText: {
-      fontSize: 14,
-      color: theme.colors.muted,
       fontWeight: "600",
     },
   });
