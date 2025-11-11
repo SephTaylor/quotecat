@@ -120,8 +120,8 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="pro-tools"
         options={{
-          title: "Pro Tools",
-          drawerLabel: "Pro Tools",
+          title: "Tools",
+          drawerLabel: "Tools",
           drawerIcon: ({ color, size }: IconProps) => (
             <Ionicons name="sparkles-outline" size={size} color={color} />
           ),
