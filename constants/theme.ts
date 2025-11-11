@@ -14,7 +14,7 @@ export type ColorScheme = {
 
 const lightColors: ColorScheme = {
   bg: "#f7f7f7",
-  bgGradient: ["#fff0e6", "#e8e8e8", "#ffffff"], // Very light orange to gray to white
+  bgGradient: ["#e5e5e5", "#FEE3D0"], // Light gray to soft orange (20% tint of #F97316)
   text: "#111111",
   accent: "#F97316", // Construction orange
   muted: "#666666",
