@@ -41,6 +41,7 @@ import {
   resetSyncMetadata
 } from "@/lib/quotesSync";
 import { listQuotes } from "@/lib/quotes";
+import { getDeviceCount, shouldSuggestTeamTier } from "@/lib/usageTracking";
 
 /**
  * Format sync time as relative time (e.g., "just now", "2 minutes ago")
@@ -92,6 +93,8 @@ export default function Settings() {
   const [syncing, setSyncing] = useState(false);
   const [localQuoteCount, setLocalQuoteCount] = useState(0);
   const [cloudQuoteCount, setCloudQuoteCount] = useState(0);
+  const [deviceCount, setDeviceCount] = useState(0);
+  const [suggestTeam, setSuggestTeam] = useState(false);
 
   // Track expanded sections
   const [expandedSections, setExpandedSections] = useState({
@@ -146,13 +149,19 @@ export default function Settings() {
     setSyncAvailable(available && isPaidTier);
     setLocalQuoteCount(localQuotes.length);
 
-    // Load cloud quote count if available
+    // Load cloud quote count and device info if available
     if (available && isPaidTier) {
       try {
-        const cloudQuotes = await downloadQuotes();
+        const [cloudQuotes, devCount, teamSuggestion] = await Promise.all([
+          downloadQuotes(),
+          getDeviceCount(),
+          shouldSuggestTeamTier(),
+        ]);
         setCloudQuoteCount(cloudQuotes.length);
+        setDeviceCount(devCount);
+        setSuggestTeam(teamSuggestion);
       } catch (error) {
-        console.error("Failed to load cloud quote count:", error);
+        console.error("Failed to load cloud data:", error);
       }
     }
   }, []);
@@ -476,7 +485,31 @@ export default function Settings() {
                     <Text style={styles.syncCountLabel}>Cloud</Text>
                     <Text style={styles.syncCountValue}>{cloudQuoteCount}</Text>
                   </View>
+                  <View style={styles.syncCountDivider} />
+                  <View style={styles.syncCountItem}>
+                    <Text style={styles.syncCountLabel}>Devices</Text>
+                    <Text style={styles.syncCountValue}>{deviceCount}</Text>
+                  </View>
                 </View>
+
+                {/* Team Tier Suggestion */}
+                {suggestTeam && (
+                  <View style={styles.teamSuggestion}>
+                    <View style={styles.teamSuggestionHeader}>
+                      <Ionicons name="people-outline" size={20} color={theme.colors.accent} />
+                      <Text style={styles.teamSuggestionTitle}>Using multiple devices?</Text>
+                    </View>
+                    <Text style={styles.teamSuggestionText}>
+                      Upgrade to Team for multi-user accounts, quote assignments, and activity tracking.
+                    </Text>
+                    <Pressable
+                      style={styles.teamSuggestionButton}
+                      onPress={() => Linking.openURL("https://quotecat.ai/team")}
+                    >
+                      <Text style={styles.teamSuggestionButtonText}>Learn More</Text>
+                    </Pressable>
+                  </View>
+                )}
 
                 {/* Sync Actions */}
                 <Pressable
@@ -1723,6 +1756,45 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "600",
       color: "#000",
+    },
+    teamSuggestion: {
+      margin: theme.spacing(2),
+      marginTop: 0,
+      padding: theme.spacing(2),
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.accent,
+    },
+    teamSuggestionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(0.75),
+    },
+    teamSuggestionTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    teamSuggestionText: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      lineHeight: 18,
+      marginBottom: theme.spacing(1.5),
+    },
+    teamSuggestionButton: {
+      alignSelf: "flex-start",
+      paddingVertical: theme.spacing(0.75),
+      paddingHorizontal: theme.spacing(2),
+      borderRadius: theme.radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.accent,
+    },
+    teamSuggestionButtonText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: theme.colors.accent,
     },
   });
 }

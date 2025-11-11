@@ -7,6 +7,7 @@ import type { Quote } from "./types";
 import { normalizeQuote } from "./validation";
 import { getCurrentUserId } from "./auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getDeviceId } from "./device";
 
 const SYNC_METADATA_KEY = "@quotecat/sync_metadata";
 
@@ -62,6 +63,9 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
       return false;
     }
 
+    // Get device ID for tracking
+    const deviceId = await getDeviceId();
+
     // Map local Quote to Supabase schema
     const supabaseQuote = {
       id: quote.id,
@@ -81,7 +85,7 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
       created_at: quote.createdAt,
       updated_at: quote.updatedAt,
       synced_at: new Date().toISOString(),
-      device_id: null, // Not tracking device ID yet
+      device_id: deviceId,
       deleted_at: null,
     };
 

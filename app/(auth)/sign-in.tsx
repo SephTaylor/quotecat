@@ -18,6 +18,7 @@ import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier } from "@/lib/user";
 import { migrateLocalQuotesToCloud, hasMigrated } from "@/lib/quotesSync";
+import { logUsageEvent, UsageEventTypes } from "@/lib/usageTracking";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -42,6 +43,11 @@ export default function SignInScreen() {
       if (error) throw error;
 
       if (data.user) {
+        // Log sign-in event (non-blocking)
+        logUsageEvent(UsageEventTypes.SIGN_IN, {
+          email: email.trim(),
+        });
+
         // Fetch user's tier from Supabase profiles table
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
