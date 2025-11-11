@@ -277,7 +277,7 @@ async function createUserAccount(
     type: 'recovery',
     email: email,
     options: {
-      redirectTo: 'quotecat://auth/callback', // Deep link to app
+      redirectTo: 'https://quotecat.ai/auth/callback', // Web redirect, then deep links to app
     },
   });
 

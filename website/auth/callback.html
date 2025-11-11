@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting to QuoteCat App...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+            background: linear-gradient(to bottom,
+                #1a1a1a 0%,
+                #2d2d2d 50%,
+                #1a1a1a 100%
+            );
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 600px;
+            background: white;
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #f97316;
+            border-radius: 50%;
+            margin: 0 auto 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        p {
+            font-size: 16px;
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+
+        .info-box {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 32px 0;
+            text-align: left;
+            display: none;
+        }
+
+        .info-box.show {
+            display: block;
+        }
+
+        .info-box h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .info-box p {
+            color: #6b7280;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        .alert-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+            text-align: left;
+            display: none;
+        }
+
+        .alert-box.show {
+            display: block;
+        }
+
+        .alert-box h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #92400e;
+            margin-bottom: 8px;
+        }
+
+        .alert-box p {
+            color: #78350f;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .download-links {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin: 24px 0;
+            display: none;
+        }
+
+        .download-links.show {
+            display: flex;
+        }
+
+        .download-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+        }
+
+        .download-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 32px 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .download-links {
+                flex-direction: column;
+            }
+
+            .download-button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner" id="spinner"></div>
+        <h1 id="title">Opening QuoteCat App...</h1>
+        <p id="message">Redirecting you to the app to set your password...</p>
+
+        <div class="alert-box" id="appNotInstalledAlert">
+            <h3>⚠️ App Not Installed?</h3>
+            <p>If the app doesn't open automatically, you'll need to download QuoteCat first:</p>
+        </div>
+
+        <div class="download-links" id="downloadLinks">
+            <a href="https://apps.apple.com/app/quotecat" class="download-button">
+                📱 Download for iOS
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=ai.quotecat.app" class="download-button">
+                🤖 Download for Android
+            </a>
+        </div>
+
+        <div class="info-box" id="instructions">
+            <h2>After Installing the App:</h2>
+            <p><strong>1.</strong> Open the QuoteCat app</p>
+            <p><strong>2.</strong> Tap "Sign In"</p>
+            <p><strong>3.</strong> Enter your email and create a password</p>
+            <p style="margin-top: 16px; font-size: 14px; color: #9ca3af;">
+                The password setup link will expire in 7 days. If it expires, you can request a new one from the sign-in screen.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Get the full URL hash (contains the recovery token)
+        const urlParams = new URLSearchParams(window.location.search);
+        const hash = window.location.hash;
+
+        // Extract token and type from URL
+        // Supabase recovery links look like: #access_token=xxx&expires_in=xxx&refresh_token=xxx&token_type=bearer&type=recovery
+        let accessToken = '';
+        let refreshToken = '';
+
+        if (hash) {
+            const hashParams = new URLSearchParams(hash.substring(1));
+            accessToken = hashParams.get('access_token') || '';
+            refreshToken = hashParams.get('refresh_token') || '';
+        }
+
+        console.log('Access token present:', !!accessToken);
+        console.log('Refresh token present:', !!refreshToken);
+
+        // Attempt to deep link to the app
+        function attemptDeepLink() {
+            if (!accessToken || !refreshToken) {
+                console.error('Missing tokens in URL');
+                showFallback();
+                return;
+            }
+
+            // Construct deep link with tokens
+            const deepLink = `quotecat://auth/callback${hash}`;
+            console.log('Attempting deep link:', deepLink.substring(0, 50) + '...');
+
+            // Try to open the app
+            window.location.href = deepLink;
+
+            // After 3 seconds, show fallback if user is still here (app didn't open)
+            setTimeout(() => {
+                showFallback();
+            }, 3000);
+        }
+
+        function showFallback() {
+            document.getElementById('spinner').style.display = 'none';
+            document.getElementById('title').textContent = 'Almost There!';
+            document.getElementById('message').textContent = 'If the app didn\'t open automatically, download it below:';
+            document.getElementById('appNotInstalledAlert').classList.add('show');
+            document.getElementById('downloadLinks').classList.add('show');
+            document.getElementById('instructions').classList.add('show');
+        }
+
+        // Start the deep link attempt after page loads
+        window.addEventListener('load', () => {
+            console.log('Page loaded, attempting deep link in 1 second...');
+            setTimeout(attemptDeepLink, 1000);
+        });
+
+        // Also handle visibility change (user switches back to browser)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // User came back to browser, app probably didn't open
+                console.log('User returned to browser tab');
+            }
+        });
+    </script>
+</body>
+</html>
