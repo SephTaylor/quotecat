@@ -244,15 +244,8 @@ serve(async (req) => {
   }
 });
 
-// Generate a secure random password
-function generatePassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
-  let password = '';
-  for (let i = 0; i < 16; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-}
+// No longer needed - using secure links instead
+// function generatePassword() removed
 
 // Create user account (shared function for checkout and subscription events)
 async function createUserAccount(
@@ -261,13 +254,9 @@ async function createUserAccount(
   stripeCustomerId: string,
   stripeSubscriptionId: string
 ): Promise<void> {
-  // Generate a random password for the user
-  const password = generatePassword();
-
-  // Create user in Supabase Auth
+  // Create user in Supabase Auth with auto-confirm
   const { data: userData, error: userError } = await supabase.auth.admin.createUser({
     email: email,
-    password: password,
     email_confirm: true,
     user_metadata: {
       tier: tier,
@@ -282,6 +271,23 @@ async function createUserAccount(
   }
 
   console.log('User created:', userData.user.id);
+
+  // Generate a secure password setup link (valid for 7 days)
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'recovery',
+    email: email,
+    options: {
+      redirectTo: 'quotecat://auth/callback', // Deep link to app
+    },
+  });
+
+  if (linkError) {
+    console.error('Error generating password setup link:', linkError);
+    throw linkError;
+  }
+
+  const setupLink = linkData.properties.action_link;
+  console.log('Password setup link generated for:', email);
 
   // Create profile in profiles table
   const { error: profileError } = await supabase
@@ -447,19 +453,16 @@ async function createUserAccount(
             <p>Congratulations! Your QuoteCat ${tierName} account is ready to go.</p>
 
             <div class="credentials-box">
-              <h3>🔐 Your Login Credentials</h3>
-              <div class="credential-row">
-                <div class="credential-label">Email Address</div>
-                <div class="credential-value">${email}</div>
-              </div>
-              <div class="credential-row">
-                <div class="credential-label">Temporary Password (tap to select and copy)</div>
-                <div class="credential-value">${password}</div>
-              </div>
+              <h3>🔐 Set Up Your Account</h3>
+              <p style="color: #6b7280; margin-bottom: 16px;">Your email address: <strong style="color: #1f2937;">${email}</strong></p>
+              <p style="color: #6b7280; margin-bottom: 20px;">Click the button below to create your password and activate your account. This link is secure and expires in 7 days.</p>
+              <a href="${setupLink}" class="cta-button" style="display: block; text-align: center; text-decoration: none; margin: 0 auto;">
+                🔐 Set Your Password
+              </a>
             </div>
 
             <div class="security-note">
-              <strong>⚠️ Security Reminder:</strong> Change your password after your first login in the app Settings.
+              <strong>⚠️ Security:</strong> This link can only be used once and expires in 7 days. Choose a strong password you'll remember!
             </div>
 
             <div style="text-align: center; margin: 32px 0;">
