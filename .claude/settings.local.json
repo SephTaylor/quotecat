@@ -20,7 +20,8 @@
       "Bash(eas build:*)",
       "Bash(eas build:list:*)",
       "Read(//c/Users/Kelli/OneDrive/Pictures/**)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npx tsx:*)"
     ],
     "deny": [],
     "ask": []

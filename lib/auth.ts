@@ -3,6 +3,8 @@
 
 import { supabase } from "./supabase";
 import { activateProTier, deactivateProTier, signOutUser } from "./user";
+import { deleteCredentials } from "./biometrics";
+// Dynamic imports to avoid circular dependency with quotesSync
 
 /**
  * Check if user is currently authenticated
@@ -34,6 +36,7 @@ export async function getCurrentUserId(): Promise<string | null> {
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
   await signOutUser(); // Clear local user state
+  await deleteCredentials(); // Clear saved biometric credentials
 }
 
 /**
@@ -54,8 +57,23 @@ export async function initializeAuth(): Promise<void> {
 
       if (profile) {
         // Sync local user state with Supabase
-        if (profile.tier === "pro" || profile.tier === "premium") {
+        const isPaidTier = profile.tier === "pro" || profile.tier === "premium";
+
+        if (isPaidTier) {
           await activateProTier(profile.email);
+
+          // Auto-migrate if needed (first time Pro/Premium user)
+          // Use dynamic import to avoid circular dependency
+          const { hasMigrated, migrateLocalQuotesToCloud, syncQuotes } = await import("./quotesSync");
+          const migrated = await hasMigrated();
+          if (!migrated) {
+            console.log("🔄 Auto-migrating quotes to cloud...");
+            await migrateLocalQuotesToCloud();
+          } else {
+            // Already migrated, just sync
+            console.log("🔄 Syncing quotes...");
+            await syncQuotes();
+          }
         } else {
           await deactivateProTier();
         }
