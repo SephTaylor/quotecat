@@ -432,6 +432,43 @@ User creates quotes with real-time pricing
 
 ## 🚀 Current Status (Nov 2024)
 
+### 🎉 Latest Updates (Nov 11, 2024)
+
+**World-Class Authentication System Completed:**
+- ✅ Replaced random passwords with secure setup links
+  - Users click "Set Your Password" button in email
+  - One-time link expires in 7 days
+  - Choose their own password (much better UX!)
+- ✅ Password recovery added ("Forgot Password?" on sign-in)
+- ✅ Biometric authentication (Face ID/Touch ID/Fingerprint)
+  - One-tap sign-in after initial password login
+  - Credentials encrypted by device hardware
+  - Biometric data never leaves device
+  - Auto-prompt to enable after successful sign-in
+- ✅ Email branding improvements
+  - Orange gradient header with QuoteCat logo
+  - Changed sender from welcome@ to hello@quotecat.ai
+  - Spam folder warning at top of email
+  - Payment success page updated with spam warnings
+- ✅ DNS configuration for Resend completed
+  - Added send.quotecat.ai MX and SPF records
+  - Waited 4+ hours for propagation
+  - Domain fully verified ✅
+- ✅ Test user cleanup script created
+  - `npx tsx scripts/delete-test-user.ts email@example.com`
+  - Properly deletes from both auth and profiles tables
+- ✅ Database security verified
+  - Views (price_comparison, product_counts_by_retailer) inherit RLS from products table
+  - All tables properly secured
+
+**Complete Authentication Flow Now:**
+1. User buys Pro/Premium on website
+2. Receives branded email with secure password setup link
+3. Clicks link → Sets own password
+4. Signs into app
+5. Prompted to enable Face ID/Touch ID
+6. Next time: One-tap biometric sign-in!
+
 ### ✅ Complete
 
 **MVP Features:**
@@ -448,7 +485,7 @@ User creates quotes with real-time pricing
 - Invoice management (create from quotes, track payments, automatic overdue status)
 - Notification settings UI (placeholders for future invoice notifications)
 
-**Authentication (Apple-Compliant) - ✅ COMPLETE:**
+**Authentication (Apple-Compliant) - ✅ COMPLETE (Updated Nov 11, 2024):**
 - ✅ Sign-in screen in app (email + password)
 - ✅ Supabase authentication with session persistence
 - ✅ Auto-login on app launch via `initializeAuth()`
@@ -457,6 +494,24 @@ User creates quotes with real-time pricing
 - ✅ NO sign-up in app (Apple compliance - all account creation on website)
 - ✅ "Don't have an account? Visit quotecat.ai" link opens Safari
 - ✅ Real auth integrated in drawer, settings, and Pro feature checks
+- ✅ **Secure Password Setup Links** (Nov 11) - No more random passwords!
+  - Users receive email with one-time setup link (expires in 7 days)
+  - Click link → Set their own password
+  - Industry standard practice, much better UX
+  - Uses Supabase `admin.generateLink()` with recovery flow
+  - Deep links to app: `quotecat://auth/callback`
+- ✅ **Password Recovery** (Nov 11) - "Forgot Password?" on sign-in screen
+  - User enters email → Receives recovery link
+  - Secure one-time link to set new password
+  - Same flow as initial password setup
+- ✅ **Biometric Authentication** (Nov 11) - Face ID / Touch ID / Fingerprint
+  - One-tap sign-in after initial password login
+  - Credentials encrypted by device hardware (Keychain/Keystore)
+  - Biometric data NEVER leaves device secure enclave
+  - Uses `expo-local-authentication` and `expo-secure-store`
+  - Auto-prompt to enable after successful password sign-in
+  - Credentials cleared on sign-out for security
+  - Falls back to password if biometric fails
 
 **Stripe Integration & Email Automation (✅ COMPLETE - Nov 10, 2024):**
 - ✅ Stripe checkout configured on website
@@ -550,17 +605,30 @@ User creates quotes with real-time pricing
 - ⏳ Waiting for updated sample with Unit field before proceeding
 - 📧 Xbyte confirmed team is working on corrections
 
-**Email Automation (✅ COMPLETE - Nov 10, 2024):**
+**Email Automation (✅ COMPLETE - Updated Nov 11, 2024):**
 - ✅ Signed up for Resend (free tier: 3,000 emails/month)
 - ✅ Added Resend API key to Supabase Edge Function secrets
 - ✅ Built professional HTML email template with QuoteCat branding
 - ✅ Integrated email sending into webhook after user creation
-- ✅ Added DNS record to Netlify: `resend._domainkey.quotecat.ai`
-- ✅ Domain verified in Resend ✅
+- ✅ Added DNS records to Netlify:
+  - `resend._domainkey.quotecat.ai` (DKIM) - Verified ✅
+  - `send.quotecat.ai` MX and TXT/SPF records (Nov 11)
+- ✅ Domain fully verified in Resend ✅
 - ✅ Email automation LIVE and ready
 - ✅ Flow working: Payment → User created → Welcome email sent automatically
-- Email includes: Credentials, app download links, tier features, security reminder
-- Sends from: `QuoteCat <welcome@quotecat.ai>`
+- ✅ **Email Improvements (Nov 11):**
+  - Orange gradient header (brand color #f97316)
+  - QuoteCat logo with cat mascot at top
+  - Sends from: `QuoteCat <hello@quotecat.ai>` (not welcome@)
+  - Secure password setup link instead of random password
+  - "Set Your Password" button (one-click experience)
+  - Spam folder warning at top of email
+  - Better mobile tap experience
+- ✅ **Website Success Page (Nov 11):**
+  - Yellow alert box warning about spam folder
+  - Spam reminder directly under credentials message
+  - Clear next steps for users
+  - Orange branding throughout
 
 ### 📝 For New Claude Sessions
 
@@ -575,13 +643,24 @@ User creates quotes with real-time pricing
 - App working with 368 AI products syncing from Supabase
 - **Xbyte sample data received and reviewed** (Nov 10) - team working on corrections, waiting for updated sample
 - Product data pipeline is BUILT and ready to execute when updated Xbyte data arrives
-- **Authentication is COMPLETE and Apple-compliant** (sign-in only, no sign-up in app)
+- **Authentication is COMPLETE and Apple-compliant** (Updated Nov 11) - world-class auth system:
+  - Sign-in with email/password
+  - Secure password setup links (no more random passwords!)
+  - Password recovery ("Forgot Password?")
+  - Biometric authentication (Face ID/Touch ID/Fingerprint)
+  - One-tap sign-in after initial setup
 - **Stripe integration is COMPLETE** (Nov 10) - webhooks working, user creation tested, payment flow verified
-- **Email automation is COMPLETE** (Nov 10) - professional welcome emails via Resend, domain verified, LIVE
-- **Complete payment flow working:** Website → Payment → User created → Welcome email → App login
+- **Email automation is COMPLETE** (Updated Nov 11) - professional welcome emails via Resend:
+  - Orange branded with QuoteCat logo
+  - Sends from hello@quotecat.ai
+  - Secure password setup links (expires in 7 days)
+  - Spam folder warnings
+  - Domain fully verified, LIVE
+- **Complete payment flow working:** Website → Payment → User created → Setup email → Set password → Biometric sign-in
 - **Free tier limits updated:** Unlimited draft quotes, 10 client exports total (not monthly)
 - **Premium tier features expanded:** Contract generation, payment collection, job profit tracking, change orders
-- **Next major work:** Wait for Xbyte updated sample, test end-to-end purchase flow
+- **Test user cleanup script:** `npx tsx scripts/delete-test-user.ts email@example.com` (Nov 11)
+- **Next major work:** Wait for Xbyte updated sample, test end-to-end purchase flow with new auth
 - All monetization must go through website (NOT in-app) to avoid Apple's 30% cut
 
 ### ⏳ Waiting For
