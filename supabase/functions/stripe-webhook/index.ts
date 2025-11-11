@@ -367,14 +367,20 @@ async function createUserAccount(
               font-size: 14px;
             }
             .credential-value {
-              font-size: 16px;
+              font-size: 18px;
               color: #1f2937;
               font-family: 'Courier New', monospace;
               background: white;
-              padding: 8px 12px;
+              padding: 12px 16px;
               border-radius: 4px;
               display: inline-block;
               margin-top: 4px;
+              border: 2px solid #f97316;
+              user-select: all;
+              -webkit-user-select: all;
+              -moz-user-select: all;
+              cursor: text;
+              letter-spacing: 1px;
             }
             .features {
               background: rgba(249, 115, 22, 0.1);
@@ -447,7 +453,7 @@ async function createUserAccount(
                 <div class="credential-value">${email}</div>
               </div>
               <div class="credential-row">
-                <div class="credential-label">Temporary Password</div>
+                <div class="credential-label">Temporary Password (tap to select and copy)</div>
                 <div class="credential-value">${password}</div>
               </div>
             </div>

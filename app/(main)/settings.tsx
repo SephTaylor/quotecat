@@ -32,6 +32,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
 import { signOut } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 import {
   syncQuotes,
   getLastSyncTime,
