@@ -193,7 +193,7 @@ export default function Dashboard() {
             <Text style={styles.welcomeSubtext}>Here&apos;s your business overview</Text>
             {syncAvailable && lastSyncTime && (
               <Text style={styles.syncIndicator}>
-                ☁️ Synced {formatSyncTime(lastSyncTime)}
+                Synced {formatSyncTime(lastSyncTime)}
               </Text>
             )}
           </View>

@@ -506,7 +506,7 @@ export default function Settings() {
                 {!syncAvailable && (
                   <View style={styles.syncHelpText}>
                     <Text style={styles.syncHelpTextContent}>
-                      💡 Cloud sync keeps your quotes backed up and synced across devices
+                      Cloud sync keeps your quotes backed up and synced across devices
                     </Text>
                   </View>
                 )}
