@@ -3,7 +3,7 @@
 
 import { supabase } from "./supabase";
 import { activateProTier, deactivateProTier, signOutUser } from "./user";
-import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync";
+// Dynamic imports to avoid circular dependency with quotesSync
 
 /**
  * Check if user is currently authenticated
@@ -61,6 +61,8 @@ export async function initializeAuth(): Promise<void> {
           await activateProTier(profile.email);
 
           // Auto-migrate if needed (first time Pro/Premium user)
+          // Use dynamic import to avoid circular dependency
+          const { hasMigrated, migrateLocalQuotesToCloud, syncQuotes } = await import("./quotesSync");
           const migrated = await hasMigrated();
           if (!migrated) {
             console.log("🔄 Auto-migrating quotes to cloud...");

@@ -14,7 +14,7 @@ import {
 import { cache, CacheKeys } from "@/lib/cache";
 import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import { incrementQuoteCount, decrementQuoteCount } from "@/lib/user";
-import { uploadQuote, isSyncAvailable, deleteQuoteFromCloud } from "@/lib/quotesSync";
+// Dynamic imports to avoid circular dependency with quotesSync
 
 /**
  * Internal map type for de-duplication
@@ -250,12 +250,17 @@ export async function saveQuote(quote: Quote): Promise<Quote> {
     }
 
     // Auto-sync to cloud for Pro/Premium users (non-blocking)
-    isSyncAvailable().then((available) => {
-      if (available) {
-        uploadQuote(result.data).catch((error) => {
-          console.warn("Background cloud sync failed:", error);
-        });
-      }
+    // Use dynamic import to avoid circular dependency
+    import("@/lib/quotesSync").then(({ isSyncAvailable, uploadQuote }) => {
+      isSyncAvailable().then((available) => {
+        if (available) {
+          uploadQuote(result.data).catch((error) => {
+            console.warn("Background cloud sync failed:", error);
+          });
+        }
+      });
+    }).catch((error) => {
+      console.warn("Failed to load sync module:", error);
     });
 
     return result.data;
@@ -307,12 +312,17 @@ export async function deleteQuote(id: string): Promise<void> {
   await decrementQuoteCount();
 
   // Delete from cloud for Pro/Premium users (non-blocking)
-  isSyncAvailable().then((available) => {
-    if (available) {
-      deleteQuoteFromCloud(id).catch((error) => {
-        console.warn("Background cloud deletion failed:", error);
-      });
-    }
+  // Use dynamic import to avoid circular dependency
+  import("@/lib/quotesSync").then(({ isSyncAvailable, deleteQuoteFromCloud }) => {
+    isSyncAvailable().then((available) => {
+      if (available) {
+        deleteQuoteFromCloud(id).catch((error) => {
+          console.warn("Background cloud deletion failed:", error);
+        });
+      }
+    });
+  }).catch((error) => {
+    console.warn("Failed to load sync module:", error);
   });
 
   // Invalidate caches
