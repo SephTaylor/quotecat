@@ -119,20 +119,6 @@ export default function ProTools() {
               </View>
             </View>
           </View>
-
-          {!isPro && (
-            <View style={styles.upgradeSection}>
-              <Text style={styles.upgradeTitle}>Pro Features</Text>
-              <Text style={styles.upgradeSubtitle}>
-                Sign in to access Pro features
-              </Text>
-              <Pressable style={styles.upgradeButton} onPress={handleUpgrade}>
-                <Text style={styles.upgradeButtonText}>
-                  Learn More
-                </Text>
-              </Pressable>
-            </View>
-          )}
         </ScrollView>
       </GradientBackground>
     </>
@@ -267,40 +253,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     comingSoonDescription: {
       fontSize: 13,
       color: theme.colors.muted,
-    },
-    upgradeSection: {
-      marginTop: theme.spacing(3),
-      padding: theme.spacing(3),
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      borderWidth: 2,
-      borderColor: theme.colors.accent,
-      alignItems: "center",
-    },
-    upgradeTitle: {
-      fontSize: 20,
-      fontWeight: "700",
-      color: theme.colors.text,
-      marginBottom: theme.spacing(1),
-    },
-    upgradeSubtitle: {
-      fontSize: 14,
-      color: theme.colors.muted,
-      textAlign: "center",
-      marginBottom: theme.spacing(2),
-    },
-    upgradeButton: {
-      backgroundColor: theme.colors.accent,
-      paddingHorizontal: theme.spacing(3),
-      paddingVertical: theme.spacing(1.5),
-      borderRadius: theme.radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    upgradeButtonText: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: "#000",
     },
   });
 }
