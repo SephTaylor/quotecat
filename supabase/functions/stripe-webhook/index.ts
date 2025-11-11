@@ -325,10 +325,15 @@ async function createUserAccount(
               padding: 20px;
             }
             .header {
-              background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+              background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
               padding: 40px 20px;
               text-align: center;
               border-radius: 12px 12px 0 0;
+            }
+            .header img {
+              max-width: 200px;
+              height: auto;
+              margin-bottom: 16px;
             }
             .header h1 {
               color: white;
@@ -423,6 +428,7 @@ async function createUserAccount(
         </head>
         <body>
           <div class="header">
+            <img src="https://quotecat.ai/images/logo.png" alt="QuoteCat Logo" />
             <h1>${tierEmoji} Welcome to QuoteCat ${tierName}!</h1>
           </div>
 
@@ -490,7 +496,7 @@ async function createUserAccount(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'QuoteCat <welcome@quotecat.ai>',
+          from: 'QuoteCat <hello@quotecat.ai>',
           to: email,
           subject: `Welcome to QuoteCat ${tierName}! ${tierEmoji} Your account is ready`,
           html: emailHtml,
