@@ -125,17 +125,27 @@ export default function SignInScreen() {
     <>
       <Stack.Screen
         options={{
-          title: "Sign In",
           headerShown: true,
-          headerBackVisible: true,
           headerTitleAlign: 'center',
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.back()}
+              style={{ paddingLeft: 16, paddingVertical: 8 }}
+            >
+              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
+                ‹ Back
+              </Text>
+            </Pressable>
+          ),
+          headerTitle: () => (
+            <Text style={{ fontSize: 17, fontWeight: "700", color: theme.colors.text }}>
+              Sign In
+            </Text>
+          ),
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
           headerTintColor: theme.colors.accent,
-          headerTitleStyle: {
-            color: theme.colors.text,
-          },
         }}
       />
       <GradientBackground>
