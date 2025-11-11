@@ -560,15 +560,13 @@ export default function Settings() {
                   <Ionicons name="cloud-offline-outline" size={48} color={theme.colors.muted} />
                   <Text style={styles.proFeatureTitle}>Cloud Sync is a Pro Feature</Text>
                   <Text style={styles.proFeatureDescription}>
-                    Automatically back up your quotes to the cloud and sync across all your devices with a Pro subscription.
+                    Automatically back up your quotes to the cloud and sync across all your devices.
                   </Text>
                   <Pressable
                     style={styles.proFeatureButton}
-                    onPress={userEmail ? handleManageAccount : handleSignIn}
+                    onPress={() => Linking.openURL("https://quotecat.ai")}
                   >
-                    <Text style={styles.proFeatureButtonText}>
-                      {userEmail ? 'Learn More' : 'Sign In'}
-                    </Text>
+                    <Text style={styles.proFeatureButtonText}>Learn More</Text>
                   </Pressable>
                 </View>
               </View>
