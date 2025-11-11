@@ -7,6 +7,7 @@ import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -32,13 +33,7 @@ export default function ProTools() {
   );
 
   const handleUpgrade = () => {
-    Alert.alert(
-      "Pro Feature",
-      "This feature requires a Pro account.",
-      [
-        { text: "OK", style: "cancel" }
-      ],
-    );
+    Linking.openURL("https://quotecat.ai");
   };
 
   const handleFeatureTap = (featureName: string) => {
@@ -87,23 +82,19 @@ export default function ProTools() {
 
             {/* Assembly Manager */}
             <ProFeatureCard
-              icon=""
               title="Assembly Manager"
               description="Create and manage your custom assemblies"
               locked={!isPro}
               onPress={() => handleFeatureTap("Assembly Manager")}
-              details={[]}
               theme={theme}
             />
 
             {/* Assembly Library */}
             <ProFeatureCard
-              icon=""
               title="Assembly Library"
               description="Browse pre-built assembly templates"
               locked={!isPro}
               onPress={() => handleFeatureTap("Assembly Library")}
-              details={[]}
               theme={theme}
             />
           </View>
@@ -117,20 +108,6 @@ export default function ProTools() {
                 <Text style={styles.comingSoonTitle}>Quote Wizard</Text>
                 <Text style={styles.comingSoonDescription}>
                   Calculate materials from room dimensions
-                </Text>
-              </View>
-
-              <View style={styles.comingSoonItem}>
-                <Text style={styles.comingSoonTitle}>Cloud Backup & Sync</Text>
-                <Text style={styles.comingSoonDescription}>
-                  Never lose your quotes
-                </Text>
-              </View>
-
-              <View style={styles.comingSoonItem}>
-                <Text style={styles.comingSoonTitle}>Branded PDFs</Text>
-                <Text style={styles.comingSoonDescription}>
-                  Professional exports with your branding
                 </Text>
               </View>
 
@@ -163,20 +140,16 @@ export default function ProTools() {
 }
 
 function ProFeatureCard({
-  icon,
   title,
   description,
   locked,
   onPress,
-  details,
   theme,
 }: {
-  icon: string;
   title: string;
   description: string;
   locked: boolean;
   onPress: () => void;
-  details: string[];
   theme: ReturnType<typeof useTheme>["theme"];
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -193,7 +166,7 @@ function ProFeatureCard({
 
       <View style={[styles.launchButton, locked && styles.launchButtonLocked]}>
         <Text style={styles.launchButtonText}>
-          {locked ? "Unlock" : "Launch"}
+          {locked ? "Learn More" : "Launch"}
         </Text>
       </View>
     </Pressable>
