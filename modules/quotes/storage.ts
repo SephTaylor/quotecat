@@ -13,7 +13,8 @@ import {
 } from "@/lib/errors";
 import { cache, CacheKeys } from "@/lib/cache";
 import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
-// Dynamic imports to avoid circular dependency with quotesSync
+import { incrementQuoteCount, decrementQuoteCount } from "@/lib/user";
+import { uploadQuote, isSyncAvailable, deleteQuoteFromCloud } from "@/lib/quotesSync";
 
 /**
  * Internal map type for de-duplication
@@ -192,7 +193,8 @@ export async function createQuote(
     hasClient: Boolean(clientName),
   });
 
-  // Note: Quote counting removed - unlimited draft quotes for all users
+  // Increment quote usage counter
+  await incrementQuoteCount();
 
   return normalized;
 }
@@ -248,17 +250,12 @@ export async function saveQuote(quote: Quote): Promise<Quote> {
     }
 
     // Auto-sync to cloud for Pro/Premium users (non-blocking)
-    // Use dynamic import to avoid circular dependency
-    import("@/lib/quotesSync").then(({ isSyncAvailable, uploadQuote }) => {
-      isSyncAvailable().then((available) => {
-        if (available) {
-          uploadQuote(result.data).catch((error) => {
-            console.warn("Background cloud sync failed:", error);
-          });
-        }
-      });
-    }).catch((error) => {
-      console.warn("Failed to load sync module:", error);
+    isSyncAvailable().then((available) => {
+      if (available) {
+        uploadQuote(result.data).catch((error) => {
+          console.warn("Background cloud sync failed:", error);
+        });
+      }
     });
 
     return result.data;
@@ -306,20 +303,16 @@ export async function deleteQuote(id: string): Promise<void> {
   // Track quote deletion analytics
   trackEvent(AnalyticsEvents.QUOTE_DELETED);
 
-  // Note: Quote counting removed - unlimited draft quotes for all users
+  // Decrement quote usage counter
+  await decrementQuoteCount();
 
   // Delete from cloud for Pro/Premium users (non-blocking)
-  // Use dynamic import to avoid circular dependency
-  import("@/lib/quotesSync").then(({ isSyncAvailable, deleteQuoteFromCloud }) => {
-    isSyncAvailable().then((available) => {
-      if (available) {
-        deleteQuoteFromCloud(id).catch((error) => {
-          console.warn("Background cloud deletion failed:", error);
-        });
-      }
-    });
-  }).catch((error) => {
-    console.warn("Failed to load sync module:", error);
+  isSyncAvailable().then((available) => {
+    if (available) {
+      deleteQuoteFromCloud(id).catch((error) => {
+        console.warn("Background cloud deletion failed:", error);
+      });
+    }
   });
 
   // Invalidate caches
@@ -360,7 +353,8 @@ export async function duplicateQuote(id: string): Promise<Quote | null> {
       originalTotal: original.total,
     });
 
-    // Note: Quote counting removed - unlimited draft quotes for all users
+    // Increment quote usage counter (duplicating creates a new quote)
+    await incrementQuoteCount();
 
     return copy;
   }, ErrorType.STORAGE);
