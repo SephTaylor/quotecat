@@ -1,5 +1,5 @@
 // app/(main)/(tabs)/pro-tools.tsx
-// Pro Tools tab - Shows locked features for free users, unlocked for pro users
+// Tools tab - Shows Pro and Premium features
 import { useTheme } from "@/contexts/ThemeContext";
 import { canAccessAssemblies } from "@/lib/features";
 import { getUserState } from "@/lib/user";
@@ -63,15 +63,15 @@ export default function ProTools() {
   return (
     <>
       <Stack.Screen
-        options={{ title: "Pro Tools", headerBackVisible: false, headerTitleAlign: 'center' }}
+        options={{ title: "Tools", headerBackVisible: false, headerTitleAlign: 'center' }}
       />
       <GradientBackground>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {!isPro && (
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Pro Features</Text>
+              <Text style={styles.headerTitle}>Professional Tools</Text>
               <Text style={styles.headerSubtitle}>
-                Unlock powerful tools for professional quoting
+                Powerful features for contractors and builders
               </Text>
             </View>
           )}
@@ -84,6 +84,7 @@ export default function ProTools() {
             <ProFeatureCard
               title="Assembly Manager"
               description="Create and manage your custom assemblies"
+              tier="PRO"
               locked={!isPro}
               onPress={() => handleFeatureTap("Assembly Manager")}
               theme={theme}
@@ -93,6 +94,7 @@ export default function ProTools() {
             <ProFeatureCard
               title="Assembly Library"
               description="Browse pre-built assembly templates"
+              tier="PRO"
               locked={!isPro}
               onPress={() => handleFeatureTap("Assembly Library")}
               theme={theme}
@@ -128,12 +130,14 @@ export default function ProTools() {
 function ProFeatureCard({
   title,
   description,
+  tier,
   locked,
   onPress,
   theme,
 }: {
   title: string;
   description: string;
+  tier: "PRO" | "PREMIUM";
   locked: boolean;
   onPress: () => void;
   theme: ReturnType<typeof useTheme>["theme"];
@@ -146,7 +150,12 @@ function ProFeatureCard({
       onPress={onPress}
     >
       <View style={styles.featureInfo}>
-        <Text style={styles.featureTitle}>{title}</Text>
+        <View style={styles.featureTitleRow}>
+          <Text style={styles.featureTitle}>{title}</Text>
+          <View style={styles.tierBadge}>
+            <Text style={styles.tierBadgeText}>{tier}</Text>
+          </View>
+        </View>
         <Text style={styles.featureDescription}>{description}</Text>
       </View>
 
@@ -211,11 +220,28 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     featureInfo: {
       flex: 1,
     },
+    featureTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+      marginBottom: 2,
+    },
     featureTitle: {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
-      marginBottom: 2,
+    },
+    tierBadge: {
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    tierBadgeText: {
+      fontSize: 9,
+      fontWeight: "800",
+      color: "#000",
+      letterSpacing: 0.5,
     },
     featureDescription: {
       fontSize: 13,
