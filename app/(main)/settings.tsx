@@ -64,7 +64,7 @@ function formatSyncTime(date: Date): string {
 }
 
 export default function Settings() {
-  const { mode, theme, setThemeMode } = useTheme();
+  const { mode, gradientMode, theme, setThemeMode, setGradientMode } = useTheme();
   const router = useRouter();
   const [isPro, setIsPro] = useState(false);
   const [userEmail, setUserEmail] = useState<string | undefined>();
@@ -638,6 +638,25 @@ export default function Settings() {
                   thumbColor="#FFFFFF"
                 />
               </View>
+
+              {mode === "light" && (
+                <View style={[styles.settingButton, { borderTopWidth: 1, borderTopColor: theme.colors.border }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.settingButtonText}>Gradient Style</Text>
+                    <Text style={styles.settingSubtext}>
+                      {gradientMode === "warm" ? "Warm (Orange)" : "Neutral (Gray)"}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={gradientMode === "neutral"}
+                    onValueChange={(value) =>
+                      setGradientMode(value ? "neutral" : "warm")
+                    }
+                    trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
+              )}
             </View>
           </CollapsibleSection>
 
@@ -1311,6 +1330,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "500",
       color: theme.colors.text,
+    },
+    settingSubtext: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      marginTop: 2,
     },
     settingButtonIcon: {
       fontSize: 18,

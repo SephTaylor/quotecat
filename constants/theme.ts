@@ -14,7 +14,18 @@ export type ColorScheme = {
 
 const lightColors: ColorScheme = {
   bg: "#f7f7f7",
-  bgGradient: ["#e5e5e5", "#ffe4cc"], // Light gray to soft orange (original Option 2)
+  bgGradient: ["#e5e5e5", "#ffe4cc"], // Light gray to soft orange (default)
+  text: "#111111",
+  accent: "#F97316", // Construction orange
+  muted: "#666666",
+  card: "#ffffff",
+  border: "#e5e5e5",
+  danger: "#c0392b",
+};
+
+const lightColorsGray: ColorScheme = {
+  bg: "#f7f7f7",
+  bgGradient: ["#d5d5d5", "#ffffff"], // Gray to white (neutral option)
   text: "#111111",
   accent: "#F97316", // Construction orange
   muted: "#666666",
@@ -34,8 +45,11 @@ const darkColors: ColorScheme = {
   danger: "#e74c3c",
 };
 
+export type GradientMode = "warm" | "neutral";
+
 export const themes = {
   light: lightColors,
+  lightGray: lightColorsGray,
   dark: darkColors,
 };
 
@@ -46,10 +60,21 @@ export const theme = {
   radius: { sm: 8, md: 12, lg: 16, xl: 24 },
 };
 
-export function getTheme(mode: ThemeMode) {
+export function getTheme(mode: ThemeMode, gradientMode: GradientMode = "warm") {
+  // Dark mode always uses dark gradient (no warm option)
+  if (mode === "dark") {
+    return {
+      colors: themes.dark,
+      spacing: (n: number) => n * 10,
+      radius: { sm: 8, md: 12, lg: 16, xl: 24 },
+    };
+  }
+
+  // Light mode can be warm (orange) or neutral (gray)
+  const colors = gradientMode === "neutral" ? themes.lightGray : themes.light;
   return {
-    colors: themes[mode],
-    spacing: (n: number) => n * 10, // Increased from 8 to 10 for better spacing
+    colors,
+    spacing: (n: number) => n * 10,
     radius: { sm: 8, md: 12, lg: 16, xl: 24 },
   };
 }
