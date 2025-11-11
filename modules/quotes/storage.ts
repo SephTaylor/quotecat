@@ -14,6 +14,7 @@ import {
 import { cache, CacheKeys } from "@/lib/cache";
 import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import { incrementQuoteCount, decrementQuoteCount } from "@/lib/user";
+import { uploadQuote, isSyncAvailable, deleteQuoteFromCloud } from "@/lib/quotesSync";
 
 /**
  * Internal map type for de-duplication
@@ -248,6 +249,15 @@ export async function saveQuote(quote: Quote): Promise<Quote> {
       });
     }
 
+    // Auto-sync to cloud for Pro/Premium users (non-blocking)
+    isSyncAvailable().then((available) => {
+      if (available) {
+        uploadQuote(result.data).catch((error) => {
+          console.warn("Background cloud sync failed:", error);
+        });
+      }
+    });
+
     return result.data;
   } else {
     logError(result.error, "saveQuote");
@@ -295,6 +305,15 @@ export async function deleteQuote(id: string): Promise<void> {
 
   // Decrement quote usage counter
   await decrementQuoteCount();
+
+  // Delete from cloud for Pro/Premium users (non-blocking)
+  isSyncAvailable().then((available) => {
+    if (available) {
+      deleteQuoteFromCloud(id).catch((error) => {
+        console.warn("Background cloud deletion failed:", error);
+      });
+    }
+  });
 
   // Invalidate caches
   cache.invalidate(CacheKeys.quotes.all());

@@ -17,6 +17,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier } from "@/lib/user";
+import { migrateLocalQuotesToCloud, hasMigrated } from "@/lib/quotesSync";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -54,13 +55,48 @@ export default function SignInScreen() {
           Alert.alert("Success", "Signed in successfully");
         } else if (profile) {
           // Update local user state based on Supabase tier
+          const isPaidTier = profile.tier === "premium" || profile.tier === "pro";
+
           if (profile.tier === "premium") {
             await activatePremiumTier(profile.email);
           } else if (profile.tier === "pro") {
             await activateProTier(profile.email);
           }
-          // Free tier users don't need activation (already default)
-          Alert.alert("Success", "Signed in successfully");
+
+          // Auto-migrate local quotes to cloud for Pro/Premium users
+          if (isPaidTier) {
+            const migrated = await hasMigrated();
+            if (!migrated) {
+              Alert.alert(
+                "Backing up your quotes",
+                "We're uploading your quotes to the cloud. This may take a moment...",
+                [{ text: "OK" }]
+              );
+
+              const result = await migrateLocalQuotesToCloud();
+
+              if (result.success && result.uploaded > 0) {
+                Alert.alert(
+                  "Backup Complete",
+                  `Successfully backed up ${result.uploaded} quote${result.uploaded === 1 ? "" : "s"} to the cloud!`,
+                  [{ text: "Great!" }]
+                );
+              } else if (result.success) {
+                Alert.alert("Success", "Signed in successfully");
+              } else {
+                Alert.alert(
+                  "Backup Warning",
+                  "Some quotes couldn't be backed up. Your local quotes are safe. You can try syncing again from Settings.",
+                  [{ text: "OK" }]
+                );
+              }
+            } else {
+              Alert.alert("Success", "Signed in successfully");
+            }
+          } else {
+            // Free tier users don't need activation (already default)
+            Alert.alert("Success", "Signed in successfully");
+          }
         }
 
         // Navigate to main app

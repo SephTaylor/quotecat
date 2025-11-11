@@ -3,6 +3,7 @@
 
 import { supabase } from "./supabase";
 import { activateProTier, deactivateProTier, signOutUser } from "./user";
+import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync";
 
 /**
  * Check if user is currently authenticated
@@ -54,8 +55,21 @@ export async function initializeAuth(): Promise<void> {
 
       if (profile) {
         // Sync local user state with Supabase
-        if (profile.tier === "pro" || profile.tier === "premium") {
+        const isPaidTier = profile.tier === "pro" || profile.tier === "premium";
+
+        if (isPaidTier) {
           await activateProTier(profile.email);
+
+          // Auto-migrate if needed (first time Pro/Premium user)
+          const migrated = await hasMigrated();
+          if (!migrated) {
+            console.log("🔄 Auto-migrating quotes to cloud...");
+            await migrateLocalQuotesToCloud();
+          } else {
+            // Already migrated, just sync
+            console.log("🔄 Syncing quotes...");
+            await syncQuotes();
+          }
         } else {
           await deactivateProTier();
         }

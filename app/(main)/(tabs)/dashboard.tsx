@@ -12,7 +12,29 @@ import { GradientBackground } from "@/components/GradientBackground";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { getLastSyncTime, isSyncAvailable } from "@/lib/quotesSync";
+import { getUserState } from "@/lib/user";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+/**
+ * Format sync time as relative time (e.g., "just now", "2 minutes ago")
+ */
+function formatSyncTime(date: Date): string {
+  const now = Date.now();
+  const syncTime = date.getTime();
+  const diffMs = now - syncTime;
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes === 1) return "1 minute ago";
+  if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+  if (diffHours === 1) return "1 hour ago";
+  if (diffHours < 24) return `${diffHours} hours ago`;
+  if (diffDays === 1) return "1 day ago";
+  return `${diffDays} days ago`;
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -29,15 +51,22 @@ export default function Dashboard() {
   });
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
   const [showUndo, setShowUndo] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [syncAvailable, setSyncAvailable] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [data, prefs] = await Promise.all([
+    const [data, prefs, syncTime, available, userState] = await Promise.all([
       listQuotes(),
       loadPreferences(),
+      getLastSyncTime(),
+      isSyncAvailable(),
+      getUserState(),
     ]);
     setQuotes(data);
     setPreferences(prefs.dashboard);
+    setLastSyncTime(syncTime);
+    setSyncAvailable(available && (userState.tier === 'pro' || userState.tier === 'premium'));
     setLoading(false);
   }, []);
 
@@ -162,6 +191,11 @@ export default function Dashboard() {
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeText}>Welcome back!</Text>
             <Text style={styles.welcomeSubtext}>Here&apos;s your business overview</Text>
+            {syncAvailable && lastSyncTime && (
+              <Text style={styles.syncIndicator}>
+                ☁️ Synced {formatSyncTime(lastSyncTime)}
+              </Text>
+            )}
           </View>
 
           {/* Quick Stats */}
@@ -348,6 +382,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     welcomeSubtext: {
       fontSize: 14,
       color: theme.colors.muted,
+    },
+    syncIndicator: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: 8,
+      opacity: 0.7,
     },
     statsGrid: {
       flexDirection: "row",
