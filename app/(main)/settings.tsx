@@ -32,6 +32,35 @@ import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
 import { signOut } from "@/lib/auth";
+import {
+  syncQuotes,
+  getLastSyncTime,
+  isSyncAvailable,
+  downloadQuotes,
+  hasMigrated,
+  resetSyncMetadata
+} from "@/lib/quotesSync";
+import { listQuotes } from "@/lib/quotes";
+
+/**
+ * Format sync time as relative time (e.g., "just now", "2 minutes ago")
+ */
+function formatSyncTime(date: Date): string {
+  const now = Date.now();
+  const syncTime = date.getTime();
+  const diffMs = now - syncTime;
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes === 1) return "1 minute ago";
+  if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+  if (diffHours === 1) return "1 hour ago";
+  if (diffHours < 24) return `${diffHours} hours ago`;
+  if (diffDays === 1) return "1 day ago";
+  return `${diffDays} days ago`;
+}
 
 export default function Settings() {
   const { mode, theme, setThemeMode } = useTheme();
@@ -57,9 +86,17 @@ export default function Settings() {
   const [logo, setLogo] = useState<CompanyLogo | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
+  // Sync state
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [syncAvailable, setSyncAvailable] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [localQuoteCount, setLocalQuoteCount] = useState(0);
+  const [cloudQuoteCount, setCloudQuoteCount] = useState(0);
+
   // Track expanded sections
   const [expandedSections, setExpandedSections] = useState({
     usage: false,
+    cloudSync: false,
     appearance: false,
     dashboard: false,
     quoteDefaults: false,
@@ -94,6 +131,28 @@ export default function Settings() {
         setLogo(companyLogo);
       } catch (error) {
         console.error("Failed to load logo:", error);
+      }
+    }
+
+    // Load sync state
+    const isPaidTier = user.tier === 'pro' || user.tier === 'premium';
+    const [syncTime, available, localQuotes] = await Promise.all([
+      getLastSyncTime(),
+      isSyncAvailable(),
+      listQuotes(),
+    ]);
+
+    setLastSyncTime(syncTime);
+    setSyncAvailable(available && isPaidTier);
+    setLocalQuoteCount(localQuotes.length);
+
+    // Load cloud quote count if available
+    if (available && isPaidTier) {
+      try {
+        const cloudQuotes = await downloadQuotes();
+        setCloudQuoteCount(cloudQuotes.length);
+      } catch (error) {
+        console.error("Failed to load cloud quote count:", error);
       }
     }
   }, []);
@@ -225,6 +284,89 @@ export default function Settings() {
     );
   };
 
+  const handleSyncNow = async () => {
+    if (!syncAvailable) {
+      Alert.alert("Sync Unavailable", "Please sign in to sync your quotes to the cloud.");
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const result = await syncQuotes();
+
+      if (result.success) {
+        setLastSyncTime(new Date());
+
+        // Reload counts
+        const [localQuotes, cloudQuotes] = await Promise.all([
+          listQuotes(),
+          downloadQuotes(),
+        ]);
+        setLocalQuoteCount(localQuotes.length);
+        setCloudQuoteCount(cloudQuotes.length);
+
+        const message = result.downloaded === 0 && result.uploaded === 0
+          ? "Everything is up to date!"
+          : `Synced! Downloaded ${result.downloaded}, uploaded ${result.uploaded} quote${result.uploaded === 1 ? '' : 's'}.`;
+
+        Alert.alert("Sync Complete", message);
+      } else {
+        Alert.alert("Sync Failed", "Unable to sync with the cloud. Please try again later.");
+      }
+    } catch (error) {
+      console.error("Sync error:", error);
+      Alert.alert("Sync Error", "An error occurred while syncing. Please try again.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleForceSync = async () => {
+    if (!syncAvailable) return;
+
+    Alert.alert(
+      "Force Full Sync",
+      "This will re-upload all local quotes to the cloud. This may take a moment. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Force Sync",
+          onPress: async () => {
+            setSyncing(true);
+            try {
+              // Reset sync metadata to force re-upload
+              await resetSyncMetadata();
+
+              // Run sync
+              const result = await syncQuotes();
+
+              if (result.success) {
+                setLastSyncTime(new Date());
+
+                // Reload counts
+                const [localQuotes, cloudQuotes] = await Promise.all([
+                  listQuotes(),
+                  downloadQuotes(),
+                ]);
+                setLocalQuoteCount(localQuotes.length);
+                setCloudQuoteCount(cloudQuotes.length);
+
+                Alert.alert("Success", `Force sync complete! Uploaded ${result.uploaded} quote${result.uploaded === 1 ? '' : 's'}.`);
+              } else {
+                Alert.alert("Sync Failed", "Unable to complete force sync.");
+              }
+            } catch (error) {
+              console.error("Force sync error:", error);
+              Alert.alert("Error", "Force sync failed. Please try again.");
+            } finally {
+              setSyncing(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
@@ -292,6 +434,113 @@ export default function Settings() {
               )}
             </View>
           </View>
+
+          {/* Cloud Sync Section (Pro/Premium only) */}
+          {isPro && (
+            <CollapsibleSection
+              title="Cloud Sync"
+              isExpanded={expandedSections.cloudSync}
+              onToggle={() => toggleSection('cloudSync')}
+              theme={theme}
+            >
+              <View style={styles.card}>
+                {/* Sync Status */}
+                <View style={styles.syncStatusRow}>
+                  <View style={styles.syncStatusHeader}>
+                    <Text style={styles.syncStatusLabel}>Status</Text>
+                    <View style={styles.syncStatusIndicator}>
+                      <View style={[
+                        styles.syncStatusDot,
+                        syncAvailable ? styles.syncStatusDotOnline : styles.syncStatusDotOffline
+                      ]} />
+                      <Text style={styles.syncStatusText}>
+                        {syncAvailable ? 'Online' : 'Offline'}
+                      </Text>
+                    </View>
+                  </View>
+                  {lastSyncTime && (
+                    <Text style={styles.syncStatusSubtext}>
+                      Last synced: {formatSyncTime(lastSyncTime)}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Quote Counts */}
+                <View style={styles.syncCountsRow}>
+                  <View style={styles.syncCountItem}>
+                    <Text style={styles.syncCountLabel}>Local</Text>
+                    <Text style={styles.syncCountValue}>{localQuoteCount}</Text>
+                  </View>
+                  <View style={styles.syncCountDivider} />
+                  <View style={styles.syncCountItem}>
+                    <Text style={styles.syncCountLabel}>Cloud</Text>
+                    <Text style={styles.syncCountValue}>{cloudQuoteCount}</Text>
+                  </View>
+                </View>
+
+                {/* Sync Actions */}
+                <Pressable
+                  style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
+                  onPress={handleSyncNow}
+                  disabled={syncing || !syncAvailable}
+                >
+                  {syncing ? (
+                    <ActivityIndicator size="small" color="#000" />
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload-outline" size={20} color="#000" />
+                      <Text style={styles.syncButtonText}>Sync Now</Text>
+                    </>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  style={[styles.syncButton, styles.syncButtonSecondary, syncing && styles.syncButtonDisabled]}
+                  onPress={handleForceSync}
+                  disabled={syncing || !syncAvailable}
+                >
+                  <Ionicons name="refresh-outline" size={20} color={theme.colors.accent} />
+                  <Text style={[styles.syncButtonText, styles.syncButtonTextSecondary]}>Force Full Sync</Text>
+                </Pressable>
+
+                {!syncAvailable && (
+                  <View style={styles.syncHelpText}>
+                    <Text style={styles.syncHelpTextContent}>
+                      💡 Cloud sync keeps your quotes backed up and synced across devices
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </CollapsibleSection>
+          )}
+
+          {/* Free User Prompt */}
+          {!isPro && (
+            <CollapsibleSection
+              title="Cloud Sync"
+              isExpanded={expandedSections.cloudSync}
+              onToggle={() => toggleSection('cloudSync')}
+              theme={theme}
+            >
+              <View style={styles.card}>
+                <View style={styles.proFeaturePrompt}>
+                  <Ionicons name="cloud-offline-outline" size={48} color={theme.colors.muted} />
+                  <Text style={styles.proFeatureTitle}>Cloud Sync is a Pro Feature</Text>
+                  <Text style={styles.proFeatureDescription}>
+                    Upgrade to Pro or Premium to automatically back up your quotes to the cloud and sync across all your devices.
+                  </Text>
+                  <Pressable
+                    style={styles.proFeatureButton}
+                    onPress={userEmail ? handleManageAccount : handleSignIn}
+                  >
+                    <Text style={styles.proFeatureButtonText}>
+                      {userEmail ? 'Upgrade to Pro' : 'Sign In'}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </CollapsibleSection>
+          )}
 
           {/* Usage & Limits Section */}
           {userState && (
@@ -1336,6 +1585,144 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 11,
       color: theme.colors.muted,
       textAlign: "center",
+    },
+    // Cloud Sync section styles
+    syncStatusRow: {
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    syncStatusHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(0.5),
+    },
+    syncStatusLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    syncStatusIndicator: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(0.75),
+    },
+    syncStatusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    syncStatusDotOnline: {
+      backgroundColor: "#34C759",
+    },
+    syncStatusDotOffline: {
+      backgroundColor: theme.colors.muted,
+    },
+    syncStatusText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: theme.colors.text,
+    },
+    syncStatusSubtext: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: theme.spacing(0.25),
+    },
+    syncCountsRow: {
+      flexDirection: "row",
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      gap: theme.spacing(2),
+    },
+    syncCountItem: {
+      flex: 1,
+      alignItems: "center",
+    },
+    syncCountDivider: {
+      width: 1,
+      backgroundColor: theme.colors.border,
+    },
+    syncCountLabel: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(0.5),
+    },
+    syncCountValue: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    syncButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: theme.spacing(1),
+      padding: theme.spacing(1.5),
+      marginHorizontal: theme.spacing(2),
+      marginTop: theme.spacing(1.5),
+      backgroundColor: theme.colors.accent,
+      borderRadius: theme.radius.md,
+    },
+    syncButtonSecondary: {
+      backgroundColor: "transparent",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginTop: theme.spacing(1),
+      marginBottom: theme.spacing(1.5),
+    },
+    syncButtonDisabled: {
+      opacity: 0.5,
+    },
+    syncButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: "#000",
+    },
+    syncButtonTextSecondary: {
+      color: theme.colors.accent,
+    },
+    syncHelpText: {
+      padding: theme.spacing(2),
+      paddingTop: 0,
+    },
+    syncHelpTextContent: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      lineHeight: 16,
+      textAlign: "center",
+    },
+    proFeaturePrompt: {
+      alignItems: "center",
+      padding: theme.spacing(3),
+    },
+    proFeatureTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginTop: theme.spacing(2),
+      marginBottom: theme.spacing(1),
+      textAlign: "center",
+    },
+    proFeatureDescription: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      lineHeight: 20,
+      textAlign: "center",
+      marginBottom: theme.spacing(2),
+    },
+    proFeatureButton: {
+      backgroundColor: theme.colors.accent,
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(3),
+      borderRadius: theme.radius.md,
+      marginTop: theme.spacing(1),
+    },
+    proFeatureButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: "#000",
     },
   });
 }
