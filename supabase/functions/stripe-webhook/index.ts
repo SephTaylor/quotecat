@@ -301,43 +301,215 @@ async function createUserAccount(
 
   console.log('Profile created for user:', userData.user.id);
 
-  // TODO: Send welcome email with credentials
-  // For now, log the credentials (REMOVE IN PRODUCTION)
-  console.log('=== NEW USER CREDENTIALS ===');
-  console.log('Email:', email);
-  console.log('Password:', password);
-  console.log('Tier:', tier);
-  console.log('============================');
-
-  // You can use Resend, SendGrid, or other email service here
-  // Example with Resend (when you set it up):
-  /*
+  // Send welcome email with credentials via Resend
   const resendApiKey = Deno.env.get('RESEND_API_KEY');
+
   if (resendApiKey) {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'QuoteCat <onboarding@quotecat.ai>',
-        to: email,
-        subject: `Welcome to QuoteCat ${tier === 'premium' ? 'Premium' : 'Pro'}!`,
-        html: `
-          <h1>Welcome to QuoteCat ${tier === 'premium' ? 'Premium' : 'Pro'}!</h1>
-          <p>Your account has been created. Here are your credentials:</p>
-          <p><strong>Email:</strong> ${email}<br>
-          <strong>Password:</strong> ${password}</p>
-          <p>Download the app and sign in to unlock your ${tier} features:</p>
-          <ul>
-            <li>iOS: [TestFlight link]</li>
-            <li>Android: [Play Store link]</li>
-          </ul>
-          <p>We recommend changing your password after your first login in the app settings.</p>
-        `,
-      }),
-    });
+    try {
+      const tierName = tier === 'premium' ? 'Premium' : 'Pro';
+      const tierEmoji = tier === 'premium' ? '💎' : '⭐';
+
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              line-height: 1.6;
+              color: #1f2937;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+              padding: 40px 20px;
+              text-align: center;
+              border-radius: 12px 12px 0 0;
+            }
+            .header h1 {
+              color: white;
+              margin: 0;
+              font-size: 28px;
+            }
+            .content {
+              background: white;
+              padding: 40px 30px;
+              border: 1px solid #e5e7eb;
+              border-top: none;
+            }
+            .credentials-box {
+              background: #f9fafb;
+              border: 2px solid #f97316;
+              border-radius: 8px;
+              padding: 20px;
+              margin: 24px 0;
+            }
+            .credentials-box h3 {
+              margin-top: 0;
+              color: #f97316;
+              font-size: 16px;
+            }
+            .credential-row {
+              margin: 12px 0;
+            }
+            .credential-label {
+              font-weight: 600;
+              color: #6b7280;
+              font-size: 14px;
+            }
+            .credential-value {
+              font-size: 16px;
+              color: #1f2937;
+              font-family: 'Courier New', monospace;
+              background: white;
+              padding: 8px 12px;
+              border-radius: 4px;
+              display: inline-block;
+              margin-top: 4px;
+            }
+            .features {
+              background: rgba(249, 115, 22, 0.1);
+              border-radius: 8px;
+              padding: 20px;
+              margin: 24px 0;
+            }
+            .features h3 {
+              color: #f97316;
+              margin-top: 0;
+              font-size: 16px;
+            }
+            .features ul {
+              margin: 12px 0;
+              padding-left: 20px;
+            }
+            .features li {
+              margin: 8px 0;
+              color: #1f2937;
+            }
+            .cta-button {
+              display: inline-block;
+              background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+              color: white !important;
+              text-decoration: none;
+              padding: 14px 32px;
+              border-radius: 8px;
+              font-weight: 600;
+              margin: 10px 5px;
+              text-align: center;
+            }
+            .footer {
+              text-align: center;
+              padding: 20px;
+              color: #6b7280;
+              font-size: 14px;
+              border: 1px solid #e5e7eb;
+              border-top: none;
+              border-radius: 0 0 12px 12px;
+              background: #f9fafb;
+            }
+            .security-note {
+              background: #fef3c7;
+              border-left: 4px solid #f59e0b;
+              padding: 12px 16px;
+              margin: 24px 0;
+              border-radius: 4px;
+              font-size: 14px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${tierEmoji} Welcome to QuoteCat ${tierName}!</h1>
+          </div>
+
+          <div class="content">
+            <p>Congratulations! Your QuoteCat ${tierName} account is ready to go.</p>
+
+            <div class="credentials-box">
+              <h3>🔐 Your Login Credentials</h3>
+              <div class="credential-row">
+                <div class="credential-label">Email Address</div>
+                <div class="credential-value">${email}</div>
+              </div>
+              <div class="credential-row">
+                <div class="credential-label">Temporary Password</div>
+                <div class="credential-value">${password}</div>
+              </div>
+            </div>
+
+            <div class="security-note">
+              <strong>⚠️ Security Reminder:</strong> Change your password after your first login in the app Settings.
+            </div>
+
+            <div style="text-align: center; margin: 32px 0;">
+              <p style="font-weight: 600; margin-bottom: 16px;">Download the app and sign in:</p>
+              <a href="https://apps.apple.com/app/quotecat" class="cta-button">📱 Download for iOS</a>
+              <a href="https://play.google.com/store/apps/details?id=ai.quotecat.app" class="cta-button">📱 Download for Android</a>
+            </div>
+
+            <div class="features">
+              <h3>✨ What You Get with ${tierName}</h3>
+              <ul>
+                <li><strong>Unlimited quotes & exports</strong> - Create as many quotes as you need</li>
+                <li><strong>Cloud backup & sync</strong> - Access your data from any device</li>
+                <li><strong>Multi-device access</strong> - iOS, Android, and web</li>
+                <li><strong>Company branding</strong> - Add your logo and details to quotes</li>
+                <li><strong>Custom job templates</strong> - Build reusable assemblies</li>
+                <li><strong>Priority email support</strong> - Get help when you need it</li>
+                ${tier === 'premium' ? '<li><strong>Quote Wizard (AI-assisted)</strong> - Coming soon!</li>' : ''}
+                ${tier === 'premium' ? '<li><strong>Advanced analytics</strong> - Track your business metrics</li>' : ''}
+              </ul>
+            </div>
+
+            <p style="margin-top: 32px;">Questions? Reply to this email or visit our support page.</p>
+
+            <p style="margin-top: 24px;">Thanks for choosing QuoteCat!<br><strong>- The QuoteCat Team</strong></p>
+          </div>
+
+          <div class="footer">
+            <p style="margin: 0;">You're receiving this email because you subscribed to QuoteCat ${tierName}.</p>
+            <p style="margin: 8px 0 0 0;">© 2024 QuoteCat. All rights reserved.</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const emailResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'QuoteCat <welcome@quotecat.ai>',
+          to: email,
+          subject: `Welcome to QuoteCat ${tierName}! ${tierEmoji} Your account is ready`,
+          html: emailHtml,
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        const errorText = await emailResponse.text();
+        console.error('Failed to send welcome email:', errorText);
+      } else {
+        const emailData = await emailResponse.json();
+        console.log('Welcome email sent successfully:', emailData);
+      }
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // Don't throw - we still want to create the user even if email fails
+    }
+  } else {
+    console.warn('RESEND_API_KEY not set - skipping welcome email');
   }
-  */
+
+  // Log credentials for debugging (can remove after email is confirmed working)
+  console.log('=== NEW USER CREATED ===');
+  console.log('Email:', email);
+  console.log('Tier:', tier);
+  console.log('========================');
 }
