@@ -127,6 +127,7 @@ export default function SignInScreen() {
         options={{
           title: "Sign In",
           headerShown: true,
+          headerBackVisible: true,
           headerTitleAlign: 'center',
           headerStyle: {
             backgroundColor: theme.colors.bg,
