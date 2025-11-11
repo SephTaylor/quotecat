@@ -19,6 +19,16 @@ import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier } from "@/lib/user";
 import { migrateLocalQuotesToCloud, hasMigrated } from "@/lib/quotesSync";
 import { logUsageEvent, UsageEventTypes } from "@/lib/usageTracking";
+import {
+  isBiometricSupported,
+  getAvailableBiometricTypes,
+  getBiometricName,
+  authenticateWithBiometrics,
+  saveCredentials,
+  getCredentials,
+  hasCredentials,
+  type BiometricType,
+} from "@/lib/biometrics";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -26,6 +36,128 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricTypes, setBiometricTypes] = useState<BiometricType[]>(['none']);
+  const [credentialsSaved, setCredentialsSaved] = useState(false);
+
+  // Check biometric availability on mount
+  React.useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    const supported = await isBiometricSupported();
+    const types = await getAvailableBiometricTypes();
+    const saved = await hasCredentials();
+
+    setBiometricAvailable(supported);
+    setBiometricTypes(types);
+    setCredentialsSaved(saved);
+  };
+
+  const handleBiometricSignIn = async () => {
+    setLoading(true);
+    try {
+      // Authenticate with biometrics
+      const authenticated = await authenticateWithBiometrics();
+      if (!authenticated) {
+        setLoading(false);
+        return;
+      }
+
+      // Get saved credentials
+      const credentials = await getCredentials();
+      if (!credentials) {
+        Alert.alert("Error", "Saved credentials not found. Please sign in with email and password.");
+        setLoading(false);
+        return;
+      }
+
+      // Sign in with saved credentials
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        await handleSuccessfulSignIn(data.user, credentials.email);
+      }
+    } catch (error) {
+      console.error("Biometric sign-in error:", error);
+      Alert.alert(
+        "Sign In Failed",
+        error instanceof Error ? error.message : "Please try signing in with your password."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSuccessfulSignIn = async (user: any, userEmail: string) => {
+    // Log sign-in event
+    logUsageEvent(UsageEventTypes.SIGN_IN, {
+      email: userEmail,
+    });
+
+    // Fetch user's tier
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("tier, email")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Profile fetch error:", profileError);
+      Alert.alert("Success", "Signed in successfully");
+    } else if (profile) {
+      const isPaidTier = profile.tier === "premium" || profile.tier === "pro";
+
+      if (profile.tier === "premium") {
+        await activatePremiumTier(profile.email);
+      } else if (profile.tier === "pro") {
+        await activateProTier(profile.email);
+      }
+
+      // Auto-migrate for Pro/Premium users
+      if (isPaidTier) {
+        const migrated = await hasMigrated();
+        if (!migrated) {
+          Alert.alert(
+            "Backing up your quotes",
+            "We're uploading your quotes to the cloud. This may take a moment...",
+            [{ text: "OK" }]
+          );
+
+          const result = await migrateLocalQuotesToCloud();
+
+          if (result.success && result.uploaded > 0) {
+            Alert.alert(
+              "Backup Complete",
+              `Successfully backed up ${result.uploaded} quote${result.uploaded === 1 ? "" : "s"} to the cloud!`,
+              [{ text: "Great!" }]
+            );
+          } else if (result.success) {
+            Alert.alert("Success", "Signed in successfully");
+          } else {
+            Alert.alert(
+              "Backup Warning",
+              "Some quotes couldn't be backed up. Your local quotes are safe. You can try syncing again from Settings.",
+              [{ text: "OK" }]
+            );
+          }
+        } else {
+          Alert.alert("Success", "Signed in successfully");
+        }
+      } else {
+        Alert.alert("Success", "Signed in successfully");
+      }
+    }
+
+    // Navigate to main app
+    router.replace("/(main)/(tabs)/dashboard");
+  };
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
@@ -73,70 +205,26 @@ export default function SignInScreen() {
       if (error) throw error;
 
       if (data.user) {
-        // Log sign-in event (non-blocking)
-        logUsageEvent(UsageEventTypes.SIGN_IN, {
-          email: email.trim(),
-        });
-
-        // Fetch user's tier from Supabase profiles table
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("tier, email")
-          .eq("id", data.user.id)
-          .single();
-
-        if (profileError) {
-          console.error("Profile fetch error:", profileError);
-          // Default to free if profile doesn't exist yet
-          Alert.alert("Success", "Signed in successfully");
-        } else if (profile) {
-          // Update local user state based on Supabase tier
-          const isPaidTier = profile.tier === "premium" || profile.tier === "pro";
-
-          if (profile.tier === "premium") {
-            await activatePremiumTier(profile.email);
-          } else if (profile.tier === "pro") {
-            await activateProTier(profile.email);
-          }
-
-          // Auto-migrate local quotes to cloud for Pro/Premium users
-          if (isPaidTier) {
-            const migrated = await hasMigrated();
-            if (!migrated) {
-              Alert.alert(
-                "Backing up your quotes",
-                "We're uploading your quotes to the cloud. This may take a moment...",
-                [{ text: "OK" }]
-              );
-
-              const result = await migrateLocalQuotesToCloud();
-
-              if (result.success && result.uploaded > 0) {
-                Alert.alert(
-                  "Backup Complete",
-                  `Successfully backed up ${result.uploaded} quote${result.uploaded === 1 ? "" : "s"} to the cloud!`,
-                  [{ text: "Great!" }]
-                );
-              } else if (result.success) {
-                Alert.alert("Success", "Signed in successfully");
-              } else {
-                Alert.alert(
-                  "Backup Warning",
-                  "Some quotes couldn't be backed up. Your local quotes are safe. You can try syncing again from Settings.",
-                  [{ text: "OK" }]
-                );
-              }
-            } else {
-              Alert.alert("Success", "Signed in successfully");
-            }
-          } else {
-            // Free tier users don't need activation (already default)
-            Alert.alert("Success", "Signed in successfully");
-          }
+        // Offer to enable biometrics if supported and not already saved
+        if (biometricAvailable && !credentialsSaved) {
+          const biometricName = getBiometricName(biometricTypes);
+          Alert.alert(
+            `Enable ${biometricName}?`,
+            `Sign in faster next time using ${biometricName}`,
+            [
+              { text: "Not Now", style: "cancel" },
+              {
+                text: "Enable",
+                onPress: async () => {
+                  await saveCredentials(email.trim(), password);
+                  setCredentialsSaved(true);
+                },
+              },
+            ]
+          );
         }
 
-        // Navigate to main app
-        router.replace("/(main)/(tabs)/dashboard");
+        await handleSuccessfulSignIn(data.user, email.trim());
       }
     } catch (error) {
       console.error("Sign in error:", error);
@@ -186,6 +274,32 @@ export default function SignInScreen() {
           <View style={styles.content}>
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in with your QuoteCat account</Text>
+
+            {/* Biometric Sign In Button (if enabled) */}
+            {biometricAvailable && credentialsSaved && (
+              <Pressable
+                style={[styles.biometricButton, loading && styles.buttonDisabled]}
+                onPress={handleBiometricSignIn}
+                disabled={loading}
+              >
+                <Ionicons
+                  name={biometricTypes.includes('facial') ? 'scan' : 'finger-print'}
+                  size={24}
+                  color={theme.colors.accent}
+                />
+                <Text style={styles.biometricButtonText}>
+                  Sign in with {getBiometricName(biometricTypes)}
+                </Text>
+              </Pressable>
+            )}
+
+            {biometricAvailable && credentialsSaved && (
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            )}
 
             <View style={styles.form}>
               <View style={styles.inputGroup}>
@@ -329,6 +443,39 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     forgotPasswordLink: {
       fontSize: 14,
       color: theme.colors.accent,
+      fontWeight: "600",
+    },
+    biometricButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: theme.spacing(1),
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+      paddingVertical: theme.spacing(1.5),
+      marginTop: theme.spacing(3),
+    },
+    biometricButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.accent,
+    },
+    divider: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginVertical: theme.spacing(3),
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: theme.colors.border,
+    },
+    dividerText: {
+      marginHorizontal: theme.spacing(2),
+      fontSize: 14,
+      color: theme.colors.muted,
       fontWeight: "600",
     },
   });

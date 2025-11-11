@@ -3,6 +3,7 @@
 
 import { supabase } from "./supabase";
 import { activateProTier, deactivateProTier, signOutUser } from "./user";
+import { deleteCredentials } from "./biometrics";
 // Dynamic imports to avoid circular dependency with quotesSync
 
 /**
@@ -35,6 +36,7 @@ export async function getCurrentUserId(): Promise<string | null> {
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
   await signOutUser(); // Clear local user state
+  await deleteCredentials(); // Clear saved biometric credentials
 }
 
 /**
