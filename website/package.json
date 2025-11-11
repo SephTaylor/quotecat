@@ -1,0 +1,9 @@
+{
+  "name": "quotecat-website",
+  "version": "1.0.0",
+  "description": "QuoteCat landing page with Netlify functions",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}

@@ -1754,7 +1754,66 @@
                     closePremiumNotifyModal();
                 }
             });
+
+            // Fetch and display spots remaining
+            fetchSpotsRemaining();
         });
+
+        // Fetch spots remaining from Netlify function
+        async function fetchSpotsRemaining() {
+            try {
+                const response = await fetch('/.netlify/functions/spots-remaining');
+                const data = await response.json();
+
+                // Update Pro spots
+                updateSpots('pro', data.pro);
+
+                // Update Premium spots (if it's not coming soon anymore)
+                updateSpots('premium', data.premium);
+
+            } catch (error) {
+                console.error('Failed to fetch spots remaining:', error);
+                // Silently fail - static text will remain
+            }
+        }
+
+        function updateSpots(tier, spotsData) {
+            const tierCards = document.querySelectorAll('.tier-card');
+
+            tierCards.forEach(card => {
+                const tierName = card.querySelector('.tier-name');
+                if (!tierName) return;
+
+                const name = tierName.textContent.trim().toLowerCase();
+
+                if (name === tier) {
+                    // Update the "First X spots" text
+                    const period = card.querySelector('.tier-price-period');
+                    if (period && spotsData.remaining !== undefined) {
+                        const remaining = spotsData.remaining;
+                        const urgency = remaining < 50 ? ' - Almost gone!' : remaining < 100 ? ' - Selling fast!' : '';
+
+                        period.textContent = `Founder pricing - ${remaining} of ${spotsData.total} spots left${urgency}`;
+
+                        // Add urgency styling
+                        if (remaining < 50) {
+                            period.style.color = '#ff4444';
+                            period.style.fontWeight = '700';
+                        } else if (remaining < 100) {
+                            period.style.color = '#ff9500';
+                            period.style.fontWeight = '600';
+                        }
+                    }
+
+                    // Update the note text
+                    const note = card.querySelector('.tier-note');
+                    if (note && spotsData.remaining !== undefined) {
+                        const regularPrice = tier === 'pro' ? '$99/mo' : '$79/mo';
+                        note.textContent = `Regular price: ${regularPrice} after ${spotsData.remaining} spots filled`;
+                    }
+                }
+            });
+        }
     </script>
 
 </body>
