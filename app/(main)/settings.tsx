@@ -567,7 +567,7 @@ export default function Settings() {
                     onPress={userEmail ? handleManageAccount : handleSignIn}
                   >
                     <Text style={styles.proFeatureButtonText}>
-                      {userEmail ? 'Manage Subscription' : 'Sign In'}
+                      {userEmail ? 'Learn More' : 'Sign In'}
                     </Text>
                   </Pressable>
                 </View>
