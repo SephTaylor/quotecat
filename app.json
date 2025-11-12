@@ -2,7 +2,7 @@
   "expo": {
     "name": "QuoteCat",
     "slug": "quotecat",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "quotecat",
@@ -23,7 +23,8 @@
         "backgroundColor": "#FFFFFF"
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "QuoteCat uses Face ID or Touch ID to securely sign you in with just one tap."
       }
     },
     "android": {
