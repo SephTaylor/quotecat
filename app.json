@@ -11,6 +11,14 @@
     "icon": "./assets/images/icon.png",
     "scheme": "quotecat",
     "userInterfaceStyle": "automatic",
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://quotecat.ai"
+        }
+      ]
+    ],
     "splash": {
       "image": "./assets/images/qc-splash-tsnt-2048-text.png",
       "resizeMode": "contain",
@@ -32,13 +40,30 @@
         "NSPhotoLibraryUsageDescription": "QuoteCat needs access to your photo library so you can add your company logo to quotes and invoices.",
         "NSCameraUsageDescription": "QuoteCat needs camera access to take photos of your company logo.",
         "NSMicrophoneUsageDescription": "This permission is not used by QuoteCat."
-      }
+      },
+      "associatedDomains": [
+        "applinks:quotecat.ai"
+      ]
     },
     "android": {
       "package": "ai.quotecat.app",
       "icon": "./assets/images/icon.png",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "quotecat.ai",
+              "pathPrefix": "/auth/callback"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static",
