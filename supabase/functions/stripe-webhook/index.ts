@@ -209,8 +209,144 @@ serve(async (req) => {
         );
 
         if (user) {
-          // TODO: Send email notification to update payment method
-          // Customer portal: create-portal-session function
+          // Send email notification to update payment method
+          const resendApiKey = Deno.env.get('RESEND_API_KEY');
+
+          if (resendApiKey && user.email) {
+            try {
+              const emailHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <style>
+                    body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                      line-height: 1.6;
+                      color: #1f2937;
+                      max-width: 600px;
+                      margin: 0 auto;
+                      padding: 20px;
+                    }
+                    .header {
+                      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+                      padding: 40px 20px;
+                      text-align: center;
+                      border-radius: 12px 12px 0 0;
+                    }
+                    .header h1 {
+                      color: white;
+                      margin: 0;
+                      font-size: 24px;
+                    }
+                    .content {
+                      background: white;
+                      padding: 40px 30px;
+                      border: 1px solid #e5e7eb;
+                      border-top: none;
+                    }
+                    .alert-box {
+                      background: #fef3c7;
+                      border-left: 4px solid #f59e0b;
+                      border-radius: 8px;
+                      padding: 20px;
+                      margin: 24px 0;
+                    }
+                    .alert-box h3 {
+                      margin-top: 0;
+                      color: #92400e;
+                      font-size: 16px;
+                    }
+                    .cta-button {
+                      display: inline-block;
+                      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+                      color: white !important;
+                      text-decoration: none;
+                      padding: 14px 32px;
+                      border-radius: 8px;
+                      font-weight: 600;
+                      margin: 10px 0;
+                      text-align: center;
+                    }
+                    .footer {
+                      text-align: center;
+                      padding: 20px;
+                      color: #6b7280;
+                      font-size: 14px;
+                      border: 1px solid #e5e7eb;
+                      border-top: none;
+                      border-radius: 0 0 12px 12px;
+                      background: #f9fafb;
+                    }
+                  </style>
+                </head>
+                <body>
+                  <div class="header">
+                    <h1>⚠️ Payment Failed - Action Required</h1>
+                  </div>
+
+                  <div class="content">
+                    <p>Hi there,</p>
+
+                    <p>We tried to process your QuoteCat subscription payment, but it didn't go through. This can happen for several reasons:</p>
+
+                    <ul>
+                      <li>Insufficient funds</li>
+                      <li>Expired card</li>
+                      <li>Card declined by your bank</li>
+                      <li>Incorrect card details</li>
+                    </ul>
+
+                    <div class="alert-box">
+                      <h3>Your Subscription Will Be Cancelled Soon</h3>
+                      <p style="color: #78350f; margin: 0;">To keep your QuoteCat Pro/Premium access, please update your payment method within the next few days.</p>
+                    </div>
+
+                    <p><strong>To update your payment method:</strong></p>
+
+                    <ol>
+                      <li>Sign in to the QuoteCat app</li>
+                      <li>Go to Settings → Subscription</li>
+                      <li>Tap "Manage Billing"</li>
+                      <li>Update your payment information</li>
+                    </ol>
+
+                    <p>If you have any questions or need help, just reply to this email.</p>
+
+                    <p style="margin-top: 32px;">Thanks,<br><strong>- The QuoteCat Team</strong></p>
+                  </div>
+
+                  <div class="footer">
+                    <p style="margin: 0;">© 2024 QuoteCat. All rights reserved.</p>
+                  </div>
+                </body>
+                </html>
+              `;
+
+              const emailResponse = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${resendApiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: 'QuoteCat <hello@quotecat.ai>',
+                  to: user.email,
+                  subject: '⚠️ QuoteCat Payment Failed - Please Update Payment Method',
+                  html: emailHtml,
+                }),
+              });
+
+              if (!emailResponse.ok) {
+                const errorText = await emailResponse.text();
+                console.error('Failed to send payment failure email:', errorText);
+              }
+            } catch (emailError) {
+              console.error('Error sending payment failure email:', emailError);
+              // Don't throw - webhook should still succeed
+            }
+          }
         }
 
         break;
