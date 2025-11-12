@@ -23,7 +23,8 @@
         "backgroundColor": "#FFFFFF"
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "QuoteCat uses Face ID or Touch ID to securely sign you in with just one tap."
       }
     },
     "android": {
