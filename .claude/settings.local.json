@@ -24,7 +24,14 @@
       "Bash(npx tsx:*)",
       "Bash(npx supabase secrets set:*)",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx expo:*)",
+      "Bash(npx eas-cli:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:expo.dev)",
+      "Bash(git checkout:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

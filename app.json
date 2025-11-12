@@ -23,11 +23,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSFaceIDUsageDescription": "QuoteCat uses Face ID or Touch ID to securely sign you in with just one tap.",
-        "NSPhotoLibraryUsageDescription": "QuoteCat needs access to your photo library so you can add your company logo to quotes and invoices.",
-        "NSCameraUsageDescription": "QuoteCat needs camera access to take photos of your company logo.",
-        "NSMicrophoneUsageDescription": "This permission is not used by QuoteCat."
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
