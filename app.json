@@ -2,7 +2,7 @@
   "expo": {
     "name": "QuoteCat",
     "slug": "quotecat",
-    "version": "1.2.7",
+    "version": "1.2.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "quotecat",
@@ -12,7 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "ai.quotecat.app",
       "icon": "./assets/images/icon.png",
