@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Linking,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
@@ -168,7 +169,7 @@ export default function SignInScreen() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: 'quotecat://auth/callback',
+        redirectTo: 'https://quotecat.ai/callback',
       });
 
       if (error) throw error;

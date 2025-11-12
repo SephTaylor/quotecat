@@ -21,7 +21,10 @@
       "Bash(eas build:list:*)",
       "Read(//c/Users/Kelli/OneDrive/Pictures/**)",
       "WebSearch",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(npx supabase secrets set:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
