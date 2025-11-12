@@ -629,6 +629,23 @@ User creates quotes with real-time pricing
   - Spam reminder directly under credentials message
   - Clear next steps for users
   - Orange branding throughout
+- ✅ **Password Setup Deep Link (Nov 11 - Evening):**
+  - Fixed deep link not working from email (Safari error)
+  - Created web callback page: `website/auth/callback.html`
+  - Web page extracts tokens and deep links to app
+  - Shows download links if app not installed
+  - Updated webhook to redirect to: `https://quotecat.ai/auth/callback`
+  - Updated "Forgot Password?" to use same web redirect
+  - Added to Supabase allowed redirect URLs
+  - Created app handler: `app/auth/callback.tsx`
+  - Handler sets session, shows password form, validates & saves password
+  - ⏳ **NEEDS DEVICE TESTING** - requires app rebuild (not in current TestFlight)
+
+**Stripe Webhook Improvements (Nov 11 - Evening):**
+- ✅ Fixed race condition between checkout.session.completed and customer.subscription.created
+- Both events fire within 1-2 seconds and try to create same user
+- Now catches "user already exists" errors and treats as success (200 OK)
+- No more 500 errors on duplicate user creation attempts
 
 ### 📝 For New Claude Sessions
 
@@ -715,10 +732,17 @@ User creates quotes with real-time pricing
 - **Option B:** Free users can optionally create account on website for cloud backup. Paid users create account + pay.
 - **Current lean:** Option A (simplest for launch)
 
-**Immediate (Next Steps):**
+**Immediate (Next Steps - Nov 12, 2024):**
 1. ✅ **Payment infrastructure COMPLETE** - Stripe + Email automation working
 2. ⏳ **Wait for Xbyte updated sample** - Team working on corrections
-3. **Test end-to-end purchase flow** - Make test purchase, verify email, test app login
+3. 🧪 **Test end-to-end auth flow on device (PRIORITY):**
+   - Build new app version with auth callback handler (not in current TestFlight)
+   - Option A: Test with Expo Go (quickest - 5 mins)
+   - Option B: Build new TestFlight version (production - 20-30 mins)
+   - Option C: Development build (preview - 10-15 mins)
+   - Complete flow: Purchase → Email → Click link → Set password → Sign in with biometrics
+   - Verify password setup deep link works on actual iPhone
+   - Test biometric authentication (Face ID/Touch ID)
 4. **Continue beta testing** - Monitor TestFlight and Google Play feedback
 5. **Plan founder pricing launch** - When Xbyte data ready
 6. Consider fixing app download 404 errors on success page (apps not publicly published yet - low priority)
