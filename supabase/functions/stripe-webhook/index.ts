@@ -89,15 +89,25 @@ serve(async (req) => {
         if (!existingUser) {
           console.log('User not found, creating from subscription event');
 
-          // Get customer email from Stripe
-          const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
-          const email = customer.email;
-          const tier = subscription.metadata?.tier || 'pro';
+          try {
+            // Get customer email from Stripe
+            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
+            const email = customer.email;
+            const tier = subscription.metadata?.tier || 'pro';
 
-          if (email) {
-            await createUserAccount(email, tier, customerId, subscription.id);
-          } else {
-            console.error('No email found for customer:', customerId);
+            if (email) {
+              await createUserAccount(email, tier, customerId, subscription.id);
+            } else {
+              console.error('No email found for customer:', customerId);
+            }
+          } catch (createError: any) {
+            // If user already exists (race condition with checkout.session.completed), that's ok
+            if (createError.message?.includes('already') || createError.message?.includes('exists')) {
+              console.log('User already created by checkout.session.completed event - ignoring');
+            } else {
+              // Re-throw other errors
+              throw createError;
+            }
           }
         } else {
           console.log('User already exists, skipping account creation');
