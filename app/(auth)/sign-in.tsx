@@ -169,7 +169,7 @@ export default function SignInScreen() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: 'https://quotecat.ai/auth/callback',
+        redirectTo: 'https://quotecat.ai/callback',
       });
 
       if (error) throw error;
