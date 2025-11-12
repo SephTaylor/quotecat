@@ -24,7 +24,8 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSFaceIDUsageDescription": "QuoteCat uses Face ID or Touch ID to securely sign you in with just one tap."
+        "NSFaceIDUsageDescription": "QuoteCat uses Face ID or Touch ID to securely sign you in with just one tap.",
+        "NSPhotoLibraryUsageDescription": "QuoteCat needs access to your photo library so you can add your company logo to quotes and invoices."
       }
     },
     "android": {
