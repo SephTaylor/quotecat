@@ -2,19 +2,11 @@
   "expo": {
     "name": "QuoteCat",
     "slug": "quotecat",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "quotecat",
     "userInterfaceStyle": "automatic",
-    "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://quotecat.ai"
-        }
-      ]
-    ],
     "splash": {
       "image": "./assets/images/qc-splash-tsnt-2048-text.png",
       "resizeMode": "contain",
@@ -38,21 +30,7 @@
       "package": "ai.quotecat.app",
       "icon": "./assets/images/icon.png",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "quotecat.ai",
-              "pathPrefix": "/auth/callback"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ]
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
