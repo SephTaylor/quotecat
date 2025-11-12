@@ -7,6 +7,14 @@
     "icon": "./assets/images/icon.png",
     "scheme": "quotecat",
     "userInterfaceStyle": "automatic",
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://quotecat.ai"
+        }
+      ]
+    ],
     "splash": {
       "image": "./assets/images/qc-splash-tsnt-2048-text.png",
       "resizeMode": "contain",
@@ -24,13 +32,30 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:quotecat.ai"
+      ]
     },
     "android": {
       "package": "ai.quotecat.app",
       "icon": "./assets/images/icon.png",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "quotecat.ai",
+              "pathPrefix": "/auth/callback"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static",
