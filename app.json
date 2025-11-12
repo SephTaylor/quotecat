@@ -32,10 +32,7 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "associatedDomains": [
-        "applinks:quotecat.ai"
-      ]
+      }
     },
     "android": {
       "package": "ai.quotecat.app",
