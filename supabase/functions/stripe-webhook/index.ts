@@ -48,13 +48,11 @@ serve(async (req) => {
     );
   }
 
-  console.log('Received event:', event.type);
-
+  // Process webhook event
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log('Processing checkout.session.completed:', session.id);
 
         // Get customer email and tier from session
         const email = session.customer_email || session.metadata?.email;
@@ -72,7 +70,6 @@ serve(async (req) => {
 
       case 'customer.subscription.created': {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log('Processing customer.subscription.created:', subscription.id);
 
         // This is a backup - if checkout.session.completed somehow didn't fire
         // Only create account if user doesn't exist yet
@@ -87,8 +84,6 @@ serve(async (req) => {
         );
 
         if (!existingUser) {
-          console.log('User not found, creating from subscription event');
-
           try {
             // Get customer email from Stripe
             const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
@@ -103,14 +98,12 @@ serve(async (req) => {
           } catch (createError: any) {
             // If user already exists (race condition with checkout.session.completed), that's ok
             if (createError.message?.includes('already') || createError.message?.includes('exists')) {
-              console.log('User already created by checkout.session.completed event - ignoring');
+              // User already created by checkout.session.completed event - ignore
             } else {
               // Re-throw other errors
               throw createError;
             }
           }
-        } else {
-          console.log('User already exists, skipping account creation');
         }
 
         break;
@@ -118,7 +111,6 @@ serve(async (req) => {
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription updated:', subscription.id);
 
         // Handle subscription updates (e.g., cancellation, plan changes)
         const customerId = subscription.customer as string;
@@ -142,7 +134,6 @@ serve(async (req) => {
             .eq('id', user.id);
 
           if (updateError) throw updateError;
-          console.log('Profile updated for user:', user.id);
         }
 
         break;
@@ -150,7 +141,6 @@ serve(async (req) => {
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription deleted:', subscription.id);
 
         // Downgrade user to free tier
         const customerId = subscription.customer as string;
@@ -172,7 +162,6 @@ serve(async (req) => {
             .eq('id', user.id);
 
           if (updateError) throw updateError;
-          console.log('User downgraded to free:', user.id);
         }
 
         break;
@@ -180,7 +169,6 @@ serve(async (req) => {
 
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice;
-        console.log('Invoice paid:', invoice.id);
 
         // Continue to provision subscription - payment successful
         // Update last payment date in profile
@@ -202,7 +190,6 @@ serve(async (req) => {
             .eq('id', user.id);
 
           if (updateError) throw updateError;
-          console.log('Payment recorded for user:', user.id);
         }
 
         break;
@@ -210,7 +197,6 @@ serve(async (req) => {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        console.log('Invoice payment failed:', invoice.id);
 
         // Notify customer to update payment method
         const customerId = invoice.customer as string;
@@ -224,18 +210,14 @@ serve(async (req) => {
 
         if (user) {
           // TODO: Send email notification to update payment method
-          console.log('⚠️ Payment failed for user:', user.id);
-          console.log('Email:', user.email);
-
-          // You can send them to customer portal to update payment
-          // Or send email with link to update payment method
+          // Customer portal: create-portal-session function
         }
 
         break;
       }
 
       default:
-        console.log('Unhandled event type:', event.type);
+        // Unhandled event type - no action needed
     }
 
     return new Response(JSON.stringify({ received: true }), {
@@ -280,8 +262,6 @@ async function createUserAccount(
     throw userError;
   }
 
-  console.log('User created:', userData.user.id);
-
   // Generate a secure password setup link (valid for 7 days)
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'recovery',
@@ -297,7 +277,6 @@ async function createUserAccount(
   }
 
   const setupLink = linkData.properties.action_link;
-  console.log('Password setup link generated for:', email);
 
   // Create profile in profiles table
   const { error: profileError } = await supabase
@@ -314,8 +293,6 @@ async function createUserAccount(
     console.error('Error creating profile:', profileError);
     throw profileError;
   }
-
-  console.log('Profile created for user:', userData.user.id);
 
   // Send welcome email with credentials via Resend
   const resendApiKey = Deno.env.get('RESEND_API_KEY');
@@ -525,9 +502,6 @@ async function createUserAccount(
       if (!emailResponse.ok) {
         const errorText = await emailResponse.text();
         console.error('Failed to send welcome email:', errorText);
-      } else {
-        const emailData = await emailResponse.json();
-        console.log('Welcome email sent successfully:', emailData);
       }
     } catch (emailError) {
       console.error('Error sending welcome email:', emailError);
@@ -536,10 +510,4 @@ async function createUserAccount(
   } else {
     console.warn('RESEND_API_KEY not set - skipping welcome email');
   }
-
-  // Log credentials for debugging (can remove after email is confirmed working)
-  console.log('=== NEW USER CREATED ===');
-  console.log('Email:', email);
-  console.log('Tier:', tier);
-  console.log('========================');
 }

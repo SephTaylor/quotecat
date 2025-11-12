@@ -58,7 +58,18 @@ export default function AuthCallbackScreen() {
 
       if (sessionError) {
         console.error('Session error:', sessionError);
-        setError('This password reset link has expired. Please request a new one.');
+
+        // Check specific error types for better user messaging
+        const errorMsg = sessionError.message?.toLowerCase() || '';
+
+        if (errorMsg.includes('expired') || errorMsg.includes('invalid') || errorMsg.includes('jwt')) {
+          setError('This password reset link has expired. Please request a new one from the sign-in screen.');
+        } else if (errorMsg.includes('already') || errorMsg.includes('used')) {
+          setError('This password reset link has already been used. Please request a new one if you need to reset your password again.');
+        } else {
+          setError('Unable to verify your password reset link. Please request a new one from the sign-in screen.');
+        }
+
         setLoading(false);
         return;
       }
