@@ -3,8 +3,7 @@
 
 import { supabase } from "./supabase";
 import { activateProTier, deactivateProTier, signOutUser } from "./user";
-// import { deleteCredentials } from "./biometrics"; // TEMP: Disabled to test crash
-// Dynamic imports to avoid circular dependency with quotesSync
+// Biometrics imported dynamically to avoid loading for free tier users
 
 /**
  * Check if user is currently authenticated
@@ -36,7 +35,15 @@ export async function getCurrentUserId(): Promise<string | null> {
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
   await signOutUser(); // Clear local user state
-  // await deleteCredentials(); // TEMP: Disabled to test crash
+
+  // Lazy load biometrics module only when needed
+  try {
+    const { deleteCredentials } = await import("./biometrics");
+    await deleteCredentials();
+  } catch (error) {
+    console.error("Failed to clear biometric credentials:", error);
+    // Non-critical error - continue with sign out
+  }
 }
 
 /**
