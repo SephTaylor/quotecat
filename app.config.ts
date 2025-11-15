@@ -31,17 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "expo-font",
-    // Temporarily removed to match build 4 configuration:
-    // "expo-secure-store",
-    // "expo-web-browser",
-    [
-      "expo-build-properties",
-      {
-        ios: {
-          buildReactNativeFromSource: false,
-        },
-      },
-    ],
+    // Removed ALL plugins that weren't in build 4
   ],
 
   // ---- experiments ----
