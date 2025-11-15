@@ -1,7 +1,7 @@
 // lib/spreadsheet.ts
 // Spreadsheet export utility (CSV format - works in Excel, Google Sheets, Numbers, etc.)
 
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import type { Quote } from './types';
 
