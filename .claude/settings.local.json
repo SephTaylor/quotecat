@@ -24,7 +24,12 @@
       "Bash(npx tsx:*)",
       "Bash(npx supabase secrets set:*)",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx eas-cli:*)",
+      "WebFetch(domain:expo.dev)",
+      "Bash(pkill:*)",
+      "Bash(/tmp/sdk54-package.json)",
+      "Bash(sdk54-package.json)"
     ],
     "deny": [],
     "ask": []
