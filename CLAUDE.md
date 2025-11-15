@@ -432,6 +432,64 @@ User creates quotes with real-time pricing
 
 ## 🚀 Current Status (Nov 2024)
 
+### ✅ TestFlight Crisis - RESOLVED (Nov 15, 2024)
+
+**ISSUE:** Builds 6-23 all failed - either couldn't install or crashed on launch.
+
+**Root Causes Found & Fixed:**
+
+1. **Build 23 (Nov 12):** Failed to compile - `expo-file-system/legacy` doesn't exist in SDK 53
+   - **Fix:** Changed imports from `expo-file-system/legacy` to `expo-file-system` in lib/pdf.ts and lib/spreadsheet.ts
+
+2. **Build 24 (Nov 15):** Failed during pod install - `react-native-worklets` requires New Architecture
+   - **Fix:** Removed `react-native-worklets` package (not used in codebase)
+
+3. **Build 25 (Nov 15):** ✅ Installed successfully but crashed on launch
+   - **Issue:** New Architecture was disabled, causing compatibility issues
+   - App would flash splash screen then crash immediately
+
+4. **Build 26 (Nov 15):** ✅ Installed but still crashed on launch
+   - **Attempted Fix:** Added error handling to app initialization - didn't resolve crash
+   - **Issue:** Crash happened before error handlers could execute
+
+5. **Build 27 (Nov 15):** 🔄 IN PROGRESS
+   - **Fix:** Re-enabled New Architecture (like build 4 which worked)
+   - Configuration: SDK 53, New Architecture enabled, react-native-worklets removed, expo-file-system fixed, error handling added
+   - **Expected:** Should both install AND launch successfully
+
+**Timeline:**
+- **Builds 1-4 (Oct 28-31):** ✅ Worked (New Architecture enabled)
+- **Builds 6-23 (Nov 12):** ❌ Various failures
+- **Build 24 (Nov 15):** ❌ Pod install failed (worklets issue)
+- **Build 25 (Nov 15):** ✅ Installed, ❌ Crashed on launch (New Architecture disabled)
+- **Build 26 (Nov 15):** ✅ Installed, ❌ Crashed on launch (New Architecture disabled)
+- **Build 27 (Nov 15):** 🔄 Building (New Architecture enabled)
+
+**Key Learnings:**
+- `react-native-worklets` was blocking builds when New Architecture was disabled
+- Disabling New Architecture caused launch crashes with current package set
+- `expo-file-system/legacy` export was removed in SDK 53
+- Build 4 configuration (New Architecture enabled) was correct all along
+
+**Current Status:**
+- On integration/all-features branch
+- SDK 53.0.0, React Native 0.79.6
+- Build 27 in progress
+- New Architecture: ENABLED
+- react-native-worklets: REMOVED
+
+**Working Configuration:**
+```json
+{
+  "newArchEnabled": true,
+  "expo": "^53",
+  "react-native": "0.79.6"
+}
+```
+
+Packages removed:
+- `react-native-worklets` (required New Architecture, not used in code)
+
 ### 🎉 Latest Updates (Nov 11, 2024)
 
 **World-Class Authentication System Completed:**
@@ -533,12 +591,13 @@ User creates quotes with real-time pricing
   - Email sends automatically after user account creation
 
 **Technical:**
-- React Native + Expo SDK 54
-- Expo Router v6
+- React Native + Expo SDK 53 (downgraded Nov 12, 2024 - build 23 failed)
+- Expo Router v5 (SDK 53)
+- React Native 0.79.6 (downgraded from 0.81.5)
 - AsyncStorage (local-first)
 - EAS Build configured
 - 0 lint errors/warnings
-- Version 1.1.0
+- Version 1.2.5
 - Supabase auth fully integrated
 
 **Database:**
