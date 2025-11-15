@@ -31,9 +31,15 @@ export default function RootLayout() {
     Promise.all([
       initAnalytics().then(() => {
         trackEvent(AnalyticsEvents.APP_OPENED);
+      }).catch(err => {
+        console.error('Analytics init failed:', err);
       }),
-      initializeAuth(), // Auto-login if session exists
-    ]);
+      initializeAuth().catch(err => {
+        console.error('Auth init failed:', err);
+      }), // Auto-login if session exists
+    ]).catch(err => {
+      console.error('App initialization failed:', err);
+    });
   }, []);
 
   return (
