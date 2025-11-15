@@ -2,7 +2,6 @@
 // User preferences and dashboard customization
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { GradientMode } from "@/constants/theme";
 
 export type DashboardPreferences = {
   showStats: boolean;
@@ -40,18 +39,14 @@ export type NotificationPreferences = {
   // quoteReminders: boolean;
 };
 
-export type AppearancePreferences = {
-  themeMode: "light" | "dark"; // Light or dark mode
-  gradientMode: GradientMode; // "warm" (orange) or "neutral" (gray)
-};
-
 export type UserPreferences = {
   dashboard: DashboardPreferences;
   privacy: PrivacyPreferences;
   company: CompanyDetails;
   invoice: InvoiceSettings;
   notifications: NotificationPreferences;
-  appearance: AppearancePreferences;
+  // Add more preference categories as needed
+  // appearance: AppearancePreferences;
 };
 
 const PREFERENCES_KEY = "@quotecat/preferences";
@@ -88,10 +83,6 @@ export function getDefaultPreferences(): UserPreferences {
       invoiceOverdue: false,
       invoiceDueSoon: false,
       invoiceDueToday: false,
-    },
-    appearance: {
-      themeMode: "light", // Default to light mode
-      gradientMode: "warm", // Default to warm (orange) gradient
     },
   };
 }
@@ -139,10 +130,6 @@ export async function loadPreferences(): Promise<UserPreferences> {
       notifications: {
         ...getDefaultPreferences().notifications,
         ...stored.notifications,
-      },
-      appearance: {
-        ...getDefaultPreferences().appearance,
-        ...stored.appearance,
       },
     };
 

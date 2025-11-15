@@ -32,7 +32,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
 import { signOut } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
 import {
   syncQuotes,
   getLastSyncTime,
@@ -65,7 +64,7 @@ function formatSyncTime(date: Date): string {
 }
 
 export default function Settings() {
-  const { mode, gradientMode, theme, setThemeMode, setGradientMode } = useTheme();
+  const { mode, theme, setThemeMode } = useTheme();
   const router = useRouter();
   const [isPro, setIsPro] = useState(false);
   const [userEmail, setUserEmail] = useState<string | undefined>();
@@ -635,30 +634,6 @@ export default function Settings() {
                   onValueChange={(value) =>
                     setThemeMode(value ? "dark" : "light")
                   }
-                  trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={[styles.settingButton, { borderTopWidth: 1, borderTopColor: theme.colors.border }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.settingButtonText, mode === "dark" && { color: theme.colors.muted }]}>
-                    Gradient Style
-                  </Text>
-                  <Text style={styles.settingSubtext}>
-                    {mode === "dark"
-                      ? "Only available in light mode"
-                      : gradientMode === "warm"
-                      ? "Warm (Orange)"
-                      : "Neutral (Gray)"}
-                  </Text>
-                </View>
-                <Switch
-                  value={gradientMode === "neutral"}
-                  onValueChange={(value) =>
-                    setGradientMode(value ? "neutral" : "warm")
-                  }
-                  disabled={mode === "dark"}
                   trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
                   thumbColor="#FFFFFF"
                 />
@@ -1336,11 +1311,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "500",
       color: theme.colors.text,
-    },
-    settingSubtext: {
-      fontSize: 13,
-      color: theme.colors.muted,
-      marginTop: 2,
     },
     settingButtonIcon: {
       fontSize: 18,

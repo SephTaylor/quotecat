@@ -1,37 +1,34 @@
 // contexts/ThemeContext.tsx
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { getTheme, type ThemeMode, type GradientMode } from "@/constants/theme";
-import { loadPreferences, savePreferences } from "@/lib/preferences";
+import { getTheme, type ThemeMode } from "@/constants/theme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type ThemeContextType = {
   mode: ThemeMode;
-  gradientMode: GradientMode;
   theme: ReturnType<typeof getTheme>;
   setThemeMode: (mode: ThemeMode) => void;
-  setGradientMode: (mode: GradientMode) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const THEME_STORAGE_KEY = "@quotecat/theme";
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>("light");
-  const [gradientMode, setGradientModeState] = useState<GradientMode>("warm");
-  const [theme, setTheme] = useState(getTheme("light", "warm"));
+  const [theme, setTheme] = useState(getTheme("light"));
 
-  // Load saved theme and gradient preferences on mount
+  // Load saved theme preference on mount
   useEffect(() => {
     loadThemePreference();
   }, []);
 
   const loadThemePreference = async () => {
     try {
-      const prefs = await loadPreferences();
-      const savedThemeMode = prefs.appearance?.themeMode || "light";
-      const savedGradientMode = prefs.appearance?.gradientMode || "warm";
-
-      setMode(savedThemeMode);
-      setGradientModeState(savedGradientMode);
-      setTheme(getTheme(savedThemeMode, savedGradientMode));
+      const saved = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === "light" || saved === "dark") {
+        setMode(saved);
+        setTheme(getTheme(saved));
+      }
     } catch (error) {
       console.error("Failed to load theme preference:", error);
     }
@@ -40,33 +37,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setThemeMode = async (newMode: ThemeMode) => {
     try {
       setMode(newMode);
-      setTheme(getTheme(newMode, gradientMode));
-
-      // Save to preferences
-      const prefs = await loadPreferences();
-      prefs.appearance.themeMode = newMode;
-      await savePreferences(prefs);
+      setTheme(getTheme(newMode));
+      await AsyncStorage.setItem(THEME_STORAGE_KEY, newMode);
     } catch (error) {
       console.error("Failed to save theme preference:", error);
     }
   };
 
-  const setGradientMode = async (newGradientMode: GradientMode) => {
-    try {
-      setGradientModeState(newGradientMode);
-      setTheme(getTheme(mode, newGradientMode));
-
-      // Save to preferences
-      const prefs = await loadPreferences();
-      prefs.appearance.gradientMode = newGradientMode;
-      await savePreferences(prefs);
-    } catch (error) {
-      console.error("Failed to save gradient preference:", error);
-    }
-  };
-
   return (
-    <ThemeContext.Provider value={{ mode, gradientMode, theme, setThemeMode, setGradientMode }}>
+    <ThemeContext.Provider value={{ mode, theme, setThemeMode }}>
       {children}
     </ThemeContext.Provider>
   );

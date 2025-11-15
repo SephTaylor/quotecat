@@ -16,7 +16,7 @@ export function GradientBackground({ children }: GradientBackgroundProps) {
       locations={theme.colors.bgGradient.length === 3 ? [0, 0.3, 1] : [0, 1]}
       style={styles.gradient}
       start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 0.8 }}
+      end={{ x: 0.5, y: 0.5 }}
     >
       {children}
     </LinearGradient>
