@@ -5,7 +5,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { useEffect } from "react";
-import { initAnalytics, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
+// TEMPORARILY DISABLED: PostHog crashing on iOS
+// import { initAnalytics, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import { initializeAuth } from "@/lib/auth";
 
 function RootNavigator() {
@@ -29,9 +30,10 @@ export default function RootLayout() {
   useEffect(() => {
     // Initialize analytics and auth on app start
     Promise.all([
-      initAnalytics().then(() => {
-        trackEvent(AnalyticsEvents.APP_OPENED);
-      }),
+      // TEMPORARILY DISABLED: PostHog crashing on iOS with RN 0.81 + Hermes
+      // initAnalytics().then(() => {
+      //   trackEvent(AnalyticsEvents.APP_OPENED);
+      // }),
       initializeAuth(), // Auto-login if session exists
     ]);
   }, []);
