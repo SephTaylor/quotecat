@@ -9,24 +9,42 @@ import { activateProTier, deactivateProTier, signOutUser } from "./user";
  * Check if user is currently authenticated
  */
 export async function isAuthenticated(): Promise<boolean> {
-  const { data } = await supabase.auth.getSession();
-  return !!data.session;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return !!data.session;
+  } catch (error) {
+    // If Supabase client is broken (missing env vars), treat as not authenticated
+    console.warn("Failed to check authentication:", error);
+    return false;
+  }
 }
 
 /**
  * Get current user's email
  */
 export async function getCurrentUserEmail(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user?.email || null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.email || null;
+  } catch (error) {
+    // If Supabase client is broken (missing env vars), treat as not authenticated
+    console.warn("Failed to get current user email:", error);
+    return null;
+  }
 }
 
 /**
  * Get current user's ID
  */
 export async function getCurrentUserId(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user?.id || null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id || null;
+  } catch (error) {
+    // If Supabase client is broken (missing env vars), treat as not authenticated
+    console.warn("Failed to get current user ID:", error);
+    return null;
+  }
 }
 
 /**
