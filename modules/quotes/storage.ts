@@ -13,7 +13,6 @@ import {
 } from "@/lib/errors";
 import { cache, CacheKeys } from "@/lib/cache";
 import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
-import { incrementQuoteCount, decrementQuoteCount } from "@/lib/user";
 // Dynamic imports to avoid circular dependency with quotesSync
 
 /**
@@ -193,8 +192,7 @@ export async function createQuote(
     hasClient: Boolean(clientName),
   });
 
-  // Increment quote usage counter
-  await incrementQuoteCount();
+  // Note: Quote counting removed - unlimited draft quotes for all users
 
   return normalized;
 }
@@ -308,8 +306,7 @@ export async function deleteQuote(id: string): Promise<void> {
   // Track quote deletion analytics
   trackEvent(AnalyticsEvents.QUOTE_DELETED);
 
-  // Decrement quote usage counter
-  await decrementQuoteCount();
+  // Note: Quote counting removed - unlimited draft quotes for all users
 
   // Delete from cloud for Pro/Premium users (non-blocking)
   // Use dynamic import to avoid circular dependency
@@ -363,8 +360,7 @@ export async function duplicateQuote(id: string): Promise<Quote | null> {
       originalTotal: original.total,
     });
 
-    // Increment quote usage counter (duplicating creates a new quote)
-    await incrementQuoteCount();
+    // Note: Quote counting removed - unlimited draft quotes for all users
 
     return copy;
   }, ErrorType.STORAGE);
