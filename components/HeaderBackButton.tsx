@@ -1,9 +1,9 @@
 // components/HeaderBackButton.tsx
 // Reusable back button for navigation headers
-// Handles iOS 18 styling issues with hitSlop instead of padding
+// Uses TouchableOpacity to avoid iOS 18 automatic backgrounds
 
 import React from 'react';
-import { Pressable, Text } from 'react-native';
+import { TouchableOpacity, Text, View } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface HeaderBackButtonProps {
@@ -15,14 +15,16 @@ export function HeaderBackButton({ onPress, label = 'Back' }: HeaderBackButtonPr
   const { theme } = useTheme();
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={{ marginLeft: 16 }}
-      hitSlop={{ top: 10, bottom: 10, left: 0, right: 20 }}
-    >
-      <Text style={{ fontSize: 17, color: theme.colors.accent }}>
-        ‹ {label}
-      </Text>
-    </Pressable>
+    <View style={{ marginLeft: 16 }}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.6}
+        hitSlop={{ top: 10, bottom: 10, left: 0, right: 20 }}
+      >
+        <Text style={{ fontSize: 17, color: theme.colors.accent }}>
+          ‹ {label}
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }
