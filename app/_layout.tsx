@@ -7,7 +7,6 @@ import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { useEffect } from "react";
 // TEMPORARILY DISABLED: PostHog crashing on iOS
 // import { initAnalytics, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
-import { initializeAuth } from "@/lib/auth";
 
 function RootNavigator() {
   const { mode } = useTheme();
@@ -28,14 +27,14 @@ function RootNavigator() {
 
 export default function RootLayout() {
   useEffect(() => {
-    // Initialize analytics and auth on app start
-    Promise.all([
-      // TEMPORARILY DISABLED: PostHog crashing on iOS with RN 0.81 + Hermes
-      // initAnalytics().then(() => {
-      //   trackEvent(AnalyticsEvents.APP_OPENED);
-      // }),
-      initializeAuth(), // Auto-login if session exists
-    ]);
+    // Auth initialization moved to lazy load (only when user signs in or uses Pro features)
+    // This prevents hanging on app startup if Supabase is misconfigured
+    // Product catalog sync still works (public read, no auth needed)
+
+    // TEMPORARILY DISABLED: PostHog crashing on iOS with RN 0.81 + Hermes
+    // initAnalytics().then(() => {
+    //   trackEvent(AnalyticsEvents.APP_OPENED);
+    // });
   }, []);
 
   return (

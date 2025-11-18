@@ -57,7 +57,8 @@ export async function signOut(): Promise<void> {
 
 /**
  * Initialize auth - check session and sync user state
- * Call this on app launch
+ * NO LONGER CALLED ON APP LAUNCH (moved to lazy load)
+ * Use ensureAuth() instead when auth is actually needed
  */
 export async function initializeAuth(): Promise<void> {
   try {
@@ -103,4 +104,35 @@ export async function initializeAuth(): Promise<void> {
     // On error, default to free tier
     await deactivateProTier();
   }
+}
+
+/**
+ * Lazy auth check - Only initializes auth when actually needed
+ * Call this before using Pro features or when user interacts with auth UI
+ * Returns true if user is authenticated, false otherwise
+ */
+export async function ensureAuth(): Promise<boolean> {
+  try {
+    // Check if already authenticated
+    const authed = await isAuthenticated();
+    if (authed) {
+      return true;
+    }
+
+    // Not authenticated - return false
+    // User needs to sign in
+    return false;
+  } catch (error) {
+    console.warn("ensureAuth failed:", error);
+    return false;
+  }
+}
+
+/**
+ * Restore session and sync user state
+ * Call this after successful sign-in or when ensureAuth() detects a session
+ */
+export async function restoreSession(): Promise<void> {
+  // Just call initializeAuth (does session check + profile sync)
+  await initializeAuth();
 }

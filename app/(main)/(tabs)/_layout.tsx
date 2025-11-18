@@ -7,7 +7,8 @@ import { DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } 
 import { View, Text, StyleSheet, Pressable, Alert, Linking, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { createNewQuote } from "@/lib/quotes";
-import { signOut as authSignOut, getCurrentUserEmail, isAuthenticated } from "@/lib/auth";
+import { signOut as authSignOut } from "@/lib/auth";
+import { getUserState } from "@/lib/user";
 
 type IconProps = { color: string; size: number };
 
@@ -150,13 +151,12 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const [userEmail, setUserEmail] = React.useState<string | undefined>();
   const [isSignedIn, setIsSignedIn] = React.useState(false);
 
-  // Load user state
+  // Load user state from local storage (fast, no network call)
   React.useEffect(() => {
     const load = async () => {
-      const authenticated = await isAuthenticated();
-      if (authenticated) {
-        const email = await getCurrentUserEmail();
-        setUserEmail(email || undefined);
+      const user = await getUserState();
+      if (user.email) {
+        setUserEmail(user.email);
         setIsSignedIn(true);
       } else {
         setUserEmail(undefined);
