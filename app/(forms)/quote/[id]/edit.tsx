@@ -305,8 +305,8 @@ export default function EditQuote() {
         options={{
           headerShown: true,
           headerTitleAlign: 'center',
-          headerTintColor: theme.colors.accent, // Make default buttons orange!
-          headerBackTitle: "Back", // Text next to arrow
+          headerTintColor: theme.colors.accent,
+          headerLeft: () => <HeaderBackButton onPress={handleGoBack} />,
           headerRight: () => <HeaderIconButton onPress={() => setPinned(!pinned)} icon={pinned ? "⭐" : "☆"} />,
           headerTitle: () => (
             <View style={{ alignItems: 'center' }}>
