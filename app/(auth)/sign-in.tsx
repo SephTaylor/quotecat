@@ -19,6 +19,7 @@ import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier } from "@/lib/user";
 import { migrateLocalQuotesToCloud, hasMigrated } from "@/lib/quotesSync";
 import { logUsageEvent, UsageEventTypes } from "@/lib/usageTracking";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -127,16 +128,7 @@ export default function SignInScreen() {
         options={{
           headerShown: true,
           headerTitleAlign: 'center',
-          headerLeft: () => (
-            <Pressable
-              onPress={() => router.back()}
-              style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
-            >
-              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
-                ‹ Back
-              </Text>
-            </Pressable>
-          ),
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerTitle: () => (
             <Text style={{ fontSize: 17, fontWeight: "700", color: theme.colors.text }}>
               Sign In
