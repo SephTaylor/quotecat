@@ -306,7 +306,7 @@ export default function EditQuote() {
           headerLeft: () => (
             <Pressable
               onPress={handleGoBack}
-              style={{ paddingLeft: 16, paddingVertical: 8 }}
+              style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
             >
               <Text style={{ fontSize: 17, color: theme.colors.accent }}>
                 ‹ Back
@@ -316,7 +316,7 @@ export default function EditQuote() {
           headerRight: () => (
             <Pressable
               onPress={() => setPinned(!pinned)}
-              style={{ paddingRight: 16, paddingVertical: 8 }}
+              style={{ paddingRight: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
             >
               <Text style={{ fontSize: 24 }}>
                 {pinned ? "⭐" : "☆"}

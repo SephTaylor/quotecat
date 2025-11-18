@@ -157,7 +157,7 @@ export default function AssembliesScreen() {
             headerLeft: quoteId ? () => (
               <Pressable
                 onPress={() => router.back()}
-                style={{ paddingLeft: 16, paddingVertical: 8 }}
+                style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
               >
                 <Text style={{ fontSize: 17, color: theme.colors.accent }}>
                   ‹ Quote
@@ -195,7 +195,7 @@ export default function AssembliesScreen() {
             headerLeft: quoteId ? () => (
               <Pressable
                 onPress={() => router.back()}
-                style={{ paddingLeft: 16, paddingVertical: 8 }}
+                style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
               >
                 <Text style={{ fontSize: 17, color: theme.colors.accent }}>
                   ‹ Quote
@@ -277,7 +277,7 @@ export default function AssembliesScreen() {
           headerLeft: quoteId ? () => (
             <Pressable
               onPress={() => router.back()}
-              style={{ paddingLeft: 16, paddingVertical: 8 }}
+              style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
             >
               <Text style={{ fontSize: 17, color: theme.colors.accent }}>
                 ‹ Quote
