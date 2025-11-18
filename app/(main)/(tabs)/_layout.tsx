@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, Pressable, Alert, Linking, Image } from "react-
 import { useRouter } from "expo-router";
 import { getUserState } from "@/lib/user";
 import { createNewQuote } from "@/lib/quotes";
+import { signOut as authSignOut } from "@/lib/auth";
 
 type IconProps = { color: string; size: number };
 
@@ -150,12 +151,17 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const [userEmail, setUserEmail] = React.useState<string | undefined>();
   const [isSignedIn, setIsSignedIn] = React.useState(false);
 
-  // Load user state
+  // Load user state from local storage (fast, no network call)
   React.useEffect(() => {
     const load = async () => {
       const user = await getUserState();
-      setUserEmail(user.email);
-      setIsSignedIn(!!user.email);
+      if (user.email) {
+        setUserEmail(user.email);
+        setIsSignedIn(true);
+      } else {
+        setUserEmail(undefined);
+        setIsSignedIn(false);
+      }
     };
     load();
   }, []);
