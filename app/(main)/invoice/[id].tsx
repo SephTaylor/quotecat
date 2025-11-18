@@ -214,6 +214,16 @@ export default function InvoiceDetailScreen() {
           title: invoice.invoiceNumber,
           headerShown: true,
           headerTitleAlign: "center",
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.back()}
+              style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
+            >
+              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
+                ‹ Back
+              </Text>
+            </Pressable>
+          ),
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
