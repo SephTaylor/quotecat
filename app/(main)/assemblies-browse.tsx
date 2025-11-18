@@ -20,6 +20,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import type { Assembly } from "@/modules/assemblies";
 import { GradientBackground } from "@/components/GradientBackground";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 
 // Memoized assembly list item for performance
 const AssemblyListItem = memo(

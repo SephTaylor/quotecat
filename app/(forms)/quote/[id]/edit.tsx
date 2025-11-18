@@ -23,6 +23,8 @@ import { Alert, Pressable, StyleSheet, Text, View, KeyboardAvoidingView, Platfor
 import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
+import { HeaderIconButton } from "@/components/HeaderIconButton";
 
 export default function EditQuote() {
   const { theme } = useTheme();
@@ -303,26 +305,8 @@ export default function EditQuote() {
         options={{
           headerShown: true,
           headerTitleAlign: 'center',
-          headerLeft: () => (
-            <Pressable
-              onPress={handleGoBack}
-              style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
-            >
-              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
-                ‹ Back
-              </Text>
-            </Pressable>
-          ),
-          headerRight: () => (
-            <Pressable
-              onPress={() => setPinned(!pinned)}
-              style={{ paddingRight: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
-            >
-              <Text style={{ fontSize: 24 }}>
-                {pinned ? "⭐" : "☆"}
-              </Text>
-            </Pressable>
-          ),
+          headerLeft: () => <HeaderBackButton onPress={handleGoBack} />,
+          headerRight: () => <HeaderIconButton onPress={() => setPinned(!pinned)} icon={pinned ? "⭐" : "☆"} />,
           headerTitle: () => (
             <View style={{ alignItems: 'center' }}>
               <Text style={{ fontSize: 17, fontWeight: "700", color: theme.colors.text }}>
