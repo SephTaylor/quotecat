@@ -1,9 +1,9 @@
 // components/HeaderIconButton.tsx
 // Reusable icon button for navigation headers
-// Handles iOS 18 styling issues with hitSlop instead of padding
+// Uses TouchableOpacity to avoid iOS 18 automatic backgrounds
 
 import React from 'react';
-import { Pressable, Text } from 'react-native';
+import { TouchableOpacity, Text, View } from 'react-native';
 
 interface HeaderIconButtonProps {
   onPress: () => void;
@@ -13,14 +13,16 @@ interface HeaderIconButtonProps {
 
 export function HeaderIconButton({ onPress, icon, side = 'right' }: HeaderIconButtonProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={side === 'right' ? { marginRight: 16 } : { marginLeft: 16 }}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-    >
-      <Text style={{ fontSize: 24 }}>
-        {icon}
-      </Text>
-    </Pressable>
+    <View style={side === 'right' ? { marginRight: 16 } : { marginLeft: 16 }}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.6}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Text style={{ fontSize: 24 }}>
+          {icon}
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }
