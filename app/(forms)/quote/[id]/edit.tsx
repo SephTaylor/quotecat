@@ -305,6 +305,7 @@ export default function EditQuote() {
         options={{
           headerShown: true,
           headerTitleAlign: 'center',
+          headerTintColor: theme.colors.accent,
           headerLeft: () => <HeaderBackButton onPress={handleGoBack} />,
           headerRight: () => <HeaderIconButton onPress={() => setPinned(!pinned)} icon={pinned ? "⭐" : "☆"} />,
           headerTitle: () => (
@@ -320,7 +321,6 @@ export default function EditQuote() {
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
-          headerTintColor: theme.colors.accent,
         }}
       />
       <FormScreen
