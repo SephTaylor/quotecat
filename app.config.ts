@@ -31,6 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "expo-font",
+    "expo-web-browser",
   ],
 
   // ---- experiments ----
