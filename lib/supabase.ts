@@ -49,6 +49,12 @@ function getSupabase(): SupabaseClient {
 // This maintains backwards compatibility with existing code
 export const supabase = new Proxy({} as SupabaseClient, {
   get(target, prop) {
-    return getSupabase()[prop as keyof SupabaseClient];
+    const client = getSupabase();
+    const value = client[prop as keyof SupabaseClient];
+    // Bind functions to maintain proper 'this' context
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
   },
 });
