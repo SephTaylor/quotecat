@@ -404,6 +404,87 @@ User creates quotes with real-time pricing
 
 ---
 
+## 🔄 Feature Migration Plan (Nov 2025)
+
+### Background
+
+**Problem Solved:** TestFlight builds were crashing because `lib/supabase.ts` used dynamic property access (`process.env[name]`) which Expo's babel transform doesn't replace. Fixed by using static access (`process.env.EXPO_PUBLIC_SUPABASE_URL`).
+
+**Current State:**
+- `main` branch: v1.1.0, basic features, **WORKING on TestFlight** (Build #66)
+- `integration/all-features` branch: v1.2.6, has auth/biometrics/cloud sync but needs the env var fix
+- Tag `v1.1.0-working` marks the last known good state
+- Branch `feature/auth-migration` created for incremental migration
+
+### Migration Strategy
+
+Cherry-pick features from `integration/all-features` into `feature/auth-migration`, test each group locally with Xcode Release builds, then merge to main.
+
+### Group A: Stability & Crash Fixes (Start Here)
+```
+349f60c fix: resolve circular dependencies causing app crashes
+b94cc48 fix: optimize invoice system performance and prevent crashes
+353e06f fix: implement lazy auth initialization to prevent startup hanging
+ab838a6 fix: lazy initialize Supabase client to prevent module-load crashes
+8b4b37a fix: remove non-existent incrementQuoteCount/decrementQuoteCount calls
+```
+
+### Group B: iOS 18 Compatibility
+```
+7a566a8 fix: remove iOS 18 white bubble backgrounds on header buttons
+a545715 refactor: create reusable header button components for iOS 18 compatibility
+ce896ae fix: use TouchableOpacity instead of Pressable for iOS 18 compatibility
+cba75f4 revert: restore custom back button (needed for save logic)
+```
+
+### Group C: Privacy Descriptions (Required for App Store)
+```
+57b1c0b fix: add Face ID privacy description required for installation
+c73c387 fix: add Photo Library privacy description for logo upload
+fcbbe3f fix: add explicit Camera and Microphone privacy descriptions
+```
+
+### Group D: Authentication UI
+```
+9eb5068 feat: implement Apple-compliant authentication flow
+d235948 feat: add password recovery to sign-in screen
+0e9855d feat: add biometric authentication (Face ID/Touch ID)
+3a52ef6 feat: add proper deep link configuration for auth callbacks
+b56f898 fix: correct auth callback route structure
+```
+
+### Group E: Cloud Sync (Pro Feature)
+```
+a399811 feat: implement cloud sync for Pro/Premium quotes
+e771ed5 feat: add Cloud Sync panel to Settings for Pro/Premium users
+```
+
+### Testing Process
+
+For each group:
+1. Cherry-pick commits: `git cherry-pick <commit-hash>`
+2. Build Release in Xcode: `npx expo run:ios --configuration Release`
+3. Test on simulator WITHOUT Metro running
+4. If works → continue to next group
+5. If breaks → identify problem, fix or skip that commit
+
+### Commits to Skip
+
+- All `test:` commits (debugging noise)
+- All `Revert` commits (trial and error)
+- All `docs:` commits (CLAUDE.md updates)
+- Website/Stripe webhook commits (not in app)
+
+### Final Steps
+
+After all groups pass local testing:
+1. Merge `feature/auth-migration` to `main`
+2. Push to GitHub
+3. Build on EAS: `eas build --platform ios --profile production`
+4. Submit to TestFlight
+
+---
+
 ## ⚠️ Critical Gotchas
 
 ### Apple In-App Purchase
