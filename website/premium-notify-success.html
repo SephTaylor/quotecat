@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You're on the List! - QuoteCat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            background: white;
+            border-radius: 24px;
+            padding: 48px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 40px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        p {
+            font-size: 18px;
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .features {
+            background: rgba(249, 115, 22, 0.1);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: left;
+            margin-bottom: 32px;
+        }
+
+        .features h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f97316;
+            margin-bottom: 16px;
+        }
+
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .features li {
+            padding: 8px 0;
+            color: #1f2937;
+            font-size: 16px;
+        }
+
+        .features li:before {
+            content: "✓ ";
+            color: #f97316;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        }
+
+        .note {
+            margin-top: 24px;
+            font-size: 14px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🔔</div>
+        <h1>You're on the List!</h1>
+        <p>We'll email you as soon as Premium launches. You'll be one of the first to get access to advanced features at founder pricing.</p>
+
+        <div class="features">
+            <h2>Complete Business Toolkit Coming Soon:</h2>
+            <ul>
+                <li>Quote Wizard (AI-assisted)</li>
+                <li>Contract generation & e-signature</li>
+                <li>Payment collection</li>
+                <li>Job profit tracking</li>
+                <li>Change order management</li>
+                <li>Advanced analytics</li>
+                <li>Team collaboration</li>
+                <li>Priority phone support</li>
+            </ul>
+        </div>
+
+        <p><strong>In the meantime, try Pro at founder pricing ($29/mo)</strong></p>
+
+        <a href="index.html#pricing" class="cta-button">See Pro Features</a>
+
+        <p class="note">Want to get started now? Pro includes unlimited quotes, cloud backup, and custom branding.</p>
+    </div>
+</body>
+</html>
