@@ -22,7 +22,7 @@ export default function QuoteMaterials() {
   const router = useRouter();
   const { theme } = useTheme();
 
-  const { products, loading } = useProducts();
+  const { products, loading, syncing, lastSync } = useProducts();
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [initialSelectionLoaded, setInitialSelectionLoaded] = useState(false);

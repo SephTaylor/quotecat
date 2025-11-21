@@ -1,19 +1,12 @@
 // modules/catalog/productService.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import type { Product } from "./seed";
 import { PRODUCTS_SEED } from "./seed";
 import { PRODUCT_KEYS } from "@/lib/storageKeys";
 
 const STORAGE_KEY = PRODUCT_KEYS.CACHE;
 const SYNC_TIMESTAMP_KEY = PRODUCT_KEYS.SYNC_TIMESTAMP;
-
-// Initialize Supabase client
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
-const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
-
-const supabase =
-  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 type ProductCache = {
   data: Product[];
@@ -81,11 +74,6 @@ export async function needsSync(): Promise<boolean> {
  * Returns true if successful, false if offline/error.
  */
 export async function syncProducts(): Promise<boolean> {
-  if (!supabase) {
-    console.warn("Supabase not configured - skipping sync");
-    return false;
-  }
-
   try {
     const { data, error } = await supabase.from("products").select("*");
 
