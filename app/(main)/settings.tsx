@@ -228,20 +228,51 @@ export default function Settings() {
     }, [load]),
   );
 
-  const handleManageAccount = () => {
-    Alert.alert(
-      "Manage Account",
-      "You'll be redirected to quotecat.ai to manage your account and subscription.",
-      [
-        { text: "Cancel", style: "cancel" },
+  const handleManageAccount = async () => {
+    if (!userEmail) {
+      Alert.alert("Error", "Please sign in to manage your account.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "https://eouikzjzsartaabvlbee.supabase.co/functions/v1/create-portal-session",
         {
-          text: "Continue",
-          onPress: () => {
-            Linking.openURL("https://quotecat.ai/account");
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo",
           },
-        },
-      ],
-    );
+          body: JSON.stringify({ email: userEmail }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.error) {
+        if (data.error === "No subscription found for this account") {
+          Alert.alert(
+            "No Subscription",
+            "You don't have an active subscription. Would you like to upgrade?",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Upgrade", onPress: () => Linking.openURL("https://quotecat.ai") },
+            ]
+          );
+        } else {
+          Alert.alert("Error", data.error);
+        }
+        return;
+      }
+
+      if (data.url) {
+        Linking.openURL(data.url);
+      }
+    } catch (error) {
+      console.error("Portal session error:", error);
+      Alert.alert("Error", "Could not open account management. Please try again.");
+    }
   };
 
   const handleSignIn = () => {
