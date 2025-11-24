@@ -2,7 +2,7 @@
 // Cloud sync service for quotes (Pro/Premium feature)
 
 import { supabase } from "./supabase";
-import { listQuotes, saveQuote, getQuoteById } from "@/modules/quotes";
+import { listQuotes, saveQuote, getQuoteById, updateQuote } from "@/modules/quotes";
 import type { Quote } from "./types";
 import { normalizeQuote } from "./validation";
 import { getCurrentUserId } from "./auth";
@@ -82,7 +82,7 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
       updated_at: quote.updatedAt,
       synced_at: new Date().toISOString(),
       device_id: null, // Not tracking device ID yet
-      deleted_at: null,
+      deleted_at: quote.deletedAt || null,
     };
 
     // Upsert (insert or update)
@@ -100,6 +100,34 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
   } catch (error) {
     console.error("Upload quote error:", error);
     return false;
+  }
+}
+
+/**
+ * Get IDs of deleted quotes from cloud (for syncing deletions across devices)
+ */
+async function getDeletedQuoteIds(): Promise<string[]> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("id")
+      .eq("user_id", userId)
+      .not("deleted_at", "is", null);
+
+    if (error) {
+      console.error("Failed to fetch deleted quote IDs:", error);
+      return [];
+    }
+
+    return (data || []).map((row: any) => row.id);
+  } catch (error) {
+    console.error("Get deleted quote IDs error:", error);
+    return [];
   }
 }
 
@@ -151,6 +179,7 @@ export async function downloadQuotes(): Promise<Quote[]> {
         tier: row.tier || undefined,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        deletedAt: row.deleted_at || undefined,
       };
 
       return normalizeQuote(quote);
@@ -230,33 +259,51 @@ export async function migrateLocalQuotesToCloud(): Promise<{
 /**
  * Sync quotes bi-directionally (download from cloud, merge with local, upload changes)
  * Conflict resolution: last-write-wins based on updatedAt
+ * Also syncs deletions across devices
  */
 export async function syncQuotes(): Promise<{
   success: boolean;
   downloaded: number;
   uploaded: number;
+  deleted: number;
 }> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
       console.warn("Cannot sync: user not authenticated");
-      return { success: false, downloaded: 0, uploaded: 0 };
+      return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
     }
 
-    // Download cloud quotes
+    let downloaded = 0;
+    let uploaded = 0;
+    let deleted = 0;
+
+    // Step 1: Sync deletions - apply cloud deletions to local
+    const deletedIds = await getDeletedQuoteIds();
+    for (const deletedId of deletedIds) {
+      const localQuote = await getQuoteById(deletedId);
+      if (localQuote && !localQuote.deletedAt) {
+        // Quote exists locally but is deleted in cloud - mark as deleted locally
+        await updateQuote(deletedId, {
+          deletedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        deleted++;
+        console.log(`🗑️ Applied deletion from cloud: ${deletedId}`);
+      }
+    }
+
+    // Step 2: Download active cloud quotes
     const cloudQuotes = await downloadQuotes();
 
-    // Get local quotes
+    // Step 3: Get local active quotes
     const localQuotes = await listQuotes();
 
     // Build maps for efficient lookup
     const cloudMap = new Map(cloudQuotes.map((q) => [q.id, q]));
     const localMap = new Map(localQuotes.map((q) => [q.id, q]));
 
-    let downloaded = 0;
-    let uploaded = 0;
-
-    // Process cloud quotes
+    // Step 4: Process cloud quotes (download new or updated)
     for (const cloudQuote of cloudQuotes) {
       const localQuote = localMap.get(cloudQuote.id);
 
@@ -277,7 +324,7 @@ export async function syncQuotes(): Promise<{
       }
     }
 
-    // Process local quotes
+    // Step 5: Process local quotes (upload new or updated)
     for (const localQuote of localQuotes) {
       const cloudQuote = cloudMap.get(localQuote.id);
 
@@ -306,13 +353,13 @@ export async function syncQuotes(): Promise<{
     });
 
     console.log(
-      `✅ Sync complete: ${downloaded} downloaded, ${uploaded} uploaded`
+      `✅ Sync complete: ${downloaded} downloaded, ${uploaded} uploaded, ${deleted} deleted`
     );
 
-    return { success: true, downloaded, uploaded };
+    return { success: true, downloaded, uploaded, deleted };
   } catch (error) {
     console.error("Sync error:", error);
-    return { success: false, downloaded: 0, uploaded: 0 };
+    return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
   }
 }
 

@@ -5,6 +5,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Invoice, Quote } from "@/lib/types";
 import { getQuoteById } from "@/lib/quotes";
 import { loadPreferences, updateInvoiceSettings } from "@/lib/preferences";
+import {
+  uploadInvoice,
+  deleteInvoiceFromCloud,
+  isInvoiceSyncAvailable,
+} from "@/lib/invoicesSync";
 
 const INVOICE_STORAGE_KEY = "@quotecat/invoices";
 
@@ -49,6 +54,7 @@ async function checkAndUpdateOverdueStatus(invoice: Invoice): Promise<Invoice> {
 
 /**
  * List all invoices, sorted by most recent first
+ * Filters out soft-deleted invoices
  * Automatically updates overdue invoices
  */
 export async function listInvoices(): Promise<Invoice[]> {
@@ -57,6 +63,9 @@ export async function listInvoices(): Promise<Invoice[]> {
     if (!json) return [];
 
     let invoices = JSON.parse(json) as Invoice[];
+
+    // Filter out deleted invoices
+    invoices = invoices.filter((inv) => !inv.deletedAt);
 
     // Check and update overdue statuses
     invoices = await Promise.all(invoices.map(checkAndUpdateOverdueStatus));
@@ -72,11 +81,12 @@ export async function listInvoices(): Promise<Invoice[]> {
 
 /**
  * Get invoice by ID
+ * Returns null if invoice is deleted or not found
  * Automatically updates overdue status if needed
  */
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
   const invoices = await listInvoices();
-  const invoice = invoices.find((inv) => inv.id === id) || null;
+  const invoice = invoices.find((inv) => inv.id === id && !inv.deletedAt) || null;
 
   if (invoice) {
     return await checkAndUpdateOverdueStatus(invoice);
@@ -87,10 +97,13 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
 
 /**
  * Save invoice (create or update)
+ * Automatically syncs to cloud for Pro/Premium users
  */
 export async function saveInvoice(invoice: Invoice): Promise<void> {
-  const invoices = await listInvoices();
-  const existingIndex = invoices.findIndex((inv) => inv.id === invoice.id);
+  const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
+  const allInvoices = json ? (JSON.parse(json) as Invoice[]) : [];
+
+  const existingIndex = allInvoices.findIndex((inv) => inv.id === invoice.id);
 
   const now = new Date().toISOString();
   const invoiceToSave = {
@@ -100,21 +113,52 @@ export async function saveInvoice(invoice: Invoice): Promise<void> {
   };
 
   if (existingIndex >= 0) {
-    invoices[existingIndex] = invoiceToSave;
+    allInvoices[existingIndex] = invoiceToSave;
   } else {
-    invoices.push(invoiceToSave);
+    allInvoices.push(invoiceToSave);
   }
 
-  await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(invoices));
+  await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(allInvoices));
+
+  // Auto-sync to cloud for Pro/Premium users (non-blocking)
+  isInvoiceSyncAvailable().then((available) => {
+    if (available) {
+      uploadInvoice(invoiceToSave).catch((error) => {
+        console.warn("Background invoice cloud sync failed:", error);
+      });
+    }
+  });
 }
 
 /**
- * Delete invoice by ID
+ * Delete invoice by ID (soft delete - sets deletedAt timestamp)
+ * Automatically syncs deletion to cloud for Pro/Premium users
  */
 export async function deleteInvoice(id: string): Promise<void> {
-  const invoices = await listInvoices();
-  const filtered = invoices.filter((inv) => inv.id !== id);
-  await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(filtered));
+  const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
+  if (!json) return;
+
+  const allInvoices = JSON.parse(json) as Invoice[];
+  const invoice = allInvoices.find((inv) => inv.id === id);
+
+  if (!invoice) {
+    throw new Error(`Invoice ${id} not found`);
+  }
+
+  // Soft delete: set deletedAt timestamp
+  invoice.deletedAt = new Date().toISOString();
+  invoice.updatedAt = invoice.deletedAt;
+
+  await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(allInvoices));
+
+  // Delete from cloud for Pro/Premium users (non-blocking)
+  isInvoiceSyncAvailable().then((available) => {
+    if (available) {
+      deleteInvoiceFromCloud(id).catch((error) => {
+        console.warn("Background invoice cloud deletion failed:", error);
+      });
+    }
+  });
 }
 
 /**

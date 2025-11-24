@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, Pressable, Alert, Linking, Image } from "react-
 import { useRouter } from "expo-router";
 import { createNewQuote } from "@/lib/quotes";
 import { signOut as authSignOut, getCurrentUserEmail, isAuthenticated } from "@/lib/auth";
+import { HeaderIconButton } from "@/components/HeaderIconButton";
 
 type IconProps = { color: string; size: number };
 
@@ -68,18 +69,11 @@ export default function DrawerLayout() {
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
           headerRight: () => (
-            <Pressable
+            <HeaderIconButton
               onPress={handleCreateNewQuote}
-              style={({ pressed }) => ({
-                marginRight: 16,
-                padding: 8,
-                borderRadius: 20,
-                backgroundColor: pressed ? 'rgba(255, 140, 0, 0.15)' : 'transparent',
-              })}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="add" size={32} color={theme.colors.accent} />
-            </Pressable>
+              icon="+"
+              side="right"
+            />
           ),
         }}
       />
@@ -92,30 +86,33 @@ export default function DrawerLayout() {
             <Ionicons name="document-text-outline" size={size} color={color} />
           ),
           headerRight: () => (
-            <Pressable
+            <HeaderIconButton
               onPress={handleCreateNewQuote}
-              style={({ pressed }) => ({
-                marginRight: 16,
-                padding: 8,
-                borderRadius: 20,
-                backgroundColor: pressed ? 'rgba(255, 140, 0, 0.15)' : 'transparent',
-              })}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="add" size={32} color={theme.colors.accent} />
-            </Pressable>
+              icon="+"
+              side="right"
+            />
           ),
         }}
       />
       <Drawer.Screen
         name="invoices"
-        options={{
+        options={({ navigation }) => ({
           title: "Invoices",
           drawerLabel: "Invoices",
           drawerIcon: ({ color, size }: IconProps) => (
             <Ionicons name="receipt-outline" size={size} color={color} />
           ),
-        }}
+          headerRight: () => (
+            <HeaderIconButton
+              onPress={() => {
+                // Navigate with trigger param to show quote picker
+                navigation.navigate("invoices", { trigger: "create" });
+              }}
+              icon="+"
+              side="right"
+            />
+          ),
+        })}
       />
       <Drawer.Screen
         name="pro-tools"

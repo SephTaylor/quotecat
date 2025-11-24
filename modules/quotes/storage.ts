@@ -97,6 +97,7 @@ async function writeQuotes(quotes: Quote[]): Promise<void> {
 
 /**
  * List all quotes, sorted by most recently updated
+ * Filters out soft-deleted quotes (where deletedAt is set)
  * Uses cache with stale-while-revalidate pattern
  */
 export async function listQuotes(): Promise<Quote[]> {
@@ -108,7 +109,8 @@ export async function listQuotes(): Promise<Quote[]> {
       // Background refresh
       withErrorHandling(async () => {
         const quotes = await readAllQuotes();
-        const sorted = quotes.sort(
+        const active = quotes.filter((q) => !q.deletedAt);
+        const sorted = active.sort(
           (a, b) => getLatestTimestamp(b) - getLatestTimestamp(a),
         );
         cache.set(CacheKeys.quotes.all(), sorted);
@@ -123,7 +125,8 @@ export async function listQuotes(): Promise<Quote[]> {
   // No cache - fetch and cache
   const result = await withErrorHandling(async () => {
     const quotes = await readAllQuotes();
-    return quotes.sort((a, b) => getLatestTimestamp(b) - getLatestTimestamp(a));
+    const active = quotes.filter((q) => !q.deletedAt);
+    return active.sort((a, b) => getLatestTimestamp(b) - getLatestTimestamp(a));
   }, ErrorType.STORAGE);
 
   if (result.success) {
@@ -137,6 +140,7 @@ export async function listQuotes(): Promise<Quote[]> {
 
 /**
  * Get a single quote by ID
+ * Returns null if quote is deleted or not found
  * Uses cache for individual quotes
  */
 export async function getQuoteById(id: string): Promise<Quote | null> {
@@ -150,7 +154,7 @@ export async function getQuoteById(id: string): Promise<Quote | null> {
   // Not in cache - fetch from storage
   const result = await withErrorHandling(async () => {
     const quotes = await readAllQuotes();
-    const found = quotes.find((q) => q.id === id);
+    const found = quotes.find((q) => q.id === id && !q.deletedAt);
     return found || null;
   }, ErrorType.STORAGE);
 
@@ -285,14 +289,24 @@ export async function updateQuote(
 }
 
 /**
- * Delete a quote by ID
+ * Delete a quote by ID (soft delete - sets deletedAt timestamp)
  * Invalidates relevant caches
  */
 export async function deleteQuote(id: string): Promise<void> {
   const result = await withErrorHandling(async () => {
     const allQuotes = await readAllQuotes();
-    const filtered = allQuotes.filter((q) => q.id !== id);
-    await writeQuotes(filtered);
+    const quote = allQuotes.find((q) => q.id === id);
+
+    if (!quote) {
+      throw new Error(`Quote ${id} not found`);
+    }
+
+    // Soft delete: set deletedAt timestamp
+    quote.deletedAt = new Date().toISOString();
+    quote.updatedAt = quote.deletedAt;
+
+    // Write back all quotes (including soft-deleted one)
+    await writeQuotes(allQuotes);
   }, ErrorType.STORAGE);
 
   if (!result.success) {

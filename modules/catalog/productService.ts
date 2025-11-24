@@ -1,17 +1,23 @@
 // modules/catalog/productService.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
-import type { Product } from "./seed";
-import { PRODUCTS_SEED } from "./seed";
-import { PRODUCT_KEYS } from "@/lib/storageKeys";
+import type { Product, Category } from "./seed";
+import { PRODUCTS_SEED, CATEGORIES as SEED_CATEGORIES } from "./seed";
+import { PRODUCT_KEYS, CATEGORY_KEYS } from "@/lib/storageKeys";
 
 const STORAGE_KEY = PRODUCT_KEYS.CACHE;
 const SYNC_TIMESTAMP_KEY = PRODUCT_KEYS.SYNC_TIMESTAMP;
+const CATEGORY_STORAGE_KEY = CATEGORY_KEYS.CACHE;
 
 type ProductCache = {
   data: Product[];
   lastSync: string | null;
   version: number;
+};
+
+type CategoryCache = {
+  data: Category[];
+  lastSync: string | null;
 };
 
 /**
@@ -210,10 +216,71 @@ export async function refreshProducts(): Promise<boolean> {
 }
 
 /**
+ * Get categories from local cache (offline-first).
+ */
+export async function getCategories(): Promise<Category[]> {
+  try {
+    const cached = await AsyncStorage.getItem(CATEGORY_STORAGE_KEY);
+    if (cached) {
+      const cache: CategoryCache = JSON.parse(cached);
+      return cache.data;
+    }
+    // No cache - use seed categories as bootstrap
+    return SEED_CATEGORIES;
+  } catch (error) {
+    console.error("Failed to get categories from cache:", error);
+    return SEED_CATEGORIES;
+  }
+}
+
+/**
+ * Sync categories from Supabase to local cache.
+ * Returns true if successful, false if offline/error.
+ */
+export async function syncCategories(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("*")
+      .order("sort_order", { ascending: true });
+
+    if (error) {
+      console.error("Supabase category sync error:", error);
+      return false;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn("No categories from Supabase - using cache");
+      return false;
+    }
+
+    // Map Supabase data to Category type
+    const categories: Category[] = data.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+    }));
+
+    // Save to cache
+    const cache: CategoryCache = {
+      data: categories,
+      lastSync: new Date().toISOString(),
+    };
+
+    await AsyncStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(cache));
+    console.log(`✅ Synced ${categories.length} categories from Supabase`);
+    return true;
+  } catch (error) {
+    console.error("Failed to sync categories:", error);
+    return false;
+  }
+}
+
+/**
  * Clear local cache (for testing).
  */
 export async function clearProductCache(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEY);
   await AsyncStorage.removeItem(SYNC_TIMESTAMP_KEY);
+  await AsyncStorage.removeItem(CATEGORY_STORAGE_KEY);
   console.log("🗑️ Cleared product cache");
 }

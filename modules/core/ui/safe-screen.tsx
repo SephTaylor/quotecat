@@ -3,6 +3,7 @@ import React, { PropsWithChildren } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -20,6 +21,8 @@ type ScreenProps = PropsWithChildren<{
   style?: ViewStyle;
   /** Extra styles for the inner content container */
   contentStyle?: ViewStyle;
+  /** RefreshControl for pull-to-refresh (only works when scroll=true) */
+  refreshControl?: React.ReactElement<typeof RefreshControl>;
 }>;
 
 /**
@@ -34,6 +37,7 @@ export default function Screen({
   withBottomBar = false,
   style,
   contentStyle,
+  refreshControl,
 }: ScreenProps) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -46,6 +50,7 @@ export default function Screen({
         withBottomBar && styles.withBottomBar,
         contentStyle,
       ]}
+      refreshControl={refreshControl}
     >
       {children}
     </ScrollView>

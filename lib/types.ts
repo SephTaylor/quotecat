@@ -104,6 +104,7 @@ export type Quote = {
   tier?: string; // Optional tier/variant name (e.g., "Good", "Better", "Best", "Base + Generator")
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
+  deletedAt?: string; // ISO 8601 - soft delete timestamp
   // Computed fields (not persisted, recalculated on load)
   materialSubtotal?: number;
   total?: number;
@@ -213,6 +214,7 @@ export type Invoice = {
   // Metadata
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
+  deletedAt?: string; // ISO 8601 - soft delete timestamp
   currency: CurrencyCode;
 
   // Forward-compatible: allow extra fields

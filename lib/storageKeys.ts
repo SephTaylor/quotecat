@@ -22,6 +22,13 @@ export const PRODUCT_KEYS = {
 } as const;
 
 /**
+ * Storage keys for categories
+ */
+export const CATEGORY_KEYS = {
+  CACHE: "@quotecat/categories",
+} as const;
+
+/**
  * Storage keys for assemblies
  */
 export const ASSEMBLY_KEYS = {
@@ -45,6 +52,7 @@ export const ALL_KEYS = [
   ...QUOTE_KEYS.LEGACY,
   PRODUCT_KEYS.CACHE,
   PRODUCT_KEYS.SYNC_TIMESTAMP,
+  CATEGORY_KEYS.CACHE,
   ASSEMBLY_KEYS.CACHE,
   SETTINGS_KEYS.CURRENCY,
   SETTINGS_KEYS.THEME,

@@ -6,16 +6,19 @@ import {
   listInvoices,
   saveInvoice,
   updateInvoice,
+  createInvoiceFromQuote,
   type Invoice,
 } from "@/lib/invoices";
 import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { canAccessAssemblies } from "@/lib/features";
 import { getUserState } from "@/lib/user";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import type { InvoiceStatus } from "@/lib/types";
 import { InvoiceStatusMeta } from "@/lib/types";
+import { listQuotes, type Quote } from "@/lib/quotes";
+import { calculateTotal } from "@/lib/validation";
 import {
   Alert,
   FlatList,
@@ -37,6 +40,7 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 export default function InvoicesList() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { trigger } = useLocalSearchParams<{ trigger?: string }>();
   const filterScrollRef = React.useRef<ScrollView>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,6 +50,8 @@ export default function InvoicesList() {
   const [deletedInvoice, setDeletedInvoice] = useState<Invoice | null>(null);
   const [showUndo, setShowUndo] = useState(false);
   const [editingStatusForInvoice, setEditingStatusForInvoice] = useState<Invoice | null>(null);
+  const [showQuotePicker, setShowQuotePicker] = useState(false);
+  const [availableQuotes, setAvailableQuotes] = useState<Quote[]>([]);
 
   const load = useCallback(async () => {
     const user = await getUserState();
@@ -53,8 +59,16 @@ export default function InvoicesList() {
     setIsPro(hasAccess);
 
     if (hasAccess) {
-      const data = await listInvoices();
-      setInvoices(data);
+      const [invoiceData, quoteData] = await Promise.all([
+        listInvoices(),
+        listQuotes(),
+      ]);
+      setInvoices(invoiceData);
+      // Filter quotes that can be invoiced (approved or completed)
+      const invoiceable = quoteData.filter(
+        (q) => q.status === "approved" || q.status === "completed"
+      );
+      setAvailableQuotes(invoiceable);
     }
   }, []);
 
@@ -67,6 +81,22 @@ export default function InvoicesList() {
       load();
     }, [load]),
   );
+
+  // Watch for trigger param to open quote picker
+  useEffect(() => {
+    if (trigger === "create" && isPro && availableQuotes.length > 0) {
+      setShowQuotePicker(true);
+      // Clear the trigger param
+      router.setParams({ trigger: undefined });
+    } else if (trigger === "create" && isPro && availableQuotes.length === 0) {
+      Alert.alert(
+        "No Quotes Available",
+        "You need approved or completed quotes to create invoices. Go to the Quotes screen to create quotes first.",
+        [{ text: "OK" }]
+      );
+      router.setParams({ trigger: undefined });
+    }
+  }, [trigger, isPro, availableQuotes.length, router]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -183,6 +213,29 @@ export default function InvoicesList() {
       Alert.alert("Error", "Failed to copy invoice");
     }
   }, [load]);
+
+  const handleCreateInvoice = useCallback(() => {
+    if (availableQuotes.length === 0) {
+      Alert.alert(
+        "No Quotes Available",
+        "You need approved or completed quotes to create invoices. Go to the Quotes screen to create quotes first.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    setShowQuotePicker(true);
+  }, [availableQuotes]);
+
+  const handleSelectQuote = useCallback(async (quote: Quote) => {
+    try {
+      setShowQuotePicker(false);
+      const newInvoice = await createInvoiceFromQuote(quote.id);
+      await load();
+      router.push(`/invoice/${newInvoice.id}` as any);
+    } catch (error) {
+      Alert.alert("Error", "Failed to create invoice");
+    }
+  }, [load, router]);
 
   // Filter invoices based on search query and status
   const filteredInvoices = React.useMemo(() => {
@@ -378,6 +431,53 @@ export default function InvoicesList() {
                   </Pressable>
                 ))}
               </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Quote Picker Modal */}
+        <Modal
+          visible={showQuotePicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowQuotePicker(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowQuotePicker(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.quotePickerModal}>
+                <Text style={styles.modalTitle}>Select Quote to Invoice</Text>
+                <Text style={styles.modalSubtitle}>
+                  Choose an approved or completed quote
+                </Text>
+
+                <ScrollView style={styles.quoteList} nestedScrollEnabled>
+                  {availableQuotes.map((quote) => (
+                    <Pressable
+                      key={quote.id}
+                      style={styles.quoteOption}
+                      onPress={() => handleSelectQuote(quote)}
+                    >
+                      <View style={styles.quoteOptionContent}>
+                        <Text style={styles.quoteOptionTitle}>{quote.name}</Text>
+                        <Text style={styles.quoteOptionSubtitle}>
+                          {quote.clientName} • ${calculateTotal(quote).toFixed(2)}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+
+                <Pressable
+                  style={styles.cancelButton}
+                  onPress={() => setShowQuotePicker(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </Pressable>
+              </View>
             </View>
           </Pressable>
         </Modal>
@@ -579,6 +679,58 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     statusOptionTextActive: {
       color: "#000",
       fontWeight: "700",
+    },
+    quotePickerModal: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(3),
+      width: "100%",
+      maxWidth: 400,
+      maxHeight: 500,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    quoteList: {
+      maxHeight: 300,
+      marginBottom: theme.spacing(2),
+    },
+    quoteOption: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(1),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    quoteOptionContent: {
+      flex: 1,
+    },
+    quoteOptionTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    quoteOptionSubtitle: {
+      fontSize: 14,
+      color: theme.colors.muted,
+    },
+    cancelButton: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+    },
+    cancelButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
     },
   });
 }

@@ -1,12 +1,14 @@
 // modules/catalog/useProducts.ts
 import { useCallback, useEffect, useState } from "react";
-import type { Product } from "./seed";
+import type { Product, Category } from "./seed";
 import {
   getLastSyncTime,
   getProducts,
+  getCategories,
   needsSync,
   refreshProducts,
   syncProducts,
+  syncCategories,
 } from "./productService";
 
 /**
@@ -15,14 +17,19 @@ import {
  */
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
 
   const loadProducts = useCallback(async () => {
     try {
-      const data = await getProducts();
-      setProducts(data);
+      const [productData, categoryData] = await Promise.all([
+        getProducts(),
+        getCategories(),
+      ]);
+      setProducts(productData);
+      setCategories(categoryData);
 
       const syncTime = await getLastSyncTime();
       setLastSync(syncTime);
@@ -38,26 +45,29 @@ export function useProducts() {
     if (shouldSync) {
       console.log("🔄 Background sync triggered");
       setSyncing(true);
-      const success = await syncProducts();
+      // Sync both products and categories
+      await Promise.all([syncProducts(), syncCategories()]);
       setSyncing(false);
 
-      if (success) {
-        // Reload products after sync
-        await loadProducts();
-      }
+      // Reload after sync
+      await loadProducts();
     }
   }, [loadProducts]);
 
   const manualRefresh = useCallback(async () => {
     setSyncing(true);
-    const success = await refreshProducts();
+    // Refresh both products and categories
+    const [productSuccess, categorySuccess] = await Promise.all([
+      refreshProducts(),
+      syncCategories(),
+    ]);
     setSyncing(false);
 
-    if (success) {
+    if (productSuccess || categorySuccess) {
       await loadProducts();
     }
 
-    return success;
+    return productSuccess;
   }, [loadProducts]);
 
   useEffect(() => {
@@ -68,6 +78,7 @@ export function useProducts() {
 
   return {
     products,
+    categories,
     loading,
     syncing,
     lastSync,

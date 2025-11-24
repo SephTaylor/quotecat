@@ -2,7 +2,6 @@ import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from "expo-rou
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getQuoteById, saveQuote } from "@/lib/quotes";
-import { CATEGORIES } from "@/modules/catalog/seed";
 import { useProducts } from "@/modules/catalog";
 import { BottomBar, Button, Screen } from "@/modules/core/ui";
 import {
@@ -13,19 +12,22 @@ import {
 import { mergeById } from "@/modules/quotes/merge";
 import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Text, View, StyleSheet, Pressable, Alert } from "react-native";
+import { Text, View, StyleSheet, Pressable, Alert, RefreshControl } from "react-native";
 import type { QuoteItem } from "@/lib/types";
 import { trackProductUsage } from "@/lib/analytics";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
+import { HeaderIconButton } from "@/components/HeaderIconButton";
 
 export default function QuoteMaterials() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
   const { theme } = useTheme();
 
-  const { products, loading, syncing, lastSync } = useProducts();
+  const { products, categories, loading, syncing, lastSync, refresh } = useProducts();
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [initialSelectionLoaded, setInitialSelectionLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Create initial selection from quote items
   const initialSelection = useMemo(() => {
@@ -166,15 +168,15 @@ export default function QuoteMaterials() {
     [id, selection, router, clear],
   );
 
-  // Calculate status for header
-  const statusIcon = React.useMemo(() => {
-    if (syncing) return "🔄";
+  // Calculate status text for header
+  const statusText = React.useMemo(() => {
+    if (syncing) return "Syncing";
     if (lastSync) {
       const hoursAgo = Math.floor((Date.now() - lastSync.getTime()) / (1000 * 60 * 60));
-      if (hoursAgo < 24) return "✅";
-      return "⚠️";
+      if (hoursAgo < 24) return "Online";
+      return "Refresh";
     }
-    return "📱";
+    return "Offline";
   }, [syncing, lastSync]);
 
   const statusMessage = React.useMemo(() => {
@@ -193,6 +195,13 @@ export default function QuoteMaterials() {
     Alert.alert("Product Catalog Status", statusMessage);
   };
 
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
+
   if (loading) {
     return (
       <>
@@ -207,16 +216,26 @@ export default function QuoteMaterials() {
             headerTitleStyle: {
               color: theme.colors.text,
             },
+            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
             headerRight: () => (
-              <Pressable onPress={showStatusInfo} style={{ marginRight: 16, padding: 4 }}>
-                <Text style={{ fontSize: 18 }}>{statusIcon}</Text>
+              <Pressable onPress={showStatusInfo} style={{ marginRight: 16, padding: 8 }}>
+                <Text style={{ fontSize: 15, color: theme.colors.text }}>{statusText}</Text>
               </Pressable>
             ),
           }}
         />
-        <Screen scroll>
+        <Screen
+          scroll
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.colors.accent}
+            />
+          }
+        >
           <MaterialsPicker
-            categories={CATEGORIES}
+            categories={categories}
             itemsByCategory={{}}
             selection={selection}
             onInc={inc}
@@ -243,15 +262,25 @@ export default function QuoteMaterials() {
           headerTitleStyle: {
             color: theme.colors.text,
           },
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerRight: () => (
-            <Pressable onPress={showStatusInfo} style={{ marginRight: 16, padding: 4 }}>
-              <Text style={{ fontSize: 18 }}>{statusIcon}</Text>
+            <Pressable onPress={showStatusInfo} style={{ marginRight: 16, padding: 8 }}>
+              <Text style={{ fontSize: 15, color: theme.colors.text }}>{statusText}</Text>
             </Pressable>
           ),
         }}
       />
 
-      <Screen scroll>
+      <Screen
+        scroll
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.accent}
+          />
+        }
+      >
         {quoteItems.length > 0 && (
           <Pressable
             style={styles(theme).quoteItemsIndicator}
@@ -289,7 +318,7 @@ export default function QuoteMaterials() {
         )}
 
         <MaterialsPicker
-          categories={CATEGORIES}
+          categories={categories}
           itemsByCategory={productsByCategory}
           selection={selection}
           onInc={inc}
