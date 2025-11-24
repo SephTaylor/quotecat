@@ -411,7 +411,7 @@ User creates quotes with real-time pricing
 **Problem Solved:** TestFlight builds were crashing because `lib/supabase.ts` used dynamic property access (`process.env[name]`) which Expo's babel transform doesn't replace. Fixed by using static access (`process.env.EXPO_PUBLIC_SUPABASE_URL`).
 
 **Current State:**
-- `main` branch: v1.1.0, basic features, **WORKING on TestFlight** (Build #66)
+- `main` branch: v1.1.0, basic features, **WORKING on TestFlight** (Build #80)
 - `integration/all-features` branch: v1.2.6, has auth/biometrics/cloud sync but needs the env var fix
 - Tag `v1.1.0-working` marks the last known good state
 - Branch `feature/auth-migration` created for incremental migration
@@ -482,6 +482,47 @@ After all groups pass local testing:
 2. Push to GitHub
 3. Build on EAS: `eas build --platform ios --profile production`
 4. Submit to TestFlight
+
+---
+
+## 📋 Pending Features (Stashed - Nov 24, 2025)
+
+### Background
+
+During this session, we attempted to add several features but encountered TestFlight installation failures (builds 77/78 wouldn't install). After investigation, we confirmed the issue was in our uncommitted changes, not the committed codebase.
+
+**Stash name:** `session-changes-before-clean-build`
+
+**Working baseline:** Build #80 (version 1.1.0, commit `df370b3`) - confirmed working on TestFlight
+
+### Stashed Changes to Re-add
+
+These changes need to be added back incrementally, testing each batch:
+
+| Priority | File | Changes | Risk |
+|----------|------|---------|------|
+| 1 | `lib/types.ts` | Added `clientEmail`, `clientPhone`, `clientAddress`, `taxPercent` to Quote/Invoice types | Low |
+| 2 | `lib/pdf.ts` | Tax calculation display, client contact info in PDFs | Low |
+| 3 | `lib/invoices.ts` | Added `QuickInvoiceData` type, `createQuickInvoice()` function | Medium |
+| 4 | `app/(forms)/quote/[id]/edit.tsx` | UI for tax %, client email/phone/address fields | Medium |
+| 5 | `app/(main)/(tabs)/invoices.tsx` | Fixed Invoice import (was importing from wrong module), added Quick Invoice button | Medium |
+| 6 | `modules/materials/Picker.tsx` | Unknown changes from session | Unknown |
+| 7 | `app/(forms)/invoice/` (NEW) | Quick Invoice form screen - entirely new route | High |
+
+### Re-integration Process
+
+1. Restore stash: `git stash pop` or `git stash apply stash@{0}`
+2. Add changes one file at a time
+3. Test in Xcode simulator with `npx expo run:ios`
+4. If works, commit and continue
+5. If fails, revert that file and investigate
+6. Once all working locally, do EAS build and test on TestFlight
+
+### Known Issues to Watch
+
+- **Require cycles:** There are circular dependency warnings in `quotesSync.ts`. These exist in the committed code and may need fixing.
+- **Import path:** `app/(main)/(tabs)/invoices.tsx` was importing `Invoice` type from `@/lib/invoices` but it should come from `@/lib/types`
+- **New routes:** Adding new Expo Router routes can cause issues - test the quick invoice route carefully
 
 ---
 
