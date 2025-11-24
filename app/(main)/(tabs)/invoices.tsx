@@ -7,7 +7,6 @@ import {
   saveInvoice,
   updateInvoice,
   createInvoiceFromQuote,
-  type Invoice,
 } from "@/lib/invoices";
 import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
@@ -15,7 +14,7 @@ import { canAccessAssemblies } from "@/lib/features";
 import { getUserState } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import type { InvoiceStatus } from "@/lib/types";
+import type { Invoice, InvoiceStatus } from "@/lib/types";
 import { InvoiceStatusMeta } from "@/lib/types";
 import { listQuotes, type Quote } from "@/lib/quotes";
 import { calculateTotal } from "@/lib/validation";
@@ -471,6 +470,23 @@ export default function InvoicesList() {
                   ))}
                 </ScrollView>
 
+                <View style={styles.modalDivider}>
+                  <View style={styles.modalDividerLine} />
+                  <Text style={styles.modalDividerText}>or</Text>
+                  <View style={styles.modalDividerLine} />
+                </View>
+
+                <Pressable
+                  style={styles.quickInvoiceButton}
+                  onPress={() => {
+                    setShowQuotePicker(false);
+                    router.push("/invoice/quick" as any);
+                  }}
+                >
+                  <Ionicons name="flash" size={18} color="#000" />
+                  <Text style={styles.quickInvoiceButtonText}>Quick Invoice</Text>
+                </Pressable>
+
                 <Pressable
                   style={styles.cancelButton}
                   onPress={() => setShowQuotePicker(false)}
@@ -717,6 +733,37 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     quoteOptionSubtitle: {
       fontSize: 14,
       color: theme.colors.muted,
+    },
+    modalDivider: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginVertical: theme.spacing(2),
+    },
+    modalDividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: theme.colors.border,
+    },
+    modalDividerText: {
+      paddingHorizontal: theme.spacing(2),
+      fontSize: 14,
+      color: theme.colors.muted,
+    },
+    quickInvoiceButton: {
+      backgroundColor: theme.colors.accent,
+      borderRadius: theme.radius.md,
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(1.5),
+    },
+    quickInvoiceButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
     },
     cancelButton: {
       backgroundColor: theme.colors.bg,

@@ -11,6 +11,18 @@ import {
   isInvoiceSyncAvailable,
 } from "@/lib/invoicesSync";
 
+/**
+ * Data for creating a quick invoice (without a quote)
+ * Simplified: just client, description, amount
+ */
+export type QuickInvoiceData = {
+  clientName: string;
+  jobDescription: string;
+  amount: number;
+  notes?: string;
+  dueDate?: Date;
+};
+
 const INVOICE_STORAGE_KEY = "@quotecat/invoices";
 
 /**
@@ -192,10 +204,14 @@ export async function createInvoiceFromQuote(
     id: `inv_${Date.now()}`,
     quoteId: quote.id,
     invoiceNumber,
+    type: "from_quote",
 
     // Copy quote data
     name: quote.name,
     clientName: quote.clientName,
+    clientEmail: quote.clientEmail,
+    clientPhone: quote.clientPhone,
+    clientAddress: quote.clientAddress,
     items: percentage === 100
       ? quote.items
       : quote.items.map(item => ({
@@ -206,6 +222,7 @@ export async function createInvoiceFromQuote(
     materialEstimate: quote.materialEstimate ? quote.materialEstimate * multiplier : undefined,
     overhead: quote.overhead ? quote.overhead * multiplier : undefined,
     markupPercent: quote.markupPercent,
+    taxPercent: quote.taxPercent,
     notes: percentage === 100
       ? quote.notes
       : `${percentage}% Down Payment Invoice${quote.notes ? `\n\n${quote.notes}` : ''}`,
@@ -244,4 +261,52 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
   };
 
   await saveInvoice(updated);
+}
+
+/**
+ * Create a quick invoice (without a quote)
+ * For emergency repairs, labor-only jobs, flat-rate services, etc.
+ * Simple: just client, description, and total amount
+ */
+export async function createQuickInvoice(data: QuickInvoiceData): Promise<Invoice> {
+  const invoiceNumber = await generateInvoiceNumber();
+  const now = new Date().toISOString();
+  const dueDate = data.dueDate || new Date();
+  if (!data.dueDate) {
+    dueDate.setDate(dueDate.getDate() + 30); // Default: 30 days from now
+  }
+
+  const invoice: Invoice = {
+    id: `inv_${Date.now()}`,
+    invoiceNumber,
+    type: "quick",
+
+    // Invoice data - simple flat amount as single line item
+    name: data.jobDescription,
+    clientName: data.clientName,
+    jobDescription: data.jobDescription,
+    items: [
+      {
+        id: `item_${Date.now()}`,
+        name: data.jobDescription,
+        qty: 1,
+        unitPrice: data.amount,
+      },
+    ],
+    labor: 0,
+    notes: data.notes,
+
+    // Invoice-specific
+    invoiceDate: now,
+    dueDate: dueDate.toISOString(),
+    status: "unpaid",
+
+    // Metadata
+    createdAt: now,
+    updatedAt: now,
+    currency: "USD",
+  };
+
+  await saveInvoice(invoice);
+  return invoice;
 }

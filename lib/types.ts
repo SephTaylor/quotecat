@@ -93,15 +93,20 @@ export type Quote = {
   id: ID;
   name: string;
   clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientAddress?: string;
   items: QuoteItem[];
   labor: number;
   materialEstimate?: number; // Quick estimate for materials without line items
   overhead?: number; // Flat overhead/additional costs
   markupPercent?: number; // Markup percentage applied to subtotal
+  taxPercent?: number; // Tax percentage applied to total
   currency: CurrencyCode;
   status: QuoteStatus;
   pinned?: boolean; // For favoriting/starring quotes
   tier?: string; // Optional tier/variant name (e.g., "Good", "Better", "Best", "Base + Generator")
+  notes?: string; // Additional notes for the quote
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
   deletedAt?: string; // ISO 8601 - soft delete timestamp
@@ -182,22 +187,33 @@ export const InvoiceStatusMeta: Record<
 };
 
 /**
+ * Invoice type: quote-based or quick (standalone)
+ */
+export type InvoiceType = "from_quote" | "quick";
+
+/**
  * Invoice stored in AsyncStorage
- * Created from a quote, tracks payment status
+ * Can be created from a quote or as a standalone quick invoice
  */
 export type Invoice = {
   id: ID;
-  quoteId: ID; // Reference to original quote
+  quoteId?: ID; // Reference to original quote (optional for quick invoices)
   invoiceNumber: string; // Auto-generated: INV-001, INV-002, etc.
+  type?: InvoiceType; // "from_quote" or "quick" (defaults to "from_quote" for backwards compat)
+  jobDescription?: string; // Description for quick invoices
 
   // Quote data (copied at time of invoice creation)
   name: string;
   clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientAddress?: string;
   items: QuoteItem[];
   labor: number;
   materialEstimate?: number;
   overhead?: number;
   markupPercent?: number;
+  taxPercent?: number;
   notes?: string;
 
   // Invoice-specific fields
