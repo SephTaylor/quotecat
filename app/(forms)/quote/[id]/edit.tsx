@@ -26,6 +26,23 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { HeaderIconButton } from "@/components/HeaderIconButton";
 
+/**
+ * Format phone number as (xxx) xxx-xxxx
+ */
+function formatPhoneNumber(value: string): string {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, "");
+
+  // Limit to 10 digits
+  const limited = digits.slice(0, 10);
+
+  // Format based on length
+  if (limited.length === 0) return "";
+  if (limited.length <= 3) return `(${limited}`;
+  if (limited.length <= 6) return `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
+  return `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
+}
+
 export default function EditQuote() {
   const { theme } = useTheme();
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -447,7 +464,7 @@ export default function EditQuote() {
         <FormInput
           placeholder="(555) 123-4567"
           value={clientPhone}
-          onChangeText={setClientPhone}
+          onChangeText={(text) => setClientPhone(formatPhoneNumber(text))}
           keyboardType="phone-pad"
         />
 

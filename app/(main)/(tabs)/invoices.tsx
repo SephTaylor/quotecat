@@ -112,43 +112,34 @@ export default function InvoicesList() {
     );
   };
 
-  const handleDeleteInvoice = useCallback((invoice: Invoice) => {
-    Alert.alert(
-      "Delete Invoice",
-      `Are you sure you want to delete invoice ${invoice.invoiceNumber}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setDeletedInvoice(invoice);
-            setInvoices((prev) => prev.filter((inv) => inv.id !== invoice.id));
-            setShowUndo(true);
-            // Note: actual deletion happens in handleDismissUndo when snackbar auto-dismisses
-          },
-        },
-      ]
-    );
+  const handleDeleteInvoice = useCallback(async (invoice: Invoice) => {
+    // Store for undo
+    setDeletedInvoice(invoice);
+    // Optimistically remove from list
+    setInvoices((prev) => prev.filter((inv) => inv.id !== invoice.id));
+    // Delete from storage immediately
+    await deleteInvoice(invoice.id);
+    // Show undo snackbar
+    setShowUndo(true);
   }, []);
 
-  const handleUndoDelete = useCallback(() => {
+  const handleUndoDelete = useCallback(async () => {
     if (deletedInvoice) {
-      // Restore the invoice to the list
-      setInvoices((prev) => [...prev, deletedInvoice]);
+      // Restore the invoice to storage
+      await saveInvoice(deletedInvoice);
+      // Reload list
+      await load();
+      // Clear state
       setDeletedInvoice(null);
       setShowUndo(false);
     }
-  }, [deletedInvoice]);
+  }, [deletedInvoice, load]);
 
-  const handleDismissUndo = useCallback(async () => {
-    // Snackbar is being dismissed (auto or manual) - actually delete the invoice now
-    if (deletedInvoice) {
-      await deleteInvoice(deletedInvoice.id);
-    }
+  const handleDismissUndo = useCallback(() => {
+    // Just clear state - deletion already happened
     setDeletedInvoice(null);
     setShowUndo(false);
-  }, [deletedInvoice]);
+  }, []);
 
   const handleExportInvoice = useCallback(async (invoice: Invoice) => {
     try {
