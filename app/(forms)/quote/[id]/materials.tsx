@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getQuoteById, saveQuote } from "@/lib/quotes";
 import { useProducts } from "@/modules/catalog";
-import { BottomBar, Button, Screen } from "@/modules/core/ui";
+import { BottomBar, Button } from "@/modules/core/ui";
 import {
   MaterialsPicker,
   transformSelectionToItems,
@@ -16,7 +16,6 @@ import { Text, View, StyleSheet, Pressable, Alert, RefreshControl } from "react-
 import type { QuoteItem } from "@/lib/types";
 import { trackProductUsage } from "@/lib/analytics";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
-import { HeaderIconButton } from "@/components/HeaderIconButton";
 
 export default function QuoteMaterials() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -224,16 +223,7 @@ export default function QuoteMaterials() {
             ),
           }}
         />
-        <Screen
-          scroll
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={theme.colors.accent}
-            />
-          }
-        >
+        <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
           <MaterialsPicker
             categories={categories}
             itemsByCategory={{}}
@@ -242,8 +232,15 @@ export default function QuoteMaterials() {
             onDec={dec}
             onSetQty={setQty}
             recentProductIds={[]}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.colors.accent}
+              />
+            }
           />
-        </Screen>
+        </View>
       </>
     );
   }
@@ -271,16 +268,7 @@ export default function QuoteMaterials() {
         }}
       />
 
-      <Screen
-        scroll
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.accent}
-          />
-        }
-      >
+      <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
         {quoteItems.length > 0 && (
           <Pressable
             style={styles(theme).quoteItemsIndicator}
@@ -325,8 +313,15 @@ export default function QuoteMaterials() {
           onDec={dec}
           onSetQty={setQty}
           recentProductIds={[]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.colors.accent}
+            />
+          }
         />
-      </Screen>
+      </View>
 
       <BottomBar>
         <Button

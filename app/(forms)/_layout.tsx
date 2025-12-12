@@ -1,30 +1,27 @@
 // app/(forms)/_layout.tsx
 import { Stack } from "expo-router";
 import React from "react";
-import { Platform } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 
 /**
  * Forms layout:
- * - SafeAreaView respects device notches/status bar
- * - Stack navigator allows headers to show
+ * - Stack navigator handles safe areas when headerShown=true
  * - Individual screens configure their own headers
+ * - No SafeAreaView here to avoid double safe area padding
  */
 export default function FormsLayout() {
   const { theme } = useTheme();
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: theme.colors.bg }}
-      edges={Platform.OS === "android" ? ["left", "right"] : ["top", "left", "right"]}
-    >
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <Stack
         screenOptions={{
           headerShown: false, // Hidden by default, screens can override
           presentation: "card", // Ensures proper navigation stack behavior
+          contentStyle: { backgroundColor: theme.colors.bg },
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
