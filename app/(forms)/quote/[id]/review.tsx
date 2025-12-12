@@ -1,5 +1,6 @@
 // app/(forms)/quote/[id]/review.tsx
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +14,6 @@ import {
   Platform,
   Modal,
   TextInput,
-  KeyboardAvoidingView,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -155,6 +155,7 @@ export default function QuoteReviewScreen() {
           options={{
             title: "Quote Review",
             headerShown: true,
+            headerTitleAlign: 'center',
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -162,6 +163,7 @@ export default function QuoteReviewScreen() {
             headerTitleStyle: {
               color: theme.colors.text,
             },
+            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           }}
         />
         <View style={styles.center}>
@@ -178,6 +180,7 @@ export default function QuoteReviewScreen() {
           options={{
             title: "Quote Review",
             headerShown: true,
+            headerTitleAlign: 'center',
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -185,6 +188,7 @@ export default function QuoteReviewScreen() {
             headerTitleStyle: {
               color: theme.colors.text,
             },
+            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           }}
         />
         <View style={styles.center}>
@@ -397,7 +401,7 @@ export default function QuoteReviewScreen() {
         options={{
           title: "Quote Review",
           headerShown: true,
-          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
+          headerTitleAlign: 'center',
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -405,6 +409,7 @@ export default function QuoteReviewScreen() {
           headerTitleStyle: {
             color: theme.colors.text,
           },
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
         }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>

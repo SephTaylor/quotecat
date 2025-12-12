@@ -125,27 +125,29 @@ export default function InvoicesList() {
             setDeletedInvoice(invoice);
             setInvoices((prev) => prev.filter((inv) => inv.id !== invoice.id));
             setShowUndo(true);
-
-            // Auto-dismiss undo after 5 seconds and permanently delete
-            setTimeout(async () => {
-              if (deletedInvoice?.id === invoice.id) {
-                await deleteInvoice(invoice.id);
-                setDeletedInvoice(null);
-                setShowUndo(false);
-              }
-            }, 5000);
+            // Note: actual deletion happens in handleDismissUndo when snackbar auto-dismisses
           },
         },
       ]
     );
-  }, [deletedInvoice]);
+  }, []);
 
-  const handleUndoDelete = useCallback(async () => {
+  const handleUndoDelete = useCallback(() => {
     if (deletedInvoice) {
+      // Restore the invoice to the list
       setInvoices((prev) => [...prev, deletedInvoice]);
       setDeletedInvoice(null);
       setShowUndo(false);
     }
+  }, [deletedInvoice]);
+
+  const handleDismissUndo = useCallback(async () => {
+    // Snackbar is being dismissed (auto or manual) - actually delete the invoice now
+    if (deletedInvoice) {
+      await deleteInvoice(deletedInvoice.id);
+    }
+    setDeletedInvoice(null);
+    setShowUndo(false);
   }, [deletedInvoice]);
 
   const handleExportInvoice = useCallback(async (invoice: Invoice) => {
@@ -384,10 +386,7 @@ export default function InvoicesList() {
           visible={showUndo}
           message={`Deleted invoice ${deletedInvoice?.invoiceNumber}`}
           onUndo={handleUndoDelete}
-          onDismiss={() => {
-            setShowUndo(false);
-            setDeletedInvoice(null);
-          }}
+          onDismiss={handleDismissUndo}
         />
 
         {/* Status Selector Modal */}

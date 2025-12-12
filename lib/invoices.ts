@@ -196,6 +196,9 @@ export async function createInvoiceFromQuote(
     // Copy quote data
     name: quote.name,
     clientName: quote.clientName,
+    clientEmail: quote.clientEmail,
+    clientPhone: quote.clientPhone,
+    clientAddress: quote.clientAddress,
     items: percentage === 100
       ? quote.items
       : quote.items.map(item => ({
@@ -206,6 +209,7 @@ export async function createInvoiceFromQuote(
     materialEstimate: quote.materialEstimate ? quote.materialEstimate * multiplier : undefined,
     overhead: quote.overhead ? quote.overhead * multiplier : undefined,
     markupPercent: quote.markupPercent,
+    taxPercent: quote.taxPercent,
     notes: percentage === 100
       ? quote.notes
       : `${percentage}% Down Payment Invoice${quote.notes ? `\n\n${quote.notes}` : ''}`,

@@ -302,7 +302,11 @@ export default function InvoiceDetailScreen() {
   const markup = invoice.markupPercent
     ? subtotal * (invoice.markupPercent / 100)
     : 0;
-  const total = subtotal + markup;
+  const subtotalWithMarkup = subtotal + markup;
+  const tax = invoice.taxPercent
+    ? subtotalWithMarkup * (invoice.taxPercent / 100)
+    : 0;
+  const total = subtotalWithMarkup + tax;
 
   // Format dates
   const invoiceDate = new Date(invoice.invoiceDate);
@@ -419,6 +423,21 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.editText}>Edit</Text>
             </Pressable>
 
+            {/* Client Contact Details (read-only, from quote) */}
+            {(invoice.clientEmail || invoice.clientPhone || invoice.clientAddress) && (
+              <View style={styles.clientDetails}>
+                {invoice.clientEmail && (
+                  <Text style={styles.clientDetailText}>{invoice.clientEmail}</Text>
+                )}
+                {invoice.clientPhone && (
+                  <Text style={styles.clientDetailText}>{invoice.clientPhone}</Text>
+                )}
+                {invoice.clientAddress && (
+                  <Text style={styles.clientDetailText}>{invoice.clientAddress}</Text>
+                )}
+              </View>
+            )}
+
             <View style={styles.dividerLight} />
 
             {/* Dates */}
@@ -503,6 +522,18 @@ export default function InvoiceDetailScreen() {
                     Markup ({invoice.markupPercent.toFixed(0)}%)
                   </Text>
                   <Text style={styles.costValue}>${markup.toFixed(2)}</Text>
+                </View>
+              </>
+            )}
+
+            {invoice.taxPercent != null && invoice.taxPercent > 0 && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.costRow}>
+                  <Text style={styles.costLabel}>
+                    Tax ({invoice.taxPercent.toFixed(2)}%)
+                  </Text>
+                  <Text style={styles.costValue}>${tax.toFixed(2)}</Text>
                 </View>
               </>
             )}
@@ -937,6 +968,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     infoPlaceholder: {
       color: theme.colors.muted,
       fontStyle: "italic",
+    },
+    clientDetails: {
+      marginTop: theme.spacing(0.5),
+      marginBottom: theme.spacing(1),
+      paddingLeft: theme.spacing(0.5),
+    },
+    clientDetailText: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      marginBottom: 2,
     },
     editableRow: {
       flexDirection: "row",

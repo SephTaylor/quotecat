@@ -198,3 +198,59 @@ export async function isInvoiceSyncAvailable(): Promise<boolean> {
   const userId = await getCurrentUserId();
   return !!userId;
 }
+
+/**
+ * Get all local invoices including deleted ones (for sync comparison)
+ */
+async function getAllLocalInvoicesIncludingDeleted(): Promise<Invoice[]> {
+  const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+  const INVOICE_STORAGE_KEY = "@quotecat/invoices";
+
+  const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
+  if (!json) return [];
+
+  try {
+    return JSON.parse(json) as Invoice[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Sync invoices - upload local deletions to cloud
+ * This ensures deleted invoices are removed from the cloud
+ */
+export async function syncInvoices(): Promise<{
+  success: boolean;
+  deleted: number;
+}> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.warn("Cannot sync invoices: user not authenticated");
+      return { success: false, deleted: 0 };
+    }
+
+    let deleted = 0;
+
+    // Get all local invoices including deleted ones
+    const allLocalInvoices = await getAllLocalInvoicesIncludingDeleted();
+
+    // Sync any locally deleted invoices to cloud
+    for (const invoice of allLocalInvoices) {
+      if (invoice.deletedAt) {
+        const success = await deleteInvoiceFromCloud(invoice.id);
+        if (success) {
+          deleted++;
+          console.log(`🗑️ Synced invoice deletion to cloud: ${invoice.id}`);
+        }
+      }
+    }
+
+    console.log(`✅ Invoice sync complete: ${deleted} deleted`);
+    return { success: true, deleted };
+  } catch (error) {
+    console.error("Invoice sync error:", error);
+    return { success: false, deleted: 0 };
+  }
+}
