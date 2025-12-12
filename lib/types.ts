@@ -93,11 +93,15 @@ export type Quote = {
   id: ID;
   name: string;
   clientName?: string;
+  clientEmail?: string; // Client email for sending quotes/invoices
+  clientPhone?: string; // Client phone number
+  clientAddress?: string; // Client address (can be multiline)
   items: QuoteItem[];
   labor: number;
   materialEstimate?: number; // Quick estimate for materials without line items
   overhead?: number; // Flat overhead/additional costs
   markupPercent?: number; // Markup percentage applied to subtotal
+  taxPercent?: number; // Tax percentage (e.g., 8.25 for 8.25%)
   currency: CurrencyCode;
   status: QuoteStatus;
   pinned?: boolean; // For favoriting/starring quotes
@@ -193,11 +197,15 @@ export type Invoice = {
   // Quote data (copied at time of invoice creation)
   name: string;
   clientName?: string;
+  clientEmail?: string; // Client email for sending invoices
+  clientPhone?: string; // Client phone number
+  clientAddress?: string; // Client address (can be multiline)
   items: QuoteItem[];
   labor: number;
   materialEstimate?: number;
   overhead?: number;
   markupPercent?: number;
+  taxPercent?: number; // Tax percentage (e.g., 8.25 for 8.25%)
   notes?: string;
 
   // Invoice-specific fields

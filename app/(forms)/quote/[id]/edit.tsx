@@ -19,7 +19,7 @@ import {
   useRouter,
 } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View, KeyboardAvoidingView, Platform } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -34,6 +34,9 @@ export default function EditQuote() {
   const [, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientAddress, setClientAddress] = useState("");
   const [labor, setLabor] = useState<string>(""); // empty string to show placeholder
   const [materialEstimate, setMaterialEstimate] = useState<string>(""); // Quick estimate for materials
   const [status, setStatus] = useState<QuoteStatus>("draft");
@@ -41,6 +44,7 @@ export default function EditQuote() {
   const [isNewQuote, setIsNewQuote] = useState(false);
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [markupPercent, setMarkupPercent] = useState<string>(""); // Markup percentage
+  const [taxPercent, setTaxPercent] = useState<string>(""); // Tax percentage
   const [notes, setNotes] = useState<string>(""); // Notes / additional details
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
@@ -61,6 +65,7 @@ export default function EditQuote() {
     const materialsEstimateValue = parseMoney(materialEstimate);
     const laborValue = parseMoney(labor);
     const markupPercentValue = parseFloat(markupPercent) || 0;
+    const taxPercentValue = parseFloat(taxPercent) || 0;
 
     // Subtotal before markup
     const subtotal = materialsFromItems + materialsEstimateValue + laborValue;
@@ -68,8 +73,14 @@ export default function EditQuote() {
     // Calculate markup
     const markupAmount = (subtotal * markupPercentValue) / 100;
 
+    // Subtotal with markup (before tax)
+    const subtotalWithMarkup = subtotal + markupAmount;
+
+    // Calculate tax
+    const taxAmount = (subtotalWithMarkup * taxPercentValue) / 100;
+
     // Final total
-    const total = subtotal + markupAmount;
+    const total = subtotalWithMarkup + taxAmount;
 
     return {
       materialsFromItems,
@@ -77,9 +88,10 @@ export default function EditQuote() {
       laborValue,
       subtotal,
       markupAmount,
+      taxAmount,
       total,
     };
-  }, [items, materialEstimate, labor, markupPercent]);
+  }, [items, materialEstimate, labor, markupPercent, taxPercent]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -88,6 +100,9 @@ export default function EditQuote() {
       setQuote(q);
       setName(q.name || "");
       setClientName(q.clientName || "");
+      setClientEmail(q.clientEmail || "");
+      setClientPhone(q.clientPhone || "");
+      setClientAddress(q.clientAddress || "");
       // Only set labor if it's non-zero, otherwise leave empty to show placeholder
       setLabor(q.labor && q.labor !== 0 ? q.labor.toFixed(2) : "");
       // Load material estimate if present
@@ -96,6 +111,7 @@ export default function EditQuote() {
       setPinned(q.pinned || false);
       setItems(q.items ?? []);
       setMarkupPercent(q.markupPercent && q.markupPercent !== 0 ? q.markupPercent.toString() : "");
+      setTaxPercent(q.taxPercent && q.taxPercent !== 0 ? q.taxPercent.toString() : "");
       setNotes(q.notes || "");
       // Check if this is a newly created empty quote
       setIsNewQuote(!q.name && !q.clientName && q.labor === 0);
@@ -136,9 +152,13 @@ export default function EditQuote() {
       await updateQuote(id, {
         name: name.trim() || "Untitled",
         clientName: clientName.trim() || "Unnamed Client",
+        clientEmail: clientEmail.trim() || undefined,
+        clientPhone: clientPhone.trim() || undefined,
+        clientAddress: clientAddress.trim() || undefined,
         labor: parseMoney(labor),
         materialEstimate: parseMoney(materialEstimate),
         markupPercent: parseFloat(markupPercent) || 0,
+        taxPercent: parseFloat(taxPercent) || 0,
         notes: notes.trim() || undefined,
         status,
         pinned,
@@ -342,9 +362,13 @@ export default function EditQuote() {
               await updateQuote(id, {
                 name: name.trim(),
                 clientName: clientName.trim(),
+                clientEmail: clientEmail.trim() || undefined,
+                clientPhone: clientPhone.trim() || undefined,
+                clientAddress: clientAddress.trim() || undefined,
                 labor: parseMoney(labor),
                 materialEstimate: parseMoney(materialEstimate),
                 markupPercent: parseFloat(markupPercent) || 0,
+                taxPercent: parseFloat(taxPercent) || 0,
                 notes: notes.trim() || undefined,
                 status,
                 pinned,
@@ -407,6 +431,40 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(2) }} />
 
+        <Text style={styles.label}>Client email</Text>
+        <FormInput
+          placeholder="client@example.com"
+          value={clientEmail}
+          onChangeText={setClientEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Client phone</Text>
+        <FormInput
+          placeholder="(555) 123-4567"
+          value={clientPhone}
+          onChangeText={setClientPhone}
+          keyboardType="phone-pad"
+        />
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Client address</Text>
+        <FormInput
+          placeholder="123 Main St, City, State ZIP"
+          value={clientAddress}
+          onChangeText={setClientAddress}
+          multiline
+          numberOfLines={2}
+          style={{ height: 60, textAlignVertical: "top" }}
+        />
+
+        <View style={{ height: theme.spacing(2) }} />
+
         <Text style={styles.h2}>Items</Text>
 
         <View style={{ height: theme.spacing(2) }} />
@@ -448,9 +506,13 @@ export default function EditQuote() {
               const quoteData = {
                 name: name.trim() || "Untitled",
                 clientName: clientName.trim() || "Unnamed Client",
+                clientEmail: clientEmail.trim() || undefined,
+                clientPhone: clientPhone.trim() || undefined,
+                clientAddress: clientAddress.trim() || undefined,
                 labor: parseMoney(labor),
                 materialEstimate: parseMoney(materialEstimate),
                 markupPercent: parseFloat(markupPercent) || 0,
+                taxPercent: parseFloat(taxPercent) || 0,
                 notes: notes.trim() || undefined,
                 status,
                 pinned,
@@ -491,9 +553,13 @@ export default function EditQuote() {
               await updateQuote(id, {
                 name: name.trim() || "Untitled",
                 clientName: clientName.trim(),
+                clientEmail: clientEmail.trim() || undefined,
+                clientPhone: clientPhone.trim() || undefined,
+                clientAddress: clientAddress.trim() || undefined,
                 labor: parseMoney(labor),
                 materialEstimate: parseMoney(materialEstimate),
                 markupPercent: parseFloat(markupPercent) || 0,
+                taxPercent: parseFloat(taxPercent) || 0,
                 notes: notes.trim() || undefined,
                 status,
                 pinned,
@@ -580,6 +646,29 @@ export default function EditQuote() {
           <Text style={styles.inputSuffix}>%</Text>
         </View>
 
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Tax Percentage</Text>
+        <View style={styles.inputWithSuffix}>
+          <FormInput
+            placeholder="0"
+            value={taxPercent}
+            onChangeText={(text) => {
+              // Only allow numbers and one decimal point
+              const cleaned = text.replace(/[^0-9.]/g, "");
+              const parts = cleaned.split(".");
+              if (parts.length > 2) {
+                setTaxPercent(parts[0] + "." + parts.slice(1).join(""));
+              } else {
+                setTaxPercent(cleaned);
+              }
+            }}
+            keyboardType="decimal-pad"
+            style={styles.inputWithSuffixField}
+          />
+          <Text style={styles.inputSuffix}>%</Text>
+        </View>
+
         <View style={{ height: theme.spacing(3) }} />
 
         <View style={styles.totalsCard}>
@@ -627,6 +716,17 @@ export default function EditQuote() {
               </Text>
               <Text style={styles.totalsValue}>
                 ${calculations.markupAmount.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
+          {calculations.taxAmount > 0 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>
+                Tax ({taxPercent}%)
+              </Text>
+              <Text style={styles.totalsValue}>
+                ${calculations.taxAmount.toFixed(2)}
               </Text>
             </View>
           )}

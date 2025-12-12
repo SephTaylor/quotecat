@@ -31,10 +31,13 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
   const labor = quote.labor ?? 0;
   const overhead = quote.overhead ?? 0;
   const markupPercent = quote.markupPercent ?? 0;
+  const taxPercent = quote.taxPercent ?? 0;
 
   const subtotal = materialsFromItems + materialEstimate + labor + overhead;
   const markupAmount = (subtotal * markupPercent) / 100;
-  const grandTotal = subtotal + markupAmount;
+  const subtotalWithMarkup = subtotal + markupAmount;
+  const taxAmount = (subtotalWithMarkup * taxPercent) / 100;
+  const grandTotal = subtotalWithMarkup + taxAmount;
 
   const dateString = new Date(quote.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -228,6 +231,9 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
       <div class="header">
         <div class="project-name">${quote.name || 'Untitled Quote'}</div>
         ${quote.clientName ? `<div class="client-name">For: ${quote.clientName}</div>` : ''}
+        ${quote.clientEmail ? `<div class="date">Email: ${quote.clientEmail}</div>` : ''}
+        ${quote.clientPhone ? `<div class="date">Phone: ${quote.clientPhone}</div>` : ''}
+        ${quote.clientAddress ? `<div class="date">${quote.clientAddress.replace(/\n/g, '<br>')}</div>` : ''}
         <div class="date">${dateString}</div>
       </div>
 
@@ -270,6 +276,24 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
               <tr>
                 <td class="label">Labor</td>
                 <td class="value">$${labor.toFixed(2)}</td>
+              </tr>
+            ` : ''}
+            ${overhead > 0 ? `
+              <tr>
+                <td class="label">Overhead</td>
+                <td class="value">$${overhead.toFixed(2)}</td>
+              </tr>
+            ` : ''}
+            ${markupPercent > 0 ? `
+              <tr>
+                <td class="label">Markup (${markupPercent}%)</td>
+                <td class="value">$${markupAmount.toFixed(2)}</td>
+              </tr>
+            ` : ''}
+            ${taxPercent > 0 ? `
+              <tr>
+                <td class="label">Tax (${taxPercent}%)</td>
+                <td class="value">$${taxAmount.toFixed(2)}</td>
               </tr>
             ` : ''}
             <tr class="total-row">
@@ -399,10 +423,13 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
   const labor = invoice.labor ?? 0;
   const overhead = invoice.overhead ?? 0;
   const markupPercent = invoice.markupPercent ?? 0;
+  const taxPercent = invoice.taxPercent ?? 0;
 
   const subtotal = materialsFromItems + materialEstimate + labor + overhead;
   const markupAmount = (subtotal * markupPercent) / 100;
-  const grandTotal = subtotal + markupAmount;
+  const subtotalWithMarkup = subtotal + markupAmount;
+  const taxAmount = (subtotalWithMarkup * taxPercent) / 100;
+  const grandTotal = subtotalWithMarkup + taxAmount;
 
   const invoiceDateString = new Date(invoice.invoiceDate).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -665,6 +692,9 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         </div>
         <div class="project-name">${invoice.name || 'Untitled Invoice'}</div>
         ${invoice.clientName ? `<div class="client-name">Bill To: ${invoice.clientName}</div>` : ''}
+        ${invoice.clientEmail ? `<div style="font-size: 14px; color: #666; margin-bottom: 4px;">Email: ${invoice.clientEmail}</div>` : ''}
+        ${invoice.clientPhone ? `<div style="font-size: 14px; color: #666; margin-bottom: 4px;">Phone: ${invoice.clientPhone}</div>` : ''}
+        ${invoice.clientAddress ? `<div style="font-size: 14px; color: #666; margin-bottom: 8px;">${invoice.clientAddress.replace(/\n/g, '<br>')}</div>` : ''}
         <div class="date-row">
           <div class="date-item">
             <div class="date-label">Invoice Date</div>
@@ -728,6 +758,12 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
               <tr>
                 <td class="label">Markup (${markupPercent}%)</td>
                 <td class="value">$${markupAmount.toFixed(2)}</td>
+              </tr>
+            ` : ''}
+            ${taxPercent > 0 ? `
+              <tr>
+                <td class="label">Tax (${taxPercent}%)</td>
+                <td class="value">$${taxAmount.toFixed(2)}</td>
               </tr>
             ` : ''}
             <tr class="total-row">
