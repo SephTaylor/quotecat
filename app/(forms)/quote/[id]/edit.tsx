@@ -131,7 +131,12 @@ export default function EditQuote() {
       setTaxPercent(q.taxPercent && q.taxPercent !== 0 ? q.taxPercent.toString() : "");
       setNotes(q.notes || "");
       // Check if this is a newly created empty quote
-      setIsNewQuote(!q.name && !q.clientName && q.labor === 0);
+      // Consider it "new" if name is empty or just "Untitled", client is empty or "Unnamed Client",
+      // labor is 0, and there are no items
+      const isDefaultName = !q.name || q.name === "Untitled";
+      const isDefaultClient = !q.clientName || q.clientName === "Unnamed Client";
+      const hasNoItems = !q.items || q.items.length === 0;
+      setIsNewQuote(isDefaultName && isDefaultClient && q.labor === 0 && hasNoItems);
     }
   }, [id]);
 
@@ -160,7 +165,10 @@ export default function EditQuote() {
 
   const handleGoBack = async () => {
     // If this is a new quote that hasn't been modified, delete it
-    if (isNewQuote && !name.trim() && !clientName.trim() && !labor.trim()) {
+    // Check all fields including items to determine if the quote is truly empty
+    const isNameEmpty = !name.trim() || name.trim() === "Untitled";
+    const isClientEmpty = !clientName.trim() || clientName.trim() === "Unnamed Client";
+    if (isNewQuote && isNameEmpty && isClientEmpty && !labor.trim() && items.length === 0) {
       if (id) {
         await deleteQuote(id);
       }
@@ -325,7 +333,10 @@ export default function EditQuote() {
   useEffect(() => {
     return () => {
       // Only cleanup on unmount, not on every re-render
-      if (isNewQuote && !name.trim() && !clientName.trim() && !labor.trim()) {
+      // Check all fields including items to determine if the quote is truly empty
+      const isNameEmpty = !name.trim() || name.trim() === "Untitled";
+      const isClientEmpty = !clientName.trim() || clientName.trim() === "Unnamed Client";
+      if (isNewQuote && isNameEmpty && isClientEmpty && !labor.trim() && items.length === 0) {
         if (id) {
           deleteQuote(id).catch(() => {
             // Silently handle error on cleanup
