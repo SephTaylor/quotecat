@@ -153,18 +153,8 @@ export default function AssembliesScreen() {
           options={{
             title: "Assembly Library",
             headerShown: true,
-            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
-            headerBackTitle: quoteId ? "Quote" : "Back",
-            headerLeft: quoteId ? () => (
-              <Pressable
-                onPress={() => router.back()}
-                style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
-              >
-                <Text style={{ fontSize: 17, color: theme.colors.accent }}>
-                  ‹ Quote
-                </Text>
-              </Pressable>
-            ) : undefined,
+            headerTitleAlign: 'center',
+            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -191,18 +181,8 @@ export default function AssembliesScreen() {
           options={{
             title: "Assembly Library",
             headerShown: true,
-            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
-            headerBackTitle: quoteId ? "Quote" : "Back",
-            headerLeft: quoteId ? () => (
-              <Pressable
-                onPress={() => router.back()}
-                style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
-              >
-                <Text style={{ fontSize: 17, color: theme.colors.accent }}>
-                  ‹ Quote
-                </Text>
-              </Pressable>
-            ) : undefined,
+            headerTitleAlign: 'center',
+            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
@@ -273,18 +253,8 @@ export default function AssembliesScreen() {
         options={{
           title: "Assembly Library",
           headerShown: true,
-          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
-          headerBackTitle: quoteId ? "Quote" : "Back",
-          headerLeft: quoteId ? () => (
-            <Pressable
-              onPress={() => router.back()}
-              style={{ paddingLeft: 16, paddingVertical: 8, backgroundColor: 'transparent' }}
-            >
-              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
-                ‹ Quote
-              </Text>
-            </Pressable>
-          ) : undefined,
+          headerTitleAlign: 'center',
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },

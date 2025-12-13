@@ -30,6 +30,7 @@ export default function AuthCallbackScreen() {
 
   useEffect(() => {
     handleDeepLink();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDeepLink = async () => {

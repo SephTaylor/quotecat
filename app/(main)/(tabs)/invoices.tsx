@@ -174,7 +174,7 @@ export default function InvoicesList() {
       await updateInvoice(editingStatusForInvoice.id, { status: newStatus });
       await load();
       setEditingStatusForInvoice(null);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update status");
     }
   }, [editingStatusForInvoice, load]);
@@ -202,22 +202,10 @@ export default function InvoicesList() {
       await load();
 
       Alert.alert("Success", "Invoice copied successfully");
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to copy invoice");
     }
   }, [load]);
-
-  const handleCreateInvoice = useCallback(() => {
-    if (availableQuotes.length === 0) {
-      Alert.alert(
-        "No Quotes Available",
-        "You need approved or completed quotes to create invoices. Go to the Quotes screen to create quotes first.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-    setShowQuotePicker(true);
-  }, [availableQuotes]);
 
   const handleSelectQuote = useCallback(async (quote: Quote) => {
     try {
@@ -225,7 +213,7 @@ export default function InvoicesList() {
       const newInvoice = await createInvoiceFromQuote(quote.id);
       await load();
       router.push(`/invoice/${newInvoice.id}` as any);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to create invoice");
     }
   }, [load, router]);

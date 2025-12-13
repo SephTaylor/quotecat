@@ -4,7 +4,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } from "@react-navigation/drawer";
-import { View, Text, StyleSheet, Pressable, Alert, Linking, Image } from "react-native";
+import { View, Text, StyleSheet, Pressable, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { createNewQuote } from "@/lib/quotes";
 import { signOut as authSignOut, getCurrentUserEmail, isAuthenticated } from "@/lib/auth";

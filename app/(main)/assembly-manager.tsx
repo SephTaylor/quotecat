@@ -299,7 +299,7 @@ export default function AssemblyManager() {
                         </View>
                         <Text style={styles.assemblyMeta}>
                           {(() => {
-                            const totalQty = item.items.reduce((sum, i) => sum + (typeof i.qty === 'number' ? i.qty : 0), 0);
+                            const totalQty = item.items.reduce((sum, i) => sum + ("qty" in i ? i.qty : 0), 0);
                             return `${totalQty} item${totalQty !== 1 ? "s" : ""} (${item.items.length} product${item.items.length !== 1 ? "s" : ""})`;
                           })()}
                         </Text>

@@ -12,7 +12,6 @@ import {
   resetPreferences,
   type DashboardPreferences,
   type UserPreferences,
-  type NotificationPreferences,
 } from "@/lib/preferences";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -31,13 +30,11 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
-import { signOut } from "@/lib/auth";
 import {
   syncQuotes,
   getLastSyncTime,
   isSyncAvailable,
   downloadQuotes,
-  hasMigrated,
   resetSyncMetadata
 } from "@/lib/quotesSync";
 import { listQuotes } from "@/lib/quotes";

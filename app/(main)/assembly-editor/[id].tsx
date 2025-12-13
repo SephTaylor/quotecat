@@ -140,7 +140,7 @@ export default function AssemblyEditorScreen() {
 
       // Add existing items
       existingItems.forEach((item) => {
-        if (typeof item.qty === "number") {
+        if ("qty" in item) {
           mergedMap.set(item.productId, item.qty);
         }
       });
@@ -148,7 +148,7 @@ export default function AssemblyEditorScreen() {
       // Merge in newly selected items (add quantities)
       newlySelectedItems.forEach((item) => {
         const current = mergedMap.get(item.productId) || 0;
-        mergedMap.set(item.productId, current + item.qty);
+        mergedMap.set(item.productId, current + ("qty" in item ? item.qty : 0));
       });
 
       // Convert back to array
@@ -256,8 +256,8 @@ export default function AssemblyEditorScreen() {
               <View style={styles.indicatorContent}>
                 <View style={styles.indicatorTextContainer}>
                   <Text style={styles.indicatorText}>
-                    Assembly has {assembly.items.reduce((sum, item) => sum + (typeof item.qty === 'number' ? item.qty : 0), 0)}{" "}
-                    item{assembly.items.reduce((sum, item) => sum + (typeof item.qty === 'number' ? item.qty : 0), 0) !== 1 ? "s" : ""}{" "}
+                    Assembly has {assembly.items.reduce((sum, item) => sum + ("qty" in item ? item.qty : 0), 0)}{" "}
+                    item{assembly.items.reduce((sum, item) => sum + ("qty" in item ? item.qty : 0), 0) !== 1 ? "s" : ""}{" "}
                     ({assembly.items.length} product{assembly.items.length !== 1 ? "s" : ""})
                   </Text>
                 </View>
@@ -293,7 +293,7 @@ export default function AssemblyEditorScreen() {
                   const product = products.find((p) => p.id === item.productId);
                   if (!product) return null;
 
-                  const qty = typeof item.qty === 'number' ? item.qty : 0;
+                  const qty = "qty" in item ? item.qty : 0;
                   const isLast = index === assembly.items.length - 1;
 
                   return (
@@ -312,10 +312,10 @@ export default function AssemblyEditorScreen() {
                             const updatedItems = assembly.items
                               .map((i) =>
                                 i.productId === item.productId
-                                  ? { ...i, qty: (typeof i.qty === 'number' ? i.qty : 0) - 1 }
+                                  ? { ...i, qty: ("qty" in i ? i.qty : 0) - 1 }
                                   : i
                               )
-                              .filter((i) => (typeof i.qty === 'number' ? i.qty : 0) > 0);
+                              .filter((i) => ("qty" in i ? i.qty : 0) > 0);
 
                             setAssembly({ ...assembly, items: updatedItems });
                           }}
@@ -329,7 +329,7 @@ export default function AssemblyEditorScreen() {
                             // Increment quantity
                             const updatedItems = assembly.items.map((i) =>
                               i.productId === item.productId
-                                ? { ...i, qty: (typeof i.qty === 'number' ? i.qty : 0) + 1 }
+                                ? { ...i, qty: ("qty" in i ? i.qty : 0) + 1 }
                                 : i
                             );
                             setAssembly({ ...assembly, items: updatedItems });

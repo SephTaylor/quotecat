@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -32,6 +31,7 @@ import { loadPreferences } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
 import { FormScreen } from "@/modules/core/ui";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 
 /**
  * Format phone number as (xxx) xxx-xxxx
@@ -132,7 +132,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { status: newStatus });
       await loadInvoice();
       setEditingStatus(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update status");
     }
   }, [invoice, loadInvoice]);
@@ -171,7 +171,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { dueDate: date.toISOString() });
       await loadInvoice();
       setEditingDueDate(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update due date");
     }
   }, [invoice, loadInvoice]);
@@ -188,7 +188,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { notes: tempNotes });
       await loadInvoice();
       setEditingNotes(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update notes");
     }
   }, [invoice, tempNotes, loadInvoice]);
@@ -209,7 +209,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { clientName: tempClientName });
       await loadInvoice();
       setEditingClientName(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update client name");
     }
   }, [invoice, tempClientName, loadInvoice]);
@@ -226,7 +226,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { clientEmail: tempClientEmail });
       await loadInvoice();
       setEditingClientEmail(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update client email");
     }
   }, [invoice, tempClientEmail, loadInvoice]);
@@ -243,7 +243,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { clientPhone: tempClientPhone });
       await loadInvoice();
       setEditingClientPhone(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update client phone");
     }
   }, [invoice, tempClientPhone, loadInvoice]);
@@ -260,7 +260,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { clientAddress: tempClientAddress });
       await loadInvoice();
       setEditingClientAddress(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update client address");
     }
   }, [invoice, tempClientAddress, loadInvoice]);
@@ -278,7 +278,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { taxPercent: taxValue });
       await loadInvoice();
       setEditingTaxPercent(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update tax percent");
     }
   }, [invoice, tempTaxPercent, loadInvoice]);
@@ -299,7 +299,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { name: tempProjectName });
       await loadInvoice();
       setEditingProjectName(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update project name");
     }
   }, [invoice, tempProjectName, loadInvoice]);
@@ -320,7 +320,7 @@ export default function InvoiceDetailScreen() {
       await updateInvoice(invoice.id, { invoiceNumber: tempInvoiceNumber });
       await loadInvoice();
       setEditingInvoiceNumber(false);
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to update invoice number");
     }
   }, [invoice, tempInvoiceNumber, loadInvoice]);
@@ -420,16 +420,7 @@ export default function InvoiceDetailScreen() {
           title: invoice.invoiceNumber,
           headerShown: true,
           headerTitleAlign: "center",
-          headerLeft: () => (
-            <Pressable
-              onPress={() => router.back()}
-              style={{ paddingLeft: 16, paddingVertical: 8 }}
-            >
-              <Text style={{ fontSize: 17, color: theme.colors.accent }}>
-                ‹ Back
-              </Text>
-            </Pressable>
-          ),
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -1542,9 +1533,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     inputModal: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
-      padding: theme.spacing(3),
+      padding: theme.spacing(4),
       width: "100%",
       maxWidth: 400,
+      minWidth: 300,
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
@@ -1597,10 +1589,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderWidth: 1,
       borderColor: theme.colors.border,
       paddingHorizontal: theme.spacing(2),
-      paddingVertical: theme.spacing(1.5),
+      paddingVertical: theme.spacing(2),
       fontSize: 16,
       color: theme.colors.text,
-      marginBottom: theme.spacing(2),
+      marginBottom: theme.spacing(3),
+      minHeight: 48,
     },
     modalButtons: {
       flexDirection: "row",
@@ -1608,10 +1601,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     modalButton: {
       flex: 1,
-      paddingVertical: theme.spacing(1.5),
+      paddingVertical: theme.spacing(2),
+      paddingHorizontal: theme.spacing(2),
       borderRadius: theme.radius.md,
       alignItems: "center",
       justifyContent: "center",
+      minHeight: 48,
     },
     modalButtonCancel: {
       backgroundColor: theme.colors.bg,
