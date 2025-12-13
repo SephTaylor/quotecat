@@ -33,6 +33,18 @@ import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
 import { FormScreen } from "@/modules/core/ui";
 
+/**
+ * Format phone number as (xxx) xxx-xxxx
+ */
+function formatPhoneNumber(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  const limited = digits.slice(0, 10);
+  if (limited.length === 0) return "";
+  if (limited.length <= 3) return `(${limited}`;
+  if (limited.length <= 6) return `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
+  return `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
+}
+
 export default function InvoiceDetailScreen() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -46,12 +58,20 @@ export default function InvoiceDetailScreen() {
   const [editingDueDate, setEditingDueDate] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [editingClientName, setEditingClientName] = useState(false);
+  const [editingClientEmail, setEditingClientEmail] = useState(false);
+  const [editingClientPhone, setEditingClientPhone] = useState(false);
+  const [editingClientAddress, setEditingClientAddress] = useState(false);
+  const [editingTaxPercent, setEditingTaxPercent] = useState(false);
   const [editingProjectName, setEditingProjectName] = useState(false);
   const [editingInvoiceNumber, setEditingInvoiceNumber] = useState(false);
   const [editingStatus, setEditingStatus] = useState(false);
   const [tempDueDate, setTempDueDate] = useState<Date>(new Date());
   const [tempNotes, setTempNotes] = useState("");
   const [tempClientName, setTempClientName] = useState("");
+  const [tempClientEmail, setTempClientEmail] = useState("");
+  const [tempClientPhone, setTempClientPhone] = useState("");
+  const [tempClientAddress, setTempClientAddress] = useState("");
+  const [tempTaxPercent, setTempTaxPercent] = useState("");
   const [tempProjectName, setTempProjectName] = useState("");
   const [tempInvoiceNumber, setTempInvoiceNumber] = useState("");
 
@@ -193,6 +213,75 @@ export default function InvoiceDetailScreen() {
       Alert.alert("Error", "Failed to update client name");
     }
   }, [invoice, tempClientName, loadInvoice]);
+
+  const handleEditClientEmail = useCallback(() => {
+    if (!invoice) return;
+    setTempClientEmail(invoice.clientEmail || "");
+    setEditingClientEmail(true);
+  }, [invoice]);
+
+  const handleSaveClientEmail = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      await updateInvoice(invoice.id, { clientEmail: tempClientEmail });
+      await loadInvoice();
+      setEditingClientEmail(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update client email");
+    }
+  }, [invoice, tempClientEmail, loadInvoice]);
+
+  const handleEditClientPhone = useCallback(() => {
+    if (!invoice) return;
+    setTempClientPhone(invoice.clientPhone || "");
+    setEditingClientPhone(true);
+  }, [invoice]);
+
+  const handleSaveClientPhone = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      await updateInvoice(invoice.id, { clientPhone: tempClientPhone });
+      await loadInvoice();
+      setEditingClientPhone(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update client phone");
+    }
+  }, [invoice, tempClientPhone, loadInvoice]);
+
+  const handleEditClientAddress = useCallback(() => {
+    if (!invoice) return;
+    setTempClientAddress(invoice.clientAddress || "");
+    setEditingClientAddress(true);
+  }, [invoice]);
+
+  const handleSaveClientAddress = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      await updateInvoice(invoice.id, { clientAddress: tempClientAddress });
+      await loadInvoice();
+      setEditingClientAddress(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update client address");
+    }
+  }, [invoice, tempClientAddress, loadInvoice]);
+
+  const handleEditTaxPercent = useCallback(() => {
+    if (!invoice) return;
+    setTempTaxPercent(invoice.taxPercent?.toString() || "");
+    setEditingTaxPercent(true);
+  }, [invoice]);
+
+  const handleSaveTaxPercent = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      const taxValue = parseFloat(tempTaxPercent) || 0;
+      await updateInvoice(invoice.id, { taxPercent: taxValue });
+      await loadInvoice();
+      setEditingTaxPercent(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update tax percent");
+    }
+  }, [invoice, tempTaxPercent, loadInvoice]);
 
   const handleEditProjectName = useCallback(() => {
     if (!invoice) return;
@@ -423,20 +512,45 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.editText}>Edit</Text>
             </Pressable>
 
-            {/* Client Contact Details (read-only, from quote) */}
-            {(invoice.clientEmail || invoice.clientPhone || invoice.clientAddress) && (
-              <View style={styles.clientDetails}>
-                {invoice.clientEmail && (
-                  <Text style={styles.clientDetailText}>{invoice.clientEmail}</Text>
-                )}
-                {invoice.clientPhone && (
-                  <Text style={styles.clientDetailText}>{invoice.clientPhone}</Text>
-                )}
-                {invoice.clientAddress && (
-                  <Text style={styles.clientDetailText}>{invoice.clientAddress}</Text>
-                )}
+            {/* Client Contact Details - Editable */}
+            <Pressable
+              style={styles.editableRow}
+              onPress={handleEditClientEmail}
+            >
+              <View style={styles.editableRowContent}>
+                <Text style={styles.infoLabel}>Email</Text>
+                <Text style={[styles.infoValue, !invoice.clientEmail && styles.infoPlaceholder]}>
+                  {invoice.clientEmail || "Tap to add"}
+                </Text>
               </View>
-            )}
+              <Text style={styles.editText}>Edit</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.editableRow}
+              onPress={handleEditClientPhone}
+            >
+              <View style={styles.editableRowContent}>
+                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={[styles.infoValue, !invoice.clientPhone && styles.infoPlaceholder]}>
+                  {invoice.clientPhone || "Tap to add"}
+                </Text>
+              </View>
+              <Text style={styles.editText}>Edit</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.editableRow}
+              onPress={handleEditClientAddress}
+            >
+              <View style={styles.editableRowContent}>
+                <Text style={styles.infoLabel}>Address</Text>
+                <Text style={[styles.infoValue, !invoice.clientAddress && styles.infoPlaceholder]}>
+                  {invoice.clientAddress || "Tap to add"}
+                </Text>
+              </View>
+              <Text style={styles.editText}>Edit</Text>
+            </Pressable>
 
             <View style={styles.dividerLight} />
 
@@ -526,17 +640,16 @@ export default function InvoiceDetailScreen() {
               </>
             )}
 
-            {invoice.taxPercent != null && invoice.taxPercent > 0 && (
-              <>
-                <View style={styles.divider} />
-                <View style={styles.costRow}>
-                  <Text style={styles.costLabel}>
-                    Tax ({invoice.taxPercent.toFixed(2)}%)
-                  </Text>
-                  <Text style={styles.costValue}>${tax.toFixed(2)}</Text>
-                </View>
-              </>
-            )}
+            <View style={styles.divider} />
+            <Pressable style={styles.costRow} onPress={handleEditTaxPercent}>
+              <View style={styles.costRowLeft}>
+                <Text style={styles.costLabel}>
+                  Tax ({invoice.taxPercent?.toFixed(2) || "0.00"}%)
+                </Text>
+                <Text style={styles.editTextSmall}>Edit</Text>
+              </View>
+              <Text style={styles.costValue}>${tax.toFixed(2)}</Text>
+            </Pressable>
           </View>
 
           {/* Notes */}
@@ -808,6 +921,220 @@ export default function InvoiceDetailScreen() {
                     <Pressable
                       style={[styles.modalButton, styles.modalButtonSave]}
                       onPress={handleSaveClientName}
+                    >
+                      <Text style={styles.modalButtonSaveText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Client Email Editor */}
+        <Modal
+          visible={editingClientEmail}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingClientEmail(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlayCentered}
+          >
+            <Pressable
+              style={styles.modalOverlayInner}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingClientEmail(false);
+              }}
+            >
+              <View style={styles.inputModalContainer}>
+                <Pressable
+                  style={styles.inputModal}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <Text style={styles.modalTitleCentered}>Client Email</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={tempClientEmail}
+                    onChangeText={setTempClientEmail}
+                    placeholder="client@example.com"
+                    placeholderTextColor={theme.colors.muted}
+                    autoFocus={Platform.OS === 'ios'}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonCancel]}
+                      onPress={() => setEditingClientEmail(false)}
+                    >
+                      <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonSave]}
+                      onPress={handleSaveClientEmail}
+                    >
+                      <Text style={styles.modalButtonSaveText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Client Phone Editor */}
+        <Modal
+          visible={editingClientPhone}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingClientPhone(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlayCentered}
+          >
+            <Pressable
+              style={styles.modalOverlayInner}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingClientPhone(false);
+              }}
+            >
+              <View style={styles.inputModalContainer}>
+                <Pressable
+                  style={styles.inputModal}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <Text style={styles.modalTitleCentered}>Client Phone</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={tempClientPhone}
+                    onChangeText={(text) => setTempClientPhone(formatPhoneNumber(text))}
+                    placeholder="(555) 123-4567"
+                    placeholderTextColor={theme.colors.muted}
+                    autoFocus={Platform.OS === 'ios'}
+                    keyboardType="phone-pad"
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonCancel]}
+                      onPress={() => setEditingClientPhone(false)}
+                    >
+                      <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonSave]}
+                      onPress={handleSaveClientPhone}
+                    >
+                      <Text style={styles.modalButtonSaveText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Client Address Editor */}
+        <Modal
+          visible={editingClientAddress}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingClientAddress(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlayCentered}
+          >
+            <Pressable
+              style={styles.modalOverlayInner}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingClientAddress(false);
+              }}
+            >
+              <View style={styles.inputModalContainer}>
+                <Pressable
+                  style={styles.inputModal}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <Text style={styles.modalTitleCentered}>Client Address</Text>
+                  <TextInput
+                    style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]}
+                    value={tempClientAddress}
+                    onChangeText={setTempClientAddress}
+                    placeholder="123 Main St, City, State ZIP"
+                    placeholderTextColor={theme.colors.muted}
+                    autoFocus={Platform.OS === 'ios'}
+                    multiline
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonCancel]}
+                      onPress={() => setEditingClientAddress(false)}
+                    >
+                      <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonSave]}
+                      onPress={handleSaveClientAddress}
+                    >
+                      <Text style={styles.modalButtonSaveText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Tax Percent Editor */}
+        <Modal
+          visible={editingTaxPercent}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingTaxPercent(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlayCentered}
+          >
+            <Pressable
+              style={styles.modalOverlayInner}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingTaxPercent(false);
+              }}
+            >
+              <View style={styles.inputModalContainer}>
+                <Pressable
+                  style={styles.inputModal}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <Text style={styles.modalTitleCentered}>Tax Percentage</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={tempTaxPercent}
+                    onChangeText={setTempTaxPercent}
+                    placeholder="0.00"
+                    placeholderTextColor={theme.colors.muted}
+                    autoFocus={Platform.OS === 'ios'}
+                    keyboardType="decimal-pad"
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonCancel]}
+                      onPress={() => setEditingTaxPercent(false)}
+                    >
+                      <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonSave]}
+                      onPress={handleSaveTaxPercent}
                     >
                       <Text style={styles.modalButtonSaveText}>Save</Text>
                     </Pressable>
@@ -1093,7 +1420,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     costRow: {
       flexDirection: "row",
       justifyContent: "space-between",
+      alignItems: "center",
       paddingVertical: theme.spacing(1),
+    },
+    costRowLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
     },
     costLabel: {
       fontSize: 14,
