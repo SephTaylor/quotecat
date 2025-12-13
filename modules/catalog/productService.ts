@@ -2,7 +2,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
 import type { Product, Category } from "./seed";
-import { PRODUCTS_SEED, CATEGORIES as SEED_CATEGORIES } from "./seed";
 import { PRODUCT_KEYS, CATEGORY_KEYS } from "@/lib/storageKeys";
 
 const STORAGE_KEY = PRODUCT_KEYS.CACHE;
@@ -12,7 +11,6 @@ const CATEGORY_STORAGE_KEY = CATEGORY_KEYS.CACHE;
 // In-memory cache to avoid repeated AsyncStorage reads
 let inMemoryProductCache: Product[] | null = null;
 let inMemoryCategoryCache: Category[] | null = null;
-let hasMergedSeedProducts = false;
 
 type ProductCache = {
   data: Product[];
@@ -28,7 +26,7 @@ type CategoryCache = {
 /**
  * Get products from local cache (offline-first).
  * Uses in-memory cache for fast repeated access.
- * Automatically merges new seed products with existing cache (once per session).
+ * Returns empty array if no cache exists - call syncProducts() to populate.
  */
 export async function getProducts(): Promise<Product[]> {
   // Return in-memory cache if available (fast path)
@@ -40,36 +38,27 @@ export async function getProducts(): Promise<Product[]> {
     const cached = await AsyncStorage.getItem(STORAGE_KEY);
     if (cached) {
       const cache: ProductCache = JSON.parse(cached);
-
-      // Merge new seed products only once per session
-      if (!hasMergedSeedProducts) {
-        const mergeResult = await mergeSeedProducts(cache);
-        hasMergedSeedProducts = true;
-
-        if (mergeResult) {
-          // Re-read only if merge actually added new products
-          const updated = await AsyncStorage.getItem(STORAGE_KEY);
-          if (updated) {
-            const updatedCache: ProductCache = JSON.parse(updated);
-            inMemoryProductCache = updatedCache.data;
-            return inMemoryProductCache;
-          }
-        }
-      }
-
       inMemoryProductCache = cache.data;
       return inMemoryProductCache;
     }
 
-    // No cache - use seed data as bootstrap
-    await initializeCache();
-    inMemoryProductCache = getFlattenedSeedProducts();
-    hasMergedSeedProducts = true;
-    return inMemoryProductCache;
+    // No cache - return empty array, user needs to sync
+    return [];
   } catch (error) {
     console.error("Failed to get products from cache:", error);
-    inMemoryProductCache = getFlattenedSeedProducts();
-    return inMemoryProductCache;
+    return [];
+  }
+}
+
+/**
+ * Check if products have been synced (cache exists).
+ */
+export async function hasProductCache(): Promise<boolean> {
+  try {
+    const cached = await AsyncStorage.getItem(STORAGE_KEY);
+    return cached !== null;
+  } catch {
+    return false;
   }
 }
 
@@ -86,9 +75,12 @@ export async function getLastSyncTime(): Promise<Date | null> {
 }
 
 /**
- * Check if sync is needed (>24 hours since last sync).
+ * Check if sync is needed (no cache or >24 hours since last sync).
  */
 export async function needsSync(): Promise<boolean> {
+  const hasCache = await hasProductCache();
+  if (!hasCache) return true;
+
   const lastSync = await getLastSyncTime();
   if (!lastSync) return true;
 
@@ -105,12 +97,12 @@ export async function syncProducts(): Promise<boolean> {
     const { data, error } = await supabase.from("products").select("*");
 
     if (error) {
-      console.error("Supabase sync error:", error);
+      console.error("Cloud sync error:", error);
       return false;
     }
 
     if (!data || data.length === 0) {
-      console.warn("No products from Supabase - using cache");
+      console.warn("No products from cloud");
       return false;
     }
 
@@ -121,6 +113,7 @@ export async function syncProducts(): Promise<boolean> {
       name: row.name,
       unit: row.unit,
       unitPrice: parseFloat(row.unit_price),
+      supplierId: row.supplier_id || undefined,
     }));
 
     // Save to cache
@@ -135,68 +128,15 @@ export async function syncProducts(): Promise<boolean> {
       await AsyncStorage.setItem(SYNC_TIMESTAMP_KEY, cache.lastSync);
     }
 
-    // Invalidate in-memory cache so next getProducts() reads fresh data
+    // Update in-memory cache
     inMemoryProductCache = products;
-    hasMergedSeedProducts = true;
 
-    console.log(`✅ Synced ${products.length} products from Supabase`);
+    console.log(`✅ Synced ${products.length} products from cloud`);
     return true;
   } catch (error) {
     console.error("Failed to sync products:", error);
     return false;
   }
-}
-
-/**
- * Initialize cache with seed data (bootstrap on first launch).
- */
-async function initializeCache(): Promise<void> {
-  const products = getFlattenedSeedProducts();
-
-  const cache: ProductCache = {
-    data: products,
-    lastSync: null, // Never synced
-    version: 1,
-  };
-
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
-  console.log("📦 Initialized cache with seed data");
-}
-
-/**
- * Merge new seed products into existing cache.
- * - Seed products are added if they don't exist (by ID)
- * - Existing products (from Supabase or custom) are preserved
- * Returns true if new products were added, false otherwise.
- */
-async function mergeSeedProducts(cache: ProductCache): Promise<boolean> {
-  const seedProducts = getFlattenedSeedProducts();
-
-  // Build a map of existing IDs
-  const existingIds = new Set(cache.data.map((p) => p.id));
-
-  // Find new seed products
-  const newProducts = seedProducts.filter((s) => !existingIds.has(s.id));
-
-  if (newProducts.length > 0) {
-    // Merge existing + new seed products
-    const merged: ProductCache = {
-      ...cache,
-      data: [...cache.data, ...newProducts],
-    };
-
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-    console.log(`✨ Added ${newProducts.length} new products from seed`);
-    return true;
-  }
-  return false;
-}
-
-/**
- * Flatten PRODUCTS_SEED into a single array.
- */
-function getFlattenedSeedProducts(): Product[] {
-  return Object.values(PRODUCTS_SEED).flat();
 }
 
 /**
@@ -246,6 +186,7 @@ export async function refreshProducts(): Promise<boolean> {
 /**
  * Get categories from local cache (offline-first).
  * Uses in-memory cache for fast repeated access.
+ * Returns empty array if no cache exists - call syncCategories() to populate.
  */
 export async function getCategories(): Promise<Category[]> {
   // Return in-memory cache if available (fast path)
@@ -260,13 +201,11 @@ export async function getCategories(): Promise<Category[]> {
       inMemoryCategoryCache = cache.data;
       return inMemoryCategoryCache;
     }
-    // No cache - use seed categories as bootstrap
-    inMemoryCategoryCache = SEED_CATEGORIES;
-    return inMemoryCategoryCache;
+    // No cache - return empty array
+    return [];
   } catch (error) {
     console.error("Failed to get categories from cache:", error);
-    inMemoryCategoryCache = SEED_CATEGORIES;
-    return inMemoryCategoryCache;
+    return [];
   }
 }
 
@@ -282,12 +221,12 @@ export async function syncCategories(): Promise<boolean> {
       .order("sort_order", { ascending: true });
 
     if (error) {
-      console.error("Supabase category sync error:", error);
+      console.error("Cloud category sync error:", error);
       return false;
     }
 
     if (!data || data.length === 0) {
-      console.warn("No categories from Supabase - using cache");
+      console.warn("No categories from cloud");
       return false;
     }
 
@@ -308,7 +247,7 @@ export async function syncCategories(): Promise<boolean> {
     // Update in-memory cache
     inMemoryCategoryCache = categories;
 
-    console.log(`✅ Synced ${categories.length} categories from Supabase`);
+    console.log(`✅ Synced ${categories.length} categories from cloud`);
     return true;
   } catch (error) {
     console.error("Failed to sync categories:", error);
@@ -327,7 +266,6 @@ export async function clearProductCache(): Promise<void> {
   // Clear in-memory caches
   inMemoryProductCache = null;
   inMemoryCategoryCache = null;
-  hasMergedSeedProducts = false;
 
   console.log("🗑️ Cleared product cache");
 }

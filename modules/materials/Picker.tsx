@@ -1,6 +1,6 @@
 // modules/materials/Picker.tsx
 import { useTheme } from "@/contexts/ThemeContext";
-import type { Product } from "@/modules/catalog/seed";
+import { type Product, SUPPLIER_NAMES } from "@/modules/catalog/seed";
 import React, { useState, useRef, useCallback, memo, useMemo } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View, ScrollView, RefreshControl, Keyboard } from "react-native";
 import { FlashList } from "@shopify/flash-list";
@@ -58,7 +58,8 @@ const ProductRow = memo(function ProductRow({
       <View style={styles.itemMeta}>
         <Text style={styles.itemName}>{product.name}</Text>
         <Text style={styles.itemSub}>
-          {product.unitPrice.toFixed(2)} / {product.unit}
+          ${product.unitPrice.toFixed(2)}/{product.unit}
+          {product.supplierId && SUPPLIER_NAMES[product.supplierId] && ` · ${SUPPLIER_NAMES[product.supplierId]}`}
         </Text>
       </View>
 
