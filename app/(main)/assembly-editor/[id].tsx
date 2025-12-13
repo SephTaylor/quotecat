@@ -4,7 +4,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { getAssemblyById, saveAssembly } from "@/modules/assemblies";
 import type { Assembly, AssemblyItem } from "@/modules/assemblies";
 import { useProducts } from "@/modules/catalog";
-import { CATEGORIES } from "@/modules/catalog/seed";
 import type { Product } from "@/modules/catalog/seed";
 import { BottomBar, Button, FormInput } from "@/modules/core/ui";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -25,7 +24,7 @@ export default function AssemblyEditorScreen() {
   const assemblyId = params.id;
   const router = useRouter();
   const { theme } = useTheme();
-  const { products, loading: productsLoading } = useProducts();
+  const { products, categories, loading: productsLoading } = useProducts();
 
   const [loading, setLoading] = useState(true);
   const [assembly, setAssembly] = useState<Assembly | null>(null);
@@ -62,11 +61,11 @@ export default function AssemblyEditorScreen() {
   // Group products by category
   const productsByCategory = useMemo(() => {
     const grouped: Record<string, Product[]> = {};
-    CATEGORIES.forEach((cat) => {
+    categories.forEach((cat) => {
       grouped[cat.id] = products.filter((p) => p.categoryId === cat.id);
     });
     return grouped;
-  }, [products]);
+  }, [products, categories]);
 
   // Filter products by search
   const filteredProducts = useMemo(() => {
@@ -376,7 +375,7 @@ export default function AssemblyEditorScreen() {
               )}
             </View>
           ) : (
-            CATEGORIES.map((category) => {
+            categories.map((category) => {
               const categoryProducts = productsByCategory[category.id] || [];
               const isExpanded = expandedCategories[category.id];
 
