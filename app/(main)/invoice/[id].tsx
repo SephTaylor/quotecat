@@ -1515,8 +1515,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     modalOverlayInner: {
       flex: 1,
       width: "100%",
-      justifyContent: "inherit",
-      alignItems: "inherit",
+      justifyContent: "center",
+      alignItems: "center",
     },
     datePickerModal: {
       backgroundColor: theme.colors.card,

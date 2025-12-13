@@ -169,7 +169,7 @@ export default function SignInScreen() {
               </Pressable>
 
               <View style={styles.footer}>
-                <Text style={styles.footerText}>Don't have an account? </Text>
+                <Text style={styles.footerText}>Don&apos;t have an account? </Text>
                 <Pressable
                   onPress={() => Linking.openURL("https://quotecat.ai")}
                   disabled={loading}

@@ -3,7 +3,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type UserTier = "free" | "pro";
+export type UserTier = "free" | "pro" | "premium";
 
 export type UserState = {
   tier: UserTier;
@@ -143,6 +143,19 @@ export async function activateProTier(email: string): Promise<void> {
   await saveUserState({
     ...state,
     tier: "pro",
+    email,
+    proActivatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Activate Premium tier (called after successful login from website)
+ */
+export async function activatePremiumTier(email: string): Promise<void> {
+  const state = await getUserState();
+  await saveUserState({
+    ...state,
+    tier: "premium",
     email,
     proActivatedAt: new Date().toISOString(),
   });

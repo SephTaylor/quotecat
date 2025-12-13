@@ -1,7 +1,7 @@
 // modules/core/ui/FormScreen.tsx
 import { useTheme } from "@/contexts/ThemeContext";
 import React, { PropsWithChildren, ReactNode } from "react";
-import { ScrollView, StyleSheet, View, ViewStyle, KeyboardAvoidingView, Platform } from "react-native";
+import { ScrollView, StyleSheet, View, ViewStyle, KeyboardAvoidingView, Platform, Keyboard, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = PropsWithChildren<{
@@ -32,15 +32,25 @@ export default function FormScreen({
   const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
+  // Dismiss keyboard when tapping outside input fields
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   const content = scroll ? (
     <ScrollView
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={[styles.content, contentStyle]}
+      onScrollBeginDrag={dismissKeyboard}
     >
-      {children}
+      <Pressable onPress={dismissKeyboard} style={styles.pressableContent}>
+        {children}
+      </Pressable>
     </ScrollView>
   ) : (
-    <View style={[styles.content, contentStyle]}>{children}</View>
+    <Pressable onPress={dismissKeyboard} style={[styles.content, contentStyle]}>
+      {children}
+    </Pressable>
   );
 
   return (
@@ -66,6 +76,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingHorizontal: theme.spacing(2),
       paddingTop: Platform.OS === 'android' ? theme.spacing(1) : theme.spacing(2),
       paddingBottom: theme.spacing(2),
+    },
+    pressableContent: {
+      flexGrow: 1,
     },
     bottomBar: {
       borderTopWidth: 1,

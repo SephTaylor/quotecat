@@ -1,11 +1,11 @@
 import type { Product } from "@/modules/catalog/seed";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Selection } from "./types";
 
 export function useSelection(initial?: Selection) {
   const [selection, setSelection] = useState<Selection>(initial ?? new Map());
 
-  const setQty = (product: Product, qty: number) => {
+  const setQty = useCallback((product: Product, qty: number) => {
     setSelection((prev) => {
       const next = new Map(prev);
       const q = Math.max(0, qty | 0);
@@ -13,15 +13,33 @@ export function useSelection(initial?: Selection) {
       else next.set(product.id, { product, qty: q });
       return next;
     });
-  };
+  }, []);
 
-  const inc = (product: Product, by = 1) =>
-    setQty(product, (selection.get(product.id)?.qty ?? 0) + by);
+  // Use functional update to avoid stale closure
+  const inc = useCallback((product: Product, by = 1) => {
+    setSelection((prev) => {
+      const currentQty = prev.get(product.id)?.qty ?? 0;
+      const next = new Map(prev);
+      const newQty = Math.max(0, currentQty + by);
+      if (newQty === 0) next.delete(product.id);
+      else next.set(product.id, { product, qty: newQty });
+      return next;
+    });
+  }, []);
 
-  const dec = (product: Product, by = 1) =>
-    setQty(product, (selection.get(product.id)?.qty ?? 0) - by);
+  // Use functional update to avoid stale closure
+  const dec = useCallback((product: Product, by = 1) => {
+    setSelection((prev) => {
+      const currentQty = prev.get(product.id)?.qty ?? 0;
+      const next = new Map(prev);
+      const newQty = Math.max(0, currentQty - by);
+      if (newQty === 0) next.delete(product.id);
+      else next.set(product.id, { product, qty: newQty });
+      return next;
+    });
+  }, []);
 
-  const clear = () => setSelection(new Map());
+  const clear = useCallback(() => setSelection(new Map()), []);
 
   const lines = selection.size;
   const units = useMemo(

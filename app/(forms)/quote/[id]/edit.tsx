@@ -540,8 +540,15 @@ export default function EditQuote() {
                 // Update existing quote
                 await updateQuote(id, quoteData);
               } else {
-                // Create new quote
-                await saveQuote({ ...quoteData, id });
+                // Create new quote with required fields
+                const now = new Date().toISOString();
+                await saveQuote({
+                  ...quoteData,
+                  id,
+                  currency: "USD",
+                  createdAt: now,
+                  updatedAt: now,
+                });
               }
 
               router.push(`/quote/${id}/materials`);

@@ -1,8 +1,9 @@
 // modules/materials/Picker.tsx
 import { useTheme } from "@/contexts/ThemeContext";
 import type { Product } from "@/modules/catalog/seed";
-import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View, ScrollView, RefreshControl } from "react-native";
+import React, { useState, useRef, useCallback, memo, useMemo } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View, ScrollView, RefreshControl, Keyboard } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import type { Selection } from "./types";
 
 export type Category = { id: string; name: string };
@@ -12,12 +13,101 @@ export type MaterialsPickerProps = {
   selection: Selection;
   onInc(product: Product): void;
   onDec(product: Product): void;
-  onSetQty(product: Product, qty: number): void; // New: direct quantity setter
-  recentProductIds?: string[]; // Optional: IDs of recently used products
-  lastSync?: Date | null; // Last sync timestamp from Supabase
-  syncing?: boolean; // Is currently syncing
+  onSetQty(product: Product, qty: number): void;
+  recentProductIds?: string[];
+  lastSync?: Date | null;
+  syncing?: boolean;
   refreshControl?: React.ReactElement<typeof RefreshControl>;
 };
+
+// List item types for FlashList
+type ListItem =
+  | { type: "header"; categoryId: string; categoryName: string; count: number }
+  | { type: "product"; product: Product };
+
+// Memoized product row - only re-renders when its specific props change
+type ProductRowProps = {
+  product: Product;
+  qty: number;
+  isEditing: boolean;
+  editingQty: string;
+  onInc: () => void;
+  onDec: () => void;
+  onStartEdit: () => void;
+  onQtyChange: (text: string) => void;
+  onFinishEdit: () => void;
+  styles: ReturnType<typeof createStyles>;
+};
+
+const ProductRow = memo(function ProductRow({
+  product,
+  qty,
+  isEditing,
+  editingQty,
+  onInc,
+  onDec,
+  onStartEdit,
+  onQtyChange,
+  onFinishEdit,
+  styles,
+}: ProductRowProps) {
+  const active = qty > 0;
+
+  return (
+    <View style={[styles.itemRow, active && styles.itemRowActive]}>
+      <View style={styles.itemMeta}>
+        <Text style={styles.itemName}>{product.name}</Text>
+        <Text style={styles.itemSub}>
+          {product.unitPrice.toFixed(2)} / {product.unit}
+        </Text>
+      </View>
+
+      <View style={styles.stepper}>
+        <Pressable style={styles.stepBtn} onPress={onDec}>
+          <Text style={styles.stepText}>–</Text>
+        </Pressable>
+        {isEditing ? (
+          <TextInput
+            style={styles.qtyInput}
+            value={editingQty}
+            onChangeText={onQtyChange}
+            onBlur={onFinishEdit}
+            onSubmitEditing={onFinishEdit}
+            keyboardType="number-pad"
+            returnKeyType="done"
+            autoFocus
+            selectTextOnFocus
+          />
+        ) : (
+          <Pressable onPress={onStartEdit}>
+            <Text style={[styles.qtyText, styles.qtyTextTappable]}>{qty}</Text>
+          </Pressable>
+        )}
+        <Pressable style={styles.stepBtn} onPress={onInc}>
+          <Text style={styles.stepText}>+</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+});
+
+// Category header component
+const CategoryHeader = memo(function CategoryHeader({
+  categoryName,
+  count,
+  styles,
+}: {
+  categoryName: string;
+  count: number;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <View style={styles.catHeader}>
+      <Text style={styles.catTitle}>{categoryName}</Text>
+      <Text style={styles.catCount}>{count}</Text>
+    </View>
+  );
+});
 
 function MaterialsPicker({
   categories,
@@ -27,12 +117,11 @@ function MaterialsPicker({
   onDec,
   onSetQty,
   recentProductIds = [],
-  lastSync = null,
-  syncing = false,
   refreshControl,
 }: MaterialsPickerProps) {
   const { theme } = useTheme();
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const listRef = useRef<FlashList<ListItem>>(null);
 
   // Selected category state
   const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
@@ -41,81 +130,168 @@ function MaterialsPicker({
   const [searchQuery, setSearchQuery] = useState("");
 
   // Sort categories alphabetically by name
-  const sortedCategories = React.useMemo(() => {
+  const sortedCategories = useMemo(() => {
     return [...categories].sort((a, b) => a.name.localeCompare(b.name));
   }, [categories]);
 
   // State for inline editing
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
+  const editingProductRef = useRef<Product | null>(null);
 
   // Handlers for inline quantity editing
-  const handleStartEditingQty = (productId: string) => {
-    setEditingQty(""); // Start empty
+  const handleStartEditingQty = useCallback((productId: string, product: Product) => {
+    editingProductRef.current = product;
+    setEditingQty("");
     setEditingProductId(productId);
-  };
+  }, []);
 
-  const handleQtyChange = (text: string) => {
+  const handleQtyChange = useCallback((text: string) => {
     const cleaned = text.replace(/[^0-9]/g, '');
     setEditingQty(cleaned);
-  };
+  }, []);
 
-  const handleFinishEditingQty = (product: Product) => {
+  const handleFinishEditingQty = useCallback((product: Product) => {
     const newQty = parseInt(editingQty, 10);
     if (!isNaN(newQty) && newQty >= 0) {
       onSetQty(product, newQty);
     }
+    editingProductRef.current = null;
     setEditingProductId(null);
     setEditingQty("");
-  };
+    Keyboard.dismiss();
+  }, [editingQty, onSetQty]);
 
   // Find recently used products from all categories
-  const recentProducts = React.useMemo(() => {
+  const recentProducts = useMemo(() => {
     const allProducts = Object.values(itemsByCategory).flat();
     return recentProductIds
       .map((id) => allProducts.find((p) => p.id === id))
       .filter((p): p is Product => p !== undefined)
-      .slice(0, 5); // Show max 5 recent products
+      .slice(0, 5);
   }, [recentProductIds, itemsByCategory]);
 
-  // Filter products by category and search query
-  const filteredItemsByCategory = React.useMemo(() => {
-    let filtered = itemsByCategory;
+  // Filter products and flatten into list items for FlashList
+  const listData = useMemo(() => {
+    const items: ListItem[] = [];
 
-    // Filter by selected category
-    if (selectedCategory !== "all") {
-      filtered = { [selectedCategory]: itemsByCategory[selectedCategory] || [] };
-    }
+    // Determine which categories to show
+    const categoriesToShow = selectedCategory === "all"
+      ? sortedCategories
+      : sortedCategories.filter(c => c.id === selectedCategory);
 
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const searchFiltered: Record<string, Product[]> = {};
+    for (const cat of categoriesToShow) {
+      let products = itemsByCategory[cat.id] || [];
 
-      Object.entries(filtered).forEach(([catId, products]) => {
-        const matches = products.filter(p =>
+      // Filter by search query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        products = products.filter(p =>
           p.name.toLowerCase().includes(query) ||
           p.id.toLowerCase().includes(query)
         );
-        if (matches.length > 0) {
-          searchFiltered[catId] = matches;
-        }
-      });
+      }
 
-      return searchFiltered;
+      if (products.length === 0) continue;
+
+      // Add category header (only in "all" view)
+      if (selectedCategory === "all") {
+        items.push({
+          type: "header",
+          categoryId: cat.id,
+          categoryName: cat.name,
+          count: products.length,
+        });
+      }
+
+      // Add products
+      for (const product of products) {
+        items.push({ type: "product", product });
+      }
     }
 
-    return filtered;
-  }, [itemsByCategory, selectedCategory, searchQuery]);
+    return items;
+  }, [itemsByCategory, selectedCategory, searchQuery, sortedCategories]);
 
-  // Count total products per category for display
-  const categoryCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {};
-    Object.entries(itemsByCategory).forEach(([catId, products]) => {
-      counts[catId] = products.length;
-    });
-    return counts;
-  }, [itemsByCategory]);
+  // Render item for FlashList
+  const renderItem = useCallback(({ item }: { item: ListItem }) => {
+    if (item.type === "header") {
+      return (
+        <CategoryHeader
+          categoryName={item.categoryName}
+          count={item.count}
+          styles={styles}
+        />
+      );
+    }
+
+    const p = item.product;
+    const qty = selection.get(p.id)?.qty ?? 0;
+    const isEditing = editingProductId === p.id;
+
+    return (
+      <ProductRow
+        product={p}
+        qty={qty}
+        isEditing={isEditing}
+        editingQty={isEditing ? editingQty : ""}
+        onInc={() => onInc(p)}
+        onDec={() => onDec(p)}
+        onStartEdit={() => handleStartEditingQty(p.id, p)}
+        onQtyChange={handleQtyChange}
+        onFinishEdit={() => handleFinishEditingQty(p)}
+        styles={styles}
+      />
+    );
+  }, [selection, editingProductId, editingQty, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, styles]);
+
+  // Key extractor for FlashList
+  const keyExtractor = useCallback((item: ListItem) => {
+    if (item.type === "header") return `header-${item.categoryId}`;
+    return item.product.id;
+  }, []);
+
+  // Get item type for FlashList optimization
+  const getItemType = useCallback((item: ListItem) => item.type, []);
+
+  // Handle scroll begin to finish editing
+  const handleScrollBeginDrag = useCallback(() => {
+    if (editingProductId && editingProductRef.current) {
+      handleFinishEditingQty(editingProductRef.current);
+    }
+  }, [editingProductId, handleFinishEditingQty]);
+
+  // Render recent products section (small list, no need for virtualization)
+  const renderRecentProducts = useCallback(() => {
+    if (recentProducts.length === 0) return null;
+
+    return (
+      <View style={styles.recentCard}>
+        <Text style={styles.recentTitle}>Recently Used</Text>
+        <View style={styles.itemsWrap}>
+          {recentProducts.map((p) => {
+            const qty = selection.get(p.id)?.qty ?? 0;
+            const isEditing = editingProductId === p.id;
+            return (
+              <ProductRow
+                key={p.id}
+                product={p}
+                qty={qty}
+                isEditing={isEditing}
+                editingQty={isEditing ? editingQty : ""}
+                onInc={() => onInc(p)}
+                onDec={() => onDec(p)}
+                onStartEdit={() => handleStartEditingQty(p.id, p)}
+                onQtyChange={handleQtyChange}
+                onFinishEdit={() => handleFinishEditingQty(p)}
+                styles={styles}
+              />
+            );
+          })}
+        </View>
+      </View>
+    );
+  }, [recentProducts, selection, editingProductId, editingQty, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, styles]);
 
   return (
     <View style={styles.container}>
@@ -160,135 +336,29 @@ function MaterialsPicker({
         />
       </View>
 
-      {/* Scrollable Content */}
-      <ScrollView
-        style={styles.scrollContent}
-        contentContainerStyle={styles.scrollContentContainer}
+      {/* Virtualized Product List */}
+      <FlashList
+        ref={listRef}
+        data={listData}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        getItemType={getItemType}
+        estimatedItemSize={56}
+        ListHeaderComponent={renderRecentProducts}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={handleScrollBeginDrag}
         refreshControl={refreshControl}
-        showsVerticalScrollIndicator={true}
-      >
-        {/* Recently Used Section */}
-        {recentProducts.length > 0 && (
-        <View style={styles.recentCard}>
-          <Text style={styles.recentTitle}>⚡ Recently Used</Text>
-          <View style={styles.itemsWrap}>
-            {recentProducts.map((p) => {
-              const q = selection.get(p.id)?.qty ?? 0;
-              const active = q > 0;
-              return (
-                <View
-                  key={p.id}
-                  style={[styles.itemRow, active && styles.itemRowActive]}
-                >
-                  <View style={styles.itemMeta}>
-                    <Text style={styles.itemName}>{p.name}</Text>
-                    <Text style={styles.itemSub}>
-                      {p.unitPrice.toFixed(2)} / {p.unit}
-                    </Text>
-                  </View>
-
-                  <View style={styles.stepper}>
-                    <Pressable
-                      style={styles.stepBtn}
-                      onPress={() => onDec(p)}
-                    >
-                      <Text style={styles.stepText}>–</Text>
-                    </Pressable>
-                    {editingProductId === p.id ? (
-                      <TextInput
-                        style={styles.qtyInput}
-                        value={editingQty}
-                        onChangeText={handleQtyChange}
-                        onBlur={() => handleFinishEditingQty(p)}
-                        keyboardType="number-pad"
-                        autoFocus
-                      />
-                    ) : (
-                      <Pressable onPress={() => handleStartEditingQty(p.id)}>
-                        <Text style={[styles.qtyText, styles.qtyTextTappable]}>{q}</Text>
-                      </Pressable>
-                    )}
-                    <Pressable
-                      style={styles.stepBtn}
-                      onPress={() => onInc(p)}
-                    >
-                      <Text style={styles.stepText}>+</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {/* Products List */}
-      {Object.entries(filteredItemsByCategory).map(([catId, items]) => {
-        if (items.length === 0) return null;
-        const category = categories.find(c => c.id === catId);
-        const categoryName = category?.name || "Products";
-
-        return (
-          <View key={catId} style={styles.catCard}>
-            {selectedCategory === "all" && (
-              <View style={styles.catHeader}>
-                <Text style={styles.catTitle}>{categoryName}</Text>
-                <Text style={styles.catCount}>{items.length}</Text>
-              </View>
-            )}
-
-            <View style={styles.itemsWrap}>
-              {items.map((p) => {
-                const q = selection.get(p.id)?.qty ?? 0;
-                const active = q > 0;
-                return (
-                  <View
-                    key={p.id}
-                    style={[styles.itemRow, active && styles.itemRowActive]}
-                  >
-                    <View style={styles.itemMeta}>
-                      <Text style={styles.itemName}>{p.name}</Text>
-                      <Text style={styles.itemSub}>
-                        {p.unitPrice.toFixed(2)} / {p.unit}
-                      </Text>
-                    </View>
-
-                    <View style={styles.stepper}>
-                      <Pressable
-                        style={styles.stepBtn}
-                        onPress={() => onDec(p)}
-                      >
-                        <Text style={styles.stepText}>–</Text>
-                      </Pressable>
-                      {editingProductId === p.id ? (
-                        <TextInput
-                          style={styles.qtyInput}
-                          value={editingQty}
-                          onChangeText={handleQtyChange}
-                          onBlur={() => handleFinishEditingQty(p)}
-                          keyboardType="number-pad"
-                          autoFocus
-                        />
-                      ) : (
-                        <Pressable onPress={() => handleStartEditingQty(p.id)}>
-                          <Text style={[styles.qtyText, styles.qtyTextTappable]}>{q}</Text>
-                        </Pressable>
-                      )}
-                      <Pressable
-                        style={styles.stepBtn}
-                        onPress={() => onInc(p)}
-                      >
-                        <Text style={styles.stepText}>+</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        );
-      })}
-      </ScrollView>
+        // Performance optimizations
+        drawDistance={250}
+        overrideItemLayout={(layout, item) => {
+          if (item.type === "header") {
+            layout.size = 44;
+          } else {
+            layout.size = 56;
+          }
+        }}
+      />
     </View>
   );
 }
@@ -304,11 +374,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
-    scrollContent: {
-      flex: 1,
-    },
-    scrollContentContainer: {
+    listContent: {
       paddingBottom: theme.spacing(8),
+      paddingHorizontal: theme.spacing(2),
     },
     filterScrollView: {
       flexGrow: 0,
@@ -342,13 +410,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     filterChipTextActive: {
       color: "#000",
     },
-    h1: { fontSize: 18, fontWeight: "800", color: theme.colors.text },
-    helper: {
-      color: theme.colors.muted,
-      fontSize: 12,
-      marginTop: 4,
-      marginBottom: 12,
-    },
     searchInput: {
       height: 44,
       backgroundColor: theme.colors.card,
@@ -369,7 +430,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderWidth: 2,
       borderColor: theme.colors.accent,
       marginBottom: theme.spacing(2),
-      marginHorizontal: theme.spacing(2),
+      marginTop: theme.spacing(2),
       overflow: "hidden",
     },
     recentTitle: {
@@ -379,21 +440,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingVertical: theme.spacing(1.5),
       fontSize: 14,
     },
-    catCard: {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      marginBottom: theme.spacing(2),
-      marginHorizontal: theme.spacing(2),
-      overflow: "hidden",
-    },
     catHeader: {
-      paddingHorizontal: theme.spacing(2),
       paddingVertical: theme.spacing(1.5),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      backgroundColor: theme.colors.card,
+      borderTopLeftRadius: theme.radius.lg,
+      borderTopRightRadius: theme.radius.lg,
+      paddingHorizontal: theme.spacing(2),
+      marginTop: theme.spacing(2),
+      borderWidth: 1,
+      borderBottomWidth: 0,
+      borderColor: theme.colors.border,
     },
     catTitle: { fontWeight: "800", color: theme.colors.text },
     catCount: { color: theme.colors.muted },
@@ -409,10 +468,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginBottom: 1,
     },
     itemRowActive: {
       backgroundColor: theme.colors.bg,
-      borderWidth: 1,
       borderColor: theme.colors.accent,
     },
     itemMeta: { flexShrink: 1, paddingRight: theme.spacing(1) },
@@ -464,5 +526,5 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   });
 }
 
-export default MaterialsPicker; // default export (back-compat)
-export { MaterialsPicker }; // named export (barrel-friendly)
+export default MaterialsPicker;
+export { MaterialsPicker };

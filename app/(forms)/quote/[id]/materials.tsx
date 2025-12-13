@@ -22,6 +22,9 @@ export default function QuoteMaterials() {
   const router = useRouter();
   const { theme } = useTheme();
 
+  // Memoize styles to avoid recreating StyleSheet on every render
+  const themedStyles = useMemo(() => createStyles(theme), [theme]);
+
   const { products, categories, loading, syncing, lastSync, refresh } = useProducts();
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -271,12 +274,12 @@ export default function QuoteMaterials() {
       <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
         {quoteItems.length > 0 && (
           <Pressable
-            style={styles(theme).quoteItemsIndicator}
+            style={themedStyles.quoteItemsIndicator}
             onPress={() => id && router.push(`/quote/${id}/edit-items`)}
           >
-            <View style={styles(theme).indicatorContent}>
-              <View style={styles(theme).indicatorTextContainer}>
-                <Text style={styles(theme).indicatorText}>
+            <View style={themedStyles.indicatorContent}>
+              <View style={themedStyles.indicatorTextContainer}>
+                <Text style={themedStyles.indicatorText}>
                   Quote has {quoteItems.reduce((sum, item) => sum + item.qty, 0)}{" "}
                   item
                   {quoteItems.reduce((sum, item) => sum + item.qty, 0) !== 1
@@ -285,23 +288,23 @@ export default function QuoteMaterials() {
                   ({quoteItems.length} product
                   {quoteItems.length !== 1 ? "s" : ""})
                 </Text>
-                <Text style={styles(theme).indicatorSubtext}>
+                <Text style={themedStyles.indicatorSubtext}>
                   Total items cost: $
                   {quoteItems
                     .reduce((sum, item) => sum + item.unitPrice * item.qty, 0)
                     .toFixed(2)}
                 </Text>
               </View>
-              <View style={styles(theme).editButton}>
-                <Text style={styles(theme).editButtonText}>Edit</Text>
+              <View style={themedStyles.editButton}>
+                <Text style={themedStyles.editButtonText}>Edit</Text>
               </View>
             </View>
           </Pressable>
         )}
 
         {showSuccessMessage && (
-          <View style={styles(theme).successMessage}>
-            <Text style={styles(theme).successText}>✓ Items added to quote!</Text>
+          <View style={themedStyles.successMessage}>
+            <Text style={themedStyles.successText}>✓ Items added to quote!</Text>
           </View>
         )}
 
@@ -347,7 +350,7 @@ export default function QuoteMaterials() {
   );
 }
 
-const styles = (theme: ReturnType<typeof useTheme>["theme"]) =>
+const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
   StyleSheet.create({
     quoteItemsIndicator: {
       backgroundColor: theme.colors.card,

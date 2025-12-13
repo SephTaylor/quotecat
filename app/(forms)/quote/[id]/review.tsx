@@ -21,6 +21,7 @@ import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getUserState } from "@/lib/user";
+import { getCurrentUserId } from "@/lib/auth";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
 import type { UserState } from "@/lib/user";
 import { generateAndSharePDF } from "@/lib/pdf";
@@ -62,9 +63,10 @@ export default function QuoteReviewScreen() {
         setCompanyDetails(prefs.company);
 
         // Load logo if user is signed in
-        if (user.userId) {
+        const userId = await getCurrentUserId();
+        if (userId) {
           try {
-            const companyLogo = await getCompanyLogo(user.userId);
+            const companyLogo = await getCompanyLogo(userId);
             setLogo(companyLogo);
           } catch (error) {
             console.error("Failed to load logo:", error);
@@ -295,7 +297,7 @@ export default function QuoteReviewScreen() {
           { text: "Cancel", style: "cancel" },
           {
             text: "Next",
-            onPress: (value) => {
+            onPress: (value: string | undefined) => {
               const percentage = parseInt(value || "0", 10);
               if (percentage > 0 && percentage < 100) {
                 showDueDatePicker(percentage);

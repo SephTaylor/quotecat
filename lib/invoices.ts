@@ -3,6 +3,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Invoice, Quote } from "@/lib/types";
+export type { Invoice } from "@/lib/types";
 import { getQuoteById } from "@/lib/quotes";
 import { loadPreferences, updateInvoiceSettings } from "@/lib/preferences";
 import {

@@ -1,6 +1,6 @@
 // app/(forms)/quote/[id]/edit-items.tsx
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { getQuoteById, updateQuote } from "@/lib/quotes";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Text, View, StyleSheet, Pressable, ScrollView, TextInput, Animated } from "react-native";
@@ -102,10 +102,10 @@ export default function EditItems() {
     await updateQuote(id, { items: updatedItems });
   };
 
-  const renderRightActions = (itemId: string) => (
+  const renderRightActions = (itemId: string) => function RightActions(
     progress: Animated.AnimatedInterpolation<number>,
     dragX: Animated.AnimatedInterpolation<number>
-  ) => {
+  ) {
     const trans = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [0, 100],

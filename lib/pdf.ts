@@ -30,14 +30,11 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
   const materialEstimate = quote.materialEstimate ?? 0;
   const labor = quote.labor ?? 0;
   const overhead = quote.overhead ?? 0;
-  const markupPercent = quote.markupPercent ?? 0;
   const taxPercent = quote.taxPercent ?? 0;
 
   const subtotal = materialsFromItems + materialEstimate + labor + overhead;
-  const markupAmount = (subtotal * markupPercent) / 100;
-  const subtotalWithMarkup = subtotal + markupAmount;
-  const taxAmount = (subtotalWithMarkup * taxPercent) / 100;
-  const grandTotal = subtotalWithMarkup + taxAmount;
+  const taxAmount = (subtotal * taxPercent) / 100;
+  const grandTotal = subtotal + taxAmount;
 
   const dateString = new Date(quote.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -284,12 +281,6 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
                 <td class="value">$${overhead.toFixed(2)}</td>
               </tr>
             ` : ''}
-            ${markupPercent > 0 ? `
-              <tr>
-                <td class="label">Markup (${markupPercent}%)</td>
-                <td class="value">$${markupAmount.toFixed(2)}</td>
-              </tr>
-            ` : ''}
             ${taxPercent > 0 ? `
               <tr>
                 <td class="label">Tax (${taxPercent}%)</td>
@@ -422,14 +413,11 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
   const materialEstimate = invoice.materialEstimate ?? 0;
   const labor = invoice.labor ?? 0;
   const overhead = invoice.overhead ?? 0;
-  const markupPercent = invoice.markupPercent ?? 0;
   const taxPercent = invoice.taxPercent ?? 0;
 
   const subtotal = materialsFromItems + materialEstimate + labor + overhead;
-  const markupAmount = (subtotal * markupPercent) / 100;
-  const subtotalWithMarkup = subtotal + markupAmount;
-  const taxAmount = (subtotalWithMarkup * taxPercent) / 100;
-  const grandTotal = subtotalWithMarkup + taxAmount;
+  const taxAmount = (subtotal * taxPercent) / 100;
+  const grandTotal = subtotal + taxAmount;
 
   const invoiceDateString = new Date(invoice.invoiceDate).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -752,12 +740,6 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
               <tr>
                 <td class="label">Overhead</td>
                 <td class="value">$${overhead.toFixed(2)}</td>
-              </tr>
-            ` : ''}
-            ${markupPercent > 0 ? `
-              <tr>
-                <td class="label">Markup (${markupPercent}%)</td>
-                <td class="value">$${markupAmount.toFixed(2)}</td>
               </tr>
             ` : ''}
             ${taxPercent > 0 ? `
