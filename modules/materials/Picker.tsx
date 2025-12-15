@@ -2,7 +2,8 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { type Product, SUPPLIER_NAMES } from "@/modules/catalog/seed";
 import React, { useState, useRef, useCallback, memo, useMemo } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View, ScrollView, RefreshControl, Keyboard } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View, ScrollView, RefreshControl, Keyboard, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 import type { Selection } from "./types";
 
@@ -18,6 +19,8 @@ export type MaterialsPickerProps = {
   lastSync?: Date | null;
   syncing?: boolean;
   refreshControl?: React.ReactElement<typeof RefreshControl>;
+  onFilterPress?: () => void;
+  activeFilterCount?: number;
 };
 
 // List item types for FlashList
@@ -119,6 +122,8 @@ function MaterialsPicker({
   onSetQty,
   recentProductIds = [],
   refreshControl,
+  onFilterPress,
+  activeFilterCount = 0,
 }: MaterialsPickerProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -325,16 +330,32 @@ function MaterialsPicker({
           ))}
         </ScrollView>
 
-        {/* Search Bar */}
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search products..."
-          placeholderTextColor={theme.colors.muted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+        {/* Search Bar with Filter Button */}
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search products..."
+            placeholderTextColor={theme.colors.muted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {onFilterPress && (
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={onFilterPress}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="options-outline" size={22} color={theme.colors.text} />
+              {activeFilterCount > 0 && (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Virtualized Product List */}
@@ -411,7 +432,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     filterChipTextActive: {
       color: "#000",
     },
+    searchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: theme.spacing(1),
+      marginBottom: theme.spacing(1.5),
+      marginHorizontal: theme.spacing(2),
+      gap: theme.spacing(1),
+    },
     searchInput: {
+      flex: 1,
       height: 44,
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
@@ -420,9 +450,33 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingHorizontal: theme.spacing(2),
       fontSize: 16,
       color: theme.colors.text,
-      marginTop: theme.spacing(1),
-      marginBottom: theme.spacing(1.5),
-      marginHorizontal: theme.spacing(2),
+    },
+    filterButton: {
+      width: 44,
+      height: 44,
+      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.card,
+      borderWidth: 2,
+      borderColor: theme.colors.text,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    filterBadge: {
+      position: "absolute",
+      top: -4,
+      right: -4,
+      backgroundColor: theme.colors.accent,
+      borderRadius: 10,
+      minWidth: 18,
+      height: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 4,
+    },
+    filterBadgeText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#000",
     },
 
     recentCard: {

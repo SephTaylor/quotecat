@@ -12,7 +12,8 @@ import {
 import { mergeById } from "@/modules/quotes/merge";
 import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Text, View, StyleSheet, Pressable, Alert, RefreshControl } from "react-native";
+import { Text, View, StyleSheet, Pressable, Alert, RefreshControl, Modal, TouchableOpacity, TouchableWithoutFeedback } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { QuoteItem } from "@/lib/types";
 import { trackProductUsage } from "@/lib/analytics";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
@@ -46,6 +47,30 @@ export default function QuoteMaterials() {
   }, [quoteItems, products, initialSelectionLoaded]);
 
   const { selection, inc, dec, clear, units, setSelection, setQty } = useSelection(initialSelection);
+
+  // Filter state
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]); // empty = all suppliers
+
+  const supplierOptions = [
+    { id: "lowes", name: "Lowe's" },
+    { id: "homedepot", name: "Home Depot" },
+    { id: "menards", name: "Menards" },
+  ];
+
+  const toggleSupplier = (supplierId: string) => {
+    setSelectedSuppliers(prev =>
+      prev.includes(supplierId)
+        ? prev.filter(s => s !== supplierId)
+        : [...prev, supplierId]
+    );
+  };
+
+  const clearFilters = () => {
+    setSelectedSuppliers([]);
+  };
+
+  const activeFilterCount = selectedSuppliers.length;
 
   // Load quote items function
   const loadQuote = useCallback(async () => {
@@ -97,11 +122,16 @@ export default function QuoteMaterials() {
     }, [id])
   );
 
-  // Group products by category for MaterialsPicker
+  // Group products by category for MaterialsPicker (with supplier filter)
   const productsByCategory = useMemo(() => {
     const grouped: Record<string, Product[]> = {};
 
-    products.forEach((product) => {
+    // Filter by supplier if any selected
+    const filteredProducts = selectedSuppliers.length > 0
+      ? products.filter(p => p.supplierId && selectedSuppliers.includes(p.supplierId))
+      : products;
+
+    filteredProducts.forEach((product) => {
       if (!grouped[product.categoryId]) {
         grouped[product.categoryId] = [];
       }
@@ -109,7 +139,7 @@ export default function QuoteMaterials() {
     });
 
     return grouped;
-  }, [products]);
+  }, [products, selectedSuppliers]);
 
   const saveSelected = useCallback(
     async (goBack: boolean) => {
@@ -197,6 +227,11 @@ export default function QuoteMaterials() {
     Alert.alert("Product Catalog Status", statusMessage);
   };
 
+  // Filter button handler
+  const handleFilterPress = () => {
+    setFilterModalVisible(true);
+  };
+
   // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -235,6 +270,8 @@ export default function QuoteMaterials() {
             onDec={dec}
             onSetQty={setQty}
             recentProductIds={[]}
+            onFilterPress={handleFilterPress}
+            activeFilterCount={activeFilterCount}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -316,6 +353,8 @@ export default function QuoteMaterials() {
           onDec={dec}
           onSetQty={setQty}
           recentProductIds={[]}
+          onFilterPress={handleFilterPress}
+          activeFilterCount={activeFilterCount}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -346,6 +385,77 @@ export default function QuoteMaterials() {
           Done
         </Button>
       </BottomBar>
+
+      {/* Filter Bottom Sheet Modal */}
+      <Modal
+        visible={filterModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setFilterModalVisible(false)}>
+          <View style={themedStyles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={themedStyles.modalContent}>
+                {/* Handle bar */}
+                <View style={themedStyles.modalHandle} />
+
+                {/* Header */}
+                <View style={themedStyles.modalHeader}>
+                  <Text style={themedStyles.modalTitle}>Filters</Text>
+                  {activeFilterCount > 0 && (
+                    <TouchableOpacity onPress={clearFilters}>
+                      <Text style={themedStyles.clearButton}>Clear All</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Supplier Filter */}
+                <View style={themedStyles.filterSection}>
+                  <Text style={themedStyles.filterSectionTitle}>Supplier</Text>
+                  <View style={themedStyles.filterOptions}>
+                    {supplierOptions.map((supplier) => {
+                      const isSelected = selectedSuppliers.includes(supplier.id);
+                      return (
+                        <TouchableOpacity
+                          key={supplier.id}
+                          style={[
+                            themedStyles.filterOption,
+                            isSelected && themedStyles.filterOptionSelected,
+                          ]}
+                          onPress={() => toggleSupplier(supplier.id)}
+                        >
+                          <Text
+                            style={[
+                              themedStyles.filterOptionText,
+                              isSelected && themedStyles.filterOptionTextSelected,
+                            ]}
+                          >
+                            {supplier.name}
+                          </Text>
+                          {isSelected && (
+                            <Ionicons name="checkmark" size={18} color="#000" />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {/* Apply Button */}
+                <TouchableOpacity
+                  style={themedStyles.applyButton}
+                  onPress={() => setFilterModalVisible(false)}
+                >
+                  <Text style={themedStyles.applyButtonText}>
+                    {activeFilterCount > 0 ? `Apply (${activeFilterCount})` : "Done"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </>
   );
 }
@@ -406,5 +516,92 @@ const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
       fontSize: 14,
       fontWeight: "700",
       color: "#000", // Black on orange accent (good contrast)
+    },
+    // Filter modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-end",
+    },
+    modalContent: {
+      backgroundColor: theme.colors.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingHorizontal: theme.spacing(3),
+      paddingBottom: theme.spacing(4),
+      paddingTop: theme.spacing(1.5),
+    },
+    modalHandle: {
+      width: 36,
+      height: 4,
+      backgroundColor: theme.colors.muted,
+      borderRadius: 2,
+      alignSelf: "center",
+      marginBottom: theme.spacing(2),
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(3),
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    clearButton: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.accent,
+    },
+    filterSection: {
+      marginBottom: theme.spacing(3),
+    },
+    filterSectionTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: theme.spacing(1.5),
+    },
+    filterOptions: {
+      gap: theme.spacing(1),
+    },
+    filterOption: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    filterOptionSelected: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    filterOptionText: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: theme.colors.text,
+    },
+    filterOptionTextSelected: {
+      color: "#000",
+    },
+    applyButton: {
+      backgroundColor: theme.colors.accent,
+      paddingVertical: theme.spacing(2),
+      borderRadius: theme.radius.lg,
+      alignItems: "center",
+      marginTop: theme.spacing(1),
+    },
+    applyButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
     },
   });

@@ -9,6 +9,7 @@ import {
   updateDashboardPreferences,
   updateInvoiceSettings,
   updateNotificationPreferences,
+  updatePricingSettings,
   resetPreferences,
   type DashboardPreferences,
   type UserPreferences,
@@ -98,6 +99,7 @@ export default function Settings() {
     dashboard: false,
     quoteDefaults: false,
     invoiceSettings: false,
+    pricingSettings: false,
     notifications: false,
     privacy: false,
     comingSoon: false,
@@ -944,6 +946,61 @@ export default function Settings() {
                   }}
                 >
                   <Text style={styles.defaultItemButtonText}>Change Number</Text>
+                </Pressable>
+              </View>
+            </View>
+          </CollapsibleSection>
+
+          {/* Pricing Settings Section */}
+          <CollapsibleSection
+            title="Pricing Settings"
+            isExpanded={expandedSections.pricingSettings}
+            onToggle={() => toggleSection('pricingSettings')}
+            theme={theme}
+          >
+            <View style={styles.defaultsContainer}>
+              <View style={[styles.defaultItem, styles.defaultItemLast]}>
+                <View style={styles.defaultItemHeader}>
+                  <Ionicons name="location-outline" size={20} color={theme.colors.accent} />
+                  <Text style={styles.defaultItemTitle}>Zip Code</Text>
+                </View>
+                <Text style={styles.defaultItemDescription}>
+                  Enter your zip code to get regional pricing from suppliers like Lowes, Home Depot, and Menards.
+                </Text>
+                {preferences.pricing?.zipCode && (
+                  <View style={styles.previewBox}>
+                    <Text style={styles.previewText}>📍 {preferences.pricing.zipCode}</Text>
+                  </View>
+                )}
+                <Pressable
+                  style={styles.defaultItemButton}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Zip Code',
+                      'Enter your 5-digit zip code for regional pricing:',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Save',
+                          onPress: async (value) => {
+                            if (value && /^\d{5}$/.test(value.trim())) {
+                              const updated = await updatePricingSettings({ zipCode: value.trim() });
+                              setPreferences(updated);
+                            } else if (value && value.trim()) {
+                              Alert.alert('Invalid Zip Code', 'Please enter a valid 5-digit zip code.');
+                            }
+                          },
+                        },
+                      ],
+                      'plain-text',
+                      preferences.pricing?.zipCode || '',
+                      'number-pad'
+                    );
+                  }}
+                >
+                  <Text style={styles.defaultItemButtonText}>
+                    {preferences.pricing?.zipCode ? 'Change Zip Code' : 'Set Zip Code'}
+                  </Text>
                 </Pressable>
               </View>
             </View>

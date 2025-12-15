@@ -39,12 +39,17 @@ export type NotificationPreferences = {
   // quoteReminders: boolean;
 };
 
+export type PricingSettings = {
+  zipCode: string; // User's zip code for regional pricing
+};
+
 export type UserPreferences = {
   dashboard: DashboardPreferences;
   privacy: PrivacyPreferences;
   company: CompanyDetails;
   invoice: InvoiceSettings;
   notifications: NotificationPreferences;
+  pricing: PricingSettings;
   // Add more preference categories as needed
   // appearance: AppearancePreferences;
 };
@@ -83,6 +88,9 @@ export function getDefaultPreferences(): UserPreferences {
       invoiceOverdue: false,
       invoiceDueSoon: false,
       invoiceDueToday: false,
+    },
+    pricing: {
+      zipCode: "",
     },
   };
 }
@@ -130,6 +138,10 @@ export async function loadPreferences(): Promise<UserPreferences> {
       notifications: {
         ...getDefaultPreferences().notifications,
         ...stored.notifications,
+      },
+      pricing: {
+        ...getDefaultPreferences().pricing,
+        ...stored.pricing,
       },
     };
 
@@ -223,6 +235,24 @@ export async function updateNotificationPreferences(
     ...prefs,
     notifications: {
       ...prefs.notifications,
+      ...updates,
+    },
+  };
+  await savePreferences(updated);
+  return updated;
+}
+
+/**
+ * Update pricing settings
+ */
+export async function updatePricingSettings(
+  updates: Partial<PricingSettings>,
+): Promise<UserPreferences> {
+  const prefs = await loadPreferences();
+  const updated: UserPreferences = {
+    ...prefs,
+    pricing: {
+      ...prefs.pricing,
       ...updates,
     },
   };
