@@ -48,6 +48,8 @@ export default function ProTools() {
         router.push("/(main)/assemblies-browse" as any);
       } else if (featureName === "Assembly Manager") {
         router.push("/(main)/assembly-manager" as any);
+      } else if (featureName === "Client Manager") {
+        router.push("/(main)/client-manager" as any);
       } else if (featureName === "Wizard") {
         // Coming soon
         Alert.alert(
@@ -103,6 +105,17 @@ export default function ProTools() {
               description="Browse pre-built assembly templates"
               locked={!isPro}
               onPress={() => handleFeatureTap("Assembly Library")}
+              details={[]}
+              theme={theme}
+            />
+
+            {/* Client Manager */}
+            <ProFeatureCard
+              icon=""
+              title="Client Manager"
+              description="Save and manage your client list"
+              locked={!isPro}
+              onPress={() => handleFeatureTap("Client Manager")}
               details={[]}
               theme={theme}
             />

@@ -7,6 +7,9 @@ import {
   saveQuote,
   type Quote,
 } from "@/lib/quotes";
+import { getClients, type Client } from "@/lib/clients";
+import { getUserState } from "@/lib/user";
+import { canAccessAssemblies } from "@/lib/features";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { parseMoney } from "@/modules/settings/money";
 import { getItemId } from "@/lib/validation";
@@ -19,7 +22,7 @@ import {
   useRouter,
 } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -65,6 +68,13 @@ export default function EditQuote() {
   const [notes, setNotes] = useState<string>(""); // Notes / additional details
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
+
+  // Client picker state
+  const [isPro, setIsPro] = useState(false);
+  const [savedClients, setSavedClients] = useState<Client[]>([]);
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [clientPickerSearch, setClientPickerSearch] = useState("");
 
   // Undo functionality for material deletion
   const [showUndoSnackbar, setShowUndoSnackbar] = useState(false);
@@ -143,11 +153,61 @@ export default function EditQuote() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Load Pro status and saved clients
+  useEffect(() => {
+    const loadProAndClients = async () => {
+      const user = await getUserState();
+      const proStatus = canAccessAssemblies(user);
+      setIsPro(proStatus);
+      if (proStatus) {
+        const clients = await getClients();
+        setSavedClients(clients);
+      }
+    };
+    loadProAndClients();
+  }, []);
+
   useFocusEffect(
     React.useCallback(() => {
       load();
     }, [load]),
   );
+
+  // Filter saved clients based on current input (for autocomplete)
+  const filteredClients = React.useMemo(() => {
+    if (!clientName.trim() || !isPro || savedClients.length === 0) return [];
+    const query = clientName.toLowerCase();
+    return savedClients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) &&
+        c.name.toLowerCase() !== query // Don't show if exact match
+    ).slice(0, 5); // Limit to 5 suggestions
+  }, [clientName, isPro, savedClients]);
+
+  // Filter saved clients for picker modal
+  const pickerFilteredClients = React.useMemo(() => {
+    if (!clientPickerSearch.trim()) return savedClients;
+    const query = clientPickerSearch.toLowerCase();
+    return savedClients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.email?.toLowerCase().includes(query) ||
+        c.phone?.includes(query)
+    );
+  }, [clientPickerSearch, savedClients]);
+
+  // Handle selecting a client from suggestions or picker
+  const handleSelectClient = (client: Client) => {
+    setClientName(client.name);
+    setClientEmail(client.email || "");
+    setClientPhone(client.phone || "");
+    setClientAddress(client.address || "");
+    setShowClientSuggestions(false);
+    setShowClientPicker(false);
+    setClientPickerSearch("");
+    setIsNewQuote(false);
+  };
 
   const validateRequiredFields = (): boolean => {
     if (!name.trim()) {
@@ -446,16 +506,57 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.label}>Client name *</Text>
-        <FormInput
-          placeholder="Who's the lucky customer?"
-          value={clientName}
-          onChangeText={(text) => {
-            setClientName(text);
-            if (text.trim()) setIsNewQuote(false);
-          }}
-          autoCapitalize="words"
-        />
+        <View style={styles.labelRow}>
+          <Text style={styles.label}>Client name *</Text>
+          {isPro && savedClients.length > 0 && (
+            <Pressable
+              onPress={() => setShowClientPicker(true)}
+              hitSlop={8}
+            >
+              <Text style={styles.browseTag}>Browse</Text>
+            </Pressable>
+          )}
+        </View>
+        <View style={styles.clientInputContainer}>
+          <FormInput
+            placeholder="Who's the lucky customer?"
+            value={clientName}
+            onChangeText={(text) => {
+              setClientName(text);
+              if (text.trim()) setIsNewQuote(false);
+              setShowClientSuggestions(true);
+            }}
+            onFocus={() => {
+              if (isPro && savedClients.length > 0) {
+                setShowClientSuggestions(true);
+              }
+            }}
+            onBlur={() => {
+              // Delay hiding to allow tap on suggestion
+              setTimeout(() => setShowClientSuggestions(false), 200);
+            }}
+            autoCapitalize="words"
+          />
+          {/* Client suggestions dropdown */}
+          {showClientSuggestions && filteredClients.length > 0 && (
+            <View style={styles.suggestionsDropdown}>
+              {filteredClients.map((client) => (
+                <Pressable
+                  key={client.id}
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelectClient(client)}
+                >
+                  <Text style={styles.suggestionName}>{client.name}</Text>
+                  {(client.email || client.phone) && (
+                    <Text style={styles.suggestionDetail}>
+                      {[client.email, client.phone].filter(Boolean).join(" · ")}
+                    </Text>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
 
         <View style={{ height: theme.spacing(2) }} />
 
@@ -783,6 +884,82 @@ export default function EditQuote() {
         onUndo={handleUndoDelete}
         onDismiss={handleDismissUndo}
       />
+
+      {/* Client Picker Modal */}
+      <Modal
+        visible={showClientPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowClientPicker(false);
+          setClientPickerSearch("");
+        }}
+      >
+        <Pressable
+          style={styles.pickerOverlay}
+          onPress={() => {
+            setShowClientPicker(false);
+            setClientPickerSearch("");
+          }}
+        >
+          <Pressable style={styles.pickerContent} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.pickerTitle}>Select Client</Text>
+
+            {/* Search */}
+            <View style={styles.pickerSearchContainer}>
+              <TextInput
+                style={styles.pickerSearchInput}
+                placeholder="Search clients..."
+                placeholderTextColor={theme.colors.muted}
+                value={clientPickerSearch}
+                onChangeText={setClientPickerSearch}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            {/* Client List */}
+            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false}>
+              {pickerFilteredClients.length === 0 ? (
+                <Text style={styles.pickerEmptyText}>
+                  {clientPickerSearch ? "No clients found" : "No saved clients"}
+                </Text>
+              ) : (
+                pickerFilteredClients.map((client) => (
+                  <Pressable
+                    key={client.id}
+                    style={styles.pickerItem}
+                    onPress={() => handleSelectClient(client)}
+                  >
+                    <Text style={styles.pickerItemName}>{client.name}</Text>
+                    {(client.email || client.phone) && (
+                      <Text style={styles.pickerItemDetail}>
+                        {[client.email, client.phone].filter(Boolean).join(" · ")}
+                      </Text>
+                    )}
+                    {client.address && (
+                      <Text style={styles.pickerItemAddress} numberOfLines={1}>
+                        {client.address}
+                      </Text>
+                    )}
+                  </Pressable>
+                ))
+              )}
+            </ScrollView>
+
+            {/* Cancel Button */}
+            <Pressable
+              style={styles.pickerCancelBtn}
+              onPress={() => {
+                setShowClientPicker(false);
+                setClientPickerSearch("");
+              }}
+            >
+              <Text style={styles.pickerCancelText}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </>
   );
 }
@@ -790,6 +967,53 @@ export default function EditQuote() {
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     label: { fontSize: 12, color: theme.colors.text, marginBottom: 6, fontWeight: "600" },
+    labelRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 6,
+    },
+    browseTag: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: theme.colors.accent,
+    },
+    clientInputContainer: {
+      position: "relative",
+      zIndex: 10,
+    },
+    suggestionsDropdown: {
+      position: "absolute",
+      top: 50,
+      left: 0,
+      right: 0,
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 5,
+      zIndex: 20,
+    },
+    suggestionItem: {
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    suggestionName: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    suggestionDetail: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: 2,
+    },
     inputWithSuffix: {
       position: "relative",
     },
@@ -998,6 +1222,81 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 24,
       fontWeight: "800",
       color: theme.colors.accent,
+    },
+    // Client Picker Modal styles
+    pickerOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    pickerContent: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing(3),
+      width: "85%",
+      maxWidth: 400,
+      maxHeight: "70%",
+    },
+    pickerTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(2),
+    },
+    pickerSearchContainer: {
+      marginBottom: theme.spacing(2),
+    },
+    pickerSearchInput: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(1.5),
+      fontSize: 16,
+      color: theme.colors.text,
+    },
+    pickerList: {
+      maxHeight: 300,
+    },
+    pickerEmptyText: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      textAlign: "center",
+      paddingVertical: theme.spacing(3),
+    },
+    pickerItem: {
+      paddingVertical: theme.spacing(1.5),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    pickerItemName: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    pickerItemDetail: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      marginTop: 2,
+    },
+    pickerItemAddress: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: 2,
+    },
+    pickerCancelBtn: {
+      marginTop: theme.spacing(2),
+      padding: theme.spacing(1.5),
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+    },
+    pickerCancelText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
     },
   });
 }
