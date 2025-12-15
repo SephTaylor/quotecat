@@ -11,6 +11,11 @@ export {
   updateQuote,
   deleteQuote,
   duplicateQuote,
+  // Linked quotes (multi-tier)
+  linkQuotes,
+  unlinkQuote,
+  getLinkedQuotes,
+  createTierFromQuote,
 } from "@/modules/quotes";
 
 export type {

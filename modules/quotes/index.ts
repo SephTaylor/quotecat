@@ -12,6 +12,11 @@ export {
   deleteQuote,
   duplicateQuote,
   clearAllQuotes,
+  // Linked quotes (multi-tier/Good-Better-Best)
+  linkQuotes,
+  unlinkQuote,
+  getLinkedQuotes,
+  createTierFromQuote,
 } from "./storage";
 
 // Calculation utilities

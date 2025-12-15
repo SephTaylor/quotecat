@@ -30,6 +30,7 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { HeaderIconButton } from "@/components/HeaderIconButton";
+import { Ionicons } from "@expo/vector-icons";
 
 /**
  * Format phone number as (xxx) xxx-xxxx
@@ -69,6 +70,7 @@ export default function EditQuote() {
   const [taxPercent, setTaxPercent] = useState<string>(""); // Tax percentage
   const [notes, setNotes] = useState<string>(""); // Notes / additional details
   const [followUpDate, setFollowUpDate] = useState<string>(""); // Follow-up date
+  const [tier, setTier] = useState<string>(""); // Tier name (e.g., "Better", "Best")
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
@@ -143,6 +145,7 @@ export default function EditQuote() {
       setItems(q.items ?? []);
       setNotes(q.notes || "");
       setFollowUpDate(q.followUpDate || "");
+      setTier(q.tier || "");
 
       // Check if this is a newly created empty quote
       // Consider it "new" if name is empty or just "Untitled", client is empty or "Unnamed Client",
@@ -240,6 +243,30 @@ export default function EditQuote() {
 
     return true;
   };
+
+  const handleSave = useCallback(async () => {
+    if (!id) return;
+
+    await updateQuote(id, {
+      name: name.trim() || "Untitled",
+      clientName: clientName.trim() || "Unnamed Client",
+      clientEmail: clientEmail.trim() || undefined,
+      clientPhone: clientPhone.trim() || undefined,
+      clientAddress: clientAddress.trim() || undefined,
+      labor: parseMoney(labor),
+      materialEstimate: parseMoney(materialEstimate) || undefined,
+      markupPercent: parseFloat(markupPercent) || undefined,
+      taxPercent: parseFloat(taxPercent) || undefined,
+      notes: notes.trim() || undefined,
+      followUpDate: followUpDate || undefined,
+      status,
+      pinned,
+      items,
+    });
+
+    // Brief feedback that save happened
+    Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
+  }, [id, name, clientName, clientEmail, clientPhone, clientAddress, labor, materialEstimate, markupPercent, taxPercent, notes, followUpDate, status, pinned, items]);
 
   const handleGoBack = async () => {
     // If this is a new quote that hasn't been modified, delete it
@@ -434,11 +461,13 @@ export default function EditQuote() {
           headerTitleAlign: 'center',
           headerTintColor: theme.colors.accent,
           headerLeft: () => <HeaderBackButton onPress={handleGoBack} />,
-          headerRight: () => <HeaderIconButton onPress={() => setPinned(!pinned)} icon={pinned ? "⭐" : "☆"} />,
+          headerRight: () => (
+            <HeaderIconButton onPress={() => setPinned(!pinned)} icon={pinned ? "⭐" : "☆"} side="right" />
+          ),
           headerTitle: () => (
             <View style={{ alignItems: 'center' }}>
               <Text style={{ fontSize: 17, fontWeight: "700", color: theme.colors.text }}>
-                Edit Quote
+                {tier ? `Edit Quote - ${tier}` : "Edit Quote"}
               </Text>
               <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.accent, marginTop: 2 }}>
                 Total: ${calculations.total.toFixed(2)}
@@ -456,37 +485,47 @@ export default function EditQuote() {
           // FormScreen already provides default padding, no overrides needed
         }}
         bottomBar={
-          <Pressable
-            style={styles.reviewBtn}
-            onPress={async () => {
-              if (!id) return;
+          <View style={styles.bottomBarRow}>
+            <Pressable
+              style={styles.saveBtn}
+              onPress={handleSave}
+            >
+              <Ionicons name="save-outline" size={20} color={theme.colors.accent} />
+              <Text style={styles.saveBtnText}>Save</Text>
+            </Pressable>
+            <Pressable
+              style={styles.reviewBtn}
+              onPress={async () => {
+                if (!id) return;
 
-              // Validate required fields before proceeding
-              if (!validateRequiredFields()) {
-                return;
-              }
+                // Validate required fields before proceeding
+                if (!validateRequiredFields()) {
+                  return;
+                }
 
-              await updateQuote(id, {
-                name: name.trim(),
-                clientName: clientName.trim(),
-                clientEmail: clientEmail.trim() || undefined,
-                clientPhone: clientPhone.trim() || undefined,
-                clientAddress: clientAddress.trim() || undefined,
-                labor: parseMoney(labor),
-                materialEstimate: parseMoney(materialEstimate),
-                markupPercent: parseFloat(markupPercent) || 0,
-                taxPercent: parseFloat(taxPercent) || 0,
-                notes: notes.trim() || undefined,
-                followUpDate: followUpDate || undefined,
-                status,
-                pinned,
-                items,
-              });
-              router.push(`/quote/${id}/review`);
-            }}
-          >
-            <Text style={styles.reviewText}>Review & Export</Text>
-          </Pressable>
+                await updateQuote(id, {
+                  name: name.trim(),
+                  clientName: clientName.trim(),
+                  clientEmail: clientEmail.trim() || undefined,
+                  clientPhone: clientPhone.trim() || undefined,
+                  clientAddress: clientAddress.trim() || undefined,
+                  labor: parseMoney(labor),
+                  materialEstimate: parseMoney(materialEstimate),
+                  markupPercent: parseFloat(markupPercent) || 0,
+                  taxPercent: parseFloat(taxPercent) || 0,
+                  notes: notes.trim() || undefined,
+                  followUpDate: followUpDate || undefined,
+                  status,
+                  pinned,
+                  items,
+                });
+                router.push(`/quote/${id}/review`);
+              }}
+            >
+              <Ionicons name="document-text-outline" size={20} color="#000" />
+              <Text style={styles.reviewText}>Review & Export</Text>
+            </Pressable>
+          </View>
         }
       >
         <Text style={styles.label}>Status</Text>
@@ -1163,11 +1202,35 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#000", // Black on orange accent (good contrast)
       fontWeight: "700",
     },
+    bottomBarRow: {
+      flexDirection: "row",
+      gap: theme.spacing(2),
+    },
+    saveBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      height: 48,
+      paddingHorizontal: theme.spacing(3),
+      borderRadius: theme.radius.xl,
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+      backgroundColor: theme.colors.card,
+    },
+    saveBtnText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.accent,
+    },
     reviewBtn: {
+      flex: 1,
+      flexDirection: "row",
       backgroundColor: theme.colors.accent,
       borderRadius: theme.radius.xl,
       alignItems: "center",
       justifyContent: "center",
+      gap: 8,
       height: 48,
       borderWidth: 1,
       borderColor: theme.colors.border,

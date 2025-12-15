@@ -19,10 +19,12 @@ type SwipeableQuoteItemProps = {
   onDuplicate?: () => void;
   onTogglePin?: () => void;
   onLongPress?: () => void;
+  onCreateTier?: () => void;
+  onExportAllTiers?: () => void;
 };
 
 export const SwipeableQuoteItem = React.memo(
-  ({ item, onEdit, onDelete, onDuplicate, onTogglePin, onLongPress }: SwipeableQuoteItemProps) => {
+  ({ item, onEdit, onDelete, onDuplicate, onTogglePin, onLongPress, onCreateTier, onExportAllTiers }: SwipeableQuoteItemProps) => {
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     const [isExporting, setIsExporting] = useState(false);
@@ -104,9 +106,14 @@ export const SwipeableQuoteItem = React.memo(
       progress: Animated.AnimatedInterpolation<number>,
       dragX: Animated.AnimatedInterpolation<number>,
     ) => {
+      // Calculate width based on available actions
+      const hasLinkedQuotes = item.linkedQuoteIds && item.linkedQuoteIds.length > 0;
+      const actionCount = 1 + (onDuplicate ? 1 : 0) + (onCreateTier ? 1 : 0) + (hasLinkedQuotes && onExportAllTiers ? 1 : 0);
+      const totalWidth = actionCount * 100;
+
       const translateX = dragX.interpolate({
-        inputRange: [0, onDuplicate ? 200 : 100],
-        outputRange: [onDuplicate ? -200 : -100, 0],
+        inputRange: [0, totalWidth],
+        outputRange: [-totalWidth, 0],
         extrapolate: "clamp",
       });
 
@@ -115,6 +122,22 @@ export const SwipeableQuoteItem = React.memo(
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           swipeableRef.current?.close();
           onDuplicate();
+        }
+      };
+
+      const handleCreateTier = () => {
+        if (onCreateTier) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          swipeableRef.current?.close();
+          onCreateTier();
+        }
+      };
+
+      const handleExportAllTiers = () => {
+        if (onExportAllTiers) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          swipeableRef.current?.close();
+          onExportAllTiers();
         }
       };
 
@@ -133,9 +156,19 @@ export const SwipeableQuoteItem = React.memo(
               <Text style={styles.actionText}>Export PDF</Text>
             )}
           </Pressable>
+          {hasLinkedQuotes && onExportAllTiers && (
+            <Pressable style={styles.exportAllButton} onPress={handleExportAllTiers}>
+              <Text style={styles.actionText}>Export All</Text>
+            </Pressable>
+          )}
           {onDuplicate && (
             <Pressable style={styles.duplicateButton} onPress={handleDuplicate}>
               <Text style={styles.actionText}>Duplicate</Text>
+            </Pressable>
+          )}
+          {onCreateTier && (
+            <Pressable style={styles.tierButton} onPress={handleCreateTier}>
+              <Text style={styles.actionText}>Create Tier</Text>
             </Pressable>
           )}
         </Animated.View>
@@ -166,6 +199,13 @@ export const SwipeableQuoteItem = React.memo(
               {item.tier && (
                 <View style={styles.tierBadge}>
                   <Text style={styles.tierText}>{item.tier}</Text>
+                </View>
+              )}
+              {item.linkedQuoteIds && item.linkedQuoteIds.length > 0 && (
+                <View style={styles.linkedBadge}>
+                  <Text style={styles.linkedText}>
+                    {item.linkedQuoteIds.length + 1} Options
+                  </Text>
                 </View>
               )}
             </View>
@@ -321,8 +361,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       width: 100,
       borderRadius: theme.radius.lg,
     },
+    exportAllButton: {
+      backgroundColor: "#007AFF", // Blue for export all tiers
+      justifyContent: "center",
+      alignItems: "center",
+      width: 100,
+      borderRadius: theme.radius.lg,
+    },
     duplicateButton: {
       backgroundColor: theme.colors.accent,
+      justifyContent: "center",
+      alignItems: "center",
+      width: 100,
+      borderRadius: theme.radius.lg,
+    },
+    tierButton: {
+      backgroundColor: "#5856D6", // Purple for tier action
       justifyContent: "center",
       alignItems: "center",
       width: 100,
@@ -332,6 +386,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#FFFFFF",
       fontSize: 14,
       fontWeight: "600",
+    },
+    linkedBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: "#5856D6", // Purple to match tier button
+      opacity: 0.9,
+    },
+    linkedText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#FFF",
+      letterSpacing: 0.3,
     },
   });
 }

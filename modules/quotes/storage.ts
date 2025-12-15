@@ -393,3 +393,235 @@ export async function clearAllQuotes(): Promise<void> {
     await AsyncStorage.removeItem(key);
   }
 }
+
+// ============================================
+// Linked Quotes (Multi-Tier/Good-Better-Best)
+// ============================================
+
+/**
+ * Link multiple quotes together as tiers/options
+ * Each quote will have references to all other quotes in the group
+ */
+export async function linkQuotes(quoteIds: string[]): Promise<void> {
+  if (quoteIds.length < 2) {
+    throw new Error("Need at least 2 quotes to link");
+  }
+
+  const result = await withErrorHandling(async () => {
+    const allQuotes = await readAllQuotes();
+
+    // Verify all quotes exist
+    const quotesToLink = allQuotes.filter((q) => quoteIds.includes(q.id) && !q.deletedAt);
+    if (quotesToLink.length !== quoteIds.length) {
+      throw new Error("One or more quotes not found");
+    }
+
+    // For each quote, add references to all OTHER quotes in the group
+    for (const quote of quotesToLink) {
+      const otherIds = quoteIds.filter((id) => id !== quote.id);
+      // Merge with any existing linked quotes (avoid duplicates)
+      const existingLinks = quote.linkedQuoteIds || [];
+      const allLinks = [...new Set([...existingLinks, ...otherIds])];
+      quote.linkedQuoteIds = allLinks;
+      quote.updatedAt = new Date().toISOString();
+    }
+
+    await writeQuotes(allQuotes);
+  }, ErrorType.STORAGE);
+
+  if (!result.success) {
+    logError(result.error, "linkQuotes");
+    throw result.error;
+  }
+
+  // Invalidate caches for all linked quotes
+  cache.invalidate(CacheKeys.quotes.all());
+  for (const id of quoteIds) {
+    cache.invalidate(CacheKeys.quotes.byId(id));
+  }
+}
+
+/**
+ * Unlink a quote from its linked group
+ * Removes this quote's reference from all linked quotes and clears its linkedQuoteIds
+ */
+export async function unlinkQuote(quoteId: string): Promise<void> {
+  const result = await withErrorHandling(async () => {
+    const allQuotes = await readAllQuotes();
+    const quote = allQuotes.find((q) => q.id === quoteId && !q.deletedAt);
+
+    if (!quote) {
+      throw new Error(`Quote ${quoteId} not found`);
+    }
+
+    const linkedIds = quote.linkedQuoteIds || [];
+
+    // Remove this quote's ID from all linked quotes
+    for (const linkedId of linkedIds) {
+      const linkedQuote = allQuotes.find((q) => q.id === linkedId);
+      if (linkedQuote && linkedQuote.linkedQuoteIds) {
+        linkedQuote.linkedQuoteIds = linkedQuote.linkedQuoteIds.filter((id) => id !== quoteId);
+        // If only one quote remains linked, clear its links too (can't have a group of 1)
+        if (linkedQuote.linkedQuoteIds.length === 0) {
+          delete linkedQuote.linkedQuoteIds;
+        }
+        linkedQuote.updatedAt = new Date().toISOString();
+      }
+    }
+
+    // Clear this quote's links
+    delete quote.linkedQuoteIds;
+    quote.updatedAt = new Date().toISOString();
+
+    await writeQuotes(allQuotes);
+    return linkedIds;
+  }, ErrorType.STORAGE);
+
+  if (!result.success) {
+    logError(result.error, "unlinkQuote");
+    throw result.error;
+  }
+
+  // Invalidate caches
+  cache.invalidate(CacheKeys.quotes.all());
+  cache.invalidate(CacheKeys.quotes.byId(quoteId));
+  if (result.data) {
+    for (const id of result.data) {
+      cache.invalidate(CacheKeys.quotes.byId(id));
+    }
+  }
+}
+
+/**
+ * Get all quotes linked to a given quote (including the original)
+ * Returns quotes sorted by tier name or creation date
+ */
+export async function getLinkedQuotes(quoteId: string): Promise<Quote[]> {
+  const quote = await getQuoteById(quoteId);
+  if (!quote) return [];
+
+  const linkedIds = quote.linkedQuoteIds || [];
+  if (linkedIds.length === 0) return [quote]; // Just the original if no links
+
+  // Get all linked quotes
+  const allIds = [quoteId, ...linkedIds];
+  const quotes: Quote[] = [];
+
+  for (const id of allIds) {
+    const q = await getQuoteById(id);
+    if (q) quotes.push(q);
+  }
+
+  // Sort by tier name if present, otherwise by creation date
+  return quotes.sort((a, b) => {
+    // If both have tier names, sort alphabetically
+    if (a.tier && b.tier) {
+      return a.tier.localeCompare(b.tier);
+    }
+    // Quotes with tier names come first
+    if (a.tier) return -1;
+    if (b.tier) return 1;
+    // Otherwise sort by creation date
+    return getTimestamp(a.createdAt) - getTimestamp(b.createdAt);
+  });
+}
+
+/**
+ * Create a new tier by duplicating an existing quote and linking them
+ * @param sourceQuoteId - The quote to duplicate
+ * @param tierName - Name for the new tier (e.g., "Better", "Best", "With Generator")
+ * @returns The newly created quote
+ */
+export async function createTierFromQuote(
+  sourceQuoteId: string,
+  tierName: string
+): Promise<Quote | null> {
+  const result = await withErrorHandling(async () => {
+    const original = await getQuoteById(sourceQuoteId);
+    if (!original) {
+      throw new Error(`Quote ${sourceQuoteId} not found`);
+    }
+
+    // Create a copy with new ID
+    const now = new Date().toISOString();
+    const newQuote: Quote = {
+      ...original,
+      id: `quote-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+      name: original.name, // Keep same job name
+      tier: tierName, // Set the tier name
+      status: "draft", // Reset to draft
+      createdAt: now,
+      updatedAt: now,
+      pinned: false,
+      // Start with link to original
+      linkedQuoteIds: [sourceQuoteId],
+    };
+
+    // If original doesn't have a tier name, set a default
+    if (!original.tier) {
+      original.tier = "Base";
+      original.updatedAt = now;
+    }
+
+    // Add new quote ID to original's links
+    const originalLinks = original.linkedQuoteIds || [];
+    original.linkedQuoteIds = [...originalLinks, newQuote.id];
+
+    // Also link new quote to all of original's existing linked quotes
+    if (originalLinks.length > 0) {
+      newQuote.linkedQuoteIds = [sourceQuoteId, ...originalLinks];
+
+      // And add new quote to each of those linked quotes
+      const allQuotes = await readAllQuotes();
+      for (const linkedId of originalLinks) {
+        const linkedQuote = allQuotes.find((q) => q.id === linkedId);
+        if (linkedQuote) {
+          linkedQuote.linkedQuoteIds = [...(linkedQuote.linkedQuoteIds || []), newQuote.id];
+          linkedQuote.updatedAt = now;
+        }
+      }
+
+      // Find and update original in allQuotes
+      const origIndex = allQuotes.findIndex((q) => q.id === sourceQuoteId);
+      if (origIndex !== -1) {
+        allQuotes[origIndex] = original;
+      }
+
+      // Add new quote
+      allQuotes.push(newQuote);
+      await writeQuotes(allQuotes);
+    } else {
+      // Simple case: just original and new quote
+      const allQuotes = await readAllQuotes();
+      const origIndex = allQuotes.findIndex((q) => q.id === sourceQuoteId);
+      if (origIndex !== -1) {
+        allQuotes[origIndex] = original;
+      }
+      allQuotes.push(newQuote);
+      await writeQuotes(allQuotes);
+    }
+
+    // Track analytics
+    trackEvent(AnalyticsEvents.QUOTE_DUPLICATED, {
+      originalItemCount: original.items.length,
+      originalTotal: original.total,
+      tierName,
+    });
+
+    // Increment quote count
+    await incrementQuoteCount();
+
+    return newQuote;
+  }, ErrorType.STORAGE);
+
+  if (!result.success) {
+    logError(result.error, "createTierFromQuote");
+    return null;
+  }
+
+  // Invalidate caches
+  cache.invalidate(CacheKeys.quotes.all());
+  cache.invalidate(CacheKeys.quotes.byId(sourceQuoteId));
+
+  return result.data;
+}

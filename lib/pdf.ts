@@ -861,3 +861,365 @@ export async function generateAndShareInvoicePDF(
     throw error;
   }
 }
+
+/**
+ * Generate HTML for a combined multi-tier quote PDF
+ * Shows all linked quotes as options on separate pages
+ */
+function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): string {
+  const { includeBranding, companyDetails, logoBase64 } = options;
+
+  // Sort by tier name (alphabetically) or creation date
+  const sortedQuotes = [...quotes].sort((a, b) => {
+    if (a.tier && b.tier) return a.tier.localeCompare(b.tier);
+    if (a.tier) return -1;
+    if (b.tier) return 1;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
+  // Use first quote for project/client info
+  const primaryQuote = sortedQuotes[0];
+  const dateString = new Date(primaryQuote.createdAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  // Generate HTML for each quote option
+  const optionPages = sortedQuotes.map((quote, index) => {
+    const materialsFromItems = quote.items?.reduce(
+      (sum, item) => sum + item.unitPrice * item.qty,
+      0
+    ) ?? 0;
+    const materialEstimate = quote.materialEstimate ?? 0;
+    const labor = quote.labor ?? 0;
+    const overhead = quote.overhead ?? 0;
+    const taxPercent = quote.taxPercent ?? 0;
+    const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+    const taxAmount = (subtotal * taxPercent) / 100;
+    const grandTotal = subtotal + taxAmount;
+
+    const lineItemsHTML = quote.items && quote.items.length > 0
+      ? quote.items.map(item => `
+          <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #e5e5e5;">${item.name}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: center;">${item.qty}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${item.unitPrice.toFixed(2)}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600;">$${(item.unitPrice * item.qty).toFixed(2)}</td>
+          </tr>
+        `).join('')
+      : '';
+
+    const tierLabel = quote.tier || `Option ${index + 1}`;
+
+    return `
+      <div class="option-page" style="${index > 0 ? 'page-break-before: always;' : ''}">
+        <div class="option-header">
+          <div class="option-tier-badge">${tierLabel}</div>
+          <div class="option-total">$${grandTotal.toFixed(2)}</div>
+        </div>
+
+        ${quote.items && quote.items.length > 0 ? `
+          <div class="section">
+            <div class="section-title">Materials</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th style="text-align: center; width: 70px;">Qty</th>
+                  <th style="text-align: right; width: 100px;">Unit</th>
+                  <th style="text-align: right; width: 100px;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lineItemsHTML}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
+        <div class="section">
+          <table class="totals-table">
+            <tbody>
+              ${materialsFromItems > 0 ? `
+                <tr>
+                  <td class="label">Materials</td>
+                  <td class="value">$${materialsFromItems.toFixed(2)}</td>
+                </tr>
+              ` : ''}
+              ${materialEstimate > 0 ? `
+                <tr>
+                  <td class="label">Materials (Est.)</td>
+                  <td class="value">$${materialEstimate.toFixed(2)}</td>
+                </tr>
+              ` : ''}
+              ${labor > 0 ? `
+                <tr>
+                  <td class="label">Labor</td>
+                  <td class="value">$${labor.toFixed(2)}</td>
+                </tr>
+              ` : ''}
+              ${overhead > 0 ? `
+                <tr>
+                  <td class="label">Overhead</td>
+                  <td class="value">$${overhead.toFixed(2)}</td>
+                </tr>
+              ` : ''}
+              ${taxPercent > 0 ? `
+                <tr>
+                  <td class="label">Tax (${taxPercent}%)</td>
+                  <td class="value">$${taxAmount.toFixed(2)}</td>
+                </tr>
+              ` : ''}
+              <tr class="total-row">
+                <td class="label">Total</td>
+                <td class="value">$${grandTotal.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        ${quote.notes ? `
+          <div class="section">
+            <div class="section-title">Notes</div>
+            <div style="padding: 12px; background: #f9f9f9; border-radius: 6px; color: #333; font-size: 13px; line-height: 1.5;">
+              ${quote.notes.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // Generate comparison summary
+  const comparisonRows = sortedQuotes.map(quote => {
+    const materialsFromItems = quote.items?.reduce(
+      (sum, item) => sum + item.unitPrice * item.qty,
+      0
+    ) ?? 0;
+    const materialEstimate = quote.materialEstimate ?? 0;
+    const labor = quote.labor ?? 0;
+    const overhead = quote.overhead ?? 0;
+    const taxPercent = quote.taxPercent ?? 0;
+    const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+    const taxAmount = (subtotal * taxPercent) / 100;
+    const grandTotal = subtotal + taxAmount;
+
+    return `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; font-weight: 600;">${quote.tier || 'Base'}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${materialsFromItems.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${labor.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 700; color: #FF8C00;">$${grandTotal.toFixed(2)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // QuoteCat branding
+  const brandingHeader = includeBranding ? `
+    <div style="background: linear-gradient(135deg, #FF8C00 0%, #FF6B00 100%); color: white; padding: 12px 20px; text-align: center; margin-bottom: 20px; border-radius: 6px;">
+      <div style="font-size: 18px; font-weight: 800; letter-spacing: 1px;">QuoteCat</div>
+      <div style="font-size: 11px; opacity: 0.9;">Professional Quote Generator</div>
+    </div>
+  ` : '';
+
+  const brandingFooter = includeBranding ? `
+    <div style="margin-top: 32px; padding: 16px; border-top: 3px solid #FF8C00; text-align: center; background: #FFF9F0;">
+      <div style="font-size: 14px; color: #FF8C00; font-weight: 800;">Powered by QuoteCat</div>
+      <div style="font-size: 12px; color: #666;">https://www.quotecat.ai</div>
+    </div>
+  ` : '';
+
+  // Logo and company header
+  const logoHTML = logoBase64 ? `
+    <div style="position: absolute; top: 24px; left: 24px; max-width: 180px; max-height: 70px;">
+      <img src="data:image/png;base64,${logoBase64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+    </div>
+  ` : '';
+
+  const companyHeader = companyDetails && companyDetails.companyName ? `
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; ${logoBase64 ? 'margin-top: 90px;' : ''}">
+      <div style="font-size: 18px; font-weight: 700; color: #000;">${companyDetails.companyName}</div>
+      ${companyDetails.email ? `<div style="font-size: 12px; color: #666;">${companyDetails.email}</div>` : ''}
+      ${companyDetails.phone ? `<div style="font-size: 12px; color: #666;">${companyDetails.phone}</div>` : ''}
+    </div>
+  ` : (logoBase64 ? '<div style="margin-top: 90px;"></div>' : '');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page { margin: 40mm 15mm 20mm 15mm; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+          color: #1a1a1a;
+          line-height: 1.4;
+          font-size: 14px;
+        }
+        .page-content { padding: 20px; position: relative; }
+        .header { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 3px solid #FF8C00; }
+        .project-name { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+        .client-name { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 4px; }
+        .date { font-size: 13px; color: #666; }
+        .options-count { font-size: 14px; color: #FF8C00; font-weight: 700; margin-top: 8px; }
+        .section { margin-bottom: 16px; }
+        .section-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #e5e5e5; border-radius: 6px; }
+        th { background: #f9f9f9; padding: 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e5e5; font-size: 13px; }
+        .totals-table { margin-left: auto; width: 320px; border: none; }
+        .totals-table td { padding: 6px 10px; border: none; border-bottom: 1px solid #f0f0f0; }
+        .totals-table .label { color: #666; font-size: 13px; }
+        .totals-table .value { text-align: right; font-weight: 600; font-size: 13px; }
+        .totals-table .total-row td { padding-top: 10px; border-top: 2px solid #FF8C00; font-weight: 800; }
+        .totals-table .total-row .value { color: #FF8C00; font-size: 18px; }
+        .option-page { margin-top: 24px; }
+        .option-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          padding: 16px;
+          background: linear-gradient(135deg, #f9f9f9 0%, #fff 100%);
+          border-radius: 8px;
+          border: 2px solid #FF8C00;
+        }
+        .option-tier-badge {
+          font-size: 20px;
+          font-weight: 800;
+          color: #FF8C00;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        .option-total {
+          font-size: 28px;
+          font-weight: 800;
+          color: #000;
+        }
+        .comparison-section { margin-top: 24px; }
+      </style>
+    </head>
+    <body>
+      <div class="page-content">
+        ${logoHTML}
+        ${brandingHeader}
+        ${companyHeader}
+
+        <div class="header">
+          <div class="project-name">${primaryQuote.name || 'Quote Options'}</div>
+          ${primaryQuote.clientName ? `<div class="client-name">For: ${primaryQuote.clientName}</div>` : ''}
+          ${primaryQuote.clientEmail ? `<div class="date">Email: ${primaryQuote.clientEmail}</div>` : ''}
+          ${primaryQuote.clientPhone ? `<div class="date">Phone: ${primaryQuote.clientPhone}</div>` : ''}
+          <div class="date">${dateString}</div>
+          <div class="options-count">${sortedQuotes.length} Options Included</div>
+        </div>
+
+        <div class="comparison-section">
+          <div class="section-title">Options Comparison</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th style="text-align: right;">Materials</th>
+                <th style="text-align: right;">Labor</th>
+                <th style="text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${comparisonRows}
+            </tbody>
+          </table>
+        </div>
+
+        ${optionPages}
+
+        ${brandingFooter}
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate and share a combined PDF for linked (multi-tier) quotes
+ */
+export async function generateAndShareMultiTierPDF(
+  quotes: Quote[],
+  options: PDFOptions
+): Promise<void> {
+  if (quotes.length === 0) {
+    throw new Error('No quotes to export');
+  }
+
+  try {
+    // Generate HTML
+    const html = generateMultiTierQuoteHTML(quotes, options);
+
+    // Generate PDF
+    const { uri } = await Print.printToFileAsync({ html });
+
+    // Track PDF generation
+    trackEvent(AnalyticsEvents.PDF_GENERATED, {
+      quoteCount: quotes.length,
+      type: 'multi_tier',
+      includedBranding: options.includeBranding,
+      hasCompanyDetails: !!options.companyDetails,
+    });
+
+    // Create descriptive filename
+    const sanitize = (str: string) => str.replace(/[^a-z0-9_\-\s]/gi, '_');
+    const primaryQuote = quotes[0];
+    const projectPart = sanitize(primaryQuote.name || 'Quote');
+    const clientPart = primaryQuote.clientName ? ` - ${sanitize(primaryQuote.clientName)}` : '';
+    const now = new Date();
+    const datePart = now.toISOString().split('T')[0];
+    const fileName = `${projectPart}${clientPart} - Options - ${datePart}.pdf`;
+
+    // Rename and share
+    const renamedPath = `${FileSystem.cacheDirectory}${fileName}`;
+    await FileSystem.copyAsync({ from: uri, to: renamedPath });
+
+    let shareUri = renamedPath;
+    if (Platform.OS === 'android') {
+      const persistentPath = `${FileSystem.documentDirectory}${fileName}`;
+      await FileSystem.copyAsync({ from: renamedPath, to: persistentPath });
+      shareUri = persistentPath;
+    }
+
+    if (await Sharing.isAvailableAsync()) {
+      try {
+        await Sharing.shareAsync(shareUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: fileName,
+          UTI: 'com.adobe.pdf',
+        });
+
+        trackEvent(AnalyticsEvents.PDF_SHARED, {
+          type: 'multi_tier',
+          quoteCount: quotes.length,
+        });
+      } finally {
+        try {
+          await FileSystem.deleteAsync(uri, { idempotent: true });
+          await FileSystem.deleteAsync(renamedPath, { idempotent: true });
+          if (Platform.OS === 'android') {
+            await FileSystem.deleteAsync(shareUri, { idempotent: true });
+          }
+        } catch (cleanupError) {
+          console.warn('Failed to clean up PDF files:', cleanupError);
+        }
+      }
+    } else {
+      throw new Error('Sharing is not available on this device');
+    }
+  } catch (error) {
+    console.error('Error generating multi-tier PDF:', error);
+    trackEvent(AnalyticsEvents.ERROR_OCCURRED, {
+      context: 'multi_tier_pdf_generation',
+      error: String(error),
+    });
+    throw error;
+  }
+}

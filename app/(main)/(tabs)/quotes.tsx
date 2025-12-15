@@ -6,8 +6,14 @@ import {
   listQuotes,
   saveQuote,
   updateQuote,
+  createTierFromQuote,
+  getLinkedQuotes,
   type Quote,
 } from "@/lib/quotes";
+import { generateAndShareMultiTierPDF } from "@/lib/pdf";
+import { loadPreferences } from "@/lib/preferences";
+import { getUserState } from "@/lib/user";
+import { getCachedLogo } from "@/lib/logo";
 import { Stack, useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import type { QuoteStatus } from "@/lib/types";
@@ -25,6 +31,7 @@ import {
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
+import { QuoteGroup } from "@/components/QuoteGroup";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
 import { Ionicons } from "@expo/vector-icons";
@@ -173,6 +180,72 @@ export default function QuotesList() {
     }
   }, [router]);
 
+  const handleCreateTier = useCallback((quote: Quote) => {
+    Alert.prompt(
+      "Create Tier",
+      `Enter a name for this tier option (e.g., "Better", "Best", "With Generator")`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Create",
+          onPress: async (tierName: string | undefined) => {
+            if (!tierName?.trim()) {
+              Alert.alert("Error", "Please enter a tier name");
+              return;
+            }
+            const newTier = await createTierFromQuote(quote.id, tierName.trim());
+            if (newTier) {
+              // Reload list to get updated linked quotes
+              await load();
+              // Navigate to edit the new tier
+              router.push(`/quote/${newTier.id}/edit`);
+            }
+          },
+        },
+      ],
+      "plain-text",
+      "",
+      "default"
+    );
+  }, [load, router]);
+
+  const handleExportAllTiers = useCallback(async (quote: Quote) => {
+    try {
+      // Get all linked quotes
+      const linkedQuotes = await getLinkedQuotes(quote.id);
+
+      if (linkedQuotes.length <= 1) {
+        Alert.alert("No Linked Options", "This quote has no linked tier options to export together.");
+        return;
+      }
+
+      // Load user state, preferences, and logo
+      const [userState, prefs] = await Promise.all([
+        getUserState(),
+        loadPreferences(),
+      ]);
+
+      let logo = null;
+      try {
+        logo = await getCachedLogo();
+      } catch {
+        // Logo loading failed, continue without it
+      }
+
+      // Generate and share combined PDF
+      await generateAndShareMultiTierPDF(linkedQuotes, {
+        includeBranding: userState.tier === "free",
+        companyDetails: prefs.company,
+        logoBase64: logo?.base64,
+      });
+    } catch (error) {
+      Alert.alert(
+        "Export Failed",
+        error instanceof Error ? error.message : "Failed to export PDF"
+      );
+    }
+  }, []);
+
   // Multi-select handlers
   const toggleSelectMode = useCallback(() => {
     setSelectMode((prev) => !prev);
@@ -308,6 +381,48 @@ export default function QuotesList() {
 
     return sorted;
   }, [quotes, searchQuery, selectedStatus, sortBy, sortOrder]);
+
+  // Group linked quotes together
+  type QuoteOrGroup = { type: "single"; quote: Quote } | { type: "group"; quotes: Quote[] };
+
+  const groupedQuotes = React.useMemo((): QuoteOrGroup[] => {
+    const result: QuoteOrGroup[] = [];
+    const processedIds = new Set<string>();
+
+    for (const quote of filteredQuotes) {
+      // Skip if already processed as part of a group
+      if (processedIds.has(quote.id)) continue;
+
+      // Check if this quote has linked quotes
+      if (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0) {
+        // Find all linked quotes that are in our filtered list
+        const groupQuotes = [quote];
+        for (const linkedId of quote.linkedQuoteIds) {
+          const linkedQuote = filteredQuotes.find(q => q.id === linkedId);
+          if (linkedQuote && !processedIds.has(linkedId)) {
+            groupQuotes.push(linkedQuote);
+          }
+        }
+
+        // Mark all as processed
+        for (const gq of groupQuotes) {
+          processedIds.add(gq.id);
+        }
+
+        // Only create a group if we have 2+ quotes
+        if (groupQuotes.length >= 2) {
+          result.push({ type: "group", quotes: groupQuotes });
+        } else {
+          result.push({ type: "single", quote });
+        }
+      } else {
+        processedIds.add(quote.id);
+        result.push({ type: "single", quote });
+      }
+    }
+
+    return result;
+  }, [filteredQuotes]);
 
   const selectAll = useCallback(() => {
     setSelectedIds(new Set(filteredQuotes.map((q) => q.id)));
@@ -477,69 +592,100 @@ export default function QuotesList() {
         </View>
 
         {/* Quote List */}
-        <FlatList
-          data={filteredQuotes}
-          keyExtractor={(q) => q.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          renderItem={({ item }) => (
-            selectMode ? (
+        {selectMode ? (
+          <FlatList
+            data={filteredQuotes}
+            keyExtractor={(q) => q.id}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            renderItem={({ item: quote }) => (
               <Pressable
                 style={styles.selectableItem}
-                onPress={() => toggleSelectQuote(item.id)}
+                onPress={() => toggleSelectQuote(quote.id)}
               >
                 <View style={[
                   styles.checkbox,
-                  selectedIds.has(item.id) && styles.checkboxSelected
+                  selectedIds.has(quote.id) && styles.checkboxSelected
                 ]}>
-                  {selectedIds.has(item.id) && (
+                  {selectedIds.has(quote.id) && (
                     <Ionicons name="checkmark" size={16} color="#000" />
                   )}
                 </View>
                 <View style={styles.selectableItemContent}>
                   <Text style={styles.selectableItemName} numberOfLines={1}>
-                    {item.name || "Untitled"}
+                    {quote.name || "Untitled"}{quote.tier ? ` - ${quote.tier}` : ""}
                   </Text>
                   <Text style={styles.selectableItemClient} numberOfLines={1}>
-                    {item.clientName || "No client"}
+                    {quote.clientName || "No client"}
                   </Text>
                 </View>
                 <Text style={styles.selectableItemTotal}>
-                  ${item.total?.toFixed(2) || "0.00"}
+                  ${quote.total?.toFixed(2) || "0.00"}
                 </Text>
               </Pressable>
-            ) : (
-              <SwipeableQuoteItem
-                item={item}
-                onEdit={() => router.push(`/quote/${item.id}/edit`)}
-                onDelete={() => handleDelete(item)}
-                onDuplicate={() => handleDuplicate(item)}
-                onTogglePin={() => handleTogglePin(item)}
-                onLongPress={() => enterSelectMode(item.id)}
-              />
-            )
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>
-                {selectedStatus === "all" && searchQuery === ""
-                  ? "No quotes yet"
-                  : searchQuery !== ""
-                  ? "No matches"
-                  : `No ${selectedStatus === "pinned" ? "pinned" : selectedStatus} quotes`}
-              </Text>
-              <Text style={styles.emptyDescription}>
-                {selectedStatus === "all" && searchQuery === ""
-                  ? "Tap the + to start"
-                  : searchQuery !== ""
-                  ? `Try a different search term`
-                  : `Tap the + to start`}
-              </Text>
-            </View>
-          }
-        />
+            )}
+          />
+        ) : (
+          <FlatList
+            data={groupedQuotes}
+            keyExtractor={(item) =>
+              item.type === "single" ? item.quote.id : item.quotes[0].id
+            }
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            renderItem={({ item }) => {
+              if (item.type === "group") {
+                return (
+                  <QuoteGroup
+                    quotes={item.quotes}
+                    onEdit={(q) => router.push(`/quote/${q.id}/edit`)}
+                    onDelete={handleDelete}
+                    onDuplicate={handleDuplicate}
+                    onTogglePin={handleTogglePin}
+                    onLongPress={(q) => enterSelectMode(q.id)}
+                    onCreateTier={handleCreateTier}
+                    onExportAllTiers={handleExportAllTiers}
+                  />
+                );
+              }
+
+              return (
+                <SwipeableQuoteItem
+                  item={item.quote}
+                  onEdit={() => router.push(`/quote/${item.quote.id}/edit`)}
+                  onDelete={() => handleDelete(item.quote)}
+                  onDuplicate={() => handleDuplicate(item.quote)}
+                  onTogglePin={() => handleTogglePin(item.quote)}
+                  onLongPress={() => enterSelectMode(item.quote.id)}
+                  onCreateTier={() => handleCreateTier(item.quote)}
+                  onExportAllTiers={() => handleExportAllTiers(item.quote)}
+                />
+              );
+            }}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>
+                  {selectedStatus === "all" && searchQuery === ""
+                    ? "No quotes yet"
+                    : searchQuery !== ""
+                    ? "No matches"
+                    : `No ${selectedStatus === "pinned" ? "pinned" : selectedStatus} quotes`}
+                </Text>
+                <Text style={styles.emptyDescription}>
+                  {selectedStatus === "all" && searchQuery === ""
+                    ? "Tap the + to start"
+                    : searchQuery !== ""
+                    ? `Try a different search term`
+                    : `Tap the + to start`}
+                </Text>
+              </View>
+            }
+          />
+        )}
 
         <UndoSnackbar
           visible={showUndo}
