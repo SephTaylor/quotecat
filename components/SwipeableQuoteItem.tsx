@@ -18,10 +18,11 @@ type SwipeableQuoteItemProps = {
   onDelete: () => void;
   onDuplicate?: () => void;
   onTogglePin?: () => void;
+  onLongPress?: () => void;
 };
 
 export const SwipeableQuoteItem = React.memo(
-  ({ item, onEdit, onDelete, onDuplicate, onTogglePin }: SwipeableQuoteItemProps) => {
+  ({ item, onEdit, onDelete, onDuplicate, onTogglePin, onLongPress }: SwipeableQuoteItemProps) => {
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     const [isExporting, setIsExporting] = useState(false);
@@ -153,9 +154,11 @@ export const SwipeableQuoteItem = React.memo(
         <Pressable
           style={styles.card}
           onPress={onEdit}
+          onLongPress={onLongPress}
+          delayLongPress={400}
           accessibilityLabel={`Quote: ${item.name || "Untitled"}`}
           accessibilityRole="button"
-          accessibilityHint="Double tap to edit. Swipe left for export PDF and duplicate. Swipe right to delete."
+          accessibilityHint="Double tap to edit. Long press to select. Swipe left for export PDF and duplicate. Swipe right to delete."
         >
           <View style={styles.header}>
             <View style={styles.titleRow}>
@@ -189,6 +192,22 @@ export const SwipeableQuoteItem = React.memo(
                 {QuoteStatusMeta[item.status || "draft"].label}
               </Text>
             </View>
+            {item.followUpDate && (
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: new Date(item.followUpDate) <= new Date()
+                      ? "#FF3B30" // Red if due/overdue
+                      : "#FF8C00" // Orange if upcoming
+                  },
+                ]}
+              >
+                <Text style={styles.statusText}>
+                  Follow-up {new Date(item.followUpDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </Text>
+              </View>
+            )}
             <Text style={styles.sub}>
               {item.clientName ? `Client: ${item.clientName}  •  ` : ""}
               Labor: {item.labor.toFixed(2)}

@@ -34,9 +34,9 @@ export type NotificationPreferences = {
   invoiceOverdue: boolean; // Notify when invoice becomes overdue
   invoiceDueSoon: boolean; // Notify 3 days before due date
   invoiceDueToday: boolean; // Notify on due date
-  // Future options:
-  // paymentReceived: boolean;
-  // quoteReminders: boolean;
+  // Quote follow-up reminders
+  autoFollowUpEnabled: boolean; // Auto-remind for sent quotes
+  autoFollowUpDays: 3 | 5 | 7 | 14; // Days after sent to remind
 };
 
 export type PricingSettings = {
@@ -90,6 +90,8 @@ export function getDefaultPreferences(): UserPreferences {
       invoiceOverdue: false,
       invoiceDueSoon: false,
       invoiceDueToday: false,
+      autoFollowUpEnabled: true,
+      autoFollowUpDays: 5,
     },
     pricing: {
       zipCode: "",

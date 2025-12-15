@@ -14,7 +14,10 @@ import React, { useState, useCallback } from "react";
 import {
   Alert,
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -312,14 +315,18 @@ export default function ClientManager() {
           resetForm();
         }}
       >
-        <Pressable
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalOverlay}
-          onPress={() => {
-            setShowModal(false);
-            resetForm();
-          }}
         >
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={styles.modalOverlayInner}
+            onPress={() => {
+              setShowModal(false);
+              resetForm();
+            }}
+          >
+            <Pressable style={styles.modalContent} onPress={() => Keyboard.dismiss()}>
             <Text style={styles.modalTitle}>
               {editingClient ? "Edit Client" : "New Client"}
             </Text>
@@ -422,7 +429,8 @@ export default function ClientManager() {
               </Pressable>
             </View>
           </Pressable>
-        </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </GestureHandlerRootView>
   );
@@ -574,6 +582,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     // Modal styles
     modalOverlay: {
       flex: 1,
+    },
+    modalOverlayInner: {
+      flex: 1,
       backgroundColor: "rgba(0, 0, 0, 0.5)",
       justifyContent: "center",
       alignItems: "center",
@@ -582,23 +593,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.xl,
       padding: theme.spacing(3),
-      width: "85%",
-      maxWidth: 400,
-      maxHeight: "80%",
+      width: "90%",
+      maxWidth: 420,
+      maxHeight: "85%",
     },
     modalTitle: {
       fontSize: 20,
       fontWeight: "700",
       color: theme.colors.text,
-      marginBottom: theme.spacing(1),
+      marginBottom: theme.spacing(0.5),
     },
     modalDescription: {
       fontSize: 14,
       color: theme.colors.muted,
-      marginBottom: theme.spacing(2),
+      marginBottom: theme.spacing(1.5),
     },
     formScroll: {
-      maxHeight: 300,
+      flexGrow: 0,
     },
     formGroup: {
       marginBottom: theme.spacing(2),

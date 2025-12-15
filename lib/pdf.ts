@@ -295,6 +295,15 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         </table>
       </div>
 
+      ${quote.notes ? `
+        <div class="section">
+          <div class="section-title">Notes</div>
+          <div style="padding: 16px; background: #f9f9f9; border-radius: 6px; color: #333; line-height: 1.6;">
+            ${quote.notes.replace(/\n/g, '<br>')}
+          </div>
+        </div>
+      ` : ''}
+
       ${brandingFooter}
       </div>
     </body>

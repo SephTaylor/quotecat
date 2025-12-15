@@ -23,7 +23,8 @@ import {
   useRouter,
 } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -67,6 +68,8 @@ export default function EditQuote() {
   const [markupPercent, setMarkupPercent] = useState<string>(""); // Markup percentage
   const [taxPercent, setTaxPercent] = useState<string>(""); // Tax percentage
   const [notes, setNotes] = useState<string>(""); // Notes / additional details
+  const [followUpDate, setFollowUpDate] = useState<string>(""); // Follow-up date
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
 
@@ -139,6 +142,7 @@ export default function EditQuote() {
       setPinned(q.pinned || false);
       setItems(q.items ?? []);
       setNotes(q.notes || "");
+      setFollowUpDate(q.followUpDate || "");
 
       // Check if this is a newly created empty quote
       // Consider it "new" if name is empty or just "Untitled", client is empty or "Unnamed Client",
@@ -259,6 +263,7 @@ export default function EditQuote() {
         markupPercent: parseFloat(markupPercent) || 0,
         taxPercent: parseFloat(taxPercent) || 0,
         notes: notes.trim() || undefined,
+        followUpDate: followUpDate || undefined,
         status,
         pinned,
         items,
@@ -472,6 +477,7 @@ export default function EditQuote() {
                 markupPercent: parseFloat(markupPercent) || 0,
                 taxPercent: parseFloat(taxPercent) || 0,
                 notes: notes.trim() || undefined,
+                followUpDate: followUpDate || undefined,
                 status,
                 pinned,
                 items,
@@ -657,6 +663,7 @@ export default function EditQuote() {
                 markupPercent: parseFloat(markupPercent) || 0,
                 taxPercent: parseFloat(taxPercent) || 0,
                 notes: notes.trim() || undefined,
+                followUpDate: followUpDate || undefined,
                 status,
                 pinned,
                 items,
@@ -711,6 +718,7 @@ export default function EditQuote() {
                 markupPercent: parseFloat(markupPercent) || 0,
                 taxPercent: parseFloat(taxPercent) || 0,
                 notes: notes.trim() || undefined,
+                followUpDate: followUpDate || undefined,
                 status,
                 pinned,
               });
@@ -761,6 +769,82 @@ export default function EditQuote() {
           numberOfLines={3}
           style={{ height: 80, textAlignVertical: "top" }}
         />
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Follow-up Date</Text>
+        <Pressable
+          style={styles.datePickerButton}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Text style={followUpDate ? styles.datePickerText : styles.datePickerPlaceholder}>
+            {followUpDate
+              ? new Date(followUpDate).toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "Set a follow-up reminder"}
+          </Text>
+          {followUpDate && (
+            <Pressable
+              onPress={() => setFollowUpDate("")}
+              hitSlop={8}
+              style={styles.clearDateButton}
+            >
+              <Text style={styles.clearDateText}>Clear</Text>
+            </Pressable>
+          )}
+        </Pressable>
+
+        {/* Date Picker - iOS */}
+        {Platform.OS === "ios" && showDatePicker && (
+          <Modal transparent animationType="fade" visible={showDatePicker}>
+            <Pressable
+              style={styles.datePickerOverlay}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <View style={styles.datePickerModal}>
+                <View style={styles.datePickerHeader}>
+                  <Pressable onPress={() => setShowDatePicker(false)}>
+                    <Text style={styles.datePickerCancel}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.datePickerTitle}>Follow-up Date</Text>
+                  <Pressable onPress={() => setShowDatePicker(false)}>
+                    <Text style={styles.datePickerDone}>Done</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={followUpDate ? new Date(followUpDate) : new Date()}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={new Date()}
+                  onChange={(event, date) => {
+                    if (date) setFollowUpDate(date.toISOString());
+                  }}
+                  textColor={theme.colors.text}
+                />
+              </View>
+            </Pressable>
+          </Modal>
+        )}
+
+        {/* Date Picker - Android */}
+        {Platform.OS === "android" && showDatePicker && (
+          <DateTimePicker
+            value={followUpDate ? new Date(followUpDate) : new Date()}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            onChange={(event, date) => {
+              setShowDatePicker(false);
+              if (event.type === "set" && date) {
+                setFollowUpDate(date.toISOString());
+              }
+            }}
+          />
+        )}
 
         <View style={{ height: theme.spacing(2) }} />
 
@@ -1311,6 +1395,66 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "600",
       color: theme.colors.text,
+    },
+    // Date picker styles
+    datePickerButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(2),
+    },
+    datePickerText: {
+      fontSize: 16,
+      color: theme.colors.text,
+    },
+    datePickerPlaceholder: {
+      fontSize: 16,
+      color: theme.colors.muted,
+    },
+    clearDateButton: {
+      paddingHorizontal: theme.spacing(1),
+    },
+    clearDateText: {
+      fontSize: 14,
+      color: theme.colors.accent,
+      fontWeight: "600",
+    },
+    datePickerOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-end",
+    },
+    datePickerModal: {
+      backgroundColor: theme.colors.card,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingBottom: 20,
+    },
+    datePickerHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    datePickerTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    datePickerCancel: {
+      fontSize: 17,
+      color: theme.colors.muted,
+    },
+    datePickerDone: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: theme.colors.accent,
     },
   });
 }

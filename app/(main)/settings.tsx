@@ -1154,12 +1154,57 @@ export default function Settings() {
                 isLast
               />
 
-              {/* Info note */}
-              <View style={styles.notificationNote}>
-                <Text style={styles.notificationNoteText}>
-                  Feature coming soon
+              {/* Quote Follow-up Reminders */}
+              <View style={[styles.notificationGroup, { marginTop: theme.spacing(2), borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing(2) }]}>
+                <View style={styles.notificationGroupHeader}>
+                  <Ionicons name="document-text-outline" size={18} color={theme.colors.accent} />
+                  <Text style={styles.notificationGroupTitle}>Quote Follow-ups</Text>
+                </View>
+                <Text style={styles.notificationGroupDescription}>
+                  Get reminded to follow up on sent quotes
                 </Text>
               </View>
+
+              <SettingRow
+                label="Auto follow-up reminders"
+                value={preferences.notifications?.autoFollowUpEnabled ?? true}
+                onToggle={async (value) => {
+                  const updated = await updateNotificationPreferences({ autoFollowUpEnabled: value });
+                  setPreferences(updated);
+                }}
+                theme={theme}
+                compact
+              />
+
+              {preferences.notifications?.autoFollowUpEnabled && (
+                <View style={styles.followUpDaysRow}>
+                  <Text style={styles.followUpDaysLabel}>Remind after</Text>
+                  <View style={styles.followUpDaysOptions}>
+                    {([3, 5, 7, 14] as const).map((days) => (
+                      <Pressable
+                        key={days}
+                        style={[
+                          styles.followUpDayOption,
+                          preferences.notifications?.autoFollowUpDays === days && styles.followUpDayOptionActive,
+                        ]}
+                        onPress={async () => {
+                          const updated = await updateNotificationPreferences({ autoFollowUpDays: days });
+                          setPreferences(updated);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.followUpDayOptionText,
+                            preferences.notifications?.autoFollowUpDays === days && styles.followUpDayOptionTextActive,
+                          ]}
+                        >
+                          {days}d
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           </CollapsibleSection>
 
@@ -1765,6 +1810,41 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 11,
       color: theme.colors.muted,
       textAlign: "center",
+    },
+    followUpDaysRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+    },
+    followUpDaysLabel: {
+      fontSize: 14,
+      color: theme.colors.text,
+    },
+    followUpDaysOptions: {
+      flexDirection: "row",
+      gap: theme.spacing(1),
+    },
+    followUpDayOption: {
+      paddingHorizontal: theme.spacing(1.5),
+      paddingVertical: theme.spacing(0.75),
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.bg,
+    },
+    followUpDayOptionActive: {
+      borderColor: theme.colors.accent,
+      backgroundColor: theme.colors.accent,
+    },
+    followUpDayOptionText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    followUpDayOptionTextActive: {
+      color: "#000",
     },
     // Cloud Sync section styles
     syncStatusRow: {

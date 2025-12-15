@@ -13,6 +13,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import type { QuoteStatus } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
 import {
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -26,6 +27,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
 export default function QuotesList() {
   const router = useRouter();
@@ -40,6 +43,12 @@ export default function QuotesList() {
   const [selectedStatus, setSelectedStatus] = useState<QuoteStatus | "all" | "pinned">(
     "all",
   );
+  const [sortBy, setSortBy] = useState<"date" | "amount" | "name" | "client" | "followUp">("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Multi-select mode
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     const data = await listQuotes();
@@ -164,7 +173,93 @@ export default function QuotesList() {
     }
   }, [router]);
 
-  // Filter quotes based on search query and status
+  // Multi-select handlers
+  const toggleSelectMode = useCallback(() => {
+    setSelectMode((prev) => !prev);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelectQuote = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const enterSelectMode = useCallback((id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectMode(true);
+    setSelectedIds(new Set([id]));
+  }, []);
+
+  // selectAll is defined after filteredQuotes
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.size === 0) return;
+
+    Alert.alert(
+      "Delete Quotes",
+      `Are you sure you want to delete ${selectedIds.size} quote${selectedIds.size === 1 ? "" : "s"}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            for (const id of selectedIds) {
+              await deleteQuote(id);
+            }
+            await load();
+            setSelectMode(false);
+            setSelectedIds(new Set());
+          },
+        },
+      ]
+    );
+  }, [selectedIds, load]);
+
+  const handleBulkArchive = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    for (const id of selectedIds) {
+      await updateQuote(id, { status: "archived" });
+    }
+    await load();
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, [selectedIds, load]);
+
+  const handleBulkStatusChange = useCallback(() => {
+    if (selectedIds.size === 0) return;
+
+    const statusOptions: QuoteStatus[] = ["draft", "sent", "approved", "completed", "archived"];
+
+    Alert.alert(
+      "Change Status",
+      `Set status for ${selectedIds.size} quote${selectedIds.size === 1 ? "" : "s"}`,
+      [
+        ...statusOptions.map((status) => ({
+          text: QuoteStatusMeta[status].label,
+          onPress: async () => {
+            for (const id of selectedIds) {
+              await updateQuote(id, { status });
+            }
+            await load();
+            setSelectMode(false);
+            setSelectedIds(new Set());
+          },
+        })),
+        { text: "Cancel", style: "cancel" as const },
+      ]
+    );
+  }, [selectedIds, load]);
+
+  // Filter and sort quotes
   const filteredQuotes = React.useMemo(() => {
     let filtered = quotes;
 
@@ -185,14 +280,62 @@ export default function QuotesList() {
       );
     }
 
-    return filtered;
-  }, [quotes, searchQuery, selectedStatus]);
+    // Sort
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "date":
+          comparison = new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime();
+          break;
+        case "amount":
+          comparison = (b.total || 0) - (a.total || 0);
+          break;
+        case "name":
+          comparison = (a.name || "").localeCompare(b.name || "");
+          break;
+        case "client":
+          comparison = (a.clientName || "").localeCompare(b.clientName || "");
+          break;
+        case "followUp":
+          // Quotes with follow-up dates come first, then sorted by date
+          const aDate = a.followUpDate ? new Date(a.followUpDate).getTime() : Infinity;
+          const bDate = b.followUpDate ? new Date(b.followUpDate).getTime() : Infinity;
+          comparison = aDate - bDate;
+          break;
+      }
+      return sortOrder === "asc" ? -comparison : comparison;
+    });
+
+    return sorted;
+  }, [quotes, searchQuery, selectedStatus, sortBy, sortOrder]);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filteredQuotes.map((q) => q.id)));
+  }, [filteredQuotes]);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: "Quotes", headerTitleAlign: 'center' }} />
+      <Stack.Screen
+        options={{
+          title: selectMode ? `${selectedIds.size} Selected` : "Quotes",
+          headerTitleAlign: 'center',
+          headerRight: () => (
+            selectMode ? (
+              <Pressable onPress={toggleSelectMode} style={{ paddingHorizontal: 16 }}>
+                <Text style={{ color: theme.colors.accent, fontSize: 16, fontWeight: "600" }}>
+                  Done
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => router.push("/quote/new/edit")} style={{ paddingHorizontal: 16 }}>
+                <Ionicons name="add" size={28} color={theme.colors.accent} />
+              </Pressable>
+            )
+          ),
+        }}
+      />
       <GradientBackground>
         {/* Status Filters */}
         <ScrollView
@@ -252,7 +395,7 @@ export default function QuotesList() {
           />
         </ScrollView>
 
-        {/* Search */}
+        {/* Search and Sort */}
         <View style={styles.topBar}>
           <TextInput
             style={styles.searchInput}
@@ -262,6 +405,75 @@ export default function QuotesList() {
             onChangeText={setSearchQuery}
             clearButtonMode="while-editing"
           />
+          <Pressable
+            style={styles.sortButton}
+            onPress={() => {
+              Alert.alert(
+                "Sort By",
+                undefined,
+                [
+                  {
+                    text: `Date ${sortBy === "date" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
+                    onPress: () => {
+                      if (sortBy === "date") {
+                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                      } else {
+                        setSortBy("date");
+                        setSortOrder("desc");
+                      }
+                    },
+                  },
+                  {
+                    text: `Amount ${sortBy === "amount" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
+                    onPress: () => {
+                      if (sortBy === "amount") {
+                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                      } else {
+                        setSortBy("amount");
+                        setSortOrder("desc");
+                      }
+                    },
+                  },
+                  {
+                    text: `Name ${sortBy === "name" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
+                    onPress: () => {
+                      if (sortBy === "name") {
+                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                      } else {
+                        setSortBy("name");
+                        setSortOrder("asc");
+                      }
+                    },
+                  },
+                  {
+                    text: `Client ${sortBy === "client" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
+                    onPress: () => {
+                      if (sortBy === "client") {
+                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                      } else {
+                        setSortBy("client");
+                        setSortOrder("asc");
+                      }
+                    },
+                  },
+                  {
+                    text: `Follow-up ${sortBy === "followUp" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
+                    onPress: () => {
+                      if (sortBy === "followUp") {
+                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                      } else {
+                        setSortBy("followUp");
+                        setSortOrder("desc");
+                      }
+                    },
+                  },
+                  { text: "Cancel", style: "cancel" },
+                ]
+              );
+            }}
+          >
+            <Ionicons name="swap-vertical-outline" size={22} color={theme.colors.text} />
+          </Pressable>
         </View>
 
         {/* Quote List */}
@@ -273,13 +485,41 @@ export default function QuotesList() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           renderItem={({ item }) => (
-            <SwipeableQuoteItem
-              item={item}
-              onEdit={() => router.push(`/quote/${item.id}/edit`)}
-              onDelete={() => handleDelete(item)}
-              onDuplicate={() => handleDuplicate(item)}
-              onTogglePin={() => handleTogglePin(item)}
-            />
+            selectMode ? (
+              <Pressable
+                style={styles.selectableItem}
+                onPress={() => toggleSelectQuote(item.id)}
+              >
+                <View style={[
+                  styles.checkbox,
+                  selectedIds.has(item.id) && styles.checkboxSelected
+                ]}>
+                  {selectedIds.has(item.id) && (
+                    <Ionicons name="checkmark" size={16} color="#000" />
+                  )}
+                </View>
+                <View style={styles.selectableItemContent}>
+                  <Text style={styles.selectableItemName} numberOfLines={1}>
+                    {item.name || "Untitled"}
+                  </Text>
+                  <Text style={styles.selectableItemClient} numberOfLines={1}>
+                    {item.clientName || "No client"}
+                  </Text>
+                </View>
+                <Text style={styles.selectableItemTotal}>
+                  ${item.total?.toFixed(2) || "0.00"}
+                </Text>
+              </Pressable>
+            ) : (
+              <SwipeableQuoteItem
+                item={item}
+                onEdit={() => router.push(`/quote/${item.id}/edit`)}
+                onDelete={() => handleDelete(item)}
+                onDuplicate={() => handleDuplicate(item)}
+                onTogglePin={() => handleTogglePin(item)}
+                onLongPress={() => enterSelectMode(item.id)}
+              />
+            )
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -307,6 +547,46 @@ export default function QuotesList() {
           onUndo={handleUndo}
           onDismiss={handleDismissUndo}
         />
+
+        {/* Bulk Actions Bar */}
+        {selectMode && (
+          <View style={styles.bulkActionsBar}>
+            <Pressable
+              style={styles.bulkActionButton}
+              onPress={selectAll}
+            >
+              <Ionicons name="checkmark-done-outline" size={20} color={theme.colors.text} />
+              <Text style={styles.bulkActionText}>Select All</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.bulkActionButton, selectedIds.size === 0 && styles.bulkActionDisabled]}
+              onPress={handleBulkStatusChange}
+              disabled={selectedIds.size === 0}
+            >
+              <Ionicons name="flag-outline" size={20} color={selectedIds.size === 0 ? theme.colors.muted : theme.colors.text} />
+              <Text style={[styles.bulkActionText, selectedIds.size === 0 && styles.bulkActionTextDisabled]}>Status</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.bulkActionButton, selectedIds.size === 0 && styles.bulkActionDisabled]}
+              onPress={handleBulkArchive}
+              disabled={selectedIds.size === 0}
+            >
+              <Ionicons name="archive-outline" size={20} color={selectedIds.size === 0 ? theme.colors.muted : theme.colors.text} />
+              <Text style={[styles.bulkActionText, selectedIds.size === 0 && styles.bulkActionTextDisabled]}>Archive</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.bulkActionButton, selectedIds.size === 0 && styles.bulkActionDisabled]}
+              onPress={handleBulkDelete}
+              disabled={selectedIds.size === 0}
+            >
+              <Ionicons name="trash-outline" size={20} color={selectedIds.size === 0 ? theme.colors.muted : "#FF3B30"} />
+              <Text style={[styles.bulkActionText, selectedIds.size === 0 && styles.bulkActionTextDisabled, selectedIds.size > 0 && { color: "#FF3B30" }]}>Delete</Text>
+            </Pressable>
+          </View>
+        )}
       </GradientBackground>
     </GestureHandlerRootView>
   );
@@ -348,6 +628,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.bg },
     topBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1.5),
       paddingHorizontal: theme.spacing(3),
       paddingVertical: theme.spacing(1.5),
       backgroundColor: theme.colors.bg,
@@ -355,6 +638,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderBottomColor: theme.colors.border,
     },
     searchInput: {
+      flex: 1,
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.md,
       paddingHorizontal: theme.spacing(2),
@@ -363,6 +647,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
       borderWidth: 1,
       borderColor: theme.colors.border,
+    },
+    sortButton: {
+      width: 44,
+      height: 44,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+      justifyContent: "center",
     },
     filterScrollView: {
       flexGrow: 0,
@@ -423,6 +717,78 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       textAlign: "center",
       lineHeight: 20,
       maxWidth: 300,
+    },
+    // Multi-select styles
+    selectableItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(1.5),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.colors.muted,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: theme.spacing(2),
+    },
+    checkboxSelected: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    selectableItemContent: {
+      flex: 1,
+    },
+    selectableItemName: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 2,
+    },
+    selectableItemClient: {
+      fontSize: 14,
+      color: theme.colors.muted,
+    },
+    selectableItemTotal: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.accent,
+    },
+    // Bulk actions bar
+    bulkActionsBar: {
+      flexDirection: "row",
+      justifyContent: "space-around",
+      alignItems: "center",
+      backgroundColor: theme.colors.card,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      paddingBottom: theme.spacing(4), // Extra padding for home indicator
+    },
+    bulkActionButton: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(1.5),
+    },
+    bulkActionText: {
+      fontSize: 12,
+      color: theme.colors.text,
+      marginTop: 4,
+    },
+    bulkActionDisabled: {
+      opacity: 0.5,
+    },
+    bulkActionTextDisabled: {
+      color: theme.colors.muted,
     },
   });
 }

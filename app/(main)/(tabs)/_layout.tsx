@@ -9,6 +9,7 @@ import { useRouter } from "expo-router";
 import { createNewQuote } from "@/lib/quotes";
 import { signOut as authSignOut, getCurrentUserEmail, isAuthenticated } from "@/lib/auth";
 import { HeaderIconButton } from "@/components/HeaderIconButton";
+import { NotificationBell } from "@/components/NotificationBell";
 
 type IconProps = { color: string; size: number };
 
@@ -69,11 +70,14 @@ export default function DrawerLayout() {
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
           headerRight: () => (
-            <HeaderIconButton
-              onPress={handleCreateNewQuote}
-              icon="+"
-              side="right"
-            />
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <NotificationBell side="right" />
+              <HeaderIconButton
+                onPress={handleCreateNewQuote}
+                icon="+"
+                side="right"
+              />
+            </View>
           ),
         }}
       />

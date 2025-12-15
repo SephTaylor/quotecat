@@ -102,6 +102,8 @@ export type Quote = {
   overhead?: number; // Flat overhead/additional costs
   markupPercent?: number; // Markup percentage applied to subtotal
   taxPercent?: number; // Tax percentage (e.g., 8.25 for 8.25%)
+  notes?: string; // Internal notes or special instructions
+  followUpDate?: string; // ISO 8601 date for follow-up reminder
   currency: CurrencyCode;
   status: QuoteStatus;
   pinned?: boolean; // For favoriting/starring quotes
