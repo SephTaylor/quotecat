@@ -77,6 +77,8 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
       status: quote.status,
       pinned: quote.pinned || false,
       tier: quote.tier || null,
+      linked_quote_ids: quote.linkedQuoteIds || [],
+      follow_up_date: quote.followUpDate || null,
       notes: null, // Not used in current app version
       created_at: quote.createdAt,
       updated_at: quote.updatedAt,
@@ -177,6 +179,8 @@ export async function downloadQuotes(): Promise<Quote[]> {
         status: row.status || "draft",
         pinned: row.pinned || false,
         tier: row.tier || undefined,
+        linkedQuoteIds: row.linked_quote_ids || undefined,
+        followUpDate: row.follow_up_date || undefined,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         deletedAt: row.deleted_at || undefined,

@@ -8,6 +8,7 @@ import {
   updateQuote,
   createTierFromQuote,
   getLinkedQuotes,
+  unlinkQuote,
   type Quote,
 } from "@/lib/quotes";
 import { generateAndShareMultiTierPDF } from "@/lib/pdf";
@@ -245,6 +246,24 @@ export default function QuotesList() {
       );
     }
   }, []);
+
+  const handleUnlink = useCallback((quote: Quote) => {
+    Alert.alert(
+      "Unlink Quote",
+      `Remove "${quote.name || "Untitled"}${quote.tier ? ` (${quote.tier})` : ""}" from this group? The quote won't be deleted, just unlinked from the other options.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Unlink",
+          style: "destructive",
+          onPress: async () => {
+            await unlinkQuote(quote.id);
+            await load();
+          },
+        },
+      ]
+    );
+  }, [load]);
 
   // Multi-select handlers
   const toggleSelectMode = useCallback(() => {
@@ -649,6 +668,7 @@ export default function QuotesList() {
                     onLongPress={(q) => enterSelectMode(q.id)}
                     onCreateTier={handleCreateTier}
                     onExportAllTiers={handleExportAllTiers}
+                    onUnlink={handleUnlink}
                   />
                 );
               }
@@ -663,6 +683,7 @@ export default function QuotesList() {
                   onLongPress={() => enterSelectMode(item.quote.id)}
                   onCreateTier={() => handleCreateTier(item.quote)}
                   onExportAllTiers={() => handleExportAllTiers(item.quote)}
+                  onUnlink={() => handleUnlink(item.quote)}
                 />
               );
             }}

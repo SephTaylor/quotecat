@@ -21,10 +21,11 @@ type SwipeableQuoteItemProps = {
   onLongPress?: () => void;
   onCreateTier?: () => void;
   onExportAllTiers?: () => void;
+  onUnlink?: () => void;
 };
 
 export const SwipeableQuoteItem = React.memo(
-  ({ item, onEdit, onDelete, onDuplicate, onTogglePin, onLongPress, onCreateTier, onExportAllTiers }: SwipeableQuoteItemProps) => {
+  ({ item, onEdit, onDelete, onDuplicate, onTogglePin, onLongPress, onCreateTier, onExportAllTiers, onUnlink }: SwipeableQuoteItemProps) => {
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     const [isExporting, setIsExporting] = useState(false);
@@ -108,7 +109,7 @@ export const SwipeableQuoteItem = React.memo(
     ) => {
       // Calculate width based on available actions
       const hasLinkedQuotes = item.linkedQuoteIds && item.linkedQuoteIds.length > 0;
-      const actionCount = 1 + (onDuplicate ? 1 : 0) + (onCreateTier ? 1 : 0) + (hasLinkedQuotes && onExportAllTiers ? 1 : 0);
+      const actionCount = 1 + (onDuplicate ? 1 : 0) + (onCreateTier ? 1 : 0) + (hasLinkedQuotes && onExportAllTiers ? 1 : 0) + (hasLinkedQuotes && onUnlink ? 1 : 0);
       const totalWidth = actionCount * 100;
 
       const translateX = dragX.interpolate({
@@ -141,6 +142,14 @@ export const SwipeableQuoteItem = React.memo(
         }
       };
 
+      const handleUnlink = () => {
+        if (onUnlink) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          swipeableRef.current?.close();
+          onUnlink();
+        }
+      };
+
       return (
         <Animated.View
           style={[styles.actionsContainer, { transform: [{ translateX }] }]}
@@ -169,6 +178,11 @@ export const SwipeableQuoteItem = React.memo(
           {onCreateTier && (
             <Pressable style={styles.tierButton} onPress={handleCreateTier}>
               <Text style={styles.actionText}>Create Tier</Text>
+            </Pressable>
+          )}
+          {hasLinkedQuotes && onUnlink && (
+            <Pressable style={styles.unlinkButton} onPress={handleUnlink}>
+              <Text style={styles.actionText}>Unlink</Text>
             </Pressable>
           )}
         </Animated.View>
@@ -377,6 +391,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     tierButton: {
       backgroundColor: "#5856D6", // Purple for tier action
+      justifyContent: "center",
+      alignItems: "center",
+      width: 100,
+      borderRadius: theme.radius.lg,
+    },
+    unlinkButton: {
+      backgroundColor: "#FF9500", // Orange for unlink action
       justifyContent: "center",
       alignItems: "center",
       width: 100,

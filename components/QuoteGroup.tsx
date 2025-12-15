@@ -23,6 +23,7 @@ type QuoteGroupProps = {
   onLongPress: (quote: Quote) => void;
   onCreateTier: (quote: Quote) => void;
   onExportAllTiers: (quote: Quote) => void;
+  onUnlink: (quote: Quote) => void;
 };
 
 export function QuoteGroup({
@@ -34,6 +35,7 @@ export function QuoteGroup({
   onLongPress,
   onCreateTier,
   onExportAllTiers,
+  onUnlink,
 }: QuoteGroupProps) {
   const { theme } = useTheme();
   const [expanded, setExpanded] = useState(false);
@@ -112,6 +114,7 @@ export function QuoteGroup({
                   onLongPress={() => onLongPress(quote)}
                   onCreateTier={() => onCreateTier(quote)}
                   onExportAllTiers={() => onExportAllTiers(quote)}
+                  onUnlink={() => onUnlink(quote)}
                 />
               </View>
             </View>
