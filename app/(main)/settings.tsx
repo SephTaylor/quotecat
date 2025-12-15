@@ -959,6 +959,101 @@ export default function Settings() {
             theme={theme}
           >
             <View style={styles.defaultsContainer}>
+              {/* Default Tax */}
+              <View style={styles.defaultItem}>
+                <View style={styles.defaultItemHeader}>
+                  <Ionicons name="calculator-outline" size={20} color={theme.colors.accent} />
+                  <Text style={styles.defaultItemTitle}>Default Tax %</Text>
+                </View>
+                <Text style={styles.defaultItemDescription}>
+                  Set a default tax percentage that will be applied to new quotes.
+                </Text>
+                {(preferences.pricing?.defaultTaxPercent ?? 0) > 0 && (
+                  <View style={styles.previewBox}>
+                    <Text style={styles.previewText}>{preferences.pricing.defaultTaxPercent}%</Text>
+                  </View>
+                )}
+                <Pressable
+                  style={styles.defaultItemButton}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Default Tax %',
+                      'Enter the default tax percentage for new quotes:',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Save',
+                          onPress: async (value) => {
+                            const num = parseFloat(value || '0');
+                            if (!isNaN(num) && num >= 0 && num <= 100) {
+                              const updated = await updatePricingSettings({ defaultTaxPercent: num });
+                              setPreferences(updated);
+                            } else {
+                              Alert.alert('Invalid Value', 'Please enter a number between 0 and 100.');
+                            }
+                          },
+                        },
+                      ],
+                      'plain-text',
+                      String(preferences.pricing?.defaultTaxPercent || ''),
+                      'decimal-pad'
+                    );
+                  }}
+                >
+                  <Text style={styles.defaultItemButtonText}>
+                    {(preferences.pricing?.defaultTaxPercent ?? 0) > 0 ? 'Change Tax %' : 'Set Tax %'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* Default Markup */}
+              <View style={styles.defaultItem}>
+                <View style={styles.defaultItemHeader}>
+                  <Ionicons name="trending-up-outline" size={20} color={theme.colors.accent} />
+                  <Text style={styles.defaultItemTitle}>Default Markup %</Text>
+                </View>
+                <Text style={styles.defaultItemDescription}>
+                  Set a default markup percentage that will be applied to new quotes.
+                </Text>
+                {(preferences.pricing?.defaultMarkupPercent ?? 0) > 0 && (
+                  <View style={styles.previewBox}>
+                    <Text style={styles.previewText}>{preferences.pricing.defaultMarkupPercent}%</Text>
+                  </View>
+                )}
+                <Pressable
+                  style={styles.defaultItemButton}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Default Markup %',
+                      'Enter the default markup percentage for new quotes:',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Save',
+                          onPress: async (value) => {
+                            const num = parseFloat(value || '0');
+                            if (!isNaN(num) && num >= 0) {
+                              const updated = await updatePricingSettings({ defaultMarkupPercent: num });
+                              setPreferences(updated);
+                            } else {
+                              Alert.alert('Invalid Value', 'Please enter a valid number.');
+                            }
+                          },
+                        },
+                      ],
+                      'plain-text',
+                      String(preferences.pricing?.defaultMarkupPercent || ''),
+                      'decimal-pad'
+                    );
+                  }}
+                >
+                  <Text style={styles.defaultItemButtonText}>
+                    {(preferences.pricing?.defaultMarkupPercent ?? 0) > 0 ? 'Change Markup %' : 'Set Markup %'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* Zip Code */}
               <View style={[styles.defaultItem, styles.defaultItemLast]}>
                 <View style={styles.defaultItemHeader}>
                   <Ionicons name="location-outline" size={20} color={theme.colors.accent} />

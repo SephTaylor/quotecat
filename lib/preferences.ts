@@ -41,6 +41,8 @@ export type NotificationPreferences = {
 
 export type PricingSettings = {
   zipCode: string; // User's zip code for regional pricing
+  defaultTaxPercent: number; // Default tax % for new quotes
+  defaultMarkupPercent: number; // Default markup % for new quotes
 };
 
 export type UserPreferences = {
@@ -91,6 +93,8 @@ export function getDefaultPreferences(): UserPreferences {
     },
     pricing: {
       zipCode: "",
+      defaultTaxPercent: 0,
+      defaultMarkupPercent: 0,
     },
   };
 }

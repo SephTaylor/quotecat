@@ -10,6 +10,7 @@ import {
 import { getClients, type Client } from "@/lib/clients";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
+import { loadPreferences } from "@/lib/preferences";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { parseMoney } from "@/modules/settings/money";
 import { getItemId } from "@/lib/validation";
@@ -137,16 +138,29 @@ export default function EditQuote() {
       setStatus(q.status || "draft");
       setPinned(q.pinned || false);
       setItems(q.items ?? []);
-      setMarkupPercent(q.markupPercent && q.markupPercent !== 0 ? q.markupPercent.toString() : "");
-      setTaxPercent(q.taxPercent && q.taxPercent !== 0 ? q.taxPercent.toString() : "");
       setNotes(q.notes || "");
+
       // Check if this is a newly created empty quote
       // Consider it "new" if name is empty or just "Untitled", client is empty or "Unnamed Client",
       // labor is 0, and there are no items
       const isDefaultName = !q.name || q.name === "Untitled";
       const isDefaultClient = !q.clientName || q.clientName === "Unnamed Client";
       const hasNoItems = !q.items || q.items.length === 0;
-      setIsNewQuote(isDefaultName && isDefaultClient && q.labor === 0 && hasNoItems);
+      const isNew = isDefaultName && isDefaultClient && q.labor === 0 && hasNoItems;
+      setIsNewQuote(isNew);
+
+      // For new quotes, apply default tax/markup from preferences if not already set
+      if (isNew) {
+        const prefs = await loadPreferences();
+        const defaultTax = prefs.pricing?.defaultTaxPercent || 0;
+        const defaultMarkup = prefs.pricing?.defaultMarkupPercent || 0;
+        setTaxPercent(defaultTax > 0 ? defaultTax.toString() : "");
+        setMarkupPercent(defaultMarkup > 0 ? defaultMarkup.toString() : "");
+      } else {
+        // For existing quotes, use saved values
+        setMarkupPercent(q.markupPercent && q.markupPercent !== 0 ? q.markupPercent.toString() : "");
+        setTaxPercent(q.taxPercent && q.taxPercent !== 0 ? q.taxPercent.toString() : "");
+      }
     }
   }, [id]);
 
