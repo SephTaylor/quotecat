@@ -66,11 +66,7 @@ export default function AssemblyManager() {
 
   const handleCreateAssembly = () => {
     if (!isPro) {
-      Alert.alert(
-        "Pro Feature",
-        "Creating custom assemblies is a Pro feature. Upgrade to Pro to build your template library!",
-        [{ text: "OK" }]
-      );
+      // Pro feature - button should be disabled for free users
       return;
     }
 

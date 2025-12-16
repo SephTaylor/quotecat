@@ -105,12 +105,8 @@ export default function InvoicesList() {
     setRefreshing(false);
   }, [load]);
 
-  const handleUpgrade = () => {
-    Alert.alert(
-      "Pro Feature",
-      "Invoices are a Pro feature. Sign in to access invoice management.",
-      [{ text: "OK", style: "cancel" }],
-    );
+  const handleSignIn = () => {
+    router.push("/(auth)/sign-in" as any);
   };
 
   const handleDeleteInvoice = useCallback(async (invoice: Invoice) => {
@@ -264,12 +260,12 @@ export default function InvoicesList() {
         <GradientBackground>
           <View style={styles.lockedContainer}>
             <Ionicons name="lock-closed" size={64} color={theme.colors.muted} />
-            <Text style={styles.lockedTitle}>Pro Feature</Text>
+            <Text style={styles.lockedTitle}>Invoices</Text>
             <Text style={styles.lockedDescription}>
-              Invoice management is available with a Pro account. Create, track, and manage invoices from your quotes.
+              Create, track, and manage invoices from your quotes.
             </Text>
-            <Pressable style={styles.upgradeButton} onPress={handleUpgrade}>
-              <Text style={styles.upgradeButtonText}>Learn More</Text>
+            <Pressable style={styles.upgradeButton} onPress={handleSignIn}>
+              <Text style={styles.upgradeButtonText}>Sign In</Text>
             </Pressable>
           </View>
         </GradientBackground>

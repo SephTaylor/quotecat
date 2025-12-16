@@ -137,7 +137,7 @@ export default function QuoteReviewScreen() {
     if (userState.tier === "free" && remaining !== undefined) {
       Alert.alert(
         "Export PDF",
-        `This will use 1 of your ${remaining} remaining PDF exports this month.\n\nFree PDFs include QuoteCat branding. Upgrade to Pro for unlimited exports with your own branding.`,
+        `This will use 1 of your ${remaining} remaining PDF exports this month.`,
         [
           { text: "Cancel", style: "cancel" },
           { text: "Export", onPress: exportPDF }
@@ -245,7 +245,7 @@ export default function QuoteReviewScreen() {
     if (userState.tier === "free" && remaining !== undefined) {
       Alert.alert(
         "Export Spreadsheet",
-        `This will use your ${remaining} remaining spreadsheet export this month.\n\nSpreadsheet exports work in Excel, Google Sheets, Numbers, and accounting software. Upgrade to Pro for unlimited exports.`,
+        `This will use 1 of your ${remaining} remaining spreadsheet exports this month.`,
         [
           { text: "Cancel", style: "cancel" },
           { text: "Export", onPress: exportSheet }
@@ -557,22 +557,6 @@ export default function QuoteReviewScreen() {
             <Text style={styles.promoText}>
               {spreadsheetRemaining} spreadsheet export{spreadsheetRemaining !== 1 ? "s" : ""} remaining this month
             </Text>
-            <Text style={styles.promoSubtext}>
-              Upgrade for unlimited exports, custom branding, and more
-            </Text>
-            <Pressable
-              style={styles.upgradeButton}
-              onPress={() => {
-                // TODO: Navigate to upgrade screen or website
-                Alert.alert(
-                  "Upgrade to Pro",
-                  "Get unlimited PDF and spreadsheet exports, remove QuoteCat branding, and unlock premium features.\n\nVisit https://www.quotecat.ai to learn more.",
-                  [{ text: "OK" }]
-                );
-              }}
-            >
-              <Text style={styles.upgradeButtonText}>Learn About Pro</Text>
-            </Pressable>
           </View>
         )}
       </ScrollView>

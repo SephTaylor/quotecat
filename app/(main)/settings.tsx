@@ -210,6 +210,15 @@ export default function Settings() {
     }
   };
 
+  const handleUnsubscribe = async () => {
+    try {
+      await AsyncStorage.removeItem('@quotecat/subscribed-email');
+      setIsSubscribed(false);
+    } catch (error) {
+      console.error("Failed to unsubscribe:", error);
+    }
+  };
+
   const handleUploadLogo = async () => {
     if (!isPro) {
       // Pro feature - button should be disabled for free users
@@ -483,41 +492,40 @@ export default function Settings() {
                   {/* Email capture for non-signed-in users */}
                   {!isSubscribed ? (
                     <View style={styles.emailCaptureContainer}>
-                      <Text style={styles.emailCaptureTitle}>Stay Updated</Text>
-                      <Text style={styles.emailCaptureDescription}>
-                        Get notified about new features and tips
-                      </Text>
-                      <View style={styles.emailCaptureRow}>
-                        <TextInput
-                          style={styles.emailCaptureInput}
-                          placeholder="Enter your email"
-                          placeholderTextColor={theme.colors.muted}
-                          value={subscribeEmail}
-                          onChangeText={setSubscribeEmail}
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                        />
-                        <Pressable
-                          style={[
-                            styles.emailCaptureButton,
-                            (!subscribeEmail.trim() || subscribing) && styles.emailCaptureButtonDisabled
-                          ]}
-                          onPress={handleSubscribe}
-                          disabled={!subscribeEmail.trim() || subscribing}
-                        >
-                          {subscribing ? (
-                            <ActivityIndicator size="small" color="#000" />
-                          ) : (
-                            <Ionicons name="arrow-forward" size={20} color="#000" />
-                          )}
-                        </Pressable>
-                      </View>
+                      <TextInput
+                        style={styles.emailCaptureInput}
+                        placeholder="Enter email for updates"
+                        placeholderTextColor={theme.colors.muted}
+                        value={subscribeEmail}
+                        onChangeText={setSubscribeEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      <Pressable
+                        style={[
+                          styles.emailCaptureButton,
+                          (!subscribeEmail.trim() || subscribing) && styles.emailCaptureButtonDisabled
+                        ]}
+                        onPress={handleSubscribe}
+                        disabled={!subscribeEmail.trim() || subscribing}
+                      >
+                        {subscribing ? (
+                          <ActivityIndicator size="small" color="#000" />
+                        ) : (
+                          <Ionicons name="arrow-forward" size={20} color="#000" />
+                        )}
+                      </Pressable>
                     </View>
                   ) : (
                     <View style={styles.subscribedContainer}>
-                      <Ionicons name="checkmark-circle" size={20} color={theme.colors.accent} />
-                      <Text style={styles.subscribedText}>Subscribed to updates</Text>
+                      <View style={styles.subscribedRow}>
+                        <Ionicons name="checkmark-circle" size={20} color={theme.colors.accent} />
+                        <Text style={styles.subscribedText}>Subscribed to updates</Text>
+                      </View>
+                      <Pressable onPress={handleUnsubscribe}>
+                        <Text style={styles.unsubscribeText}>Unsubscribe</Text>
+                      </Pressable>
                     </View>
                   )}
 
@@ -2032,39 +2040,27 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     // Email capture styles
     emailCaptureContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
       padding: theme.spacing(2),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
-    emailCaptureTitle: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: theme.colors.text,
-      marginBottom: theme.spacing(0.5),
-    },
-    emailCaptureDescription: {
-      fontSize: 12,
-      color: theme.colors.muted,
-      marginBottom: theme.spacing(1.5),
-    },
-    emailCaptureRow: {
-      flexDirection: "row",
-      gap: theme.spacing(1),
-    },
     emailCaptureInput: {
       flex: 1,
-      height: 44,
+      height: 40,
       backgroundColor: theme.colors.bg,
       borderRadius: theme.radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      paddingHorizontal: theme.spacing(2),
+      paddingHorizontal: theme.spacing(1.5),
       fontSize: 14,
       color: theme.colors.text,
     },
     emailCaptureButton: {
-      width: 44,
-      height: 44,
+      width: 40,
+      height: 40,
       backgroundColor: theme.colors.accent,
       borderRadius: theme.radius.md,
       alignItems: "center",
@@ -2076,14 +2072,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     subscribedContainer: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.spacing(1),
+      justifyContent: "space-between",
       padding: theme.spacing(2),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
+    subscribedRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+    },
     subscribedText: {
       fontSize: 14,
       color: theme.colors.muted,
+    },
+    unsubscribeText: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      textDecorationLine: "underline",
     },
   });
 }

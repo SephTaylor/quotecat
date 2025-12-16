@@ -107,11 +107,7 @@ export default function ClientManager() {
 
   const handleAddClient = () => {
     if (!isPro) {
-      Alert.alert(
-        "Pro Feature",
-        "Saving clients is a Pro feature. Upgrade to Pro to build your client list!",
-        [{ text: "OK" }]
-      );
+      // Pro feature - button should be disabled for free users
       return;
     }
     resetForm();

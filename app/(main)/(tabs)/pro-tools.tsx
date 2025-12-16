@@ -31,14 +31,8 @@ export default function ProTools() {
     }, [load]),
   );
 
-  const handleUpgrade = () => {
-    Alert.alert(
-      "Pro Feature",
-      "This feature requires a Pro account.",
-      [
-        { text: "OK", style: "cancel" }
-      ],
-    );
+  const handleSignIn = () => {
+    router.push("/(auth)/sign-in" as any);
   };
 
   const handleFeatureTap = (featureName: string) => {
@@ -60,8 +54,8 @@ export default function ProTools() {
       }
       // Add other pro features here
     } else {
-      // Show upgrade prompt
-      handleUpgrade();
+      // Show sign in prompt
+      handleSignIn();
     }
   };
 
@@ -158,13 +152,9 @@ export default function ProTools() {
 
           {!isPro && (
             <View style={styles.upgradeSection}>
-              <Text style={styles.upgradeTitle}>Pro Features</Text>
-              <Text style={styles.upgradeSubtitle}>
-                Sign in to access Pro features
-              </Text>
-              <Pressable style={styles.upgradeButton} onPress={handleUpgrade}>
+              <Pressable style={styles.upgradeButton} onPress={handleSignIn}>
                 <Text style={styles.upgradeButtonText}>
-                  Learn More
+                  Sign In
                 </Text>
               </Pressable>
             </View>

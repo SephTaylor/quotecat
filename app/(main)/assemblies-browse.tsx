@@ -233,14 +233,10 @@ export default function AssembliesScreen() {
 
             <Pressable
               style={styles.upgradeButton}
-              onPress={() => router.push("/(main)/settings")}
+              onPress={() => router.push("/(auth)/sign-in")}
             >
-              <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+              <Text style={styles.upgradeButtonText}>Sign In</Text>
             </Pressable>
-
-            <Text style={styles.upgradeHint}>
-              Go to Settings to upgrade and unlock assemblies
-            </Text>
           </View>
         </GradientBackground>
       </>
