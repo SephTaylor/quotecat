@@ -41,6 +41,7 @@ import {
   resetSyncMetadata
 } from "@/lib/quotesSync";
 import { listQuotes } from "@/lib/quotes";
+import { supabase } from "@/lib/supabase";
 
 /**
  * Format sync time as relative time (e.g., "just now", "2 minutes ago")
@@ -183,11 +184,23 @@ export default function Settings() {
 
     setSubscribing(true);
     try {
-      // Store locally
-      await AsyncStorage.setItem('@quotecat/subscribed-email', subscribeEmail.trim());
+      const email = subscribeEmail.trim().toLowerCase();
 
-      // TODO: Send to backend/email service (Supabase, Mailchimp, etc.)
-      // For now, just store locally and we can sync later
+      // Save to Supabase
+      const { error } = await supabase
+        .from('email_subscribers')
+        .upsert(
+          { email, source: 'app_settings', is_active: true },
+          { onConflict: 'email' }
+        );
+
+      if (error) {
+        console.error("Supabase error:", error);
+        // Still save locally as fallback
+      }
+
+      // Store locally to remember subscription state
+      await AsyncStorage.setItem('@quotecat/subscribed-email', email);
 
       setIsSubscribed(true);
       setSubscribeEmail("");
