@@ -38,13 +38,14 @@ export type ReminderType =
   | "quote_followup"      // Sent quote needs follow-up (auto or manual date)
   | "invoice_overdue"     // Invoice past due date
   | "invoice_due_soon"    // Invoice due in 3 days
-  | "invoice_due_today";  // Invoice due today
+  | "invoice_due_today"   // Invoice due today
+  | "pro_welcome";        // Welcome notification for new Pro users
 
 export type Reminder = {
   id: string;
   type: ReminderType;
-  entityId: string;       // Quote or Invoice ID
-  entityType: "quote" | "invoice";
+  entityId: string;       // Quote or Invoice ID (or "system" for system notifications)
+  entityType: "quote" | "invoice" | "system";
   title: string;
   subtitle: string;
   dueDate: string;        // ISO 8601 date when reminder became active
@@ -303,4 +304,66 @@ export async function cleanupDismissedReminders(): Promise<void> {
   if (filtered.length !== dismissed.length) {
     await saveDismissedReminders(filtered);
   }
+}
+
+// ============================================
+// Pro Welcome Notification
+// ============================================
+
+const PRO_WELCOME_KEY = "@quotecat/pro_welcome_shown";
+const PRO_WELCOME_REMINDER_ID = "pro_welcome";
+
+/**
+ * Check if the Pro welcome notification has been shown
+ */
+export async function hasSeenProWelcome(): Promise<boolean> {
+  try {
+    const value = await AsyncStorage.getItem(PRO_WELCOME_KEY);
+    return value === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Mark the Pro welcome notification as shown
+ */
+export async function markProWelcomeAsSeen(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PRO_WELCOME_KEY, "true");
+    // Also dismiss the reminder so it doesn't show in the panel
+    await dismissReminder(PRO_WELCOME_REMINDER_ID);
+  } catch (error) {
+    console.error("Failed to mark Pro welcome as seen:", error);
+  }
+}
+
+/**
+ * Create the Pro welcome reminder (called when user activates Pro tier)
+ */
+export function createProWelcomeReminder(): Reminder {
+  const now = new Date().toISOString();
+  return {
+    id: PRO_WELCOME_REMINDER_ID,
+    type: "pro_welcome",
+    entityId: "system",
+    entityType: "system",
+    title: "Welcome to Pro!",
+    subtitle: "Tap to explore your new features",
+    dueDate: now,
+    createdAt: now,
+  };
+}
+
+/**
+ * Get the Pro welcome reminder if it should be shown
+ */
+export async function getProWelcomeReminder(): Promise<Reminder | null> {
+  const hasSeen = await hasSeenProWelcome();
+  if (hasSeen) return null;
+
+  const dismissed = await loadDismissedReminders();
+  if (isReminderDismissed(PRO_WELCOME_REMINDER_ID, dismissed)) return null;
+
+  return createProWelcomeReminder();
 }

@@ -9,7 +9,8 @@ import { useFocusEffect } from "expo-router";
 import { listQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { loadPreferences } from "@/lib/preferences";
-import { getActiveReminders, type Reminder } from "@/lib/reminders";
+import { getActiveReminders, getProWelcomeReminder, type Reminder } from "@/lib/reminders";
+import { getUserState } from "@/lib/user";
 import { NotificationPanel } from "./NotificationPanel";
 
 interface NotificationBellProps {
@@ -23,12 +24,23 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
 
   const loadReminders = useCallback(async () => {
     try {
-      const [quotes, invoices, prefs] = await Promise.all([
+      const [quotes, invoices, prefs, userState] = await Promise.all([
         listQuotes(),
         listInvoices(),
         loadPreferences(),
+        getUserState(),
       ]);
       const active = await getActiveReminders(quotes, invoices, prefs.notifications);
+
+      // Add Pro welcome reminder if user is Pro/Premium and hasn't seen it
+      if (userState.tier === "pro" || userState.tier === "premium") {
+        const proWelcome = await getProWelcomeReminder();
+        if (proWelcome) {
+          // Put welcome at the top of the list
+          active.unshift(proWelcome);
+        }
+      }
+
       setReminders(active);
     } catch (error) {
       console.error("Failed to load reminders:", error);

@@ -575,6 +575,14 @@ export default function EditQuote() {
               <Text style={styles.browseTag}>Browse</Text>
             </Pressable>
           )}
+          {isPro && savedClients.length === 0 && (
+            <Pressable
+              onPress={() => router.push("/client-manager")}
+              hitSlop={8}
+            >
+              <Text style={styles.browseTag}>+ Add clients</Text>
+            </Pressable>
+          )}
         </View>
         <View style={styles.clientInputContainer}>
           <FormInput

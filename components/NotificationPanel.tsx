@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import {
   type Reminder,
   dismissReminder,
+  markProWelcomeAsSeen,
 } from "@/lib/reminders";
 
 const PANEL_WIDTH = Dimensions.get("window").width * 0.85;
@@ -82,12 +83,26 @@ export function NotificationPanel({
   }, [onRefresh]);
 
   const handleTap = useCallback((reminder: Reminder) => {
+    if (reminder.type === "pro_welcome") {
+      // Pro welcome doesn't navigate anywhere on tap
+      return;
+    }
     onClose();
     if (reminder.entityType === "quote") {
       router.push(`/quote/${reminder.entityId}/edit`);
     } else if (reminder.entityType === "invoice") {
       router.push(`/(main)/invoice/${reminder.entityId}` as any);
     }
+  }, [onClose, router]);
+
+  const handleProWelcomeDismiss = useCallback(async () => {
+    await markProWelcomeAsSeen();
+    onRefresh();
+  }, [onRefresh]);
+
+  const handleProFeatureTap = useCallback((route: string) => {
+    onClose();
+    router.push(route as any);
   }, [onClose, router]);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -142,20 +157,105 @@ export function NotificationPanel({
               </View>
             ) : (
               reminders.map((reminder) => (
-                <ReminderItem
-                  key={reminder.id}
-                  reminder={reminder}
-                  onTap={() => handleTap(reminder)}
-                  onDismiss={() => handleDismiss(reminder)}
-                  onSnooze={(days) => handleSnooze(reminder, days)}
-                  theme={theme}
-                />
+                reminder.type === "pro_welcome" ? (
+                  <ProWelcomeCard
+                    key={reminder.id}
+                    onDismiss={handleProWelcomeDismiss}
+                    onFeatureTap={handleProFeatureTap}
+                    theme={theme}
+                  />
+                ) : (
+                  <ReminderItem
+                    key={reminder.id}
+                    reminder={reminder}
+                    onTap={() => handleTap(reminder)}
+                    onDismiss={() => handleDismiss(reminder)}
+                    onSnooze={(days) => handleSnooze(reminder, days)}
+                    theme={theme}
+                  />
+                )
               ))
             )}
           </ScrollView>
         </Animated.View>
       </View>
     </Modal>
+  );
+}
+
+interface ReminderItemProps {
+  reminder: Reminder;
+  onTap: () => void;
+  onDismiss: () => void;
+  onSnooze: (days: number) => void;
+  theme: ReturnType<typeof useTheme>["theme"];
+}
+
+// Pro feature list for welcome card
+const PRO_FEATURES = [
+  { icon: "people-outline" as const, label: "Save & sync clients", route: "/client-manager" },
+  { icon: "cube-outline" as const, label: "Reusable assemblies", route: "/(main)/(tabs)/assemblies" },
+  { icon: "cloud-outline" as const, label: "Cloud backup & sync", route: "/(main)/settings" },
+  { icon: "image-outline" as const, label: "Company logo on PDFs", route: "/(main)/settings" },
+  { icon: "infinite-outline" as const, label: "Unlimited quotes & exports", route: null },
+];
+
+interface ProWelcomeCardProps {
+  onDismiss: () => void;
+  onFeatureTap: (route: string) => void;
+  theme: ReturnType<typeof useTheme>["theme"];
+}
+
+function ProWelcomeCard({ onDismiss, onFeatureTap, theme }: ProWelcomeCardProps) {
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  return (
+    <View style={styles.proWelcomeCard}>
+      <View style={styles.proWelcomeHeader}>
+        <View style={styles.proWelcomeIcon}>
+          <Ionicons name="star" size={24} color="#FFD700" />
+        </View>
+        <View style={styles.proWelcomeHeaderText}>
+          <Text style={styles.proWelcomeTitle}>Welcome to Pro!</Text>
+          <Text style={styles.proWelcomeSubtitle}>Here's what you unlocked</Text>
+        </View>
+      </View>
+
+      <View style={styles.proFeatureList}>
+        {PRO_FEATURES.map((feature, index) => (
+          <Pressable
+            key={index}
+            style={styles.proFeatureItem}
+            onPress={() => feature.route && onFeatureTap(feature.route)}
+            disabled={!feature.route}
+          >
+            <Ionicons
+              name={feature.icon}
+              size={18}
+              color={theme.colors.accent}
+              style={styles.proFeatureIcon}
+            />
+            <Text style={[
+              styles.proFeatureLabel,
+              feature.route && styles.proFeatureLabelTappable
+            ]}>
+              {feature.label}
+            </Text>
+            {feature.route && (
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={theme.colors.muted}
+              />
+            )}
+          </Pressable>
+        ))}
+      </View>
+
+      <Pressable style={styles.proWelcomeDismiss} onPress={onDismiss}>
+        <Text style={styles.proWelcomeDismissText}>Got it!</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -371,6 +471,74 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     dismissText: {
       color: theme.colors.muted,
+    },
+    // Pro Welcome Card styles
+    proWelcomeCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      marginBottom: 16,
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+      overflow: "hidden",
+    },
+    proWelcomeHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 16,
+      backgroundColor: `${theme.colors.accent}15`,
+    },
+    proWelcomeIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: `${theme.colors.accent}25`,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+    proWelcomeHeaderText: {
+      flex: 1,
+    },
+    proWelcomeTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    proWelcomeSubtitle: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginTop: 2,
+    },
+    proFeatureList: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    proFeatureItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 10,
+    },
+    proFeatureIcon: {
+      marginRight: 12,
+    },
+    proFeatureLabel: {
+      flex: 1,
+      fontSize: 15,
+      color: theme.colors.text,
+    },
+    proFeatureLabelTappable: {
+      color: theme.colors.accent,
+    },
+    proWelcomeDismiss: {
+      backgroundColor: theme.colors.accent,
+      paddingVertical: 14,
+      alignItems: "center",
+      marginTop: 8,
+    },
+    proWelcomeDismissText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
     },
   });
 }
