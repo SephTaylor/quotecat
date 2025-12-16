@@ -24,10 +24,12 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
   Image,
   ActivityIndicator,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
@@ -91,6 +93,11 @@ export default function Settings() {
   const [localQuoteCount, setLocalQuoteCount] = useState(0);
   const [cloudQuoteCount, setCloudQuoteCount] = useState(0);
 
+  // Email capture state
+  const [subscribeEmail, setSubscribeEmail] = useState("");
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+
   // Track expanded sections
   const [expandedSections, setExpandedSections] = useState({
     usage: false,
@@ -152,7 +159,46 @@ export default function Settings() {
         console.error("Failed to load cloud quote count:", error);
       }
     }
+
+    // Check if user has already subscribed to updates
+    try {
+      const subscribedEmail = await AsyncStorage.getItem('@quotecat/subscribed-email');
+      if (subscribedEmail) {
+        setIsSubscribed(true);
+      }
+    } catch (error) {
+      console.error("Failed to load subscription status:", error);
+    }
   }, []);
+
+  const handleSubscribe = async () => {
+    if (!subscribeEmail.trim()) return;
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(subscribeEmail.trim())) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
+
+    setSubscribing(true);
+    try {
+      // Store locally
+      await AsyncStorage.setItem('@quotecat/subscribed-email', subscribeEmail.trim());
+
+      // TODO: Send to backend/email service (Supabase, Mailchimp, etc.)
+      // For now, just store locally and we can sync later
+
+      setIsSubscribed(true);
+      setSubscribeEmail("");
+      Alert.alert("Subscribed!", "You'll receive updates about new features and tips.");
+    } catch (error) {
+      console.error("Failed to subscribe:", error);
+      Alert.alert("Error", "Failed to subscribe. Please try again.");
+    } finally {
+      setSubscribing(false);
+    }
+  };
 
   const handleUploadLogo = async () => {
     if (!isPro) {
@@ -423,13 +469,56 @@ export default function Settings() {
                   <Text style={styles.settingButtonIcon}>→</Text>
                 </Pressable>
               ) : (
-                <Pressable
-                  style={[styles.settingButton, styles.settingButtonLast]}
-                  onPress={handleSignIn}
-                >
-                  <Text style={styles.settingButtonText}>Sign In</Text>
-                  <Text style={styles.settingButtonIcon}>→</Text>
-                </Pressable>
+                <>
+                  {/* Email capture for non-signed-in users */}
+                  {!isSubscribed ? (
+                    <View style={styles.emailCaptureContainer}>
+                      <Text style={styles.emailCaptureTitle}>Stay Updated</Text>
+                      <Text style={styles.emailCaptureDescription}>
+                        Get notified about new features and tips
+                      </Text>
+                      <View style={styles.emailCaptureRow}>
+                        <TextInput
+                          style={styles.emailCaptureInput}
+                          placeholder="Enter your email"
+                          placeholderTextColor={theme.colors.muted}
+                          value={subscribeEmail}
+                          onChangeText={setSubscribeEmail}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                        <Pressable
+                          style={[
+                            styles.emailCaptureButton,
+                            (!subscribeEmail.trim() || subscribing) && styles.emailCaptureButtonDisabled
+                          ]}
+                          onPress={handleSubscribe}
+                          disabled={!subscribeEmail.trim() || subscribing}
+                        >
+                          {subscribing ? (
+                            <ActivityIndicator size="small" color="#000" />
+                          ) : (
+                            <Ionicons name="arrow-forward" size={20} color="#000" />
+                          )}
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.subscribedContainer}>
+                      <Ionicons name="checkmark-circle" size={20} color={theme.colors.accent} />
+                      <Text style={styles.subscribedText}>Subscribed to updates</Text>
+                    </View>
+                  )}
+
+                  <Pressable
+                    style={[styles.settingButton, styles.settingButtonLast]}
+                    onPress={handleSignIn}
+                  >
+                    <Text style={styles.settingButtonText}>Sign In</Text>
+                    <Text style={styles.settingButtonIcon}>→</Text>
+                  </Pressable>
+                </>
               )}
             </View>
           </View>
@@ -1930,6 +2019,61 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "600",
       color: "#000",
+    },
+    // Email capture styles
+    emailCaptureContainer: {
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    emailCaptureTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(0.5),
+    },
+    emailCaptureDescription: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(1.5),
+    },
+    emailCaptureRow: {
+      flexDirection: "row",
+      gap: theme.spacing(1),
+    },
+    emailCaptureInput: {
+      flex: 1,
+      height: 44,
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: theme.spacing(2),
+      fontSize: 14,
+      color: theme.colors.text,
+    },
+    emailCaptureButton: {
+      width: 44,
+      height: 44,
+      backgroundColor: theme.colors.accent,
+      borderRadius: theme.radius.md,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    emailCaptureButtonDisabled: {
+      opacity: 0.5,
+    },
+    subscribedContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    subscribedText: {
+      fontSize: 14,
+      color: theme.colors.muted,
     },
   });
 }
