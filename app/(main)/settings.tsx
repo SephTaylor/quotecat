@@ -123,14 +123,12 @@ export default function Settings() {
     setUserState(user);
     setPreferences(fullPrefs);
 
-    // Load logo if user is signed in
-    if (user.userId) {
-      try {
-        const companyLogo = await getCompanyLogo(user.userId);
-        setLogo(companyLogo);
-      } catch (error) {
-        console.error("Failed to load logo:", error);
-      }
+    // Load logo (works locally, syncs when auth'd)
+    try {
+      const companyLogo = await getCompanyLogo();
+      setLogo(companyLogo);
+    } catch (error) {
+      console.error("Failed to load logo:", error);
     }
 
     // Load sync state
@@ -174,14 +172,9 @@ export default function Settings() {
       return;
     }
 
-    if (!userState?.userId) {
-      Alert.alert("Error", "Please sign in to upload a logo.");
-      return;
-    }
-
     try {
       setUploadingLogo(true);
-      const uploadedLogo = await uploadCompanyLogo(userState.userId);
+      const uploadedLogo = await uploadCompanyLogo();
       setLogo(uploadedLogo);
       Alert.alert("Success", "Logo uploaded successfully!");
     } catch (error) {
@@ -193,8 +186,6 @@ export default function Settings() {
   };
 
   const handleDeleteLogo = async () => {
-    if (!userState?.userId) return;
-
     Alert.alert(
       "Delete Logo",
       "Are you sure you want to delete your company logo?",
@@ -206,7 +197,7 @@ export default function Settings() {
           onPress: async () => {
             try {
               setUploadingLogo(true);
-              await deleteLogo(userState.userId!);
+              await deleteLogo();
               setLogo(null);
               Alert.alert("Success", "Logo deleted successfully");
             } catch (error) {
@@ -808,14 +799,17 @@ export default function Settings() {
                   )}
                 </View>
                 <Text style={styles.defaultItemDescription}>
-                  Add your company logo to appear on all PDF quotes. Logo will be resized and optimized automatically.
+                  Add your company logo to appear on all PDF quotes.
+                </Text>
+                <Text style={styles.logoHelpTip}>
+                  Tip: For best results, use a PNG with transparent background
                 </Text>
 
                 {/* Logo Preview */}
-                {logo && logo.localUri && (
+                {logo && logo.base64 && (
                   <View style={styles.logoPreviewContainer}>
                     <Image
-                      source={{ uri: logo.localUri }}
+                      source={{ uri: logo.base64 }}
                       style={styles.logoPreview}
                       resizeMode="contain"
                     />
@@ -1769,6 +1763,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 14,
       fontWeight: "600",
       color: "#FFF",
+    },
+    logoHelpTip: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      fontStyle: "italic",
+      marginBottom: theme.spacing(1.5),
     },
     proFeatureNote: {
       fontSize: 12,

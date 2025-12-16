@@ -1,18 +1,19 @@
 // lib/logo.ts
+// Company logo management - stores logo as base64 in profiles table
+
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { supabase } from './supabase';
+import { getCurrentUserId } from './auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LOGO_STORAGE_KEY = '@quotecat/company-logo';
-const MAX_LOGO_WIDTH = 400;
-const MAX_LOGO_HEIGHT = 200;
-const LOGO_QUALITY = 0.8;
+const MAX_LOGO_WIDTH = 800;
+const MAX_LOGO_HEIGHT = 400;
+const LOGO_QUALITY = 0.85;
 
 export interface CompanyLogo {
-  url: string;
-  base64?: string; // Base64 encoded image for embedding in PDFs
-  localUri?: string;
+  base64: string;
   uploadedAt: string;
 }
 
@@ -71,7 +72,7 @@ export async function processImage(uri: string): Promise<string> {
 }
 
 /**
- * Convert image URI to base64 string for embedding in PDFs
+ * Convert image URI to base64 string
  */
 export async function convertToBase64(uri: string): Promise<string> {
   const response = await fetch(uri);
@@ -81,8 +82,8 @@ export async function convertToBase64(uri: string): Promise<string> {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64 = reader.result as string;
-      // Return just the base64 data without the data:image/png;base64, prefix
-      resolve(base64.split(',')[1]);
+      // Return the full data URL (includes mime type prefix)
+      resolve(base64);
     };
     reader.onerror = reject;
     reader.readAsDataURL(blob);
@@ -90,69 +91,13 @@ export async function convertToBase64(uri: string): Promise<string> {
 }
 
 /**
- * Upload logo to Supabase Storage
+ * Save logo to local cache
  */
-export async function uploadLogoToSupabase(
-  userId: string,
-  imageUri: string
-): Promise<string> {
-  // Convert file URI to blob
-  const response = await fetch(imageUri);
-  const blob = await response.blob();
-
-  // Create file name with user ID to ensure uniqueness
-  const fileExt = 'png';
-  const fileName = `${userId}/logo.${fileExt}`;
-
-  // Upload to Supabase Storage
-  const { data, error } = await supabase.storage
-    .from('logos')
-    .upload(fileName, blob, {
-      contentType: 'image/png',
-      upsert: true, // Replace existing logo if any
-    });
-
-  if (error) {
-    throw new Error(`Failed to upload logo: ${error.message}`);
-  }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from('logos')
-    .getPublicUrl(fileName);
-
-  return urlData.publicUrl;
-}
-
-/**
- * Save logo URL to user's profile in Supabase
- */
-export async function saveLogoToProfile(userId: string, logoUrl: string): Promise<void> {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ logo_url: logoUrl })
-    .eq('id', userId);
-
-  if (error) {
-    throw new Error(`Failed to save logo to profile: ${error.message}`);
-  }
-}
-
-/**
- * Cache logo locally for offline access
- */
-export async function cacheLogoLocally(
-  logoUrl: string,
-  localUri: string,
-  base64: string
-): Promise<void> {
+async function cacheLogoLocally(base64: string): Promise<void> {
   const logoData: CompanyLogo = {
-    url: logoUrl,
-    localUri,
     base64,
     uploadedAt: new Date().toISOString(),
   };
-
   await AsyncStorage.setItem(LOGO_STORAGE_KEY, JSON.stringify(logoData));
 }
 
@@ -170,38 +115,96 @@ export async function getCachedLogo(): Promise<CompanyLogo | null> {
 }
 
 /**
- * Delete logo from Supabase Storage and profile
+ * Clear cached logo
  */
-export async function deleteLogo(userId: string): Promise<void> {
-  const fileName = `${userId}/logo.png`;
-
-  // Delete from storage
-  const { error: storageError } = await supabase.storage
-    .from('logos')
-    .remove([fileName]);
-
-  if (storageError) {
-    throw new Error(`Failed to delete logo from storage: ${storageError.message}`);
-  }
-
-  // Remove from profile
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .update({ logo_url: null })
-    .eq('id', userId);
-
-  if (profileError) {
-    throw new Error(`Failed to remove logo from profile: ${profileError.message}`);
-  }
-
-  // Clear local cache
+async function clearCachedLogo(): Promise<void> {
   await AsyncStorage.removeItem(LOGO_STORAGE_KEY);
 }
 
 /**
- * Full logo upload flow: pick, process, upload, and cache
+ * Upload logo to Supabase profiles table (if authenticated)
  */
-export async function uploadCompanyLogo(userId: string): Promise<CompanyLogo> {
+async function uploadLogoToCloud(base64: string): Promise<boolean> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.log('Not authenticated, logo saved locally only');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ logo_base64: base64 })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Failed to upload logo to cloud:', error);
+      return false;
+    }
+
+    console.log('✅ Logo uploaded to cloud');
+    return true;
+  } catch (error) {
+    console.error('Logo cloud upload error:', error);
+    return false;
+  }
+}
+
+/**
+ * Download logo from Supabase profiles table
+ */
+async function downloadLogoFromCloud(): Promise<string | null> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('logo_base64')
+      .eq('id', userId)
+      .single();
+
+    if (error || !data?.logo_base64) {
+      return null;
+    }
+
+    return data.logo_base64;
+  } catch (error) {
+    console.error('Logo cloud download error:', error);
+    return null;
+  }
+}
+
+/**
+ * Delete logo from cloud
+ */
+async function deleteLogoFromCloud(): Promise<boolean> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return false;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ logo_base64: null })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Failed to delete logo from cloud:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Logo cloud delete error:', error);
+    return false;
+  }
+}
+
+/**
+ * Full logo upload flow: pick, process, save locally, and sync to cloud
+ * Works without authentication (saves locally, syncs when auth available)
+ */
+export async function uploadCompanyLogo(): Promise<CompanyLogo> {
   // Step 1: Pick image
   const imageUri = await pickImage();
   if (!imageUri) {
@@ -211,74 +214,64 @@ export async function uploadCompanyLogo(userId: string): Promise<CompanyLogo> {
   // Step 2: Process (resize/compress)
   const processedUri = await processImage(imageUri);
 
-  // Step 3: Convert to base64 for PDF embedding
+  // Step 3: Convert to base64
   const base64 = await convertToBase64(processedUri);
 
-  // Step 4: Upload to Supabase (for cloud backup and multi-device sync)
-  const logoUrl = await uploadLogoToSupabase(userId, processedUri);
+  // Step 4: Save locally (always works)
+  await cacheLogoLocally(base64);
 
-  // Step 5: Save URL to profile
-  await saveLogoToProfile(userId, logoUrl);
-
-  // Step 6: Cache locally with base64 (for offline PDF generation)
-  await cacheLogoLocally(logoUrl, processedUri, base64);
+  // Step 5: Try to sync to cloud (non-blocking, fails gracefully if not auth'd)
+  uploadLogoToCloud(base64).catch(() => {
+    console.log('Logo saved locally, will sync when authenticated');
+  });
 
   return {
-    url: logoUrl,
     base64,
-    localUri: processedUri,
     uploadedAt: new Date().toISOString(),
   };
 }
 
 /**
- * Get logo for current user (from cache or Supabase)
+ * Get company logo (from cache or cloud)
  */
-export async function getCompanyLogo(userId: string): Promise<CompanyLogo | null> {
-  // Try cache first (offline support, includes base64)
+export async function getCompanyLogo(): Promise<CompanyLogo | null> {
+  // Try cache first (fast, works offline)
   const cached = await getCachedLogo();
   if (cached) return cached;
 
-  // Fetch from Supabase if not cached
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('logo_url')
-    .eq('id', userId)
-    .single();
-
-  if (error || !data?.logo_url) {
-    return null;
+  // Try cloud if not cached
+  const cloudBase64 = await downloadLogoFromCloud();
+  if (cloudBase64) {
+    // Cache it locally
+    await cacheLogoLocally(cloudBase64);
+    return {
+      base64: cloudBase64,
+      uploadedAt: new Date().toISOString(),
+    };
   }
 
-  // Download and convert to base64 for caching
-  try {
-    const response = await fetch(data.logo_url);
-    const blob = await response.blob();
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        resolve(result.split(',')[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+  return null;
+}
 
-    const logo: CompanyLogo = {
-      url: data.logo_url,
-      base64,
-      uploadedAt: new Date().toISOString(),
-    };
+/**
+ * Delete company logo (local and cloud)
+ */
+export async function deleteLogo(): Promise<void> {
+  // Clear local cache
+  await clearCachedLogo();
 
-    // Cache for offline use (with base64 for PDFs)
-    await cacheLogoLocally(data.logo_url, data.logo_url, base64);
+  // Try to delete from cloud (non-blocking)
+  deleteLogoFromCloud().catch(() => {
+    console.log('Could not delete from cloud, local cleared');
+  });
+}
 
-    return logo;
-  } catch (fetchError) {
-    // If we can't download/convert, return URL only (fallback)
-    return {
-      url: data.logo_url,
-      uploadedAt: new Date().toISOString(),
-    };
+/**
+ * Sync local logo to cloud (call after authentication)
+ */
+export async function syncLogoToCloud(): Promise<void> {
+  const cached = await getCachedLogo();
+  if (cached) {
+    await uploadLogoToCloud(cached.base64);
   }
 }
