@@ -156,19 +156,7 @@ export default function Settings() {
 
   const handleUploadLogo = async () => {
     if (!isPro) {
-      Alert.alert(
-        "Pro Feature",
-        "Logo upload is available for Pro and Premium users. Upgrade to add your company logo to PDFs.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Learn More",
-            onPress: () => {
-              Linking.openURL("https://quotecat.ai/pricing");
-            },
-          },
-        ]
-      );
+      // Pro feature - button should be disabled for free users
       return;
     }
 
@@ -242,11 +230,7 @@ export default function Settings() {
         if (data.error === "No subscription found for this account") {
           Alert.alert(
             "No Subscription",
-            "You don't have an active subscription. Would you like to upgrade?",
-            [
-              { text: "Cancel", style: "cancel" },
-              { text: "Upgrade", onPress: () => Linking.openURL("https://quotecat.ai") },
-            ]
+            "No active subscription found for this account."
           );
         } else {
           Alert.alert("Error", data.error);
@@ -265,10 +249,6 @@ export default function Settings() {
 
   const handleSignIn = () => {
     router.push("/(auth)/sign-in" as any);
-  };
-
-  const handleUpgrade = () => {
-    Linking.openURL("https://quotecat.ai");
   };
 
   const handleUpdatePreference = async (
@@ -534,32 +514,7 @@ export default function Settings() {
           )}
 
           {/* Free User Prompt */}
-          {!isPro && (
-            <CollapsibleSection
-              title="Cloud Sync"
-              isExpanded={expandedSections.cloudSync}
-              onToggle={() => toggleSection('cloudSync')}
-              theme={theme}
-            >
-              <View style={styles.card}>
-                <View style={styles.proFeaturePrompt}>
-                  <Ionicons name="cloud-offline-outline" size={48} color={theme.colors.muted} />
-                  <Text style={styles.proFeatureTitle}>Cloud Sync is a Pro Feature</Text>
-                  <Text style={styles.proFeatureDescription}>
-                    Upgrade to Pro or Premium to automatically back up your quotes to the cloud and sync across all your devices.
-                  </Text>
-                  <Pressable
-                    style={styles.proFeatureButton}
-                    onPress={userEmail ? handleManageAccount : handleSignIn}
-                  >
-                    <Text style={styles.proFeatureButtonText}>
-                      {userEmail ? 'Upgrade to Pro' : 'Sign In'}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </CollapsibleSection>
-          )}
+          {/* Cloud Sync section only shown for Pro users */}
 
           {/* Usage & Limits Section */}
           {userState && (
@@ -773,15 +728,14 @@ export default function Settings() {
                     </Text>
                   </Pressable>
                 ) : (
-                  <Pressable
+                  <View
                     style={[styles.defaultItemButton, styles.defaultItemButtonLocked]}
-                    onPress={handleUpgrade}
                   >
                     <Ionicons name="lock-closed" size={16} color="#666" style={{ marginRight: 6 }} />
                     <Text style={[styles.defaultItemButtonText, { color: "#666" }]}>
-                      Pro Feature
+                      Locked
                     </Text>
-                  </Pressable>
+                  </View>
                 )}
               </View>
 
@@ -848,11 +802,6 @@ export default function Settings() {
                   )}
                 </View>
 
-                {!isPro && (
-                  <Text style={styles.proFeatureNote}>
-                    🔒 Upgrade to Pro or Premium to add your logo to PDFs
-                  </Text>
-                )}
               </View>
             </View>
           </CollapsibleSection>
