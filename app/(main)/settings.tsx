@@ -189,10 +189,7 @@ export default function Settings() {
       // Save to Supabase
       const { error } = await supabase
         .from('email_subscribers')
-        .upsert(
-          { email, source: 'app_settings', is_active: true },
-          { onConflict: 'email' }
-        );
+        .upsert({ email }, { onConflict: 'email' });
 
       if (error) {
         console.error("Supabase error:", error);
