@@ -2,6 +2,7 @@
 // Client management for Pro users
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isClientsSyncAvailable, uploadClient, deleteClientFromCloud } from "./clientsSync";
 
 const CLIENTS_KEY = "@quotecat/clients";
 
@@ -46,22 +47,34 @@ export async function saveClient(client: Client): Promise<void> {
     const clients = await getClients();
     const existingIndex = clients.findIndex((c) => c.id === client.id);
 
+    let savedClient: Client;
     if (existingIndex >= 0) {
       // Update existing
-      clients[existingIndex] = {
+      savedClient = {
         ...client,
         updatedAt: new Date().toISOString(),
       };
+      clients[existingIndex] = savedClient;
     } else {
       // Add new
-      clients.push({
+      savedClient = {
         ...client,
         createdAt: client.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      });
+      };
+      clients.push(savedClient);
     }
 
     await AsyncStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+
+    // Background sync to cloud (non-blocking)
+    isClientsSyncAvailable().then((available) => {
+      if (available) {
+        uploadClient(savedClient).catch((error) => {
+          console.warn("Background client sync failed:", error);
+        });
+      }
+    });
   } catch (error) {
     console.error("Failed to save client:", error);
     throw error;
@@ -76,6 +89,15 @@ export async function deleteClient(id: string): Promise<void> {
     const clients = await getClients();
     const filtered = clients.filter((c) => c.id !== id);
     await AsyncStorage.setItem(CLIENTS_KEY, JSON.stringify(filtered));
+
+    // Background sync deletion to cloud (non-blocking)
+    isClientsSyncAvailable().then((available) => {
+      if (available) {
+        deleteClientFromCloud(id).catch((error) => {
+          console.warn("Background client deletion sync failed:", error);
+        });
+      }
+    });
   } catch (error) {
     console.error("Failed to delete client:", error);
     throw error;

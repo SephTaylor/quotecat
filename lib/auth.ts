@@ -4,6 +4,7 @@
 import { supabase } from "./supabase";
 import { activateProTier, deactivateProTier, signOutUser } from "./user";
 import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync";
+import { syncClients, migrateLocalClientsToCloud } from "./clientsSync";
 
 /**
  * Check if user is currently authenticated
@@ -65,10 +66,14 @@ export async function initializeAuth(): Promise<void> {
           if (!migrated) {
             console.log("🔄 Auto-migrating quotes to cloud...");
             await migrateLocalQuotesToCloud();
+            console.log("🔄 Auto-migrating clients to cloud...");
+            await migrateLocalClientsToCloud();
           } else {
             // Already migrated, just sync
             console.log("🔄 Syncing quotes...");
             await syncQuotes();
+            console.log("🔄 Syncing clients...");
+            await syncClients();
           }
         } else {
           await deactivateProTier();
