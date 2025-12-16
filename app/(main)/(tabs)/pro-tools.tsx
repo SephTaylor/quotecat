@@ -96,7 +96,7 @@ export default function ProTools() {
             <ProFeatureCard
               icon=""
               title="Assembly Library"
-              description="Browse pre-built assembly templates"
+              description="Browse your pre-built assembly templates"
               locked={!isPro}
               onPress={() => handleFeatureTap("Assembly Library")}
               details={[]}
@@ -124,20 +124,6 @@ export default function ProTools() {
                 <Text style={styles.comingSoonTitle}>Quote Wizard</Text>
                 <Text style={styles.comingSoonDescription}>
                   Calculate materials from room dimensions
-                </Text>
-              </View>
-
-              <View style={styles.comingSoonItem}>
-                <Text style={styles.comingSoonTitle}>Cloud Backup & Sync</Text>
-                <Text style={styles.comingSoonDescription}>
-                  Never lose your quotes
-                </Text>
-              </View>
-
-              <View style={styles.comingSoonItem}>
-                <Text style={styles.comingSoonTitle}>Branded PDFs</Text>
-                <Text style={styles.comingSoonDescription}>
-                  Professional exports with your branding
                 </Text>
               </View>
 
@@ -299,12 +285,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.muted,
     },
     upgradeSection: {
-      marginTop: theme.spacing(3),
-      padding: theme.spacing(3),
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      borderWidth: 2,
-      borderColor: theme.colors.accent,
+      marginTop: theme.spacing(2),
       alignItems: "center",
     },
     upgradeTitle: {

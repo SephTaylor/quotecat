@@ -217,7 +217,7 @@ function ProWelcomeCard({ onDismiss, onFeatureTap, theme }: ProWelcomeCardProps)
         </View>
         <View style={styles.proWelcomeHeaderText}>
           <Text style={styles.proWelcomeTitle}>Welcome to Pro!</Text>
-          <Text style={styles.proWelcomeSubtitle}>Here's what you unlocked</Text>
+          <Text style={styles.proWelcomeSubtitle}>Here&apos;s what you unlocked</Text>
         </View>
       </View>
 

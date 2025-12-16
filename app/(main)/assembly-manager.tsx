@@ -134,17 +134,6 @@ export default function AssemblyManager() {
   };
 
   const handleDeleteAssembly = async (assembly: Assembly) => {
-    const isCustom = assembly.id.startsWith("custom-");
-
-    if (!isCustom) {
-      Alert.alert(
-        "Cannot Delete",
-        "Built-in assemblies cannot be deleted. Only custom assemblies can be removed.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
     Alert.alert(
       "Delete Assembly?",
       `Are you sure you want to delete "${assembly.name}"? This cannot be undone.`,
@@ -174,8 +163,8 @@ export default function AssemblyManager() {
     return assemblies.filter((a) => a.name.toLowerCase().includes(query));
   }, [assemblies, searchQuery]);
 
-  const customAssemblies = filteredAssemblies.filter((a) => a.id.startsWith("custom-"));
-  const builtInAssemblies = filteredAssemblies.filter((a) => !a.id.startsWith("custom-"));
+  // All assemblies are now user-created
+  const userAssemblies = filteredAssemblies;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -223,11 +212,11 @@ export default function AssemblyManager() {
             )}
           </View>
 
-          {/* Custom Assemblies Section */}
+          {/* Assemblies Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
-                Custom Assemblies ({customAssemblies.length})
+                My Assemblies ({userAssemblies.length})
               </Text>
               <Pressable
                 style={styles.createButton}
@@ -237,19 +226,19 @@ export default function AssemblyManager() {
               </Pressable>
             </View>
 
-            {customAssemblies.length === 0 ? (
+            {userAssemblies.length === 0 ? (
               <View style={styles.emptyStateSimple}>
                 <Text style={styles.emptyTextSimple}>
                   {searchQuery.trim()
-                    ? `No custom assemblies match "${searchQuery}"`
+                    ? `No assemblies match "${searchQuery}"`
                     : isPro
-                    ? "No custom assemblies yet. Tap + New to create your first template."
-                    : "No custom assemblies yet. Pro users can create custom templates."}
+                    ? "No assemblies yet. Tap + New to create your first template."
+                    : "No assemblies yet. Pro users can create custom templates."}
                 </Text>
               </View>
             ) : (
               <FlatList
-                data={customAssemblies}
+                data={userAssemblies}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => {
@@ -289,9 +278,6 @@ export default function AssemblyManager() {
                             {isInvalid && "⚠️ "}
                             {item.name}
                           </Text>
-                          <View style={styles.customBadge}>
-                            <Text style={styles.customBadgeText}>CUSTOM</Text>
-                          </View>
                         </View>
                         <Text style={styles.assemblyMeta}>
                           {(() => {
@@ -316,18 +302,6 @@ export default function AssemblyManager() {
           </View>
 
         </ScrollView>
-
-        {/* Browse Built-In Link - Subtle at bottom */}
-        <View style={styles.footer}>
-          <Pressable
-            onPress={() => router.push("/(main)/built-in-assemblies" as any)}
-            style={styles.browseLink}
-          >
-            <Text style={styles.browseLinkText}>
-              Browse {builtInAssemblies.length} built-in assembly templates →
-            </Text>
-          </Pressable>
-        </View>
       </View>
 
       {/* Create Assembly Modal */}
@@ -505,17 +479,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontStyle: "italic",
       marginTop: theme.spacing(0.5),
     },
-    customBadge: {
-      backgroundColor: theme.colors.accent,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: theme.radius.sm,
-    },
-    customBadgeText: {
-      fontSize: 10,
-      fontWeight: "800",
-      color: "#000",
-    },
     warningText: {
       fontSize: 12,
       fontWeight: "600",
@@ -548,22 +511,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#fff",
       fontWeight: "700",
       fontSize: 14,
-    },
-    footer: {
-      padding: theme.spacing(2),
-      paddingTop: theme.spacing(1),
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
-      backgroundColor: theme.colors.bg,
-    },
-    browseLink: {
-      padding: theme.spacing(1.5),
-      alignItems: "center",
-    },
-    browseLinkText: {
-      fontSize: 14,
-      color: theme.colors.accent,
-      textAlign: "center",
     },
     modalOverlay: {
       flex: 1,

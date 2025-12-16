@@ -6,36 +6,41 @@ import type { Assembly, AssemblyItem } from "@/modules/assemblies";
 import { useProducts } from "@/modules/catalog";
 import type { Product } from "@/modules/catalog/seed";
 import { BottomBar, Button, FormInput } from "@/modules/core/ui";
+import {
+  MaterialsPicker,
+  useSelection,
+} from "@/modules/materials";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
+  Keyboard,
+  RefreshControl,
 } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function AssemblyEditorScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const assemblyId = params.id;
   const router = useRouter();
   const { theme } = useTheme();
-  const { products, categories, loading: productsLoading } = useProducts();
+  const { products, categories, loading: productsLoading, syncing, lastSync, refresh } = useProducts();
 
   const [loading, setLoading] = useState(true);
   const [assembly, setAssembly] = useState<Assembly | null>(null);
   const [assemblyName, setAssemblyName] = useState("");
-  const [selectedProducts, setSelectedProducts] = useState<Map<string, number>>(new Map());
-  const [searchQuery, setSearchQuery] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [showExistingItems, setShowExistingItems] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  // Use the same selection hook as quote materials
+  const { selection, inc, dec, clear, units, setQty, getSelection } = useSelection(new Map());
 
   // Load assembly
   useEffect(() => {
@@ -46,10 +51,6 @@ export default function AssemblyEditorScreen() {
         if (asm) {
           setAssembly(asm);
           setAssemblyName(asm.name);
-
-          // Don't populate selectedProducts with existing items
-          // selectedProducts should only contain NEW items being added
-          // Existing items are stored in assembly.items
         }
       } finally {
         setLoading(false);
@@ -58,53 +59,32 @@ export default function AssemblyEditorScreen() {
     load();
   }, [assemblyId]);
 
-  // Group products by category
+  // Group products by category for MaterialsPicker
   const productsByCategory = useMemo(() => {
     const grouped: Record<string, Product[]> = {};
-    categories.forEach((cat) => {
-      grouped[cat.id] = products.filter((p) => p.categoryId === cat.id);
+    products.forEach((product) => {
+      if (!grouped[product.categoryId]) {
+        grouped[product.categoryId] = [];
+      }
+      grouped[product.categoryId].push(product);
     });
     return grouped;
-  }, [products, categories]);
+  }, [products]);
 
-  // Filter products by search
-  const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return products;
-    const query = searchQuery.toLowerCase();
-    return products.filter((p) => p.name.toLowerCase().includes(query));
-  }, [products, searchQuery]);
-
-  // Calculate total selected items (must be before early returns)
-  const totalSelectedItems = useMemo(() => {
-    return Array.from(selectedProducts.values()).reduce((sum, qty) => sum + qty, 0);
-  }, [selectedProducts]);
-
-  const toggleCategory = (categoryId: string) => {
-    setExpandedCategories((prev) => ({
-      ...prev,
-      [categoryId]: !prev[categoryId],
-    }));
-  };
-
-  const handleIncrement = (product: Product) => {
-    const newMap = new Map(selectedProducts);
-    const current = newMap.get(product.id) || 0;
-    newMap.set(product.id, current + 1);
-    setSelectedProducts(newMap);
-  };
-
-  const handleDecrement = (product: Product) => {
-    const newMap = new Map(selectedProducts);
-    const current = newMap.get(product.id) || 0;
-    if (current <= 1) {
-      newMap.delete(product.id);
-    } else {
-      newMap.set(product.id, current - 1);
-    }
-    setSelectedProducts(newMap);
-  };
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
 
   const handleSave = async (goBack: boolean) => {
+    // Dismiss keyboard to trigger onBlur and commit any pending quantity edits
+    Keyboard.dismiss();
+
+    // Wait for state update to propagate
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     if (!assembly) return;
 
     const trimmedName = assemblyName.trim();
@@ -113,7 +93,9 @@ export default function AssemblyEditorScreen() {
       return;
     }
 
-    if (assembly.items.length === 0 && selectedProducts.size === 0) {
+    const currentSelection = getSelection();
+
+    if (assembly.items.length === 0 && currentSelection.size === 0) {
       Alert.alert(
         "No Products",
         "Please add at least one product to this assembly.",
@@ -127,8 +109,8 @@ export default function AssemblyEditorScreen() {
       const existingItems = assembly.items || [];
 
       // Convert newly selected products to assembly items
-      const newlySelectedItems: AssemblyItem[] = Array.from(selectedProducts.entries()).map(
-        ([productId, qty]) => ({
+      const newlySelectedItems: AssemblyItem[] = Array.from(currentSelection.entries()).map(
+        ([productId, { qty }]) => ({
           productId,
           qty,
         })
@@ -147,7 +129,7 @@ export default function AssemblyEditorScreen() {
       // Merge in newly selected items (add quantities)
       newlySelectedItems.forEach((item) => {
         const current = mergedMap.get(item.productId) || 0;
-        mergedMap.set(item.productId, current + ("qty" in item ? item.qty : 0));
+        mergedMap.set(item.productId, current + item.qty);
       });
 
       // Convert back to array
@@ -170,7 +152,7 @@ export default function AssemblyEditorScreen() {
         setAssembly(updatedAssembly);
 
         // Clear selection so user can add more
-        setSelectedProducts(new Map());
+        clear();
 
         // Show success message
         setShowSuccessMessage(true);
@@ -182,6 +164,35 @@ export default function AssemblyEditorScreen() {
     }
   };
 
+  // Calculate status text for header
+  const statusText = useMemo(() => {
+    if (syncing) return "Syncing";
+    if (lastSync) {
+      const hoursAgo = Math.floor((Date.now() - lastSync.getTime()) / (1000 * 60 * 60));
+      if (hoursAgo < 24) return "Online";
+      return "Refresh";
+    }
+    return "Offline";
+  }, [syncing, lastSync]);
+
+  const showStatusInfo = () => {
+    let message = "Not synced\n\nPull down to sync product catalog from cloud.";
+    if (syncing) {
+      message = "Syncing product catalog from cloud...";
+    } else if (lastSync) {
+      const hoursAgo = Math.floor((Date.now() - lastSync.getTime()) / (1000 * 60 * 60));
+      if (hoursAgo < 1) {
+        message = "Online (Up to date)\n\nProduct catalog is current.";
+      } else if (hoursAgo < 24) {
+        message = `Online (Updated ${hoursAgo}h ago)\n\nProduct catalog is recent.`;
+      } else {
+        const daysAgo = Math.floor(hoursAgo / 24);
+        message = `Sync recommended\n\nLast updated ${daysAgo} day${daysAgo > 1 ? 's' : ''} ago.\nPull down to refresh.`;
+      }
+    }
+    Alert.alert("Product Catalog Status", message);
+  };
+
   if (loading || productsLoading) {
     return (
       <>
@@ -189,7 +200,7 @@ export default function AssemblyEditorScreen() {
           options={{
             title: "Edit Assembly",
             headerShown: true,
-            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
+            headerTitleAlign: 'center',
             headerBackTitle: "Back",
             headerStyle: { backgroundColor: theme.colors.bg },
             headerTintColor: theme.colors.accent,
@@ -210,7 +221,7 @@ export default function AssemblyEditorScreen() {
           options={{
             title: "Edit Assembly",
             headerShown: true,
-            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
+            headerTitleAlign: 'center',
             headerBackTitle: "Back",
             headerStyle: { backgroundColor: theme.colors.bg },
             headerTintColor: theme.colors.accent,
@@ -225,261 +236,166 @@ export default function AssemblyEditorScreen() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <>
       <Stack.Screen
         options={{
           title: "Edit Assembly",
           headerShown: true,
-          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
+          headerTitleAlign: 'center',
           headerBackTitle: "Back",
           headerStyle: { backgroundColor: theme.colors.bg },
           headerTintColor: theme.colors.accent,
           headerTitleStyle: { color: theme.colors.text },
+          headerRight: () => (
+            <Pressable onPress={showStatusInfo} style={{ marginRight: 16, padding: 8 }}>
+              <Text style={{ fontSize: 15, color: theme.colors.text }}>{statusText}</Text>
+            </Pressable>
+          ),
         }}
       />
       <View style={styles.container}>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-          {/* Assembly Name */}
+        {/* Assembly Name Input */}
+        <View style={styles.nameSection}>
           <Text style={styles.label}>Assembly Name</Text>
           <FormInput
             value={assemblyName}
             onChangeText={setAssemblyName}
             placeholder="e.g., Bedroom Rough-In"
           />
+        </View>
 
-          <View style={{ height: theme.spacing(2) }} />
-
-          {/* Assembly Status Indicator */}
-          {assembly.items.length > 0 && (
-            <View style={styles.assemblyIndicator}>
-              <View style={styles.indicatorContent}>
-                <View style={styles.indicatorTextContainer}>
-                  <Text style={styles.indicatorText}>
-                    Assembly has {assembly.items.reduce((sum, item) => sum + ("qty" in item ? item.qty : 0), 0)}{" "}
-                    item{assembly.items.reduce((sum, item) => sum + ("qty" in item ? item.qty : 0), 0) !== 1 ? "s" : ""}{" "}
-                    ({assembly.items.length} product{assembly.items.length !== 1 ? "s" : ""})
-                  </Text>
-                </View>
+        {/* Assembly Status Indicator */}
+        {assembly.items.length > 0 && (
+          <Pressable
+            style={styles.assemblyIndicator}
+            onPress={() => setShowExistingItems(!showExistingItems)}
+          >
+            <View style={styles.indicatorContent}>
+              <View style={styles.indicatorTextContainer}>
+                <Text style={styles.indicatorText}>
+                  Assembly has {assembly.items.reduce((sum, item) => sum + ("qty" in item ? item.qty : 0), 0)}{" "}
+                  item{assembly.items.reduce((sum, item) => sum + ("qty" in item ? item.qty : 0), 0) !== 1 ? "s" : ""}{" "}
+                  ({assembly.items.length} product{assembly.items.length !== 1 ? "s" : ""})
+                </Text>
+              </View>
+              <View style={styles.viewButton}>
+                <Text style={styles.viewButtonText}>{showExistingItems ? "Hide" : "View"}</Text>
               </View>
             </View>
-          )}
+          </Pressable>
+        )}
 
-          {showSuccessMessage && (
-            <View style={styles.successMessage}>
-              <Text style={styles.successText}>
-                ✓ Products added! Assembly now has {assembly.items.length} product
-                {assembly.items.length !== 1 ? "s" : ""}
-              </Text>
-            </View>
-          )}
+        {/* Existing Items (collapsible) */}
+        {showExistingItems && assembly.items.length > 0 && (
+          <View style={styles.existingItemsContainer}>
+            {assembly.items.map((item, index) => {
+              const product = products.find((p) => p.id === item.productId);
+              if (!product) return null;
 
-          <View style={{ height: theme.spacing(2) }} />
-
-          {/* Existing Items Section */}
-          {assembly.items.length > 0 && (
-            <>
-              <Pressable
-                style={styles.existingItemsHeader}
-                onPress={() => setShowExistingItems(!showExistingItems)}
-              >
-                <Text style={styles.h2}>
-                  {showExistingItems ? "▾" : "▸"} Current Products ({assembly.items.length})
-                </Text>
-              </Pressable>
-              {showExistingItems && (
-                <View style={styles.existingItemsContainer}>
-                {assembly.items.map((item, index) => {
-                  const product = products.find((p) => p.id === item.productId);
-                  if (!product) return null;
-
-                  const qty = "qty" in item ? item.qty : 0;
-                  const isLast = index === assembly.items.length - 1;
-
-                  return (
-                    <View key={item.productId} style={[styles.existingItemRow, isLast && styles.existingItemRowLast]}>
-                      <View style={styles.productInfo}>
-                        <Text style={styles.productName}>{product.name}</Text>
-                        <Text style={styles.productMeta}>
-                          ${product.unitPrice.toFixed(2)} / {product.unit}
-                        </Text>
-                      </View>
-                      <View style={styles.stepper}>
-                        <Pressable
-                          style={styles.stepperButton}
-                          onPress={() => {
-                            // Decrement or remove from assembly
-                            const updatedItems = assembly.items
-                              .map((i) =>
-                                i.productId === item.productId
-                                  ? { ...i, qty: ("qty" in i ? i.qty : 0) - 1 }
-                                  : i
-                              )
-                              .filter((i) => ("qty" in i ? i.qty : 0) > 0);
-
-                            setAssembly({ ...assembly, items: updatedItems });
-                          }}
-                        >
-                          <Text style={styles.stepperText}>−</Text>
-                        </Pressable>
-                        <Text style={styles.qtyText}>{qty}</Text>
-                        <Pressable
-                          style={styles.stepperButton}
-                          onPress={() => {
-                            // Increment quantity
-                            const updatedItems = assembly.items.map((i) =>
-                              i.productId === item.productId
-                                ? { ...i, qty: ("qty" in i ? i.qty : 0) + 1 }
-                                : i
-                            );
-                            setAssembly({ ...assembly, items: updatedItems });
-                          }}
-                        >
-                          <Text style={styles.stepperText}>+</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  );
-                })}
-                </View>
-              )}
-              <View style={{ height: theme.spacing(3) }} />
-            </>
-          )}
-
-          {/* Product Browser by Category */}
-          <Text style={styles.h2}>Add More Products</Text>
-          <FormInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search products..."
-          />
-
-          <View style={{ height: theme.spacing(2) }} />
-
-          {/* Show filtered search results OR categories */}
-          {searchQuery.trim() ? (
-            <View style={styles.searchResults}>
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((product) => (
-                  <ProductRow
-                    key={product.id}
-                    product={product}
-                    qty={selectedProducts.get(product.id) || 0}
-                    onIncrement={() => handleIncrement(product)}
-                    onDecrement={() => handleDecrement(product)}
-                    theme={theme}
-                  />
-                ))
-              ) : (
-                <Text style={styles.errorText}>No products found</Text>
-              )}
-            </View>
-          ) : (
-            categories.map((category) => {
-              const categoryProducts = productsByCategory[category.id] || [];
-              const isExpanded = expandedCategories[category.id];
+              const qty = "qty" in item ? item.qty : 0;
+              const isLast = index === assembly.items.length - 1;
 
               return (
-                <View key={category.id} style={styles.categoryCard}>
-                  <Pressable
-                    style={styles.categoryHeader}
-                    onPress={() => toggleCategory(category.id)}
-                  >
-                    <Text style={styles.categoryTitle}>
-                      {isExpanded ? "▾" : "▸"} {category.name}
+                <View key={item.productId} style={[styles.existingItemRow, isLast && styles.existingItemRowLast]}>
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productName}>{product.name}</Text>
+                    <Text style={styles.productMeta}>
+                      ${product.unitPrice.toFixed(2)} / {product.unit}
                     </Text>
-                    <Text style={styles.categoryCount}>
-                      {categoryProducts.length}
-                    </Text>
-                  </Pressable>
-
-                  {isExpanded && (
-                    <View style={styles.categoryProducts}>
-                      {categoryProducts.map((product) => (
-                        <ProductRow
-                          key={product.id}
-                          product={product}
-                          qty={selectedProducts.get(product.id) || 0}
-                          onIncrement={() => handleIncrement(product)}
-                          onDecrement={() => handleDecrement(product)}
-                          theme={theme}
-                        />
-                      ))}
-                    </View>
-                  )}
+                  </View>
+                  <View style={styles.stepper}>
+                    <Pressable
+                      style={styles.stepperButton}
+                      onPress={() => {
+                        const updatedItems = assembly.items
+                          .map((i) =>
+                            i.productId === item.productId
+                              ? { ...i, qty: ("qty" in i ? i.qty : 0) - 1 }
+                              : i
+                          )
+                          .filter((i) => ("qty" in i ? i.qty : 0) > 0);
+                        setAssembly({ ...assembly, items: updatedItems });
+                      }}
+                    >
+                      <Text style={styles.stepperText}>−</Text>
+                    </Pressable>
+                    <Text style={styles.qtyText}>{qty}</Text>
+                    <Pressable
+                      style={styles.stepperButton}
+                      onPress={() => {
+                        const updatedItems = assembly.items.map((i) =>
+                          i.productId === item.productId
+                            ? { ...i, qty: ("qty" in i ? i.qty : 0) + 1 }
+                            : i
+                        );
+                        setAssembly({ ...assembly, items: updatedItems });
+                      }}
+                    >
+                      <Text style={styles.stepperText}>+</Text>
+                    </Pressable>
+                  </View>
                 </View>
               );
-            })
-          )}
+            })}
+          </View>
+        )}
 
-          <View style={{ height: 100 }} />
-        </ScrollView>
+        {showSuccessMessage && (
+          <View style={styles.successMessage}>
+            <Text style={styles.successText}>
+              ✓ Products added! Assembly now has {assembly.items.length} product
+              {assembly.items.length !== 1 ? "s" : ""}
+            </Text>
+          </View>
+        )}
 
-        <BottomBar>
-          {selectedProducts.size > 0 ? (
-            <>
-              <Button
-                variant="secondary"
-                onPress={() => handleSave(false)}
-              >
-                Add {totalSelectedItems} {totalSelectedItems === 1 ? 'item' : 'items'}
-              </Button>
-              <Button
-                variant="primary"
-                onPress={() => handleSave(true)}
-              >
-                Done
-              </Button>
-            </>
-          ) : (
+        {/* MaterialsPicker - same as quote materials screen */}
+        <View style={styles.pickerContainer}>
+          <MaterialsPicker
+            categories={categories}
+            itemsByCategory={productsByCategory}
+            selection={selection}
+            onInc={inc}
+            onDec={dec}
+            onSetQty={setQty}
+            recentProductIds={[]}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.colors.accent}
+              />
+            }
+          />
+        </View>
+      </View>
+
+      <BottomBar>
+        {units > 0 ? (
+          <>
+            <Button
+              variant="secondary"
+              onPress={() => handleSave(false)}
+            >
+              Add {units} {units === 1 ? 'item' : 'items'}
+            </Button>
             <Button
               variant="primary"
               onPress={() => handleSave(true)}
             >
               Done
             </Button>
-          )}
-        </BottomBar>
-      </View>
-    </GestureHandlerRootView>
-  );
-}
-
-// Product row component with stepper (matches materials picker)
-function ProductRow({
-  product,
-  qty,
-  onIncrement,
-  onDecrement,
-  theme,
-}: {
-  product: Product;
-  qty: number;
-  onIncrement: () => void;
-  onDecrement: () => void;
-  theme: ReturnType<typeof useTheme>["theme"];
-}) {
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
-  const isActive = qty > 0;
-
-  return (
-    <View style={[styles.productRow, isActive && styles.productRowActive]}>
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{product.name}</Text>
-        <Text style={styles.productMeta}>
-          ${product.unitPrice.toFixed(2)} / {product.unit}
-        </Text>
-      </View>
-      <View style={styles.stepper}>
-        <Pressable style={styles.stepperButton} onPress={onDecrement}>
-          <Text style={styles.stepperText}>−</Text>
-        </Pressable>
-        <Text style={styles.qtyText}>{qty}</Text>
-        <Pressable style={styles.stepperButton} onPress={onIncrement}>
-          <Text style={styles.stepperText}>+</Text>
-        </Pressable>
-      </View>
-    </View>
+          </>
+        ) : (
+          <Button
+            variant="primary"
+            onPress={() => handleSave(true)}
+          >
+            Done
+          </Button>
+        )}
+      </BottomBar>
+    </>
   );
 }
 
@@ -495,11 +411,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       alignItems: "center",
       backgroundColor: theme.colors.bg,
     },
-    scroll: {
-      flex: 1,
-    },
-    scrollContent: {
-      padding: theme.spacing(2),
+    nameSection: {
+      paddingHorizontal: theme.spacing(2),
+      paddingTop: theme.spacing(2),
+      paddingBottom: theme.spacing(1),
     },
     label: {
       fontSize: 14,
@@ -507,43 +422,49 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
       marginBottom: theme.spacing(1),
     },
-    h2: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: theme.colors.text,
-      marginBottom: theme.spacing(2),
-    },
-    // Assembly status indicator
+    // Assembly status indicator (like quote items indicator)
     assemblyIndicator: {
       backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.md,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      marginHorizontal: theme.spacing(2),
+      marginBottom: theme.spacing(2),
       borderWidth: 1,
       borderColor: theme.colors.border,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(1),
     },
     indicatorContent: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
+      gap: theme.spacing(2),
     },
     indicatorTextContainer: {
       flex: 1,
     },
     indicatorText: {
       fontSize: 14,
-      fontWeight: "600",
+      fontWeight: "700",
       color: theme.colors.text,
     },
-    // Existing items section
-    existingItemsHeader: {
-      marginBottom: theme.spacing(1),
+    viewButton: {
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      borderRadius: theme.radius.md,
     },
+    viewButtonText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#000",
+    },
+    // Existing items section
     existingItemsContainer: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      marginHorizontal: theme.spacing(2),
+      marginBottom: theme.spacing(2),
       paddingVertical: theme.spacing(1),
       paddingHorizontal: theme.spacing(2),
     },
@@ -557,63 +478,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     existingItemRowLast: {
       borderBottomWidth: 0,
-    },
-    // Selection indicator
-    selectionIndicator: {
-      backgroundColor: theme.colors.accent + "20",
-      borderRadius: theme.radius.sm,
-      padding: theme.spacing(1),
-      alignItems: "center",
-    },
-    selectionText: {
-      fontSize: 12,
-      fontWeight: "600",
-      color: theme.colors.text,
-    },
-    // Category card (collapsible)
-    categoryCard: {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      marginBottom: theme.spacing(2),
-      overflow: "hidden",
-    },
-    categoryHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: theme.spacing(2),
-    },
-    categoryTitle: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: theme.colors.text,
-    },
-    categoryCount: {
-      fontSize: 14,
-      color: theme.colors.muted,
-    },
-    categoryProducts: {
-      paddingHorizontal: theme.spacing(2),
-      paddingBottom: theme.spacing(1),
-    },
-    // Product row with stepper
-    productRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingVertical: theme.spacing(1.5),
-      paddingHorizontal: theme.spacing(1),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-      borderRadius: theme.radius.sm,
-      marginBottom: 2,
-    },
-    productRowActive: {
-      backgroundColor: theme.colors.accent + "20",
-      borderBottomColor: theme.colors.accent,
-      borderBottomWidth: 2,
     },
     productInfo: {
       flex: 1,
@@ -653,31 +517,27 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       minWidth: 32,
       textAlign: "center",
     },
-    // Search results
-    searchResults: {
-      backgroundColor: theme.colors.card,
+    // Success message
+    successMessage: {
+      backgroundColor: theme.colors.accent,
       borderRadius: theme.radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      paddingVertical: theme.spacing(1),
-      paddingHorizontal: theme.spacing(2),
+      padding: theme.spacing(1.5),
+      marginHorizontal: theme.spacing(2),
+      marginBottom: theme.spacing(2),
+      alignItems: "center",
+    },
+    successText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#000",
+    },
+    // Picker container
+    pickerContainer: {
+      flex: 1,
     },
     errorText: {
       fontSize: 16,
       color: theme.colors.muted,
-    },
-    // Success message (inline, not absolute)
-    successMessage: {
-      backgroundColor: "#4CAF50",
-      padding: theme.spacing(1.5),
-      borderRadius: theme.radius.md,
-      alignItems: "center",
-      marginTop: theme.spacing(1),
-    },
-    successText: {
-      color: "#fff",
-      fontSize: 14,
-      fontWeight: "600",
     },
   });
 }

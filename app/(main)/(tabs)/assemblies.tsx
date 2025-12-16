@@ -33,23 +33,18 @@ const AssemblyListItem = memo(
     styles: ReturnType<typeof createStyles>;
   }) => {
     const materialCount = item.items.length;
-    const isCustom = item.id.startsWith("custom-");
 
     return (
       <Pressable
-        style={[styles.card, isCustom && styles.cardCustom]}
+        style={styles.card}
         onPress={onPress}
         onLongPress={onLongPress}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.title}>
-            {isCustom && "📌 "}
-            {item.name}
-          </Text>
+          <Text style={styles.title}>{item.name}</Text>
         </View>
         <Text style={styles.sub}>
           {materialCount} material{materialCount !== 1 ? "s" : ""}
-          {isCustom && " • Custom"}
         </Text>
       </Pressable>
     );
@@ -87,17 +82,6 @@ export default function AssembliesScreen() {
   };
 
   const handleDeleteAssembly = async (assembly: Assembly) => {
-    const isCustom = assembly.id.startsWith("custom-");
-
-    if (!isCustom) {
-      Alert.alert(
-        "Cannot Delete",
-        "Seed assemblies cannot be deleted. Only custom assemblies can be removed.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
     Alert.alert(
       "Delete Assembly?",
       `Are you sure you want to delete "${assembly.name}"? This cannot be undone.`,
@@ -179,26 +163,26 @@ export default function AssembliesScreen() {
 
             <View style={styles.upgradeCard}>
               <Text style={styles.upgradeDescription}>
-                Save your quotes as reusable assembly templates and speed up your workflow.
+                Create reusable material templates and speed up your quoting workflow.
               </Text>
 
               <View style={styles.benefitsList}>
                 <View style={styles.benefitRow}>
                   <Text style={styles.benefitIcon}>⚡</Text>
                   <Text style={styles.benefitText}>
-                    Pre-built material calculators for common tasks
+                    Build once, reuse on every quote
                   </Text>
                 </View>
                 <View style={styles.benefitRow}>
                   <Text style={styles.benefitIcon}>💾</Text>
                   <Text style={styles.benefitText}>
-                    Save your own quotes as custom assemblies
+                    Save your material combinations as templates
                   </Text>
                 </View>
                 <View style={styles.benefitRow}>
                   <Text style={styles.benefitIcon}>📌</Text>
                   <Text style={styles.benefitText}>
-                    Build your personal template library
+                    Build your personal assembly library
                   </Text>
                 </View>
                 <View style={styles.benefitRow}>
@@ -242,7 +226,7 @@ export default function AssembliesScreen() {
       <Screen scroll={false} contentStyle={styles.container}>
         <View style={styles.headerContainer}>
           <Text style={styles.headerDescription}>
-            Pre-built material calculators for common tasks
+            Your reusable material templates
           </Text>
         </View>
 
@@ -327,10 +311,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginBottom: theme.spacing(2),
       borderWidth: 1,
       borderColor: theme.colors.border,
-    },
-    cardCustom: {
-      borderWidth: 2,
-      borderColor: theme.colors.accent,
     },
     cardHeader: {
       flexDirection: "row",

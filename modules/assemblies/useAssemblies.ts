@@ -1,12 +1,10 @@
 // modules/assemblies/useAssemblies.ts
 import { useCallback, useEffect, useState } from "react";
-import { ASSEMBLIES_SEED } from "./seed";
-import { initAssemblies, listAssemblies } from "./storage";
+import { listAssemblies } from "./storage";
 import type { Assembly } from "./types";
 
 /**
- * Hook for loading and managing assemblies list.
- * Automatically initializes with seed data on first load.
+ * Hook for loading and managing user's assemblies.
  */
 export function useAssemblies() {
   const [assemblies, setAssemblies] = useState<Assembly[]>([]);
@@ -15,9 +13,6 @@ export function useAssemblies() {
   const loadAssemblies = useCallback(async () => {
     setLoading(true);
     try {
-      // Initialize with seed if empty
-      await initAssemblies(ASSEMBLIES_SEED);
-      // Load all assemblies
       const all = await listAssemblies();
       setAssemblies(all);
     } catch (error) {
