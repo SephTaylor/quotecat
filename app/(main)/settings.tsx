@@ -123,7 +123,7 @@ export default function Settings() {
     setUserState(user);
     setPreferences(fullPrefs);
 
-    // Load logo (works locally, syncs when auth'd)
+    // Load logo (local storage)
     try {
       const companyLogo = await getCompanyLogo();
       setLogo(companyLogo);
@@ -176,7 +176,6 @@ export default function Settings() {
       setUploadingLogo(true);
       const uploadedLogo = await uploadCompanyLogo();
       setLogo(uploadedLogo);
-      Alert.alert("Success", "Logo uploaded successfully!");
     } catch (error) {
       console.error("Failed to upload logo:", error);
       Alert.alert("Error", error instanceof Error ? error.message : "Failed to upload logo");
@@ -199,7 +198,6 @@ export default function Settings() {
               setUploadingLogo(true);
               await deleteLogo();
               setLogo(null);
-              Alert.alert("Success", "Logo deleted successfully");
             } catch (error) {
               console.error("Failed to delete logo:", error);
               Alert.alert("Error", "Failed to delete logo");

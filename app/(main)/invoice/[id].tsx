@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -30,6 +31,7 @@ import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
+import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { FormScreen } from "@/modules/core/ui";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 
@@ -53,6 +55,7 @@ export default function InvoiceDetailScreen() {
 
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [logo, setLogo] = useState<CompanyLogo | null>(null);
 
   // Editing states
   const [editingDueDate, setEditingDueDate] = useState(false);
@@ -85,6 +88,14 @@ export default function InvoiceDetailScreen() {
     try {
       const data = await getInvoiceById(invoiceId);
       setInvoice(data);
+
+      // Load logo
+      try {
+        const companyLogo = await getCompanyLogo();
+        setLogo(companyLogo);
+      } catch {
+        // Logo loading failed, continue without it
+      }
     } catch (error) {
       console.error("Failed to load invoice:", error);
       Alert.alert("Error", "Failed to load invoice");
@@ -106,9 +117,22 @@ export default function InvoiceDetailScreen() {
       const user = await getUserState();
       const isPro = canAccessAssemblies(user);
 
+      // Load logo
+      let logoBase64: string | undefined;
+      try {
+        const logo = await getCompanyLogo();
+        if (logo?.base64) {
+          // Strip data URL prefix - PDF template adds it back
+          logoBase64 = logo.base64.replace(/^data:image\/\w+;base64,/, '');
+        }
+      } catch {
+        // Logo loading failed, continue without it
+      }
+
       const pdfOptions: PDFOptions = {
         includeBranding: !isPro, // Free tier shows branding
         companyDetails: prefs.company,
+        logoBase64,
       };
 
       await generateAndShareInvoicePDF(invoice, pdfOptions);
@@ -450,6 +474,17 @@ export default function InvoiceDetailScreen() {
           paddingBottom: theme.spacing(1),
         }}
       >
+          {/* Logo Preview */}
+          {logo?.base64 && (
+            <View style={styles.logoContainer}>
+              <Image
+                source={{ uri: logo.base64 }}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+          )}
+
           {/* Header Card */}
           <View style={styles.headerCard}>
             {invoice.isPartialInvoice && invoice.percentage && (
@@ -1665,6 +1700,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     statusOptionTextActive: {
       color: "#000",
       fontWeight: "700",
+    },
+    logoContainer: {
+      alignItems: "flex-start",
+      marginBottom: theme.spacing(2),
+      height: 40,
+    },
+    logoImage: {
+      height: 40,
+      width: 120,
     },
   });
 }

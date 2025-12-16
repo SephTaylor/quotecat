@@ -13,6 +13,7 @@ import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { canAccessAssemblies } from "@/lib/features";
 import { getUserState } from "@/lib/user";
+import { getCompanyLogo } from "@/lib/logo";
 import { Stack, useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import type { InvoiceStatus } from "@/lib/types";
@@ -148,13 +149,25 @@ export default function InvoicesList() {
       const user = await getUserState();
       const isPro = canAccessAssemblies(user);
 
+      // Load logo
+      let logoBase64: string | undefined;
+      try {
+        const logo = await getCompanyLogo();
+        if (logo?.base64) {
+          // Strip data URL prefix - PDF template adds it back
+          logoBase64 = logo.base64.replace(/^data:image\/\w+;base64,/, '');
+        }
+      } catch {
+        // Logo loading failed, continue without it
+      }
+
       const pdfOptions: PDFOptions = {
         includeBranding: !isPro, // Free tier shows branding
         companyDetails: prefs.company,
+        logoBase64,
       };
 
       await generateAndShareInvoicePDF(invoice, pdfOptions);
-      Alert.alert("Success!", "Invoice exported successfully");
     } catch (error) {
       console.error("Failed to export invoice PDF:", error);
       Alert.alert(

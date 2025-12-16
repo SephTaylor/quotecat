@@ -2,8 +2,6 @@
 // Edit company details for quotes and PDFs
 import { useTheme } from "@/contexts/ThemeContext";
 import { loadPreferences, updateCompanyDetails, type CompanyDetails } from "@/lib/preferences";
-import { getUserState } from "@/lib/user";
-import { canAccessAssemblies } from "@/lib/features";
 import { FormInput, BottomBar, Button } from "@/modules/core/ui";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
 import React, { useState, useCallback } from "react";
@@ -13,7 +11,6 @@ import {
   Text,
   View,
   Alert,
-  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
@@ -28,7 +25,6 @@ export default function CompanyDetailsScreen() {
   const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
   const [address, setAddress] = useState("");
-  const [isPro, setIsPro] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [originalDetails, setOriginalDetails] = useState<CompanyDetails | null>(null);
 
@@ -53,10 +49,7 @@ export default function CompanyDetailsScreen() {
   };
 
   const load = useCallback(async () => {
-    const [prefs, user] = await Promise.all([
-      loadPreferences(),
-      getUserState(),
-    ]);
+    const prefs = await loadPreferences();
 
     setCompanyName(prefs.company.companyName || "");
     setEmail(prefs.company.email || "");
@@ -64,7 +57,6 @@ export default function CompanyDetailsScreen() {
     setWebsite(prefs.company.website || "");
     setAddress(prefs.company.address || "");
     setOriginalDetails(prefs.company);
-    setIsPro(canAccessAssemblies(user));
     setHasChanges(false);
   }, []);
 
@@ -111,18 +103,6 @@ export default function CompanyDetailsScreen() {
     } catch (error) {
       console.error("Failed to save company details:", error);
       Alert.alert("Error", "Could not save company details. Please try again.");
-    }
-  };
-
-  const handleLogoUpload = () => {
-    if (!isPro) {
-      Alert.alert(
-        "Pro Feature",
-        "Company logo upload is available for Pro subscribers. Upgrade to unlock professional branding features.",
-        [{ text: "OK" }]
-      );
-    } else {
-      Alert.alert("Coming Soon", "Logo upload will be available soon");
     }
   };
 
@@ -218,35 +198,6 @@ export default function CompanyDetailsScreen() {
             />
           </View>
 
-          {/* Logo Upload - Pro Feature */}
-          <View style={styles.field}>
-            <View style={styles.fieldHeader}>
-              <Ionicons name="image-outline" size={20} color={isPro ? theme.colors.accent : theme.colors.muted} />
-              <Text style={styles.fieldLabel}>Company Logo</Text>
-              {!isPro && (
-                <View style={styles.proBadge}>
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.fieldDescription}>
-              Add your logo to quote PDFs for a professional look
-            </Text>
-            <Pressable
-              style={[styles.uploadButton, !isPro && styles.uploadButtonDisabled]}
-              onPress={handleLogoUpload}
-            >
-              <Ionicons
-                name="cloud-upload-outline"
-                size={20}
-                color={isPro ? "#000" : theme.colors.muted}
-              />
-              <Text style={[styles.uploadButtonText, !isPro && styles.uploadButtonTextDisabled]}>
-                {isPro ? "Upload Logo" : "Upgrade to Pro"}
-              </Text>
-            </Pressable>
-          </View>
-
           <View style={{ height: 100 }} />
         </ScrollView>
 
@@ -296,45 +247,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "700",
       color: theme.colors.text,
       flex: 1,
-    },
-    fieldDescription: {
-      fontSize: 13,
-      color: theme.colors.muted,
-      marginBottom: theme.spacing(1.5),
-      lineHeight: 18,
-    },
-    proBadge: {
-      backgroundColor: theme.colors.accent,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 4,
-    },
-    proBadgeText: {
-      fontSize: 10,
-      fontWeight: "700",
-      color: "#000",
-      letterSpacing: 0.5,
-    },
-    uploadButton: {
-      backgroundColor: theme.colors.accent,
-      borderRadius: theme.radius.md,
-      paddingVertical: theme.spacing(1.5),
-      paddingHorizontal: theme.spacing(2),
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: theme.spacing(1),
-    },
-    uploadButtonDisabled: {
-      backgroundColor: theme.colors.border,
-    },
-    uploadButtonText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: "#000",
-    },
-    uploadButtonTextDisabled: {
-      color: theme.colors.muted,
     },
   });
 }

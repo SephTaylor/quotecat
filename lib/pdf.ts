@@ -80,23 +80,26 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
     </div>
   ` : '';
 
-  // Logo HTML for top left corner
-  const logoHTML = logoBase64 ? `
-    <div style="position: absolute; top: 24px; left: 24px; max-width: 200px; max-height: 80px;">
-      <img src="data:image/png;base64,${logoBase64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+  // Company header with logo on left, details on right
+  const companyHeader = `
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
+      ${logoBase64 ? `
+        <div style="flex-shrink: 0;">
+          <img src="data:image/png;base64,${logoBase64}" style="max-width: 80px; max-height: 60px; object-fit: contain;" />
+        </div>
+      ` : ''}
+      <div style="flex: 1;">
+        ${companyDetails?.companyName ? `<div style="font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #000;">${companyDetails.companyName}</div>` : ''}
+        ${companyDetails?.email ? `<div style="font-size: 12px; color: #666;">${companyDetails.email}</div>` : ''}
+        ${companyDetails?.phone ? `<div style="font-size: 12px; color: #666;">${companyDetails.phone}</div>` : ''}
+        ${companyDetails?.website ? `<div style="font-size: 12px; color: #666;">${companyDetails.website}</div>` : ''}
+        ${companyDetails?.address ? `<div style="font-size: 12px; color: #666;">${companyDetails.address}</div>` : ''}
+      </div>
     </div>
-  ` : '';
+  `;
 
-  // Company header with details (adjusted for logo if present)
-  const companyHeader = companyDetails && (companyDetails.companyName || companyDetails.email || companyDetails.phone || companyDetails.website || companyDetails.address) ? `
-    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; ${logoBase64 ? 'margin-top: 100px;' : ''}">
-      ${companyDetails.companyName ? `<div style="font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #000;">${companyDetails.companyName}</div>` : ''}
-      ${companyDetails.email ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Email: ${companyDetails.email}</div>` : ''}
-      ${companyDetails.phone ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Phone: ${companyDetails.phone}</div>` : ''}
-      ${companyDetails.website ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Website: ${companyDetails.website}</div>` : ''}
-      ${companyDetails.address ? `<div style="font-size: 13px; color: #666;">${companyDetails.address}</div>` : ''}
-    </div>
-  ` : (logoBase64 ? '<div style="margin-top: 100px;"></div>' : '');
+  // No separate logo HTML needed - it's now inline
+  const logoHTML = '';
 
   return `
     <!DOCTYPE html>
@@ -487,23 +490,26 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
     </div>
   ` : '';
 
-  // Logo HTML for top left corner
-  const logoHTML = logoBase64 ? `
-    <div style="position: absolute; top: 24px; left: 24px; max-width: 200px; max-height: 80px;">
-      <img src="data:image/png;base64,${logoBase64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+  // Company header with logo on left, details on right
+  const companyHeader = `
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
+      ${logoBase64 ? `
+        <div style="flex-shrink: 0;">
+          <img src="data:image/png;base64,${logoBase64}" style="max-width: 80px; max-height: 60px; object-fit: contain;" />
+        </div>
+      ` : ''}
+      <div style="flex: 1;">
+        ${companyDetails?.companyName ? `<div style="font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #000;">${companyDetails.companyName}</div>` : ''}
+        ${companyDetails?.email ? `<div style="font-size: 12px; color: #666;">${companyDetails.email}</div>` : ''}
+        ${companyDetails?.phone ? `<div style="font-size: 12px; color: #666;">${companyDetails.phone}</div>` : ''}
+        ${companyDetails?.website ? `<div style="font-size: 12px; color: #666;">${companyDetails.website}</div>` : ''}
+        ${companyDetails?.address ? `<div style="font-size: 12px; color: #666;">${companyDetails.address}</div>` : ''}
+      </div>
     </div>
-  ` : '';
+  `;
 
-  // Company header with details
-  const companyHeader = companyDetails && (companyDetails.companyName || companyDetails.email || companyDetails.phone || companyDetails.website || companyDetails.address) ? `
-    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; ${logoBase64 ? 'margin-top: 100px;' : ''}">
-      ${companyDetails.companyName ? `<div style="font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #000;">${companyDetails.companyName}</div>` : ''}
-      ${companyDetails.email ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Email: ${companyDetails.email}</div>` : ''}
-      ${companyDetails.phone ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Phone: ${companyDetails.phone}</div>` : ''}
-      ${companyDetails.website ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Website: ${companyDetails.website}</div>` : ''}
-      ${companyDetails.address ? `<div style="font-size: 13px; color: #666;">${companyDetails.address}</div>` : ''}
-    </div>
-  ` : (logoBase64 ? '<div style="margin-top: 100px;"></div>' : '');
+  // No separate logo HTML needed - it's now inline
+  const logoHTML = '';
 
   // Partial invoice badge
   const partialBadge = invoice.isPartialInvoice ? `
@@ -1030,20 +1036,24 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
     </div>
   ` : '';
 
-  // Logo and company header
-  const logoHTML = logoBase64 ? `
-    <div style="position: absolute; top: 24px; left: 24px; max-width: 180px; max-height: 70px;">
-      <img src="data:image/png;base64,${logoBase64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+  // Company header with logo on left, details on right
+  const companyHeader = `
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
+      ${logoBase64 ? `
+        <div style="flex-shrink: 0;">
+          <img src="data:image/png;base64,${logoBase64}" style="max-width: 80px; max-height: 60px; object-fit: contain;" />
+        </div>
+      ` : ''}
+      <div style="flex: 1;">
+        ${companyDetails?.companyName ? `<div style="font-size: 18px; font-weight: 700; color: #000;">${companyDetails.companyName}</div>` : ''}
+        ${companyDetails?.email ? `<div style="font-size: 12px; color: #666;">${companyDetails.email}</div>` : ''}
+        ${companyDetails?.phone ? `<div style="font-size: 12px; color: #666;">${companyDetails.phone}</div>` : ''}
+      </div>
     </div>
-  ` : '';
+  `;
 
-  const companyHeader = companyDetails && companyDetails.companyName ? `
-    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; ${logoBase64 ? 'margin-top: 90px;' : ''}">
-      <div style="font-size: 18px; font-weight: 700; color: #000;">${companyDetails.companyName}</div>
-      ${companyDetails.email ? `<div style="font-size: 12px; color: #666;">${companyDetails.email}</div>` : ''}
-      ${companyDetails.phone ? `<div style="font-size: 12px; color: #666;">${companyDetails.phone}</div>` : ''}
-    </div>
-  ` : (logoBase64 ? '<div style="margin-top: 90px;"></div>' : '');
+  // No separate logo HTML needed - it's now inline
+  const logoHTML = '';
 
   return `
     <!DOCTYPE html>

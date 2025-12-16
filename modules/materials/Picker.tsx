@@ -76,11 +76,11 @@ const ProductRow = memo(function ProductRow({
             value={editingQty}
             onChangeText={onQtyChange}
             onBlur={onFinishEdit}
-            onSubmitEditing={onFinishEdit}
             keyboardType="number-pad"
-            returnKeyType="done"
             autoFocus
             selectTextOnFocus
+            // Hide the iOS keyboard accessory bar with "Done" button
+            inputAccessoryViewID=""
           />
         ) : (
           <Pressable onPress={onStartEdit}>
@@ -144,29 +144,37 @@ function MaterialsPicker({
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
   const editingProductRef = useRef<Product | null>(null);
+  const editingQtyRef = useRef<string>("");
 
   // Handlers for inline quantity editing
   const handleStartEditingQty = useCallback((productId: string, product: Product) => {
     editingProductRef.current = product;
+    editingQtyRef.current = "";
     setEditingQty("");
     setEditingProductId(productId);
   }, []);
 
   const handleQtyChange = useCallback((text: string) => {
     const cleaned = text.replace(/[^0-9]/g, '');
+    editingQtyRef.current = cleaned;
     setEditingQty(cleaned);
   }, []);
 
-  const handleFinishEditingQty = useCallback((product: Product) => {
-    const newQty = parseInt(editingQty, 10);
-    if (!isNaN(newQty) && newQty >= 0) {
-      onSetQty(product, newQty);
+  const handleFinishEditingQty = useCallback(() => {
+    const product = editingProductRef.current;
+    const qty = editingQtyRef.current;
+    if (product && qty) {
+      const newQty = parseInt(qty, 10);
+      if (!isNaN(newQty) && newQty >= 0) {
+        onSetQty(product, newQty);
+      }
     }
     editingProductRef.current = null;
+    editingQtyRef.current = "";
     setEditingProductId(null);
     setEditingQty("");
     Keyboard.dismiss();
-  }, [editingQty, onSetQty]);
+  }, [onSetQty]);
 
   // Find recently used products from all categories
   const recentProducts = useMemo(() => {
@@ -245,7 +253,7 @@ function MaterialsPicker({
         onDec={() => onDec(p)}
         onStartEdit={() => handleStartEditingQty(p.id, p)}
         onQtyChange={handleQtyChange}
-        onFinishEdit={() => handleFinishEditingQty(p)}
+        onFinishEdit={handleFinishEditingQty}
         styles={styles}
       />
     );
@@ -263,7 +271,7 @@ function MaterialsPicker({
   // Handle scroll begin to finish editing
   const handleScrollBeginDrag = useCallback(() => {
     if (editingProductId && editingProductRef.current) {
-      handleFinishEditingQty(editingProductRef.current);
+      handleFinishEditingQty();
     }
   }, [editingProductId, handleFinishEditingQty]);
 
@@ -289,7 +297,7 @@ function MaterialsPicker({
                 onDec={() => onDec(p)}
                 onStartEdit={() => handleStartEditingQty(p.id, p)}
                 onQtyChange={handleQtyChange}
-                onFinishEdit={() => handleFinishEditingQty(p)}
+                onFinishEdit={handleFinishEditingQty}
                 styles={styles}
               />
             );
@@ -299,8 +307,15 @@ function MaterialsPicker({
     );
   }, [recentProducts, selection, editingProductId, editingQty, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, styles]);
 
+  // Dismiss editing when tapping outside the input
+  const handleContainerPress = useCallback(() => {
+    if (editingProductId) {
+      handleFinishEditingQty();
+    }
+  }, [editingProductId, handleFinishEditingQty]);
+
   return (
-    <View style={styles.container}>
+    <Pressable style={styles.container} onPress={handleContainerPress}>
       {/* Sticky Header: Category Filter Chips */}
       <View style={styles.stickyHeader}>
         <ScrollView
@@ -381,7 +396,7 @@ function MaterialsPicker({
           }
         }}
       />
-    </View>
+    </Pressable>
   );
 }
 

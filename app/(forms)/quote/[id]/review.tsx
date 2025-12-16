@@ -4,6 +4,7 @@ import { HeaderBackButton } from "@/components/HeaderBackButton";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,7 +22,6 @@ import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getUserState } from "@/lib/user";
-import { getCurrentUserId } from "@/lib/auth";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
 import type { UserState } from "@/lib/user";
 import { generateAndSharePDF } from "@/lib/pdf";
@@ -62,15 +62,12 @@ export default function QuoteReviewScreen() {
         setUserState(user);
         setCompanyDetails(prefs.company);
 
-        // Load logo if user is signed in
-        const userId = await getCurrentUserId();
-        if (userId) {
-          try {
-            const companyLogo = await getCompanyLogo(userId);
-            setLogo(companyLogo);
-          } catch (error) {
-            console.error("Failed to load logo:", error);
-          }
+        // Load logo from local storage
+        try {
+          const companyLogo = await getCompanyLogo();
+          setLogo(companyLogo);
+        } catch (error) {
+          console.error("Failed to load logo:", error);
         }
       } finally {
         setLoading(false);
@@ -116,10 +113,12 @@ export default function QuoteReviewScreen() {
         setIsExporting(true);
 
         // Generate PDF with or without branding based on tier
+        // Strip data URL prefix if present - PDF template adds it back
+        const rawBase64 = logo?.base64?.replace(/^data:image\/\w+;base64,/, '');
         await generateAndSharePDF(quote, {
           includeBranding: userState.tier === "free",
           companyDetails: companyDetails ?? undefined,
-          logoBase64: logo?.base64
+          logoBase64: rawBase64
         });
 
         // TODO: expo-sharing doesn't provide a way to detect if user cancelled
@@ -415,6 +414,17 @@ export default function QuoteReviewScreen() {
         }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Logo Preview */}
+        {logo?.base64 && (
+          <View style={styles.logoContainer}>
+            <Image
+              source={{ uri: logo.base64 }}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+        )}
+
         {/* Company Details Section */}
         {companyDetails && (companyDetails.companyName || companyDetails.email || companyDetails.phone || companyDetails.website || companyDetails.address) && (
           <View style={styles.companyCard}>
@@ -719,6 +729,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       fontSize: 16,
       fontWeight: "700",
       color: "#000",
+    },
+    logoContainer: {
+      alignItems: "flex-start",
+      marginBottom: theme.spacing(2),
+      height: 40,
+    },
+    logoImage: {
+      height: 40,
+      width: 120,
     },
     companyCard: {
       backgroundColor: theme.colors.card,

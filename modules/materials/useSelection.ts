@@ -1,9 +1,15 @@
 import type { Product } from "@/modules/catalog/seed";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import type { Selection } from "./types";
 
 export function useSelection(initial?: Selection) {
   const [selection, setSelection] = useState<Selection>(initial ?? new Map());
+
+  // Keep a ref to the current selection for synchronous access
+  const selectionRef = useRef<Selection>(selection);
+  useEffect(() => {
+    selectionRef.current = selection;
+  }, [selection]);
 
   const setQty = useCallback((product: Product, qty: number) => {
     setSelection((prev) => {
@@ -55,6 +61,9 @@ export function useSelection(initial?: Selection) {
     [selection],
   );
 
+  // Get the current selection (useful for async operations after state updates)
+  const getSelection = useCallback(() => selectionRef.current, []);
+
   return {
     selection,
     setSelection,
@@ -65,5 +74,6 @@ export function useSelection(initial?: Selection) {
     lines,
     units,
     subtotal,
+    getSelection,
   };
 }

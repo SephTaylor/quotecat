@@ -12,7 +12,7 @@ import {
 import { mergeById } from "@/modules/quotes/merge";
 import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Text, View, StyleSheet, Pressable, Alert, RefreshControl, Modal, TouchableOpacity, TouchableWithoutFeedback } from "react-native";
+import { Text, View, StyleSheet, Pressable, Alert, RefreshControl, Modal, TouchableOpacity, TouchableWithoutFeedback, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { QuoteItem } from "@/lib/types";
 import { trackProductUsage } from "@/lib/analytics";
@@ -46,7 +46,7 @@ export default function QuoteMaterials() {
     return map;
   }, [quoteItems, products, initialSelectionLoaded]);
 
-  const { selection, inc, dec, clear, units, setSelection, setQty } = useSelection(initialSelection);
+  const { selection, inc, dec, clear, units, setSelection, setQty, getSelection } = useSelection(initialSelection);
 
   // Filter state
   const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -143,6 +143,12 @@ export default function QuoteMaterials() {
 
   const saveSelected = useCallback(
     async (goBack: boolean) => {
+      // Dismiss keyboard to trigger onBlur and commit any pending quantity edits
+      Keyboard.dismiss();
+
+      // Wait for state update to propagate after onBlur commits the quantity
+      await new Promise(resolve => setTimeout(resolve, 50));
+
       if (!id) {
         console.log("No quote ID");
         Alert.alert("Error", "No quote ID found. Please try again.");
@@ -160,8 +166,8 @@ export default function QuoteMaterials() {
         // Get current quote items
         const existingItems = q.items ?? [];
 
-        // Convert current selection to items
-        const newlySelectedItems = transformSelectionToItems(selection);
+        // Convert current selection to items (use getSelection for latest state)
+        const newlySelectedItems = transformSelectionToItems(getSelection());
         console.log("Newly selected items:", newlySelectedItems);
         console.log("Existing quote items:", existingItems);
 
@@ -197,7 +203,7 @@ export default function QuoteMaterials() {
         Alert.alert("Error", "Failed to add materials. Please try again.");
       }
     },
-    [id, selection, router, clear],
+    [id, getSelection, router, clear],
   );
 
   // Calculate status text for header
@@ -375,7 +381,6 @@ export default function QuoteMaterials() {
 
         <Button
           variant="secondary"
-          disabled={units === 0}
           onPress={() => saveSelected(false)}
         >
           Add {units > 0 ? `${units} item${units > 1 ? "s" : ""}` : "items"}

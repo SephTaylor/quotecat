@@ -61,10 +61,12 @@ export const SwipeableQuoteItem = React.memo(
         }
 
         // Generate and share PDF
+        // Strip data URL prefix if present - PDF template adds it back
+        const rawBase64 = logo?.base64?.replace(/^data:image\/\w+;base64,/, '');
         await generateAndSharePDF(item, {
           includeBranding: userState.tier === "free",
           companyDetails: prefs.company,
-          logoBase64: logo?.base64,
+          logoBase64: rawBase64,
         });
       } catch (error) {
         Alert.alert(
