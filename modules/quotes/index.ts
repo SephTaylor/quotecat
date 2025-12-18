@@ -25,6 +25,7 @@ export { calculateMaterialSubtotal, calculateTotal } from "@/lib/validation";
 // Export hooks
 export * from "./useQuoteData";
 export * from "./useExportQuote";
+export * from "./useQuoteForm";
 
 // Export CSV functionality
 export * from "./exportCsv";

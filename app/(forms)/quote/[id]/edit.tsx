@@ -1,29 +1,22 @@
 // app/(forms)/quote/[id]/edit.tsx
 import { useTheme } from "@/contexts/ThemeContext";
-import {
-  getQuoteById,
-  updateQuote,
-  deleteQuote,
-  saveQuote,
-  type Quote,
-} from "@/lib/quotes";
+import { updateQuote } from "@/lib/quotes";
 import { getClients, type Client } from "@/lib/clients";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
-import { loadPreferences } from "@/lib/preferences";
 import { FormInput, FormScreen } from "@/modules/core/ui";
-import { parseMoney } from "@/modules/settings/money";
 import { getItemId } from "@/lib/validation";
 import type { QuoteStatus, QuoteItem } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
+import { useQuoteForm } from "@/modules/quotes";
 import {
   Stack,
   useFocusEffect,
   useLocalSearchParams,
   useRouter,
 } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
@@ -32,45 +25,17 @@ import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { HeaderIconButton } from "@/components/HeaderIconButton";
 import { Ionicons } from "@expo/vector-icons";
 
-/**
- * Format phone number as (xxx) xxx-xxxx
- */
-function formatPhoneNumber(value: string): string {
-  // Remove all non-digits
-  const digits = value.replace(/\D/g, "");
-
-  // Limit to 10 digits
-  const limited = digits.slice(0, 10);
-
-  // Format based on length
-  if (limited.length === 0) return "";
-  if (limited.length <= 3) return `(${limited}`;
-  if (limited.length <= 6) return `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
-  return `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
-}
-
 export default function EditQuote() {
   const { theme } = useTheme();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
 
-  const [, setQuote] = useState<Quote | null>(null);
-  const [name, setName] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
-  const [clientAddress, setClientAddress] = useState("");
-  const [labor, setLabor] = useState<string>(""); // empty string to show placeholder
-  const [materialEstimate, setMaterialEstimate] = useState<string>(""); // Quick estimate for materials
-  const [status, setStatus] = useState<QuoteStatus>("draft");
-  const [pinned, setPinned] = useState(false);
-  const [isNewQuote, setIsNewQuote] = useState(false);
-  const [items, setItems] = useState<QuoteItem[]>([]);
-  const [markupPercent, setMarkupPercent] = useState<string>(""); // Markup percentage
-  const [taxPercent, setTaxPercent] = useState<string>(""); // Tax percentage
-  const [notes, setNotes] = useState<string>(""); // Notes / additional details
-  const [followUpDate, setFollowUpDate] = useState<string>(""); // Follow-up date
-  const [tier, setTier] = useState<string>(""); // Tier name (e.g., "Better", "Best")
+  // Use the extracted form hook
+  const form = useQuoteForm({
+    quoteId: id,
+    onNavigateBack: () => router.back(),
+  });
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
@@ -89,91 +54,34 @@ export default function EditQuote() {
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-  // Calculate quote totals
-  const calculations = React.useMemo(() => {
-    const materialsFromItems = items.reduce(
-      (sum, item) => sum + item.unitPrice * item.qty,
-      0
-    );
-    const materialsEstimateValue = parseMoney(materialEstimate);
-    const laborValue = parseMoney(labor);
-    const markupPercentValue = parseFloat(markupPercent) || 0;
-    const taxPercentValue = parseFloat(taxPercent) || 0;
-
-    // Subtotal before markup
-    const subtotal = materialsFromItems + materialsEstimateValue + laborValue;
-
-    // Calculate markup
-    const markupAmount = (subtotal * markupPercentValue) / 100;
-
-    // Subtotal with markup (before tax)
-    const subtotalWithMarkup = subtotal + markupAmount;
-
-    // Calculate tax
-    const taxAmount = (subtotalWithMarkup * taxPercentValue) / 100;
-
-    // Final total
-    const total = subtotalWithMarkup + taxAmount;
-
-    return {
-      materialsFromItems,
-      materialsEstimateValue,
-      laborValue,
-      subtotal,
-      markupAmount,
-      taxAmount,
-      total,
-    };
-  }, [items, materialEstimate, labor, markupPercent, taxPercent]);
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    const q = await getQuoteById(id);
-    if (q) {
-      setQuote(q);
-      setName(q.name || "");
-      setClientName(q.clientName || "");
-      setClientEmail(q.clientEmail || "");
-      setClientPhone(q.clientPhone || "");
-      setClientAddress(q.clientAddress || "");
-      // Only set labor if it's non-zero, otherwise leave empty to show placeholder
-      setLabor(q.labor && q.labor !== 0 ? q.labor.toFixed(2) : "");
-      // Load material estimate if present
-      setMaterialEstimate(q.materialEstimate && q.materialEstimate !== 0 ? q.materialEstimate.toFixed(2) : "");
-      setStatus(q.status || "draft");
-      setPinned(q.pinned || false);
-      setItems(q.items ?? []);
-      setNotes(q.notes || "");
-      setFollowUpDate(q.followUpDate || "");
-      setTier(q.tier || "");
-
-      // Check if this is a newly created empty quote
-      // Consider it "new" if name is empty or just "Untitled", client is empty or "Unnamed Client",
-      // labor is 0, and there are no items
-      const isDefaultName = !q.name || q.name === "Untitled";
-      const isDefaultClient = !q.clientName || q.clientName === "Unnamed Client";
-      const hasNoItems = !q.items || q.items.length === 0;
-      const isNew = isDefaultName && isDefaultClient && q.labor === 0 && hasNoItems;
-      setIsNewQuote(isNew);
-
-      // For new quotes, apply default tax/markup from preferences if not already set
-      if (isNew) {
-        const prefs = await loadPreferences();
-        const defaultTax = prefs.pricing?.defaultTaxPercent || 0;
-        const defaultMarkup = prefs.pricing?.defaultMarkupPercent || 0;
-        setTaxPercent(defaultTax > 0 ? defaultTax.toString() : "");
-        setMarkupPercent(defaultMarkup > 0 ? defaultMarkup.toString() : "");
-      } else {
-        // For existing quotes, use saved values
-        setMarkupPercent(q.markupPercent && q.markupPercent !== 0 ? q.markupPercent.toString() : "");
-        setTaxPercent(q.taxPercent && q.taxPercent !== 0 ? q.taxPercent.toString() : "");
-      }
-    }
-  }, [id]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Destructure commonly used values from form hook
+  const {
+    name, setName,
+    clientName, setClientName,
+    clientEmail, setClientEmail,
+    clientPhone, setClientPhone,
+    clientAddress, setClientAddress,
+    labor, setLabor,
+    materialEstimate, setMaterialEstimate,
+    status, setStatus,
+    pinned, setPinned,
+    items, setItems,
+    markupPercent, setMarkupPercent,
+    taxPercent, setTaxPercent,
+    notes, setNotes,
+    followUpDate, setFollowUpDate,
+    tier,
+    setIsNewQuote,
+    calculations,
+    load,
+    handleSave,
+    handleGoBack,
+    validateRequiredFields,
+    ensureQuoteExists,
+    formatLaborInput,
+    formatMoneyOnBlur,
+    formatPhoneNumber,
+  } = form;
 
   // Load Pro status and saved clients
   useEffect(() => {
@@ -228,75 +136,6 @@ export default function EditQuote() {
     setShowClientPicker(false);
     setClientPickerSearch("");
     setIsNewQuote(false);
-  };
-
-  const validateRequiredFields = (): boolean => {
-    if (!name.trim()) {
-      Alert.alert("Required Field", "Please enter a project name.");
-      return false;
-    }
-
-    if (!clientName.trim()) {
-      Alert.alert("Required Field", "Please enter a client name.");
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSave = useCallback(async () => {
-    if (!id) return;
-
-    await updateQuote(id, {
-      name: name.trim() || "Untitled",
-      clientName: clientName.trim() || "Unnamed Client",
-      clientEmail: clientEmail.trim() || undefined,
-      clientPhone: clientPhone.trim() || undefined,
-      clientAddress: clientAddress.trim() || undefined,
-      labor: parseMoney(labor),
-      materialEstimate: parseMoney(materialEstimate) || undefined,
-      markupPercent: parseFloat(markupPercent) || undefined,
-      taxPercent: parseFloat(taxPercent) || undefined,
-      notes: notes.trim() || undefined,
-      followUpDate: followUpDate || undefined,
-      status,
-      pinned,
-      items,
-    });
-
-    // Brief feedback that save happened
-    Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
-  }, [id, name, clientName, clientEmail, clientPhone, clientAddress, labor, materialEstimate, markupPercent, taxPercent, notes, followUpDate, status, pinned, items]);
-
-  const handleGoBack = async () => {
-    // If this is a new quote that hasn't been modified, delete it
-    // Check all fields including items to determine if the quote is truly empty
-    const isNameEmpty = !name.trim() || name.trim() === "Untitled";
-    const isClientEmpty = !clientName.trim() || clientName.trim() === "Unnamed Client";
-    if (isNewQuote && isNameEmpty && isClientEmpty && !labor.trim() && items.length === 0) {
-      if (id) {
-        await deleteQuote(id);
-      }
-    } else if (id) {
-      // Save any changes before going back
-      await updateQuote(id, {
-        name: name.trim() || "Untitled",
-        clientName: clientName.trim() || "Unnamed Client",
-        clientEmail: clientEmail.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
-        clientAddress: clientAddress.trim() || undefined,
-        labor: parseMoney(labor),
-        materialEstimate: parseMoney(materialEstimate),
-        markupPercent: parseFloat(markupPercent) || 0,
-        taxPercent: parseFloat(taxPercent) || 0,
-        notes: notes.trim() || undefined,
-        followUpDate: followUpDate || undefined,
-        status,
-        pinned,
-        items,
-      });
-    }
-    router.back();
   };
 
 
@@ -399,60 +238,6 @@ export default function EditQuote() {
     setDeletedItemIndex(-1);
   };
 
-  const formatLaborInput = (text: string) => {
-    // Remove non-numeric characters except decimal point
-    const cleaned = text.replace(/[^0-9.]/g, "");
-
-    // Ensure only one decimal point
-    const parts = cleaned.split(".");
-    if (parts.length > 2) {
-      return parts[0] + "." + parts.slice(1).join("");
-    }
-
-    // Limit decimal places to 2
-    if (parts.length === 2 && parts[1].length > 2) {
-      return parts[0] + "." + parts[1].slice(0, 2);
-    }
-
-    return cleaned;
-  };
-
-  const formatMoneyOnBlur = (value: string): string => {
-    if (!value || value === "") return "";
-
-    // If there's no decimal point, add .00
-    if (!value.includes(".")) {
-      return value + ".00";
-    }
-
-    // If there's a decimal but only one digit after it, add a zero
-    const parts = value.split(".");
-    if (parts[1].length === 1) {
-      return value + "0";
-    }
-
-    // Otherwise return as is (already has 2 decimal places)
-    return value;
-  };
-
-  // Handle cleanup when navigating away
-  useEffect(() => {
-    return () => {
-      // Only cleanup on unmount, not on every re-render
-      // Check all fields including items to determine if the quote is truly empty
-      const isNameEmpty = !name.trim() || name.trim() === "Untitled";
-      const isClientEmpty = !clientName.trim() || clientName.trim() === "Unnamed Client";
-      if (isNewQuote && isNameEmpty && isClientEmpty && !labor.trim() && items.length === 0) {
-        if (id) {
-          deleteQuote(id).catch(() => {
-            // Silently handle error on cleanup
-          });
-        }
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run on unmount
-
   return (
     <>
       <Stack.Screen
@@ -497,28 +282,8 @@ export default function EditQuote() {
               style={styles.reviewBtn}
               onPress={async () => {
                 if (!id) return;
-
-                // Validate required fields before proceeding
-                if (!validateRequiredFields()) {
-                  return;
-                }
-
-                await updateQuote(id, {
-                  name: name.trim(),
-                  clientName: clientName.trim(),
-                  clientEmail: clientEmail.trim() || undefined,
-                  clientPhone: clientPhone.trim() || undefined,
-                  clientAddress: clientAddress.trim() || undefined,
-                  labor: parseMoney(labor),
-                  materialEstimate: parseMoney(materialEstimate),
-                  markupPercent: parseFloat(markupPercent) || 0,
-                  taxPercent: parseFloat(taxPercent) || 0,
-                  notes: notes.trim() || undefined,
-                  followUpDate: followUpDate || undefined,
-                  status,
-                  pinned,
-                  items,
-                });
+                if (!validateRequiredFields()) return;
+                await ensureQuoteExists();
                 router.push(`/quote/${id}/review`);
               }}
             >
@@ -696,41 +461,7 @@ export default function EditQuote() {
           <Pressable
             onPress={async () => {
               if (!id) return;
-
-              // Check if quote exists, if not create it
-              const existing = await getQuoteById(id);
-              const quoteData = {
-                name: name.trim() || "Untitled",
-                clientName: clientName.trim() || "Unnamed Client",
-                clientEmail: clientEmail.trim() || undefined,
-                clientPhone: clientPhone.trim() || undefined,
-                clientAddress: clientAddress.trim() || undefined,
-                labor: parseMoney(labor),
-                materialEstimate: parseMoney(materialEstimate),
-                markupPercent: parseFloat(markupPercent) || 0,
-                taxPercent: parseFloat(taxPercent) || 0,
-                notes: notes.trim() || undefined,
-                followUpDate: followUpDate || undefined,
-                status,
-                pinned,
-                items,
-              };
-
-              if (existing) {
-                // Update existing quote
-                await updateQuote(id, quoteData);
-              } else {
-                // Create new quote with required fields
-                const now = new Date().toISOString();
-                await saveQuote({
-                  ...quoteData,
-                  id,
-                  currency: "USD",
-                  createdAt: now,
-                  updatedAt: now,
-                });
-              }
-
+              await ensureQuoteExists();
               router.push(`/quote/${id}/materials`);
             }}
             style={({ pressed }) => ({
@@ -753,23 +484,7 @@ export default function EditQuote() {
           <Pressable
             onPress={async () => {
               if (!id) return;
-              // Save current state before navigating
-              await updateQuote(id, {
-                name: name.trim() || "Untitled",
-                clientName: clientName.trim(),
-                clientEmail: clientEmail.trim() || undefined,
-                clientPhone: clientPhone.trim() || undefined,
-                clientAddress: clientAddress.trim() || undefined,
-                labor: parseMoney(labor),
-                materialEstimate: parseMoney(materialEstimate),
-                markupPercent: parseFloat(markupPercent) || 0,
-                taxPercent: parseFloat(taxPercent) || 0,
-                notes: notes.trim() || undefined,
-                followUpDate: followUpDate || undefined,
-                status,
-                pinned,
-              });
-              // Navigate to assembly library with quote context
+              await ensureQuoteExists();
               router.push(`/(main)/assemblies-browse?quoteId=${id}` as any);
             }}
             style={({ pressed }) => ({
