@@ -19,10 +19,12 @@ export default function ProTools() {
   const router = useRouter();
   const { theme } = useTheme();
   const [isPro, setIsPro] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
 
   const load = useCallback(async () => {
     const user = await getUserState();
     setIsPro(canAccessAssemblies(user));
+    setIsPremium(user?.tier === "premium");
   }, []);
 
   useFocusEffect(
@@ -35,8 +37,11 @@ export default function ProTools() {
     router.push("/(auth)/sign-in" as any);
   };
 
-  const handleFeatureTap = (featureName: string) => {
-    if (isPro) {
+  const handleFeatureTap = (featureName: string, requiresPremium: boolean = false) => {
+    // Check if user has the required tier
+    const hasAccess = requiresPremium ? isPremium : isPro;
+
+    if (hasAccess) {
       // Navigate to feature
       if (featureName === "Assembly Library") {
         router.push("/(main)/assemblies-browse" as any);
@@ -44,6 +49,8 @@ export default function ProTools() {
         router.push("/(main)/assembly-manager" as any);
       } else if (featureName === "Client Manager") {
         router.push("/(main)/client-manager" as any);
+      } else if (featureName === "Contracts") {
+        router.push("/(main)/(tabs)/contracts" as any);
       } else if (featureName === "Wizard") {
         // Coming soon
         Alert.alert(
@@ -115,6 +122,23 @@ export default function ProTools() {
             />
           </View>
 
+          {/* Premium Features Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Premium Features</Text>
+
+            {/* Contracts */}
+            <ProFeatureCard
+              icon=""
+              title="Contracts"
+              description="Create legally-binding contracts with digital signatures"
+              locked={!isPremium}
+              onPress={() => handleFeatureTap("Contracts", true)}
+              details={[]}
+              theme={theme}
+              isPremium
+            />
+          </View>
+
           {/* Coming Soon Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Coming Soon</Text>
@@ -159,6 +183,7 @@ function ProFeatureCard({
   onPress,
   details,
   theme,
+  isPremium = false,
 }: {
   icon: string;
   title: string;
@@ -167,21 +192,29 @@ function ProFeatureCard({
   onPress: () => void;
   details: string[];
   theme: ReturnType<typeof useTheme>["theme"];
+  isPremium?: boolean;
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
     <Pressable
-      style={[styles.featureCard, locked && styles.featureCardLocked]}
+      style={[styles.featureCard, locked && styles.featureCardLocked, isPremium && styles.featureCardPremium]}
       onPress={onPress}
     >
       <View style={styles.featureInfo}>
-        <Text style={styles.featureTitle}>{title}</Text>
+        <View style={styles.featureTitleRow}>
+          <Text style={styles.featureTitle}>{title}</Text>
+          {isPremium && (
+            <View style={styles.premiumBadge}>
+              <Text style={styles.premiumBadgeText}>Premium</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.featureDescription}>{description}</Text>
       </View>
 
-      <View style={[styles.launchButton, locked && styles.launchButtonLocked]}>
-        <Text style={styles.launchButtonText}>
+      <View style={[styles.launchButton, locked && styles.launchButtonLocked, isPremium && !locked && styles.launchButtonPremium]}>
+        <Text style={[styles.launchButtonText, isPremium && !locked && styles.launchButtonTextPremium]}>
           {locked ? "Unlock" : "Launch"}
         </Text>
       </View>
@@ -238,14 +271,35 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     featureCardLocked: {
       opacity: 0.8,
     },
+    featureCardPremium: {
+      borderColor: "#5856D6",
+      borderWidth: 1.5,
+    },
     featureInfo: {
       flex: 1,
+    },
+    featureTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 2,
     },
     featureTitle: {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
-      marginBottom: 2,
+    },
+    premiumBadge: {
+      backgroundColor: "#5856D620",
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    premiumBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#5856D6",
+      textTransform: "uppercase",
     },
     featureDescription: {
       fontSize: 13,
@@ -263,10 +317,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     launchButtonLocked: {
       opacity: 0.7,
     },
+    launchButtonPremium: {
+      backgroundColor: "#5856D6",
+    },
     launchButtonText: {
       fontSize: 13,
       fontWeight: "700",
       color: "#000",
+    },
+    launchButtonTextPremium: {
+      color: "#FFF",
     },
     comingSoonList: {
       gap: theme.spacing(2),

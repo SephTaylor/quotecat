@@ -11,7 +11,7 @@ export function canCreateQuote(user: UserState): {
   allowed: boolean;
   reason?: string;
 } {
-  if (user.tier === "pro") {
+  if (user.tier === "pro" || user.tier === "premium") {
     return { allowed: true };
   }
 
@@ -33,7 +33,7 @@ export function canExportPDF(user: UserState): {
   reason?: string;
   remaining?: number;
 } {
-  if (user.tier === "pro") {
+  if (user.tier === "pro" || user.tier === "premium") {
     return { allowed: true };
   }
 
@@ -58,7 +58,7 @@ export function canExportSpreadsheet(user: UserState): {
   reason?: string;
   remaining?: number;
 } {
-  if (user.tier === "pro") {
+  if (user.tier === "pro" || user.tier === "premium") {
     return { allowed: true };
   }
 
@@ -79,21 +79,21 @@ export function canExportSpreadsheet(user: UserState): {
  * Check if user can access assemblies library
  */
 export function canAccessAssemblies(user: UserState): boolean {
-  return user.tier === "pro";
+  return user.tier === "pro" || user.tier === "premium";
 }
 
 /**
  * Check if user can access cloud sync
  */
 export function canAccessCloudSync(user: UserState): boolean {
-  return user.tier === "pro";
+  return user.tier === "pro" || user.tier === "premium";
 }
 
 /**
  * Check if user can access dashboard value tracking
  */
 export function canAccessValueTracking(user: UserState): boolean {
-  return user.tier === "pro";
+  return user.tier === "pro" || user.tier === "premium";
 }
 
 /**
@@ -103,7 +103,7 @@ export function getQuotaRemaining(
   user: UserState,
   resource: "quotes" | "pdfs" | "spreadsheets",
 ): number {
-  if (user.tier === "pro") {
+  if (user.tier === "pro" || user.tier === "premium") {
     return Infinity;
   }
 
@@ -144,7 +144,7 @@ export function getUpgradeMessage(
  * Check if user should see upgrade prompts
  */
 export function shouldShowUpgradePrompt(user: UserState): boolean {
-  if (user.tier === "pro") return false;
+  if (user.tier === "pro" || user.tier === "premium") return false;
 
   // Show when approaching limits
   const quotesRemaining = getQuotaRemaining(user, "quotes");

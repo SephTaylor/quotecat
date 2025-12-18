@@ -2,9 +2,10 @@
 // Invoice storage and management
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Invoice, Quote } from "@/lib/types";
+import type { Invoice, Quote, Contract } from "@/lib/types";
 export type { Invoice } from "@/lib/types";
 import { getQuoteById } from "@/lib/quotes";
+import { getContractById } from "@/lib/contracts";
 import { loadPreferences, updateInvoiceSettings } from "@/lib/preferences";
 import {
   uploadInvoice,
@@ -226,6 +227,75 @@ export async function createInvoiceFromQuote(
     createdAt: now,
     updatedAt: now,
     currency: quote.currency,
+  };
+
+  await saveInvoice(invoice);
+  return invoice;
+}
+
+/**
+ * Create invoice from contract
+ * @param contractId - ID of the contract to create invoice from
+ * @param percentage - Percentage of contract total (default 100 = full invoice, 50 = 50% deposit)
+ * @param customDueDate - Optional custom due date (defaults to 30 days from now)
+ */
+export async function createInvoiceFromContract(
+  contractId: string,
+  percentage: number = 100,
+  customDueDate?: Date
+): Promise<Invoice> {
+  const contract = await getContractById(contractId);
+  if (!contract) {
+    throw new Error(`Contract ${contractId} not found`);
+  }
+
+  const invoiceNumber = await generateInvoiceNumber();
+  const now = new Date().toISOString();
+  const dueDate = customDueDate || new Date();
+  if (!customDueDate) {
+    dueDate.setDate(dueDate.getDate() + 30); // Default: 30 days from now
+  }
+
+  // Calculate amounts based on percentage
+  const multiplier = percentage / 100;
+
+  // Create invoice with adjusted amounts if partial
+  const invoice: Invoice = {
+    id: `inv_${Date.now()}`,
+    quoteId: contract.quoteId, // Reference original quote if available
+    contractId: contract.id, // Reference the contract
+    invoiceNumber,
+
+    // Copy contract data
+    name: contract.projectName,
+    clientName: contract.clientName,
+    clientEmail: contract.clientEmail,
+    clientPhone: contract.clientPhone,
+    clientAddress: contract.clientAddress,
+    items: percentage === 100
+      ? contract.materials
+      : contract.materials.map(item => ({
+          ...item,
+          qty: item.qty * multiplier,
+        })),
+    labor: contract.labor * multiplier,
+    materialEstimate: contract.materialEstimate ? contract.materialEstimate * multiplier : undefined,
+    markupPercent: contract.markupPercent,
+    taxPercent: contract.taxPercent,
+    notes: percentage === 100
+      ? undefined
+      : `${percentage}% Down Payment Invoice`,
+
+    // Invoice-specific
+    invoiceDate: now,
+    dueDate: dueDate.toISOString(),
+    status: "unpaid",
+    percentage: percentage === 100 ? undefined : percentage,
+    isPartialInvoice: percentage !== 100,
+
+    // Metadata
+    createdAt: now,
+    updatedAt: now,
   };
 
   await saveInvoice(invoice);

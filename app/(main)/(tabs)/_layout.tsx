@@ -99,6 +99,25 @@ export default function DrawerLayout() {
         }}
       />
       <Drawer.Screen
+        name="contracts"
+        options={({ navigation }) => ({
+          title: "Contracts",
+          drawerLabel: "Contracts",
+          drawerIcon: ({ color, size }: IconProps) => (
+            <Ionicons name="document-lock-outline" size={size} color={color} />
+          ),
+          headerRight: () => (
+            <HeaderIconButton
+              onPress={() => {
+                navigation.navigate("contracts", { trigger: "create" });
+              }}
+              icon="+"
+              side="right"
+            />
+          ),
+        })}
+      />
+      <Drawer.Screen
         name="invoices"
         options={({ navigation }) => ({
           title: "Invoices",

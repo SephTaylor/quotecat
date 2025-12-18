@@ -2,11 +2,12 @@
 // Dashboard screen - Overview and quick stats
 import { useTheme } from "@/contexts/ThemeContext";
 import { listQuotes, type Quote } from "@/lib/quotes";
-import { QuoteStatusMeta, InvoiceStatusMeta, type Invoice } from "@/lib/types";
+import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, type Contract } from "@/lib/types";
 import { calculateTotal } from "@/lib/validation";
 import { loadPreferences, type DashboardPreferences } from "@/lib/preferences";
 import { deleteQuote, saveQuote, updateQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
+import { listContracts } from "@/lib/contracts";
 import { generateAndShareMultiTierPDF } from "@/lib/pdf";
 import { getCachedLogo } from "@/lib/logo";
 import { canAccessAssemblies } from "@/lib/features";
@@ -77,6 +78,8 @@ export default function Dashboard() {
     showPinnedQuotes: true,
     showRecentQuotes: true,
     showQuickActions: true,
+    showRecentInvoices: true,
+    showRecentContracts: true,
     recentQuotesCount: 5,
   });
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
@@ -84,7 +87,9 @@ export default function Dashboard() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncAvailable, setSyncAvailable] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -106,6 +111,14 @@ export default function Dashboard() {
     if (proAccess) {
       const invoiceData = await listInvoices();
       setInvoices(invoiceData);
+    }
+
+    // Load contracts for Premium users
+    const premiumAccess = userState.tier === 'premium';
+    setIsPremium(premiumAccess);
+    if (premiumAccess) {
+      const contractData = await listContracts();
+      setContracts(contractData);
     }
 
     setLoading(false);
@@ -175,6 +188,22 @@ export default function Dashboard() {
     });
     return sorted.slice(0, 5);
   }, [invoices]);
+
+  // Get recent contracts (max 5, prioritize pending signature)
+  const recentContracts = React.useMemo(() => {
+    // Sort: pending_signature first, then sent, then by date
+    const sorted = [...contracts].sort((a, b) => {
+      // Pending signature comes first
+      if (a.status === "pending_signature" && b.status !== "pending_signature") return -1;
+      if (b.status === "pending_signature" && a.status !== "pending_signature") return 1;
+      // Then sent
+      if (a.status === "sent" && b.status !== "sent") return -1;
+      if (b.status === "sent" && a.status !== "sent") return 1;
+      // Then by date
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return sorted.slice(0, 5);
+  }, [contracts]);
 
   const handleDelete = useCallback(async (quote: Quote) => {
     // Store deleted quote for undo
@@ -440,7 +469,7 @@ export default function Dashboard() {
           )}
 
           {/* Recent Invoices - Pro only */}
-          {isPro && recentInvoices.length > 0 && (
+          {isPro && preferences.showRecentInvoices && recentInvoices.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Invoices</Text>
               {recentInvoices.map((invoice) => {
@@ -475,6 +504,48 @@ export default function Dashboard() {
                         invoice.status === "overdue" && { color: "#FF3B30" }
                       ]}>
                         ${remaining.toFixed(2)}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Recent Contracts - Premium only */}
+          {isPremium && preferences.showRecentContracts && recentContracts.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Recent Contracts</Text>
+              {recentContracts.map((contract) => {
+                const statusMeta = ContractStatusMeta[contract.status];
+
+                return (
+                  <Pressable
+                    key={contract.id}
+                    style={styles.contractCard}
+                    onPress={() => router.push(`/(forms)/contract/${contract.id}/edit`)}
+                  >
+                    <View style={styles.contractHeader}>
+                      <Text style={styles.contractNumber}>{contract.contractNumber}</Text>
+                      <View style={[styles.contractStatusBadge, { backgroundColor: statusMeta.color + "20" }]}>
+                        <View style={[styles.contractStatusDot, { backgroundColor: statusMeta.color }]} />
+                        <Text style={[styles.contractStatusText, { color: statusMeta.color }]}>
+                          {statusMeta.label}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.contractName} numberOfLines={1}>
+                      {contract.projectName || "Untitled"}
+                    </Text>
+                    <Text style={styles.contractClient} numberOfLines={1}>
+                      {contract.clientName || "No client"}
+                    </Text>
+                    <View style={styles.contractFooter}>
+                      <Text style={styles.contractDate}>
+                        {new Date(contract.createdAt).toLocaleDateString()}
+                      </Text>
+                      <Text style={styles.contractAmount}>
+                        ${contract.total.toFixed(2)}
                       </Text>
                     </View>
                   </Pressable>
@@ -762,6 +833,71 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 18,
       fontWeight: "700",
       color: theme.colors.accent,
+    },
+    // Contract card styles
+    contractCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(1.5),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    contractHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(1),
+    },
+    contractNumber: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#5856D6", // Premium purple
+    },
+    contractStatusBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 999,
+      gap: 4,
+    },
+    contractStatusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    contractStatusText: {
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    contractName: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 2,
+    },
+    contractClient: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(1),
+    },
+    contractFooter: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingTop: theme.spacing(1),
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    contractDate: {
+      fontSize: 12,
+      color: theme.colors.muted,
+    },
+    contractAmount: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: "#5856D6", // Premium purple
     },
   });
 }

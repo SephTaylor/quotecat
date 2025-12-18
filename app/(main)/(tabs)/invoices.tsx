@@ -7,8 +7,12 @@ import {
   saveInvoice,
   updateInvoice,
   createInvoiceFromQuote,
+  createInvoiceFromContract,
   type Invoice,
 } from "@/lib/invoices";
+import { listContracts } from "@/lib/contracts";
+import type { Contract, InvoiceStatus } from "@/lib/types";
+import { InvoiceStatusMeta } from "@/lib/types";
 import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { canAccessAssemblies } from "@/lib/features";
@@ -16,8 +20,6 @@ import { getUserState } from "@/lib/user";
 import { getCompanyLogo } from "@/lib/logo";
 import { Stack, useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import type { InvoiceStatus } from "@/lib/types";
-import { InvoiceStatusMeta } from "@/lib/types";
 import { listQuotes, type Quote } from "@/lib/quotes";
 import { calculateTotal } from "@/lib/validation";
 import {
@@ -52,12 +54,18 @@ export default function InvoicesList() {
   const [showUndo, setShowUndo] = useState(false);
   const [editingStatusForInvoice, setEditingStatusForInvoice] = useState<Invoice | null>(null);
   const [showQuotePicker, setShowQuotePicker] = useState(false);
+  const [showContractPicker, setShowContractPicker] = useState(false);
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [availableQuotes, setAvailableQuotes] = useState<Quote[]>([]);
+  const [availableContracts, setAvailableContracts] = useState<Contract[]>([]);
+  const [isPremium, setIsPremium] = useState(false);
 
   const load = useCallback(async () => {
     const user = await getUserState();
     const hasAccess = canAccessAssemblies(user);
     setIsPro(hasAccess);
+    const premium = user.tier === "premium";
+    setIsPremium(premium);
 
     if (hasAccess) {
       const [invoiceData, quoteData] = await Promise.all([
@@ -70,6 +78,16 @@ export default function InvoicesList() {
         (q) => q.status === "approved" || q.status === "completed"
       );
       setAvailableQuotes(invoiceable);
+
+      // For Premium users, also load signed contracts
+      if (premium) {
+        const contractData = await listContracts();
+        // Filter to only signed contracts
+        const signedContracts = contractData.filter(
+          (c) => c.status === "signed" || c.status === "completed"
+        );
+        setAvailableContracts(signedContracts);
+      }
     }
   }, []);
 
@@ -83,21 +101,25 @@ export default function InvoicesList() {
     }, [load]),
   );
 
-  // Watch for trigger param to open quote picker
+  // Watch for trigger param to open picker
   useEffect(() => {
-    if (trigger === "create" && isPro && availableQuotes.length > 0) {
-      setShowQuotePicker(true);
-      // Clear the trigger param
-      router.setParams({ trigger: undefined });
-    } else if (trigger === "create" && isPro && availableQuotes.length === 0) {
-      Alert.alert(
-        "No Quotes Available",
-        "You need approved or completed quotes to create invoices. Go to the Quotes screen to create quotes first.",
-        [{ text: "OK" }]
-      );
+    if (trigger === "create" && isPro) {
+      // For Premium users with contracts available, show source picker
+      if (isPremium && availableContracts.length > 0) {
+        setShowSourcePicker(true);
+      } else if (availableQuotes.length > 0) {
+        // Pro users or Premium without contracts go straight to quote picker
+        setShowQuotePicker(true);
+      } else {
+        Alert.alert(
+          "No Quotes Available",
+          "You need approved or completed quotes to create invoices. Go to the Quotes screen to create quotes first.",
+          [{ text: "OK" }]
+        );
+      }
       router.setParams({ trigger: undefined });
     }
-  }, [trigger, isPro, availableQuotes.length, router]);
+  }, [trigger, isPro, isPremium, availableQuotes.length, availableContracts.length, router]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -226,6 +248,26 @@ export default function InvoicesList() {
       Alert.alert("Error", "Failed to create invoice");
     }
   }, [load, router]);
+
+  const handleSelectContract = useCallback(async (contract: Contract) => {
+    try {
+      setShowContractPicker(false);
+      const newInvoice = await createInvoiceFromContract(contract.id);
+      await load();
+      router.push(`/invoice/${newInvoice.id}` as any);
+    } catch {
+      Alert.alert("Error", "Failed to create invoice from contract");
+    }
+  }, [load, router]);
+
+  const handleSelectSource = useCallback((source: "quote" | "contract") => {
+    setShowSourcePicker(false);
+    if (source === "quote") {
+      setShowQuotePicker(true);
+    } else {
+      setShowContractPicker(true);
+    }
+  }, []);
 
   // Filter invoices based on search query and status
   const filteredInvoices = React.useMemo(() => {
@@ -461,6 +503,114 @@ export default function InvoicesList() {
                 <Pressable
                   style={styles.cancelButton}
                   onPress={() => setShowQuotePicker(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Source Picker Modal (Premium only) */}
+        <Modal
+          visible={showSourcePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowSourcePicker(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowSourcePicker(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.sourcePickerModal}>
+                <Text style={styles.modalTitle}>Create Invoice From</Text>
+                <Text style={styles.modalSubtitle}>
+                  Choose the source for your invoice
+                </Text>
+
+                <Pressable
+                  style={styles.sourceOption}
+                  onPress={() => handleSelectSource("quote")}
+                >
+                  <View style={styles.sourceOptionIcon}>
+                    <Ionicons name="document-text-outline" size={24} color={theme.colors.accent} />
+                  </View>
+                  <View style={styles.sourceOptionContent}>
+                    <Text style={styles.sourceOptionTitle}>From Quote</Text>
+                    <Text style={styles.sourceOptionSubtitle}>
+                      {availableQuotes.length} approved quote{availableQuotes.length !== 1 ? "s" : ""} available
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+                </Pressable>
+
+                <Pressable
+                  style={styles.sourceOption}
+                  onPress={() => handleSelectSource("contract")}
+                >
+                  <View style={[styles.sourceOptionIcon, { backgroundColor: "#5856D620" }]}>
+                    <Ionicons name="document-lock-outline" size={24} color="#5856D6" />
+                  </View>
+                  <View style={styles.sourceOptionContent}>
+                    <Text style={styles.sourceOptionTitle}>From Contract</Text>
+                    <Text style={styles.sourceOptionSubtitle}>
+                      {availableContracts.length} signed contract{availableContracts.length !== 1 ? "s" : ""} available
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+                </Pressable>
+
+                <Pressable
+                  style={styles.cancelButton}
+                  onPress={() => setShowSourcePicker(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Contract Picker Modal */}
+        <Modal
+          visible={showContractPicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowContractPicker(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowContractPicker(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.quotePickerModal}>
+                <Text style={styles.modalTitle}>Select Contract to Invoice</Text>
+                <Text style={styles.modalSubtitle}>
+                  Choose a signed contract
+                </Text>
+
+                <ScrollView style={styles.quoteList} nestedScrollEnabled>
+                  {availableContracts.map((contract) => (
+                    <Pressable
+                      key={contract.id}
+                      style={styles.quoteOption}
+                      onPress={() => handleSelectContract(contract)}
+                    >
+                      <View style={styles.quoteOptionContent}>
+                        <Text style={styles.quoteOptionTitle}>{contract.projectName}</Text>
+                        <Text style={styles.quoteOptionSubtitle}>
+                          {contract.clientName} • ${contract.total.toFixed(2)}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+
+                <Pressable
+                  style={styles.cancelButton}
+                  onPress={() => setShowContractPicker(false)}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </Pressable>
@@ -718,6 +868,47 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "600",
       color: theme.colors.text,
+    },
+    sourcePickerModal: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(3),
+      width: "100%",
+      maxWidth: 400,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    sourceOption: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(1.5),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1.5),
+    },
+    sourceOptionIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: theme.colors.accent + "20",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sourceOptionContent: {
+      flex: 1,
+    },
+    sourceOptionTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 2,
+    },
+    sourceOptionSubtitle: {
+      fontSize: 13,
+      color: theme.colors.muted,
     },
   });
 }

@@ -19,6 +19,7 @@ import {
   type Reminder,
   dismissReminder,
   markProWelcomeAsSeen,
+  markNotificationAsRead,
 } from "@/lib/reminders";
 
 const PANEL_WIDTH = Dimensions.get("window").width * 0.85;
@@ -82,16 +83,24 @@ export function NotificationPanel({
     onRefresh();
   }, [onRefresh]);
 
-  const handleTap = useCallback((reminder: Reminder) => {
+  const handleTap = useCallback(async (reminder: Reminder) => {
     if (reminder.type === "pro_welcome") {
       // Pro welcome doesn't navigate anywhere on tap
       return;
     }
+
+    // Mark contract notifications as read when tapped
+    if (reminder.entityType === "contract" && reminder.id.startsWith("notification_")) {
+      await markNotificationAsRead(reminder.id);
+    }
+
     onClose();
     if (reminder.entityType === "quote") {
       router.push(`/quote/${reminder.entityId}/edit`);
     } else if (reminder.entityType === "invoice") {
       router.push(`/(main)/invoice/${reminder.entityId}` as any);
+    } else if (reminder.entityType === "contract") {
+      router.push(`/(forms)/contract/${reminder.entityId}/edit` as any);
     }
   }, [onClose, router]);
 
@@ -277,7 +286,13 @@ function ReminderItem({
   const [showActions, setShowActions] = useState(false);
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-  const icon = reminder.entityType === "quote" ? "document-text-outline" : "receipt-outline";
+  // Select icon based on entity type
+  let icon: keyof typeof Ionicons.glyphMap = "document-text-outline";
+  if (reminder.entityType === "invoice") {
+    icon = "receipt-outline";
+  } else if (reminder.entityType === "contract") {
+    icon = "document-lock-outline";
+  }
 
   return (
     <View style={styles.reminderItem}>

@@ -29,6 +29,7 @@ import { generateAndShareSpreadsheet } from "@/lib/spreadsheet";
 import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
 import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { createInvoiceFromQuote } from "@/lib/invoices";
+import { createContractFromQuote } from "@/lib/contracts";
 
 export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -48,6 +49,7 @@ export default function QuoteReviewScreen() {
   const [showDueDateModal, setShowDueDateModal] = useState(false);
   const [selectedDueDate, setSelectedDueDate] = useState<Date>(new Date());
   const [pendingInvoicePercentage, setPendingInvoicePercentage] = useState<number>(100);
+  const [isCreatingContract, setIsCreatingContract] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -205,6 +207,7 @@ export default function QuoteReviewScreen() {
   const pdfRemaining = userState ? getQuotaRemaining(userState, "pdfs") : 0;
   const spreadsheetRemaining = userState ? getQuotaRemaining(userState, "spreadsheets") : 0;
   const isPro = userState?.tier === "pro";
+  const isPremium = userState?.tier === "premium";
 
   const handleExportSpreadsheet = async () => {
     if (!userState || !quote) return;
@@ -327,32 +330,74 @@ export default function QuoteReviewScreen() {
     }
   };
 
+  const handleCreateContract = async () => {
+    if (!quote) return;
+
+    try {
+      setIsCreatingContract(true);
+      const contract = await createContractFromQuote(quote);
+      if (contract) {
+        Alert.alert(
+          "Contract Created",
+          `Contract ${contract.contractNumber} created successfully.`,
+          [
+            {
+              text: "View Contract",
+              onPress: () => router.push(`/(forms)/contract/${contract.id}/edit`),
+            },
+            { text: "OK" },
+          ]
+        );
+      } else {
+        Alert.alert("Error", "Failed to create contract. Please try again.");
+      }
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to create contract"
+      );
+    } finally {
+      setIsCreatingContract(false);
+    }
+  };
+
   const showExportMenu = () => {
+    // Build options based on user tier
     const options = [
       "Export as PDF",
       "Export as CSV",
       "Create Full Invoice",
       "Create Down Payment Invoice",
-      "Cancel",
     ];
 
+    // Add contract option for Premium users
+    if (isPremium) {
+      options.push("Create Contract");
+    }
+
+    options.push("Cancel");
+
+    const cancelIndex = options.length - 1;
+
     const handleSelection = (buttonIndex: number) => {
-      switch (buttonIndex) {
-        case 0: // PDF
+      const selectedOption = options[buttonIndex];
+      switch (selectedOption) {
+        case "Export as PDF":
           handleExportPDF();
           break;
-        case 1: // CSV
+        case "Export as CSV":
           handleExportSpreadsheet();
           break;
-        case 2: // Full Invoice
+        case "Create Full Invoice":
           showDueDatePicker(100);
           break;
-        case 3: // Down Payment Invoice
+        case "Create Down Payment Invoice":
           handleDepositInvoice();
           break;
-        default:
-          // Cancel
+        case "Create Contract":
+          handleCreateContract();
           break;
+        // Cancel - do nothing
       }
     };
 
@@ -360,37 +405,48 @@ export default function QuoteReviewScreen() {
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options,
-          cancelButtonIndex: 4,
+          cancelButtonIndex: cancelIndex,
           title: "Export Options",
         },
         handleSelection
       );
     } else {
       // Android - use Alert with buttons (limited to 3 for best UX, show as nested menus)
+      const androidButtons: { text: string; onPress?: () => void; style?: "cancel" | "default" | "destructive" }[] = [
+        { text: "Export as PDF", onPress: () => handleExportPDF() },
+        { text: "Export as CSV", onPress: () => handleExportSpreadsheet() },
+        {
+          text: "Create Invoice...",
+          onPress: () => {
+            // Show invoice submenu
+            Alert.alert(
+              "Create Invoice",
+              "Select invoice type",
+              [
+                { text: "Full Invoice", onPress: () => showDueDatePicker(100) },
+                { text: "Down Payment Invoice", onPress: () => handleDepositInvoice() },
+                { text: "Cancel", style: "cancel" },
+              ],
+              { cancelable: true }
+            );
+          }
+        },
+      ];
+
+      // Add contract option for Premium users
+      if (isPremium) {
+        androidButtons.push({
+          text: "Create Contract",
+          onPress: () => handleCreateContract(),
+        });
+      }
+
+      androidButtons.push({ text: "Cancel", style: "cancel" });
+
       Alert.alert(
         "Export Options",
         "Choose an export format",
-        [
-          { text: "Export as PDF", onPress: () => handleExportPDF() },
-          { text: "Export as CSV", onPress: () => handleExportSpreadsheet() },
-          {
-            text: "Create Invoice...",
-            onPress: () => {
-              // Show invoice submenu
-              Alert.alert(
-                "Create Invoice",
-                "Select invoice type",
-                [
-                  { text: "Full Invoice", onPress: () => showDueDatePicker(100) },
-                  { text: "Down Payment Invoice", onPress: () => handleDepositInvoice() },
-                  { text: "Cancel", style: "cancel" },
-                ],
-                { cancelable: true }
-              );
-            }
-          },
-          { text: "Cancel", style: "cancel" },
-        ],
+        androidButtons,
         { cancelable: true }
       );
     }
@@ -564,12 +620,12 @@ export default function QuoteReviewScreen() {
       {/* Bottom Bar */}
       <View style={styles.bottomBar}>
         <Pressable
-          style={[styles.buttonLarge, styles.buttonPrimary, (isExporting || isExportingSpreadsheet) && styles.buttonDisabled]}
+          style={[styles.buttonLarge, styles.buttonPrimary, (isExporting || isExportingSpreadsheet || isCreatingContract) && styles.buttonDisabled]}
           onPress={showExportMenu}
-          disabled={isExporting || isExportingSpreadsheet}
+          disabled={isExporting || isExportingSpreadsheet || isCreatingContract}
         >
           <Text style={styles.buttonPrimaryText}>
-            {(isExporting || isExportingSpreadsheet) ? "..." : "Export"}
+            {isCreatingContract ? "Creating..." : (isExporting || isExportingSpreadsheet) ? "..." : "Export"}
           </Text>
         </Pressable>
 

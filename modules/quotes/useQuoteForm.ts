@@ -258,10 +258,14 @@ export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
     if (existing) {
       await updateQuote(quoteId, quoteData);
     } else {
+      // Generate a proper ID if quoteId is "new" or invalid
+      const realId = quoteId === "new"
+        ? `quote_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+        : quoteId;
       const now = new Date().toISOString();
       await saveQuote({
         ...quoteData,
-        id: quoteId,
+        id: realId,
         currency: "USD",
         createdAt: now,
         updatedAt: now,

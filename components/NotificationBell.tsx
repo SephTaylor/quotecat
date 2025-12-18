@@ -9,7 +9,7 @@ import { useFocusEffect } from "expo-router";
 import { listQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { loadPreferences } from "@/lib/preferences";
-import { getActiveReminders, getProWelcomeReminder, type Reminder } from "@/lib/reminders";
+import { getActiveReminders, getProWelcomeReminder, getContractNotifications, type Reminder } from "@/lib/reminders";
 import { getUserState } from "@/lib/user";
 import { NotificationPanel } from "./NotificationPanel";
 
@@ -38,6 +38,13 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
         if (proWelcome) {
           // Put welcome at the top of the list
           active.unshift(proWelcome);
+        }
+
+        // Fetch contract notifications for Premium users
+        if (userState.tier === "premium") {
+          const contractNotifications = await getContractNotifications();
+          // Add contract notifications at the top (most important)
+          active.unshift(...contractNotifications);
         }
       }
 

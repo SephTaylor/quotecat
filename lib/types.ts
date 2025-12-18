@@ -194,7 +194,8 @@ export const InvoiceStatusMeta: Record<
  */
 export type Invoice = {
   id: ID;
-  quoteId: ID; // Reference to original quote
+  quoteId?: ID; // Reference to original quote (optional if from contract)
+  contractId?: ID; // Reference to contract (Premium feature)
   invoiceNumber: string; // Auto-generated: INV-001, INV-002, etc.
 
   // Quote data (copied at time of invoice creation)
@@ -310,3 +311,128 @@ export type ChangeOrder = {
  * Partial change order for updates
  */
 export type ChangeOrderUpdate = Partial<ChangeOrder> & { id: ID };
+
+/**
+ * Contract status for workflow tracking
+ */
+export type ContractStatus =
+  | "draft" // Building the contract
+  | "sent" // Sent to client for signature
+  | "viewed" // Client has viewed it
+  | "signed" // Both parties signed
+  | "declined" // Client declined
+  | "expired"; // Contract expired without signature
+
+/**
+ * Status metadata for Contract UI display
+ */
+export const ContractStatusMeta: Record<
+  ContractStatus,
+  { label: string; color: string; description: string }
+> = {
+  draft: {
+    label: "Draft",
+    color: "#8E8E93",
+    description: "Building the contract",
+  },
+  sent: {
+    label: "Sent",
+    color: "#FF9500",
+    description: "Awaiting client signature",
+  },
+  viewed: {
+    label: "Viewed",
+    color: "#5856D6",
+    description: "Client has viewed the contract",
+  },
+  signed: {
+    label: "Signed",
+    color: "#34C759",
+    description: "Contract signed by all parties",
+  },
+  declined: {
+    label: "Declined",
+    color: "#FF3B30",
+    description: "Client declined to sign",
+  },
+  expired: {
+    label: "Expired",
+    color: "#8E8E93",
+    description: "Contract expired",
+  },
+};
+
+/**
+ * Signature record for audit trail
+ */
+export type Signature = {
+  id: ID;
+  contractId: ID;
+
+  // Who signed
+  signerType: "contractor" | "client";
+  signerName: string;
+  signerEmail?: string;
+
+  // Signature data
+  signatureImage: string; // Base64 PNG
+
+  // Audit trail
+  ipAddress?: string;
+  userAgent?: string;
+  signedAt: string; // ISO 8601
+};
+
+/**
+ * Contract - legally binding agreement generated from quote
+ */
+export type Contract = {
+  id: ID;
+  userId: ID;
+  quoteId?: ID; // Optional reference to source quote
+
+  // Contract identification
+  contractNumber: string; // "CTR-001"
+
+  // Client info
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientAddress?: string;
+
+  // Contract content
+  projectName: string;
+  scopeOfWork?: string;
+  materials: QuoteItem[];
+  labor: number;
+  materialEstimate?: number;
+  markupPercent?: number;
+  taxPercent?: number;
+  total: number;
+
+  // Terms
+  paymentTerms?: string; // "50% deposit, 50% on completion"
+  termsAndConditions?: string;
+  startDate?: string; // ISO 8601
+  completionDate?: string; // ISO 8601
+
+  // Status tracking
+  status: ContractStatus;
+  sentAt?: string; // ISO 8601
+  viewedAt?: string; // ISO 8601
+  signedAt?: string; // ISO 8601
+  expiresAt?: string; // ISO 8601
+
+  // Signatures (loaded separately or embedded)
+  signatures?: Signature[];
+
+  // Metadata
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+  currency: CurrencyCode;
+};
+
+/**
+ * Partial contract for updates
+ */
+export type ContractUpdate = Partial<Contract> & { id: ID };

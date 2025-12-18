@@ -9,6 +9,8 @@ export type DashboardPreferences = {
   showPinnedQuotes: boolean;
   showRecentQuotes: boolean;
   showQuickActions: boolean;
+  showRecentInvoices: boolean;
+  showRecentContracts: boolean;
   recentQuotesCount: 3 | 5 | 10 | "all";
 };
 
@@ -69,6 +71,8 @@ export function getDefaultPreferences(): UserPreferences {
       showPinnedQuotes: true,
       showRecentQuotes: true,
       showQuickActions: true,
+      showRecentInvoices: true,
+      showRecentContracts: true,
       recentQuotesCount: 5,
     },
     privacy: {

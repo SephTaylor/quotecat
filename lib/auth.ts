@@ -2,7 +2,7 @@
 // Authentication service using Supabase
 
 import { supabase } from "./supabase";
-import { activateProTier, deactivateProTier, signOutUser } from "./user";
+import { activateProTier, activatePremiumTier, deactivateProTier, signOutUser } from "./user";
 import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync";
 import { syncClients, migrateLocalClientsToCloud } from "./clientsSync";
 
@@ -59,7 +59,12 @@ export async function initializeAuth(): Promise<void> {
         const isPaidTier = profile.tier === "pro" || profile.tier === "premium";
 
         if (isPaidTier) {
-          await activateProTier(profile.email);
+          // Set the correct tier based on profile
+          if (profile.tier === "premium") {
+            await activatePremiumTier(profile.email);
+          } else {
+            await activateProTier(profile.email);
+          }
 
           // Auto-migrate if needed (first time Pro/Premium user)
           const migrated = await hasMigrated();

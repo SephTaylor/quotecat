@@ -9,6 +9,7 @@ import {
   createTierFromQuote,
   getLinkedQuotes,
   unlinkQuote,
+  createNewQuote,
   type Quote,
 } from "@/lib/quotes";
 import { generateAndShareMultiTierPDF } from "@/lib/pdf";
@@ -116,11 +117,11 @@ export default function QuotesList() {
     }, [load]),
   );
 
-  // Removed FAB - using header button now
-  // const onNew = useCallback(async () => {
-  //   const q = await createNewQuote("", "");
-  //   router.push(`/quote/${q.id}/edit`);
-  // }, [router]);
+  // Create new quote handler
+  const handleCreateNewQuote = useCallback(async () => {
+    const q = await createNewQuote("", "");
+    router.push(`/quote/${q.id}/edit`);
+  }, [router]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -465,7 +466,7 @@ export default function QuotesList() {
                 </Text>
               </Pressable>
             ) : (
-              <Pressable onPress={() => router.push("/quote/new/edit")} style={{ paddingHorizontal: 16 }}>
+              <Pressable onPress={handleCreateNewQuote} style={{ paddingHorizontal: 16 }}>
                 <Ionicons name="add" size={28} color={theme.colors.accent} />
               </Pressable>
             )

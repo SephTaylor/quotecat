@@ -4,6 +4,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Quote, Invoice } from "./types";
 import type { NotificationPreferences } from "./preferences";
+import { supabase } from "./supabase";
+import { getCurrentUserId } from "./auth";
 
 /**
  * Calculate total for an invoice (similar to quote calculation)
@@ -39,13 +41,16 @@ export type ReminderType =
   | "invoice_overdue"     // Invoice past due date
   | "invoice_due_soon"    // Invoice due in 3 days
   | "invoice_due_today"   // Invoice due today
-  | "pro_welcome";        // Welcome notification for new Pro users
+  | "pro_welcome"         // Welcome notification for new Pro users
+  | "contract_signed"     // Client signed a contract
+  | "contract_viewed"     // Client viewed a contract
+  | "contract_declined";  // Client declined a contract
 
 export type Reminder = {
   id: string;
   type: ReminderType;
-  entityId: string;       // Quote or Invoice ID (or "system" for system notifications)
-  entityType: "quote" | "invoice" | "system";
+  entityId: string;       // Quote, Invoice, or Contract ID (or "system" for system notifications)
+  entityType: "quote" | "invoice" | "contract" | "system";
   title: string;
   subtitle: string;
   dueDate: string;        // ISO 8601 date when reminder became active
@@ -366,4 +371,87 @@ export async function getProWelcomeReminder(): Promise<Reminder | null> {
   if (isReminderDismissed(PRO_WELCOME_REMINDER_ID, dismissed)) return null;
 
   return createProWelcomeReminder();
+}
+
+// ============================================
+// Contract Notifications (from Supabase)
+// ============================================
+
+/**
+ * Notification record from Supabase
+ */
+type SupabaseNotification = {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  contract_id: string | null;
+  read: boolean;
+  read_at: string | null;
+  created_at: string;
+};
+
+/**
+ * Fetch unread contract notifications from Supabase
+ */
+export async function getContractNotifications(): Promise<Reminder[]> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return [];
+
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("read", false)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("Failed to fetch notifications:", error);
+      return [];
+    }
+
+    if (!data || data.length === 0) return [];
+
+    // Convert to Reminder format
+    return (data as SupabaseNotification[]).map((n) => ({
+      id: `notification_${n.id}`,
+      type: n.type as ReminderType,
+      entityId: n.contract_id || "system",
+      entityType: "contract" as const,
+      title: n.title,
+      subtitle: n.message,
+      dueDate: n.created_at,
+      createdAt: n.created_at,
+    }));
+  } catch (error) {
+    console.error("Error fetching contract notifications:", error);
+    return [];
+  }
+}
+
+/**
+ * Mark a notification as read in Supabase
+ */
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  try {
+    // Extract the actual ID from "notification_uuid" format
+    const actualId = notificationId.replace("notification_", "");
+
+    const { error } = await supabase
+      .from("notifications")
+      .update({
+        read: true,
+        read_at: new Date().toISOString(),
+      })
+      .eq("id", actualId);
+
+    if (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+  }
 }

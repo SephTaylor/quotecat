@@ -1,7 +1,6 @@
 // app/(main)/settings.tsx
 // Settings and profile management
 import { useTheme } from "@/contexts/ThemeContext";
-import { canAccessAssemblies } from "@/lib/features";
 import { getUserState, FREE_LIMITS, type UserState } from "@/lib/user";
 import {
   loadPreferences,
@@ -76,6 +75,8 @@ export default function Settings() {
       showPinnedQuotes: true,
       showRecentQuotes: true,
       showQuickActions: true,
+      showRecentInvoices: true,
+      showRecentContracts: true,
       recentQuotesCount: 5,
     },
     privacy: {
@@ -126,7 +127,8 @@ export default function Settings() {
       getUserState(),
       loadPreferences(),
     ]);
-    setIsPro(canAccessAssemblies(user));
+    const isPaidTier = user.tier === 'pro' || user.tier === 'premium';
+    setIsPro(isPaidTier);
     setUserEmail(user.email);
     setUserState(user);
     setPreferences(fullPrefs);
@@ -140,7 +142,6 @@ export default function Settings() {
     }
 
     // Load sync state
-    const isPaidTier = user.tier === 'pro' || user.tier === 'premium';
     const [syncTime, available, localQuotes] = await Promise.all([
       getLastSyncTime(),
       isSyncAvailable(),
@@ -585,34 +586,44 @@ export default function Settings() {
                 </View>
 
                 {/* Sync Actions */}
-                <Pressable
-                  style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
-                  onPress={handleSyncNow}
-                  disabled={syncing || !syncAvailable}
-                >
-                  {syncing ? (
-                    <ActivityIndicator size="small" color="#000" />
-                  ) : (
-                    <>
-                      <Ionicons name="cloud-upload-outline" size={20} color="#000" />
-                      <Text style={styles.syncButtonText}>Sync Now</Text>
-                    </>
-                  )}
-                </Pressable>
+                <View style={styles.syncActionGroup}>
+                  <Pressable
+                    style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
+                    onPress={handleSyncNow}
+                    disabled={syncing || !syncAvailable}
+                  >
+                    {syncing ? (
+                      <ActivityIndicator size="small" color="#000" />
+                    ) : (
+                      <>
+                        <Ionicons name="sync-outline" size={20} color="#000" />
+                        <Text style={styles.syncButtonText}>Sync</Text>
+                      </>
+                    )}
+                  </Pressable>
+                  <Text style={styles.syncHelpTextSmall}>
+                    Merges changes from device and cloud
+                  </Text>
+                </View>
 
-                <Pressable
-                  style={[styles.syncButton, styles.syncButtonSecondary, syncing && styles.syncButtonDisabled]}
-                  onPress={handleForceSync}
-                  disabled={syncing || !syncAvailable}
-                >
-                  <Ionicons name="refresh-outline" size={20} color={theme.colors.accent} />
-                  <Text style={[styles.syncButtonText, styles.syncButtonTextSecondary]}>Force Full Sync</Text>
-                </Pressable>
+                <View style={styles.syncActionGroup}>
+                  <Pressable
+                    style={[styles.syncButton, styles.syncButtonSecondary, syncing && styles.syncButtonDisabled]}
+                    onPress={handleForceSync}
+                    disabled={syncing || !syncAvailable}
+                  >
+                    <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.accent} />
+                    <Text style={[styles.syncButtonText, styles.syncButtonTextSecondary]}>Re-upload All</Text>
+                  </Pressable>
+                  <Text style={styles.syncHelpTextSmall}>
+                    Overwrites cloud with local data
+                  </Text>
+                </View>
 
                 {!syncAvailable && (
                   <View style={styles.syncHelpText}>
                     <Text style={styles.syncHelpTextContent}>
-                      💡 Cloud sync keeps your quotes backed up and synced across devices
+                      Sign in to enable cloud sync
                     </Text>
                   </View>
                 )}
@@ -737,6 +748,22 @@ export default function Settings() {
                 value={preferences.dashboard.showQuickActions}
                 onToggle={(value) =>
                   handleUpdatePreference({ showQuickActions: value })
+                }
+                theme={theme}
+              />
+              <SettingRow
+                label="Recent Invoices"
+                value={preferences.dashboard.showRecentInvoices}
+                onToggle={(value) =>
+                  handleUpdatePreference({ showRecentInvoices: value })
+                }
+                theme={theme}
+              />
+              <SettingRow
+                label="Recent Contracts"
+                value={preferences.dashboard.showRecentContracts}
+                onToggle={(value) =>
+                  handleUpdatePreference({ showRecentContracts: value })
                 }
                 theme={theme}
                 isLast
@@ -2006,6 +2033,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.muted,
       lineHeight: 16,
       textAlign: "center",
+    },
+    syncHelpTextSmall: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: theme.spacing(0.5),
+      textAlign: "center",
+    },
+    syncActionGroup: {
+      marginBottom: theme.spacing(1.5),
     },
     proFeaturePrompt: {
       alignItems: "center",
