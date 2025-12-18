@@ -236,3 +236,77 @@ export type Invoice = {
  * Partial invoice for updates
  */
 export type InvoiceUpdate = Partial<Invoice> & { id: ID };
+
+/**
+ * Change Order status for tracking approval
+ */
+export type ChangeOrderStatus = "pending" | "approved" | "cancelled";
+
+/**
+ * Status metadata for Change Order UI display
+ */
+export const ChangeOrderStatusMeta: Record<
+  ChangeOrderStatus,
+  { label: string; color: string; description: string }
+> = {
+  pending: {
+    label: "Pending",
+    color: "#FF9500",
+    description: "Awaiting client approval",
+  },
+  approved: {
+    label: "Approved",
+    color: "#34C759",
+    description: "Client approved this change",
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "#8E8E93",
+    description: "Change was cancelled",
+  },
+};
+
+/**
+ * Individual item change within a Change Order
+ */
+export type ChangeOrderItem = {
+  productId?: ID;
+  name: string;
+  unit: string;
+  unitPrice: number;
+  qtyBefore: number; // 0 if newly added
+  qtyAfter: number; // 0 if removed
+  qtyDelta: number; // positive = added, negative = removed
+  lineDelta: number; // dollar impact of this line
+};
+
+/**
+ * Change Order - tracks modifications to a quote
+ */
+export type ChangeOrder = {
+  id: ID;
+  quoteId: ID;
+  number: number; // CO #1, #2, #3
+
+  // The diff
+  items: ChangeOrderItem[];
+  laborBefore: number;
+  laborAfter: number;
+  laborDelta: number;
+
+  // Totals
+  netChange: number; // total dollar impact
+  quoteTotalBefore: number; // snapshot
+  quoteTotalAfter: number; // snapshot
+
+  // Metadata
+  note?: string; // "Client requested deck railing"
+  status: ChangeOrderStatus;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+};
+
+/**
+ * Partial change order for updates
+ */
+export type ChangeOrderUpdate = Partial<ChangeOrder> & { id: ID };
