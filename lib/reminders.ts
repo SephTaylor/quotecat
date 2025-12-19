@@ -6,35 +6,7 @@ import type { Quote, Invoice } from "./types";
 import type { NotificationPreferences } from "./preferences";
 import { supabase } from "./supabase";
 import { getCurrentUserId } from "./auth";
-
-/**
- * Calculate total for an invoice (similar to quote calculation)
- */
-function calculateInvoiceTotal(invoice: Invoice): number {
-  const materialsFromItems = invoice.items?.reduce(
-    (sum, item) => sum + item.unitPrice * item.qty,
-    0
-  ) ?? 0;
-  const materialEstimate = invoice.materialEstimate ?? 0;
-  const labor = invoice.labor ?? 0;
-  const overhead = invoice.overhead ?? 0;
-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
-
-  // Apply markup if present
-  const markupPercent = invoice.markupPercent ?? 0;
-  const afterMarkup = subtotal * (1 + markupPercent / 100);
-
-  // Apply tax if present
-  const taxPercent = invoice.taxPercent ?? 0;
-  const total = afterMarkup * (1 + taxPercent / 100);
-
-  // Apply percentage if this is a partial invoice
-  if (invoice.percentage && invoice.percentage < 100) {
-    return total * (invoice.percentage / 100);
-  }
-
-  return total;
-}
+import { calculateInvoiceTotal } from "./calculations";
 
 export type ReminderType =
   | "quote_followup"      // Sent quote needs follow-up (auto or manual date)

@@ -3,7 +3,7 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { listQuotes, type Quote } from "@/lib/quotes";
 import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, type Contract } from "@/lib/types";
-import { calculateTotal } from "@/lib/validation";
+import { calculateQuoteTotal, calculateInvoiceTotal } from "@/lib/calculations";
 import { loadPreferences, type DashboardPreferences } from "@/lib/preferences";
 import { deleteQuote, saveQuote, updateQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
@@ -20,32 +20,6 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { getLastSyncTime, isSyncAvailable } from "@/lib/quotesSync";
 import { getUserState } from "@/lib/user";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-
-/**
- * Calculate total for an invoice
- */
-function calculateInvoiceTotal(invoice: Invoice): number {
-  const materialsFromItems = invoice.items?.reduce(
-    (sum, item) => sum + item.unitPrice * item.qty,
-    0
-  ) ?? 0;
-  const materialEstimate = invoice.materialEstimate ?? 0;
-  const labor = invoice.labor ?? 0;
-  const overhead = invoice.overhead ?? 0;
-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
-
-  const markupPercent = invoice.markupPercent ?? 0;
-  const afterMarkup = subtotal * (1 + markupPercent / 100);
-
-  const taxPercent = invoice.taxPercent ?? 0;
-  const total = afterMarkup * (1 + taxPercent / 100);
-
-  if (invoice.percentage && invoice.percentage < 100) {
-    return total * (invoice.percentage / 100);
-  }
-
-  return total;
-}
 
 /**
  * Format sync time as relative time (e.g., "just now", "2 minutes ago")
@@ -137,15 +111,15 @@ export default function Dashboard() {
 
     // Value tracking by business stage
     const pendingValue = sentQuotes.reduce(
-      (sum, q) => sum + calculateTotal(q),
+      (sum, q) => sum + calculateQuoteTotal(q),
       0,
     );
     const approvedValue = approvedQuotes.reduce(
-      (sum, q) => sum + calculateTotal(q),
+      (sum, q) => sum + calculateQuoteTotal(q),
       0,
     );
     const toInvoiceValue = completedQuotes.reduce(
-      (sum, q) => sum + calculateTotal(q),
+      (sum, q) => sum + calculateQuoteTotal(q),
       0,
     );
 

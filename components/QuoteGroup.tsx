@@ -6,7 +6,7 @@ import { View, Text, Pressable, StyleSheet, LayoutAnimation, Platform, UIManager
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { SwipeableQuoteItem } from "./SwipeableQuoteItem";
-import { calculateTotal } from "@/lib/validation";
+import { calculateQuoteTotal } from "@/lib/calculations";
 import type { Quote } from "@/lib/types";
 
 // Enable LayoutAnimation on Android
@@ -53,7 +53,7 @@ export function QuoteGroup({
   const primaryQuote = sortedQuotes[0];
 
   // Calculate total range
-  const totals = sortedQuotes.map(q => calculateTotal(q));
+  const totals = sortedQuotes.map(q => calculateQuoteTotal(q));
   const minTotal = Math.min(...totals);
   const maxTotal = Math.max(...totals);
 

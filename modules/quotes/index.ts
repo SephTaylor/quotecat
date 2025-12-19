@@ -20,7 +20,9 @@ export {
 } from "./storage";
 
 // Calculation utilities
-export { calculateMaterialSubtotal, calculateTotal } from "@/lib/validation";
+export { calculateMaterialSubtotal, calculateQuoteTotal, calculateQuoteTotals } from "@/lib/calculations";
+// Backward compatibility alias
+export { calculateQuoteTotal as calculateTotal } from "@/lib/calculations";
 
 // Export hooks
 export * from "./useQuoteData";

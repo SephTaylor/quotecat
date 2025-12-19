@@ -21,7 +21,7 @@ import { getCompanyLogo } from "@/lib/logo";
 import { Stack, useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { listQuotes, type Quote } from "@/lib/quotes";
-import { calculateTotal } from "@/lib/validation";
+import { calculateQuoteTotal } from "@/lib/calculations";
 import {
   Alert,
   FlatList,
@@ -489,7 +489,7 @@ export default function InvoicesList() {
                       <View style={styles.quoteOptionContent}>
                         <Text style={styles.quoteOptionTitle}>{quote.name}</Text>
                         <Text style={styles.quoteOptionSubtitle}>
-                          {quote.clientName} • ${calculateTotal(quote).toFixed(2)}
+                          {quote.clientName} • ${calculateQuoteTotal(quote).toFixed(2)}
                         </Text>
                       </View>
                       <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />

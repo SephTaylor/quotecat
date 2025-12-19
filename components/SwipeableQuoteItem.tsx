@@ -5,7 +5,7 @@ import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import type { Quote } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
-import { calculateTotal } from "@/lib/validation";
+import { calculateQuoteTotal } from "@/lib/calculations";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateAndSharePDF } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
@@ -29,7 +29,7 @@ export const SwipeableQuoteItem = React.memo(
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     const [isExporting, setIsExporting] = useState(false);
-    const total = calculateTotal(item);
+    const total = calculateQuoteTotal(item);
     const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     const handlePinToggle = () => {
