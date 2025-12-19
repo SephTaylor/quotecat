@@ -133,7 +133,7 @@ export function getUpgradeMessage(
     pdf: "Upgrade to Pro for unlimited PDF exports with custom branding",
     assemblies:
       "Assemblies are a Pro feature. Access pre-built calculators for all trades.",
-    cloud: "Cloud backup and sync is a Pro feature. Never lose your quotes.",
+    cloud: "Cloud backup and sync is a Pro feature. Never lose your data.",
     value:
       "Value tracking is a Pro feature. See your total quote pipeline value.",
   };

@@ -63,13 +63,13 @@ export default function SignInScreen() {
             await activateProTier(profile.email);
           }
 
-          // Auto-migrate local quotes to cloud for Pro/Premium users
+          // Auto-migrate local data to cloud for Pro/Premium users
           if (isPaidTier) {
             const migrated = await hasMigrated();
             if (!migrated) {
               Alert.alert(
-                "Backing up your quotes",
-                "We're uploading your quotes to the cloud. This may take a moment...",
+                "Backing up your data",
+                "We're uploading your data to the cloud. This may take a moment...",
                 [{ text: "OK" }]
               );
 
@@ -78,7 +78,7 @@ export default function SignInScreen() {
               if (result.success && result.uploaded > 0) {
                 Alert.alert(
                   "Backup Complete",
-                  `Successfully backed up ${result.uploaded} quote${result.uploaded === 1 ? "" : "s"} to the cloud!`,
+                  "Your data has been backed up to the cloud!",
                   [{ text: "Great!" }]
                 );
               } else if (result.success) {
@@ -86,7 +86,7 @@ export default function SignInScreen() {
               } else {
                 Alert.alert(
                   "Backup Warning",
-                  "Some quotes couldn't be backed up. Your local quotes are safe. You can try syncing again from Settings.",
+                  "Some data couldn't be backed up. Your local data is safe. You can try syncing again from Settings.",
                   [{ text: "OK" }]
                 );
               }

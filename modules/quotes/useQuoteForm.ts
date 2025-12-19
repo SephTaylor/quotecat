@@ -8,8 +8,8 @@ import {
   updateQuote,
   deleteQuote,
   saveQuote,
-  type Quote,
-} from "@/lib/quotes";
+} from "./storage";
+import type { Quote } from "@/lib/types";
 import { loadPreferences } from "@/lib/preferences";
 import { parseMoney } from "@/modules/settings/money";
 import type { QuoteStatus, QuoteItem } from "@/lib/types";

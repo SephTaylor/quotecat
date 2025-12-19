@@ -2,7 +2,7 @@
 // Cloud sync service for quotes (Pro/Premium feature)
 
 import { supabase } from "./supabase";
-import { listQuotes, saveQuote, getQuoteById, updateQuote } from "@/modules/quotes";
+import { listQuotes, saveQuote, getQuoteById, updateQuote } from "@/modules/quotes/storage";
 import type { Quote } from "./types";
 import { normalizeQuote } from "./validation";
 import { getCurrentUserId } from "./authUtils";

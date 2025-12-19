@@ -1,5 +1,5 @@
 // modules/quotes/useExportQuote.ts
-import type { QuoteItem } from "@/lib/quotes";
+import type { QuoteItem } from "@/lib/types";
 import { useCallback, useState } from "react";
 import { Alert, Share } from "react-native";
 import { generateQuoteCsv, type QuoteExportData } from "./exportCsv";

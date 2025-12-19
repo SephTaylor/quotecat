@@ -2,7 +2,7 @@
 // Cloud sync service for clients (Pro/Premium feature)
 
 import { supabase } from "./supabase";
-import { getClients, saveClient } from "./clients";
+// Note: clients functions are imported dynamically to avoid circular dependency
 import type { Client } from "./types";
 import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -162,7 +162,8 @@ export async function migrateLocalClientsToCloud(): Promise<{
       return { success: false, uploaded: 0, failed: 0 };
     }
 
-    // Get all local clients
+    // Get all local clients (dynamic import to avoid circular dependency)
+    const { getClients } = await import("./clients");
     const localClients = await getClients();
 
     if (localClients.length === 0) {
@@ -226,7 +227,8 @@ export async function syncClients(): Promise<{
     // Download cloud clients
     const cloudClients = await downloadClients();
 
-    // Get local clients
+    // Get local clients (dynamic import to avoid circular dependency)
+    const { getClients, saveClient } = await import("./clients");
     const localClients = await getClients();
 
     // Build maps for efficient lookup

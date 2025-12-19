@@ -1,4 +1,4 @@
-import type { QuoteItem } from "@/lib/quotes";
+import type { QuoteItem } from "@/lib/types";
 
 export type QuoteTotals = {
   materialsSubtotal: number;

@@ -266,7 +266,7 @@ export function useSettingsState() {
     if (!syncAvailable) {
       Alert.alert(
         "Sync Unavailable",
-        "Please sign in to sync your quotes to the cloud."
+        "Please sign in to sync your data to the cloud."
       );
       return;
     }
@@ -289,7 +289,7 @@ export function useSettingsState() {
         const message =
           result.downloaded === 0 && result.uploaded === 0
             ? "Everything is up to date!"
-            : `Synced! Downloaded ${result.downloaded}, uploaded ${result.uploaded} quote${result.uploaded === 1 ? "" : "s"}.`;
+            : `Synced! Downloaded ${result.downloaded}, uploaded ${result.uploaded} item${result.uploaded === 1 ? "" : "s"}.`;
 
         Alert.alert("Sync Complete", message);
       } else {
@@ -314,7 +314,7 @@ export function useSettingsState() {
 
     Alert.alert(
       "Force Full Sync",
-      "This will re-upload all local quotes to the cloud. This may take a moment. Continue?",
+      "This will re-upload all local data to the cloud. This may take a moment. Continue?",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -341,7 +341,7 @@ export function useSettingsState() {
 
                 Alert.alert(
                   "Success",
-                  `Force sync complete! Uploaded ${result.uploaded} quote${result.uploaded === 1 ? "" : "s"}.`
+                  `Force sync complete! Uploaded ${result.uploaded} item${result.uploaded === 1 ? "" : "s"}.`
                 );
               } else {
                 Alert.alert("Sync Failed", "Unable to complete force sync.");
