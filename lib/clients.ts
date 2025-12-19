@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { isClientsSyncAvailable, uploadClient, deleteClientFromCloud } from "./clientsSync";
 
 const CLIENTS_KEY = "@quotecat/clients";
+const LAST_CREATED_CLIENT_KEY = "@quotecat/last_created_client";
 
 export type Client = {
   id: string;
@@ -125,4 +126,22 @@ export async function searchClients(query: string): Promise<Client[]> {
  */
 export function createClientId(): string {
   return `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Set the last created client ID (for auto-selecting after creation)
+ */
+export async function setLastCreatedClientId(id: string): Promise<void> {
+  await AsyncStorage.setItem(LAST_CREATED_CLIENT_KEY, id);
+}
+
+/**
+ * Get and clear the last created client ID
+ */
+export async function getAndClearLastCreatedClientId(): Promise<string | null> {
+  const id = await AsyncStorage.getItem(LAST_CREATED_CLIENT_KEY);
+  if (id) {
+    await AsyncStorage.removeItem(LAST_CREATED_CLIENT_KEY);
+  }
+  return id;
 }

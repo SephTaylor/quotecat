@@ -1,7 +1,7 @@
 // app/(forms)/quote/[id]/edit.tsx
 import { useTheme } from "@/contexts/ThemeContext";
 import { updateQuote } from "@/lib/quotes";
-import { getClients, type Client } from "@/lib/clients";
+import { getClients, getAndClearLastCreatedClientId, getClientById, type Client } from "@/lib/clients";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
 import { FormInput, FormScreen } from "@/modules/core/ui";
@@ -100,7 +100,26 @@ export default function EditQuote() {
   useFocusEffect(
     React.useCallback(() => {
       load();
-    }, [load]),
+
+      // Check if a new client was just created and auto-select it
+      const checkNewClient = async () => {
+        const newClientId = await getAndClearLastCreatedClientId();
+        if (newClientId) {
+          const client = await getClientById(newClientId);
+          if (client) {
+            setClientName(client.name);
+            setClientEmail(client.email || "");
+            setClientPhone(client.phone || "");
+            setClientAddress(client.address || "");
+            setIsNewQuote(false);
+            // Refresh the clients list
+            const clients = await getClients();
+            setSavedClients(clients);
+          }
+        }
+      };
+      checkNewClient();
+    }, [load, setClientName, setClientEmail, setClientPhone, setClientAddress, setIsNewQuote]),
   );
 
   // Filter saved clients based on current input (for autocomplete)
@@ -763,7 +782,19 @@ export default function EditQuote() {
           }}
         >
           <Pressable style={styles.pickerContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.pickerTitle}>Select Client</Text>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select Client</Text>
+              <Pressable
+                style={styles.pickerNewBtn}
+                onPress={() => {
+                  setShowClientPicker(false);
+                  setClientPickerSearch("");
+                  router.push(`/(main)/client-manager?returnTo=${id}&createNew=true` as any);
+                }}
+              >
+                <Text style={styles.pickerNewBtnText}>+</Text>
+              </Pressable>
+            </View>
 
             {/* Search */}
             <View style={styles.pickerSearchContainer}>
@@ -1122,11 +1153,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       maxWidth: 400,
       maxHeight: "70%",
     },
+    pickerHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: theme.spacing(2),
+    },
     pickerTitle: {
       fontSize: 20,
       fontWeight: "700",
       color: theme.colors.text,
-      marginBottom: theme.spacing(2),
+    },
+    pickerNewBtn: {
+      padding: theme.spacing(1),
+    },
+    pickerNewBtnText: {
+      fontSize: 24,
+      fontWeight: "600",
+      color: theme.colors.accent,
     },
     pickerSearchContainer: {
       marginBottom: theme.spacing(2),

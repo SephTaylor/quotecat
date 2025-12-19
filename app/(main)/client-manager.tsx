@@ -7,6 +7,7 @@ import {
   saveClient,
   deleteClient,
   createClientId,
+  setLastCreatedClientId,
   type Client,
 } from "@/lib/clients";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -33,7 +34,7 @@ import { HeaderBackButton } from "@/components/HeaderBackButton";
 export default function ClientManager() {
   const { theme } = useTheme();
   const router = useRouter();
-  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const { returnTo, createNew } = useLocalSearchParams<{ returnTo?: string; createNew?: string }>();
   const [clients, setClients] = useState<Client[]>([]);
   const [isPro, setIsPro] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -71,6 +72,14 @@ export default function ClientManager() {
       loadClients();
     }, [loadClients])
   );
+
+  // Auto-open create modal if createNew param is set
+  React.useEffect(() => {
+    if (createNew === "true" && isPro) {
+      resetForm();
+      setShowModal(true);
+    }
+  }, [createNew, isPro]);
 
   const filteredClients = React.useMemo(() => {
     if (!searchQuery.trim()) return clients;
@@ -150,14 +159,16 @@ export default function ClientManager() {
       setShowModal(false);
       resetForm();
 
-      // If we came from quote edit (creating new client), go back to the quote
+      // If we came from quote edit (creating new client), save the ID and go back
       if (returnTo && !editingClient) {
+        await setLastCreatedClientId(client.id);
         router.back();
         return;
       }
 
       await loadClients();
-    } catch {
+    } catch (error) {
+      console.error("Failed to save client:", error);
       Alert.alert("Error", "Failed to save client. Please try again.");
     }
   };
@@ -370,6 +381,8 @@ export default function ClientManager() {
                   placeholderTextColor={theme.colors.muted}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
                 />
               </View>
 
