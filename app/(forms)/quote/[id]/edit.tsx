@@ -342,7 +342,7 @@ export default function EditQuote() {
           )}
           {isPro && savedClients.length === 0 && (
             <Pressable
-              onPress={() => router.push("/client-manager")}
+              onPress={() => router.push(`/(main)/client-manager?returnTo=${id}` as any)}
               hitSlop={8}
             >
               <Text style={styles.browseTag}>+ Add clients</Text>

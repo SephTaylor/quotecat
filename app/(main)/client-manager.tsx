@@ -9,7 +9,7 @@ import {
   createClientId,
   type Client,
 } from "@/lib/clients";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState, useCallback } from "react";
 import {
   Alert,
@@ -28,9 +28,12 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import { Ionicons } from "@expo/vector-icons";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 
 export default function ClientManager() {
   const { theme } = useTheme();
+  const router = useRouter();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [clients, setClients] = useState<Client[]>([]);
   const [isPro, setIsPro] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -146,6 +149,13 @@ export default function ClientManager() {
       await saveClient(client);
       setShowModal(false);
       resetForm();
+
+      // If we came from quote edit (creating new client), go back to the quote
+      if (returnTo && !editingClient) {
+        router.back();
+        return;
+      }
+
       await loadClients();
     } catch {
       Alert.alert("Error", "Failed to save client. Please try again.");
@@ -222,7 +232,8 @@ export default function ClientManager() {
           title: "Client Manager",
           headerShown: true,
           headerTitleAlign: "center",
-          headerBackTitle: "Pro Tools",
+          headerBackTitle: "Back",
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
