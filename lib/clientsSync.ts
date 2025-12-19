@@ -2,8 +2,9 @@
 // Cloud sync service for clients (Pro/Premium feature)
 
 import { supabase } from "./supabase";
-import { getClients, saveClient, type Client } from "./clients";
-import { getCurrentUserId } from "./auth";
+import { getClients, saveClient } from "./clients";
+import type { Client } from "./types";
+import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SYNC_METADATA_KEY = "@quotecat/clients_sync_metadata";

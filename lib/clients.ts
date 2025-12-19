@@ -2,21 +2,13 @@
 // Client management for Pro users
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { isClientsSyncAvailable, uploadClient, deleteClientFromCloud } from "./clientsSync";
+import type { Client } from "./types";
+
+// Re-export Client type for backwards compatibility
+export type { Client } from "./types";
 
 const CLIENTS_KEY = "@quotecat/clients";
 const LAST_CREATED_CLIENT_KEY = "@quotecat/last_created_client";
-
-export type Client = {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-};
 
 /**
  * Get all saved clients
@@ -68,13 +60,15 @@ export async function saveClient(client: Client): Promise<void> {
 
     await AsyncStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
 
-    // Background sync to cloud (non-blocking)
-    isClientsSyncAvailable().then((available) => {
-      if (available) {
-        uploadClient(savedClient).catch((error) => {
-          console.warn("Background client sync failed:", error);
-        });
-      }
+    // Background sync to cloud (non-blocking, dynamic import to avoid circular dependency)
+    import("./clientsSync").then(({ isClientsSyncAvailable, uploadClient }) => {
+      isClientsSyncAvailable().then((available) => {
+        if (available) {
+          uploadClient(savedClient).catch((error) => {
+            console.warn("Background client sync failed:", error);
+          });
+        }
+      });
     });
   } catch (error) {
     console.error("Failed to save client:", error);
@@ -91,13 +85,15 @@ export async function deleteClient(id: string): Promise<void> {
     const filtered = clients.filter((c) => c.id !== id);
     await AsyncStorage.setItem(CLIENTS_KEY, JSON.stringify(filtered));
 
-    // Background sync deletion to cloud (non-blocking)
-    isClientsSyncAvailable().then((available) => {
-      if (available) {
-        deleteClientFromCloud(id).catch((error) => {
-          console.warn("Background client deletion sync failed:", error);
-        });
-      }
+    // Background sync deletion to cloud (non-blocking, dynamic import to avoid circular dependency)
+    import("./clientsSync").then(({ isClientsSyncAvailable, deleteClientFromCloud }) => {
+      isClientsSyncAvailable().then((available) => {
+        if (available) {
+          deleteClientFromCloud(id).catch((error) => {
+            console.warn("Background client deletion sync failed:", error);
+          });
+        }
+      });
     });
   } catch (error) {
     console.error("Failed to delete client:", error);

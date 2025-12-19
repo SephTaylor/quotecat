@@ -6,29 +6,8 @@ import { activateProTier, activatePremiumTier, deactivateProTier, signOutUser } 
 import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync";
 import { syncClients, migrateLocalClientsToCloud } from "./clientsSync";
 
-/**
- * Check if user is currently authenticated
- */
-export async function isAuthenticated(): Promise<boolean> {
-  const { data } = await supabase.auth.getSession();
-  return !!data.session;
-}
-
-/**
- * Get current user's email
- */
-export async function getCurrentUserEmail(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user?.email || null;
-}
-
-/**
- * Get current user's ID
- */
-export async function getCurrentUserId(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user?.id || null;
-}
+// Re-export auth utilities for backwards compatibility
+export { isAuthenticated, getCurrentUserEmail, getCurrentUserId } from "./authUtils";
 
 /**
  * Sign out current user

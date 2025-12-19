@@ -3,7 +3,7 @@
 
 import { supabase } from "./supabase";
 import type { Contract, ContractUpdate, Signature, Quote, QuoteItem } from "./types";
-import { getCurrentUserId } from "./auth";
+import { getCurrentUserId } from "./authUtils";
 import { loadPreferences, updateContractSettings } from "./preferences";
 
 /**

@@ -5,7 +5,7 @@ import { supabase } from "./supabase";
 import { listQuotes, saveQuote, getQuoteById, updateQuote } from "@/modules/quotes";
 import type { Quote } from "./types";
 import { normalizeQuote } from "./validation";
-import { getCurrentUserId } from "./auth";
+import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SYNC_METADATA_KEY = "@quotecat/sync_metadata";

@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Quote, Invoice } from "./types";
 import type { NotificationPreferences } from "./preferences";
 import { supabase } from "./supabase";
-import { getCurrentUserId } from "./auth";
+import { getCurrentUserId } from "./authUtils";
 import { calculateInvoiceTotal } from "./calculations";
 
 export type ReminderType =

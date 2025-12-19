@@ -3,7 +3,7 @@
 
 import { supabase } from "./supabase";
 import type { Invoice } from "./types";
-import { getCurrentUserId } from "./auth";
+import { getCurrentUserId } from "./authUtils";
 
 /**
  * Upload a single invoice to Supabase
