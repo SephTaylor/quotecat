@@ -303,9 +303,10 @@ export async function deleteClientFromCloud(clientId: string): Promise<boolean> 
       return false;
     }
 
+    // Use hard delete instead of soft delete to avoid RLS issues with UPDATE
     const { error } = await supabase
       .from("clients")
-      .update({ deleted_at: new Date().toISOString() })
+      .delete()
       .eq("id", clientId)
       .eq("user_id", userId);
 
