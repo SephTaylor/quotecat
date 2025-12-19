@@ -4,6 +4,110 @@
 import { supabase } from "./supabase";
 import type { Invoice } from "./types";
 import { getCurrentUserId } from "./authUtils";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const INVOICE_STORAGE_KEY = "@quotecat/invoices";
+const SYNC_METADATA_KEY = "@quotecat/invoices_sync_metadata";
+
+type SyncMetadata = {
+  lastSyncAt: string | null;
+  hasMigrated: boolean;
+  syncEnabled: boolean;
+};
+
+/**
+ * Get sync metadata from storage
+ */
+async function getSyncMetadata(): Promise<SyncMetadata> {
+  try {
+    const json = await AsyncStorage.getItem(SYNC_METADATA_KEY);
+    if (!json) {
+      return {
+        lastSyncAt: null,
+        hasMigrated: false,
+        syncEnabled: true,
+      };
+    }
+    return JSON.parse(json);
+  } catch (error) {
+    console.error("Failed to load invoices sync metadata:", error);
+    return {
+      lastSyncAt: null,
+      hasMigrated: false,
+      syncEnabled: true,
+    };
+  }
+}
+
+/**
+ * Save sync metadata to storage
+ */
+async function saveSyncMetadata(metadata: SyncMetadata): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SYNC_METADATA_KEY, JSON.stringify(metadata));
+  } catch (error) {
+    console.error("Failed to save invoices sync metadata:", error);
+  }
+}
+
+/**
+ * Get all local invoices (for sync)
+ */
+async function getLocalInvoices(): Promise<Invoice[]> {
+  try {
+    const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
+    if (!json) return [];
+    const invoices = JSON.parse(json) as Invoice[];
+    // Filter out deleted invoices for active list
+    return invoices.filter((inv) => !inv.deletedAt);
+  } catch (error) {
+    console.error("Failed to get local invoices:", error);
+    return [];
+  }
+}
+
+/**
+ * Save invoice locally (without triggering cloud sync - used during sync)
+ */
+async function saveInvoiceLocally(invoice: Invoice): Promise<void> {
+  const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
+  const allInvoices = json ? (JSON.parse(json) as Invoice[]) : [];
+
+  const existingIndex = allInvoices.findIndex((inv) => inv.id === invoice.id);
+
+  if (existingIndex >= 0) {
+    allInvoices[existingIndex] = invoice;
+  } else {
+    allInvoices.push(invoice);
+  }
+
+  await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(allInvoices));
+}
+
+/**
+ * Get a local invoice by ID
+ */
+async function getLocalInvoiceById(id: string): Promise<Invoice | null> {
+  const invoices = await getLocalInvoices();
+  return invoices.find((inv) => inv.id === id) || null;
+}
+
+/**
+ * Mark a local invoice as deleted
+ */
+async function markLocalInvoiceDeleted(id: string): Promise<void> {
+  const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
+  if (!json) return;
+
+  const allInvoices = JSON.parse(json) as Invoice[];
+  const invoice = allInvoices.find((inv) => inv.id === id);
+
+  if (invoice && !invoice.deletedAt) {
+    invoice.deletedAt = new Date().toISOString();
+    invoice.updatedAt = invoice.deletedAt;
+    await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(allInvoices));
+  }
+}
 
 /**
  * Upload a single invoice to Supabase
@@ -200,57 +304,175 @@ export async function isInvoiceSyncAvailable(): Promise<boolean> {
 }
 
 /**
- * Get all local invoices including deleted ones (for sync comparison)
+ * Migrate local invoices to cloud (one-time operation on first Pro/Premium login)
  */
-async function getAllLocalInvoicesIncludingDeleted(): Promise<Invoice[]> {
-  const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-  const INVOICE_STORAGE_KEY = "@quotecat/invoices";
-
-  const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
-  if (!json) return [];
-
+export async function migrateLocalInvoicesToCloud(): Promise<{
+  success: boolean;
+  uploaded: number;
+  failed: number;
+}> {
   try {
-    return JSON.parse(json) as Invoice[];
-  } catch {
-    return [];
+    const metadata = await getSyncMetadata();
+    if (metadata.hasMigrated) {
+      console.log("Invoices migration already completed");
+      return { success: true, uploaded: 0, failed: 0 };
+    }
+
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.warn("Cannot migrate invoices: user not authenticated");
+      return { success: false, uploaded: 0, failed: 0 };
+    }
+
+    // Get all local invoices
+    const localInvoices = await getLocalInvoices();
+
+    if (localInvoices.length === 0) {
+      console.log("No local invoices to migrate");
+      await saveSyncMetadata({ ...metadata, hasMigrated: true });
+      return { success: true, uploaded: 0, failed: 0 };
+    }
+
+    console.log(`🔄 Migrating ${localInvoices.length} invoices to cloud...`);
+
+    let uploaded = 0;
+    let failed = 0;
+
+    // Upload each invoice
+    for (const invoice of localInvoices) {
+      const success = await uploadInvoice(invoice);
+      if (success) {
+        uploaded++;
+      } else {
+        failed++;
+      }
+    }
+
+    // Mark migration as complete
+    await saveSyncMetadata({
+      ...metadata,
+      hasMigrated: true,
+      lastSyncAt: new Date().toISOString(),
+    });
+
+    console.log(
+      `✅ Invoices migration complete: ${uploaded} uploaded, ${failed} failed`
+    );
+
+    return { success: true, uploaded, failed };
+  } catch (error) {
+    console.error("Invoices migration error:", error);
+    return { success: false, uploaded: 0, failed: 0 };
   }
 }
 
 /**
- * Sync invoices - upload local deletions to cloud
- * This ensures deleted invoices are removed from the cloud
+ * Check if invoices migration has been completed
+ */
+export async function hasInvoicesMigrated(): Promise<boolean> {
+  const metadata = await getSyncMetadata();
+  return metadata.hasMigrated;
+}
+
+/**
+ * Sync invoices bi-directionally (download from cloud, merge with local, upload changes)
+ * Conflict resolution: last-write-wins based on updatedAt
  */
 export async function syncInvoices(): Promise<{
   success: boolean;
+  downloaded: number;
+  uploaded: number;
   deleted: number;
 }> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
       console.warn("Cannot sync invoices: user not authenticated");
-      return { success: false, deleted: 0 };
+      return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
     }
 
+    let downloaded = 0;
+    let uploaded = 0;
     let deleted = 0;
 
-    // Get all local invoices including deleted ones
-    const allLocalInvoices = await getAllLocalInvoicesIncludingDeleted();
+    // Step 1: Sync deletions - apply cloud deletions to local
+    const deletedIds = await getDeletedInvoiceIds();
+    for (const deletedId of deletedIds) {
+      const localInvoice = await getLocalInvoiceById(deletedId);
+      if (localInvoice && !localInvoice.deletedAt) {
+        // Invoice exists locally but is deleted in cloud - mark as deleted locally
+        await markLocalInvoiceDeleted(deletedId);
+        deleted++;
+        console.log(`🗑️ Applied invoice deletion from cloud: ${deletedId}`);
+      }
+    }
 
-    // Sync any locally deleted invoices to cloud
-    for (const invoice of allLocalInvoices) {
-      if (invoice.deletedAt) {
-        const success = await deleteInvoiceFromCloud(invoice.id);
-        if (success) {
-          deleted++;
-          console.log(`🗑️ Synced invoice deletion to cloud: ${invoice.id}`);
+    // Step 2: Download active cloud invoices
+    const cloudInvoices = await downloadInvoices();
+
+    // Step 3: Get local active invoices
+    const localInvoices = await getLocalInvoices();
+
+    // Build maps for efficient lookup
+    const cloudMap = new Map(cloudInvoices.map((inv) => [inv.id, inv]));
+    const localMap = new Map(localInvoices.map((inv) => [inv.id, inv]));
+
+    // Step 4: Process cloud invoices (download new or updated)
+    for (const cloudInvoice of cloudInvoices) {
+      const localInvoice = localMap.get(cloudInvoice.id);
+
+      if (!localInvoice) {
+        // New invoice from cloud - save locally
+        await saveInvoiceLocally(cloudInvoice);
+        downloaded++;
+      } else {
+        // Invoice exists in both - check which is newer
+        const cloudUpdated = new Date(cloudInvoice.updatedAt).getTime();
+        const localUpdated = new Date(localInvoice.updatedAt).getTime();
+
+        if (cloudUpdated > localUpdated) {
+          // Cloud is newer - update local
+          await saveInvoiceLocally(cloudInvoice);
+          downloaded++;
         }
       }
     }
 
-    console.log(`✅ Invoice sync complete: ${deleted} deleted`);
-    return { success: true, deleted };
+    // Step 5: Process local invoices (upload new or updated)
+    for (const localInvoice of localInvoices) {
+      const cloudInvoice = cloudMap.get(localInvoice.id);
+
+      if (!cloudInvoice) {
+        // New local invoice - upload to cloud
+        const success = await uploadInvoice(localInvoice);
+        if (success) uploaded++;
+      } else {
+        // Invoice exists in both - check which is newer
+        const cloudUpdated = new Date(cloudInvoice.updatedAt).getTime();
+        const localUpdated = new Date(localInvoice.updatedAt).getTime();
+
+        if (localUpdated > cloudUpdated) {
+          // Local is newer - upload to cloud
+          const success = await uploadInvoice(localInvoice);
+          if (success) uploaded++;
+        }
+      }
+    }
+
+    // Update sync metadata
+    const metadata = await getSyncMetadata();
+    await saveSyncMetadata({
+      ...metadata,
+      lastSyncAt: new Date().toISOString(),
+    });
+
+    console.log(
+      `✅ Invoices sync complete: ${downloaded} downloaded, ${uploaded} uploaded, ${deleted} deleted`
+    );
+
+    return { success: true, downloaded, uploaded, deleted };
   } catch (error) {
-    console.error("Invoice sync error:", error);
-    return { success: false, deleted: 0 };
+    console.error("Invoices sync error:", error);
+    return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
   }
 }

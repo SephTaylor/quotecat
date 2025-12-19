@@ -22,6 +22,8 @@ import {
   downloadQuotes,
   resetSyncMetadata,
 } from "@/lib/quotesSync";
+import { syncInvoices } from "@/lib/invoicesSync";
+import { syncClients } from "@/lib/clientsSync";
 import { listQuotes } from "@/lib/quotes";
 import { supabase } from "@/lib/supabase";
 
@@ -273,9 +275,14 @@ export function useSettingsState() {
 
     setSyncing(true);
     try {
-      const result = await syncQuotes();
+      // Sync all data types
+      const [quotesResult, invoicesResult, clientsResult] = await Promise.all([
+        syncQuotes(),
+        syncInvoices(),
+        syncClients(),
+      ]);
 
-      if (result.success) {
+      if (quotesResult.success && invoicesResult.success && clientsResult.success) {
         setLastSyncTime(new Date());
 
         // Reload counts
@@ -286,10 +293,13 @@ export function useSettingsState() {
         setLocalQuoteCount(localQuotes.length);
         setCloudQuoteCount(cloudQuotes.length);
 
+        const totalDownloaded = quotesResult.downloaded + invoicesResult.downloaded + clientsResult.downloaded;
+        const totalUploaded = quotesResult.uploaded + invoicesResult.uploaded + clientsResult.uploaded;
+
         const message =
-          result.downloaded === 0 && result.uploaded === 0
+          totalDownloaded === 0 && totalUploaded === 0
             ? "Everything is up to date!"
-            : `Synced! Downloaded ${result.downloaded}, uploaded ${result.uploaded} item${result.uploaded === 1 ? "" : "s"}.`;
+            : `Synced! Downloaded ${totalDownloaded}, uploaded ${totalUploaded} item${totalUploaded === 1 ? "" : "s"}.`;
 
         Alert.alert("Sync Complete", message);
       } else {
@@ -325,10 +335,14 @@ export function useSettingsState() {
               // Reset sync metadata to force re-upload
               await resetSyncMetadata();
 
-              // Run sync
-              const result = await syncQuotes();
+              // Run sync for all data types
+              const [quotesResult, invoicesResult, clientsResult] = await Promise.all([
+                syncQuotes(),
+                syncInvoices(),
+                syncClients(),
+              ]);
 
-              if (result.success) {
+              if (quotesResult.success && invoicesResult.success && clientsResult.success) {
                 setLastSyncTime(new Date());
 
                 // Reload counts
@@ -339,9 +353,11 @@ export function useSettingsState() {
                 setLocalQuoteCount(localQuotes.length);
                 setCloudQuoteCount(cloudQuotes.length);
 
+                const totalUploaded = quotesResult.uploaded + invoicesResult.uploaded + clientsResult.uploaded;
+
                 Alert.alert(
                   "Success",
-                  `Force sync complete! Uploaded ${result.uploaded} item${result.uploaded === 1 ? "" : "s"}.`
+                  `Force sync complete! Uploaded ${totalUploaded} item${totalUploaded === 1 ? "" : "s"}.`
                 );
               } else {
                 Alert.alert("Sync Failed", "Unable to complete force sync.");

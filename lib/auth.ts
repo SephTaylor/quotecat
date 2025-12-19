@@ -5,6 +5,7 @@ import { supabase } from "./supabase";
 import { activateProTier, activatePremiumTier, deactivateProTier, signOutUser } from "./user";
 import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync";
 import { syncClients, migrateLocalClientsToCloud } from "./clientsSync";
+import { syncInvoices, hasInvoicesMigrated, migrateLocalInvoicesToCloud } from "./invoicesSync";
 
 // Re-export auth utilities for backwards compatibility
 export { isAuthenticated, getCurrentUserEmail, getCurrentUserId } from "./authUtils";
@@ -46,19 +47,27 @@ export async function initializeAuth(): Promise<void> {
           }
 
           // Auto-migrate if needed (first time Pro/Premium user)
-          const migrated = await hasMigrated();
-          if (!migrated) {
+          const quotesMigrated = await hasMigrated();
+          const invoicesMigrated = await hasInvoicesMigrated();
+
+          if (!quotesMigrated) {
             console.log("🔄 Auto-migrating quotes to cloud...");
             await migrateLocalQuotesToCloud();
-            console.log("🔄 Auto-migrating clients to cloud...");
-            await migrateLocalClientsToCloud();
-          } else {
-            // Already migrated, just sync
-            console.log("🔄 Syncing quotes...");
-            await syncQuotes();
-            console.log("🔄 Syncing clients...");
-            await syncClients();
           }
+          if (!invoicesMigrated) {
+            console.log("🔄 Auto-migrating invoices to cloud...");
+            await migrateLocalInvoicesToCloud();
+          }
+          console.log("🔄 Auto-migrating clients to cloud...");
+          await migrateLocalClientsToCloud();
+
+          // Sync all data
+          console.log("🔄 Syncing quotes...");
+          await syncQuotes();
+          console.log("🔄 Syncing invoices...");
+          await syncInvoices();
+          console.log("🔄 Syncing clients...");
+          await syncClients();
         } else {
           await deactivateProTier();
         }
