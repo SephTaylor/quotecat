@@ -20,7 +20,11 @@
 - CSV export
 - Dashboard with stats, value tracking, pinned/recent quotes
 - Company details editor (name, email, phone, website, address)
+- Company logo upload (local AsyncStorage, appears on quote/invoice PDFs) - PRO FEATURE
+- Invoice system (create from quotes, PDF export, status tracking) - PRO FEATURE
+- Contract system (create from approved quotes, digital signatures via web) - PREMIUM FEATURE
 - Settings with customization options
+- Business Settings screen (invoices, contracts, pricing defaults)
 
 **Monetization:**
 - Free/Pro tier system (defaults to "pro" for TestFlight)
@@ -79,7 +83,8 @@
 - 1Build supplier API integration
 - Real-time pricing
 - Quote Wizard (Premium feature)
-- Logo upload functionality
+- Migrate logos to Supabase Storage (for multi-device sync + contracts)
+- Add company logo to contract PDFs
 - Team collaboration
 
 ---

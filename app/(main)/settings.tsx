@@ -6,9 +6,7 @@ import {
   loadPreferences,
   savePreferences,
   updateDashboardPreferences,
-  updateInvoiceSettings,
   updateNotificationPreferences,
-  updatePricingSettings,
   resetPreferences,
   type DashboardPreferences,
   type UserPreferences,
@@ -25,13 +23,11 @@ import {
   Text,
   TextInput,
   View,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
-import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
 import {
   syncQuotes,
   getLastSyncTime,
@@ -68,25 +64,7 @@ export default function Settings() {
   const [isPro, setIsPro] = useState(false);
   const [userEmail, setUserEmail] = useState<string | undefined>();
   const [userState, setUserState] = useState<UserState | null>(null);
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    dashboard: {
-      showStats: true,
-      showValueTracking: true,
-      showPinnedQuotes: true,
-      showRecentQuotes: true,
-      showQuickActions: true,
-      showRecentInvoices: true,
-      showRecentContracts: true,
-      recentQuotesCount: 5,
-    },
-    privacy: {
-      shareAnonymousUsage: false,
-    },
-  });
-
-  // Logo state
-  const [logo, setLogo] = useState<CompanyLogo | null>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
 
   // Sync state
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
@@ -106,9 +84,6 @@ export default function Settings() {
     cloudSync: false,
     appearance: false,
     dashboard: false,
-    quoteDefaults: false,
-    invoiceSettings: false,
-    pricingSettings: false,
     notifications: false,
     privacy: false,
     comingSoon: false,
@@ -132,14 +107,6 @@ export default function Settings() {
     setUserEmail(user.email);
     setUserState(user);
     setPreferences(fullPrefs);
-
-    // Load logo (local storage)
-    try {
-      const companyLogo = await getCompanyLogo();
-      setLogo(companyLogo);
-    } catch (error) {
-      console.error("Failed to load logo:", error);
-    }
 
     // Load sync state
     const [syncTime, available, localQuotes] = await Promise.all([
@@ -220,50 +187,6 @@ export default function Settings() {
     }
   };
 
-  const handleUploadLogo = async () => {
-    if (!isPro) {
-      // Pro feature - button should be disabled for free users
-      return;
-    }
-
-    try {
-      setUploadingLogo(true);
-      const uploadedLogo = await uploadCompanyLogo();
-      setLogo(uploadedLogo);
-    } catch (error) {
-      console.error("Failed to upload logo:", error);
-      Alert.alert("Error", error instanceof Error ? error.message : "Failed to upload logo");
-    } finally {
-      setUploadingLogo(false);
-    }
-  };
-
-  const handleDeleteLogo = async () => {
-    Alert.alert(
-      "Delete Logo",
-      "Are you sure you want to delete your company logo?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setUploadingLogo(true);
-              await deleteLogo();
-              setLogo(null);
-            } catch (error) {
-              console.error("Failed to delete logo:", error);
-              Alert.alert("Error", "Failed to delete logo");
-            } finally {
-              setUploadingLogo(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
   useFocusEffect(
     useCallback(() => {
       load();
@@ -320,6 +243,7 @@ export default function Settings() {
   const handleUpdatePreference = async (
     updates: Partial<DashboardPreferences>,
   ) => {
+    if (!preferences) return;
     const updated = {
       ...preferences,
       dashboard: {
@@ -434,6 +358,30 @@ export default function Settings() {
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
+  // Show loading state while preferences are being loaded
+  if (!preferences) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: "Settings",
+            headerShown: true,
+            headerTitleAlign: 'center',
+            headerBackTitle: "Back",
+            headerStyle: { backgroundColor: theme.colors.bg },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: { color: theme.colors.text },
+          }}
+        />
+        <GradientBackground>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" color={theme.colors.accent} />
+          </View>
+        </GradientBackground>
+      </>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
@@ -466,15 +414,20 @@ export default function Settings() {
                     {userEmail || "Not signed in"}
                   </Text>
                   <View
-                    style={[styles.tierBadge, isPro && styles.tierBadgePro]}
+                    style={[
+                      styles.tierBadge,
+                      userState?.tier === 'pro' && styles.tierBadgePro,
+                      userState?.tier === 'premium' && styles.tierBadgePremium,
+                    ]}
                   >
                     <Text
                       style={[
                         styles.tierBadgeText,
-                        isPro && styles.tierBadgeTextPro,
+                        userState?.tier === 'pro' && styles.tierBadgeTextPro,
+                        userState?.tier === 'premium' && styles.tierBadgeTextPremium,
                       ]}
                     >
-                      {isPro ? "PRO" : "FREE"}
+                      {userState?.tier === 'premium' ? "PREMIUM" : userState?.tier === 'pro' ? "PRO" : "FREE"}
                     </Text>
                   </View>
                 </View>
@@ -703,6 +656,17 @@ export default function Settings() {
             </View>
           </CollapsibleSection>
 
+          {/* Business Settings */}
+          <View style={styles.section}>
+            <Pressable
+              style={styles.sectionHeader}
+              onPress={() => router.push("/(main)/business-settings")}
+            >
+              <Text style={styles.sectionTitle}>Business Settings</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.text} />
+            </Pressable>
+          </View>
+
           {/* Dashboard Section */}
           <CollapsibleSection
             title="Dashboard"
@@ -815,365 +779,6 @@ export default function Settings() {
             >
               <Text style={styles.resetButtonText}>Reset to Default</Text>
             </Pressable>
-          </CollapsibleSection>
-
-          {/* Quote Defaults Section */}
-          <CollapsibleSection
-            title="Quote Defaults"
-            isExpanded={expandedSections.quoteDefaults}
-            onToggle={() => toggleSection('quoteDefaults')}
-            theme={theme}
-          >
-            <View style={styles.defaultsContainer}>
-              {/* Company Details - All-in-One Editor */}
-              <View style={styles.defaultItem}>
-                <View style={styles.defaultItemHeader}>
-                  <Ionicons name="business-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.defaultItemTitle}>Company Details</Text>
-                  {!isPro && (
-                    <View style={styles.proBadge}>
-                      <Text style={styles.proBadgeText}>PRO</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.defaultItemDescription}>
-                  Add your company name, contact info, and address to all quotes and PDFs.
-                </Text>
-                {isPro && preferences.company && (preferences.company.companyName || preferences.company.email || preferences.company.phone) && (
-                  <View style={styles.previewBox}>
-                    {preferences.company.companyName && (
-                      <Text style={styles.previewText}>📍 {preferences.company.companyName}</Text>
-                    )}
-                    {preferences.company.email && (
-                      <Text style={styles.previewText}>✉️ {preferences.company.email}</Text>
-                    )}
-                    {preferences.company.phone && (
-                      <Text style={styles.previewText}>📞 {preferences.company.phone}</Text>
-                    )}
-                  </View>
-                )}
-                {isPro ? (
-                  <Pressable
-                    style={styles.defaultItemButton}
-                    onPress={() => router.push("/(main)/company-details")}
-                  >
-                    <Text style={styles.defaultItemButtonText}>
-                      {preferences.company?.companyName ? "Edit Details" : "Set Up Company Details"}
-                    </Text>
-                  </Pressable>
-                ) : (
-                  <View
-                    style={[styles.defaultItemButton, styles.defaultItemButtonLocked]}
-                  >
-                    <Ionicons name="lock-closed" size={16} color="#666" style={{ marginRight: 6 }} />
-                    <Text style={[styles.defaultItemButtonText, { color: "#666" }]}>
-                      Locked
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Company Logo Upload */}
-              <View style={[styles.defaultItem, styles.defaultItemLast]}>
-                <View style={styles.defaultItemHeader}>
-                  <Ionicons name="image-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.defaultItemTitle}>Company Logo</Text>
-                  {!isPro && (
-                    <View style={styles.proBadge}>
-                      <Text style={styles.proBadgeText}>PRO</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.defaultItemDescription}>
-                  Add your company logo to appear on all PDF quotes.
-                </Text>
-                <Text style={styles.logoHelpTip}>
-                  Tip: For best results, use a PNG with transparent background
-                </Text>
-
-                {/* Logo Preview */}
-                {logo && logo.base64 && (
-                  <View style={styles.logoPreviewContainer}>
-                    <Image
-                      source={{ uri: logo.base64 }}
-                      style={styles.logoPreview}
-                      resizeMode="contain"
-                    />
-                  </View>
-                )}
-
-                {/* Upload/Delete Buttons */}
-                <View style={styles.logoButtonsContainer}>
-                  <Pressable
-                    style={[
-                      styles.defaultItemButton,
-                      !isPro && styles.defaultItemButtonDisabled,
-                      { flex: 1 }
-                    ]}
-                    onPress={handleUploadLogo}
-                    disabled={uploadingLogo || !isPro}
-                  >
-                    {uploadingLogo ? (
-                      <ActivityIndicator size="small" color="#000" />
-                    ) : (
-                      <Text style={[
-                        styles.defaultItemButtonText,
-                        !isPro && styles.defaultItemButtonTextDisabled
-                      ]}>
-                        {logo ? "Change Logo" : "Upload Logo"}
-                      </Text>
-                    )}
-                  </Pressable>
-
-                  {logo && isPro && (
-                    <Pressable
-                      style={[styles.defaultItemButton, styles.deleteLogoButton]}
-                      onPress={handleDeleteLogo}
-                      disabled={uploadingLogo}
-                    >
-                      <Text style={styles.deleteLogoButtonText}>Delete</Text>
-                    </Pressable>
-                  )}
-                </View>
-
-              </View>
-            </View>
-          </CollapsibleSection>
-
-          {/* Invoice Settings Section */}
-          <CollapsibleSection
-            title="Invoice Settings"
-            isExpanded={expandedSections.invoiceSettings}
-            onToggle={() => toggleSection('invoiceSettings')}
-            theme={theme}
-          >
-            <View style={styles.defaultsContainer}>
-              {/* Invoice Number Prefix */}
-              <View style={styles.defaultItem}>
-                <View style={styles.defaultItemHeader}>
-                  <Ionicons name="receipt-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.defaultItemTitle}>Invoice Number Format</Text>
-                </View>
-                <Text style={styles.defaultItemDescription}>
-                  Customize your invoice numbering system. Next invoice will be: {preferences.invoice?.prefix || 'INV'}-{String(preferences.invoice?.nextNumber || 1).padStart(3, '0')}
-                </Text>
-                <Pressable
-                  style={styles.defaultItemButton}
-                  onPress={() => {
-                    Alert.prompt(
-                      'Invoice Prefix',
-                      'Enter prefix for invoice numbers (e.g., INV, 2025, ABC):',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Save',
-                          onPress: async (value) => {
-                            if (value && value.trim()) {
-                              const updated = await updateInvoiceSettings({ prefix: value.trim().toUpperCase() });
-                              setPreferences(updated);
-                            }
-                          },
-                        },
-                      ],
-                      'plain-text',
-                      preferences.invoice?.prefix || 'INV'
-                    );
-                  }}
-                >
-                  <Text style={styles.defaultItemButtonText}>Change Prefix</Text>
-                </Pressable>
-              </View>
-
-              {/* Next Invoice Number */}
-              <View style={[styles.defaultItem, styles.defaultItemLast]}>
-                <View style={styles.defaultItemHeader}>
-                  <Ionicons name="keypad-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.defaultItemTitle}>Next Invoice Number</Text>
-                </View>
-                <Text style={styles.defaultItemDescription}>
-                  Set the starting number for your next invoice. This auto-increments after each invoice.
-                </Text>
-                <Pressable
-                  style={styles.defaultItemButton}
-                  onPress={() => {
-                    Alert.prompt(
-                      'Next Invoice Number',
-                      'Enter the next invoice number:',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Save',
-                          onPress: async (value) => {
-                            const num = parseInt(value || '1', 10);
-                            if (num > 0) {
-                              const updated = await updateInvoiceSettings({ nextNumber: num });
-                              setPreferences(updated);
-                            } else {
-                              Alert.alert('Invalid Number', 'Please enter a number greater than 0');
-                            }
-                          },
-                        },
-                      ],
-                      'plain-text',
-                      String(preferences.invoice?.nextNumber || 1),
-                      'number-pad'
-                    );
-                  }}
-                >
-                  <Text style={styles.defaultItemButtonText}>Change Number</Text>
-                </Pressable>
-              </View>
-            </View>
-          </CollapsibleSection>
-
-          {/* Pricing Settings Section */}
-          <CollapsibleSection
-            title="Pricing Settings"
-            isExpanded={expandedSections.pricingSettings}
-            onToggle={() => toggleSection('pricingSettings')}
-            theme={theme}
-          >
-            <View style={styles.defaultsContainer}>
-              {/* Default Tax */}
-              <View style={styles.defaultItem}>
-                <View style={styles.defaultItemHeader}>
-                  <Ionicons name="calculator-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.defaultItemTitle}>Default Tax %</Text>
-                </View>
-                <Text style={styles.defaultItemDescription}>
-                  Set a default tax percentage that will be applied to new quotes.
-                </Text>
-                {(preferences.pricing?.defaultTaxPercent ?? 0) > 0 && (
-                  <View style={styles.previewBox}>
-                    <Text style={styles.previewText}>{preferences.pricing.defaultTaxPercent}%</Text>
-                  </View>
-                )}
-                <Pressable
-                  style={styles.defaultItemButton}
-                  onPress={() => {
-                    Alert.prompt(
-                      'Default Tax %',
-                      'Enter the default tax percentage for new quotes:',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Save',
-                          onPress: async (value) => {
-                            const num = parseFloat(value || '0');
-                            if (!isNaN(num) && num >= 0 && num <= 100) {
-                              const updated = await updatePricingSettings({ defaultTaxPercent: num });
-                              setPreferences(updated);
-                            } else {
-                              Alert.alert('Invalid Value', 'Please enter a number between 0 and 100.');
-                            }
-                          },
-                        },
-                      ],
-                      'plain-text',
-                      String(preferences.pricing?.defaultTaxPercent || ''),
-                      'decimal-pad'
-                    );
-                  }}
-                >
-                  <Text style={styles.defaultItemButtonText}>
-                    {(preferences.pricing?.defaultTaxPercent ?? 0) > 0 ? 'Change Tax %' : 'Set Tax %'}
-                  </Text>
-                </Pressable>
-              </View>
-
-              {/* Default Markup */}
-              <View style={styles.defaultItem}>
-                <View style={styles.defaultItemHeader}>
-                  <Ionicons name="trending-up-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.defaultItemTitle}>Default Markup %</Text>
-                </View>
-                <Text style={styles.defaultItemDescription}>
-                  Set a default markup percentage that will be applied to new quotes.
-                </Text>
-                {(preferences.pricing?.defaultMarkupPercent ?? 0) > 0 && (
-                  <View style={styles.previewBox}>
-                    <Text style={styles.previewText}>{preferences.pricing.defaultMarkupPercent}%</Text>
-                  </View>
-                )}
-                <Pressable
-                  style={styles.defaultItemButton}
-                  onPress={() => {
-                    Alert.prompt(
-                      'Default Markup %',
-                      'Enter the default markup percentage for new quotes:',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Save',
-                          onPress: async (value) => {
-                            const num = parseFloat(value || '0');
-                            if (!isNaN(num) && num >= 0) {
-                              const updated = await updatePricingSettings({ defaultMarkupPercent: num });
-                              setPreferences(updated);
-                            } else {
-                              Alert.alert('Invalid Value', 'Please enter a valid number.');
-                            }
-                          },
-                        },
-                      ],
-                      'plain-text',
-                      String(preferences.pricing?.defaultMarkupPercent || ''),
-                      'decimal-pad'
-                    );
-                  }}
-                >
-                  <Text style={styles.defaultItemButtonText}>
-                    {(preferences.pricing?.defaultMarkupPercent ?? 0) > 0 ? 'Change Markup %' : 'Set Markup %'}
-                  </Text>
-                </Pressable>
-              </View>
-
-              {/* Zip Code */}
-              <View style={[styles.defaultItem, styles.defaultItemLast]}>
-                <View style={styles.defaultItemHeader}>
-                  <Ionicons name="location-outline" size={20} color={theme.colors.accent} />
-                  <Text style={styles.defaultItemTitle}>Zip Code</Text>
-                </View>
-                <Text style={styles.defaultItemDescription}>
-                  Enter your zip code to get regional pricing from suppliers like Lowes, Home Depot, and Menards.
-                </Text>
-                {preferences.pricing?.zipCode && (
-                  <View style={styles.previewBox}>
-                    <Text style={styles.previewText}>📍 {preferences.pricing.zipCode}</Text>
-                  </View>
-                )}
-                <Pressable
-                  style={styles.defaultItemButton}
-                  onPress={() => {
-                    Alert.prompt(
-                      'Zip Code',
-                      'Enter your 5-digit zip code for regional pricing:',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Save',
-                          onPress: async (value) => {
-                            if (value && /^\d{5}$/.test(value.trim())) {
-                              const updated = await updatePricingSettings({ zipCode: value.trim() });
-                              setPreferences(updated);
-                            } else if (value && value.trim()) {
-                              Alert.alert('Invalid Zip Code', 'Please enter a valid 5-digit zip code.');
-                            }
-                          },
-                        },
-                      ],
-                      'plain-text',
-                      preferences.pricing?.zipCode || '',
-                      'number-pad'
-                    );
-                  }}
-                >
-                  <Text style={styles.defaultItemButtonText}>
-                    {preferences.pricing?.zipCode ? 'Change Zip Code' : 'Set Zip Code'}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
           </CollapsibleSection>
 
           {/* Notifications Section */}
@@ -1528,6 +1133,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     tierBadgePro: {
       backgroundColor: theme.colors.accent,
     },
+    tierBadgePremium: {
+      backgroundColor: "#5856D6",
+    },
     tierBadgeText: {
       fontSize: 11,
       fontWeight: "700",
@@ -1535,6 +1143,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     tierBadgeTextPro: {
       color: "#000",
+    },
+    tierBadgeTextPremium: {
+      color: "#FFF",
     },
     settingButton: {
       flexDirection: "row",
@@ -1576,87 +1187,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     proLock: {
       fontSize: 14,
-    },
-    // Quote Defaults redesign
-    defaultsContainer: {
-      gap: theme.spacing(2),
-    },
-    defaultItem: {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.md,
-      padding: theme.spacing(2),
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    defaultItemLast: {
-      marginBottom: 0,
-    },
-    defaultItemHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing(1),
-      marginBottom: theme.spacing(1),
-    },
-    defaultItemTitle: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: theme.colors.text,
-      flex: 1,
-    },
-    defaultItemDescription: {
-      fontSize: 13,
-      color: theme.colors.muted,
-      marginBottom: theme.spacing(1.5),
-      lineHeight: 18,
-    },
-    defaultItemButton: {
-      backgroundColor: theme.colors.accent,
-      borderRadius: theme.radius.sm,
-      paddingVertical: theme.spacing(1),
-      paddingHorizontal: theme.spacing(2),
-      alignItems: "center",
-      flexDirection: "row",
-      justifyContent: "center",
-    },
-    defaultItemButtonDisabled: {
-      backgroundColor: theme.colors.border,
-    },
-    defaultItemButtonLocked: {
-      backgroundColor: theme.colors.card,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    defaultItemButtonText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: "#000",
-    },
-    defaultItemButtonTextDisabled: {
-      color: theme.colors.muted,
-    },
-    proBadge: {
-      backgroundColor: theme.colors.accent,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 4,
-    },
-    proBadgeText: {
-      fontSize: 10,
-      fontWeight: "700",
-      color: "#000",
-      letterSpacing: 0.5,
-    },
-    previewBox: {
-      backgroundColor: theme.colors.bg,
-      borderRadius: theme.radius.sm,
-      padding: theme.spacing(1.5),
-      marginBottom: theme.spacing(1.5),
-      gap: theme.spacing(0.5),
-    },
-    previewText: {
-      fontSize: 13,
-      color: theme.colors.text,
-      lineHeight: 18,
     },
     chipContainer: {
       flexDirection: "column",
@@ -1816,47 +1346,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginHorizontal: theme.spacing(2),
       marginBottom: theme.spacing(2),
       lineHeight: 18,
-    },
-    // Logo upload styles
-    logoPreviewContainer: {
-      backgroundColor: theme.colors.bg,
-      borderRadius: theme.radius.sm,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(1.5),
-      alignItems: "center",
-      justifyContent: "center",
-      height: 120,
-    },
-    logoPreview: {
-      width: "100%",
-      height: "100%",
-    },
-    logoButtonsContainer: {
-      flexDirection: "row",
-      gap: theme.spacing(1),
-    },
-    deleteLogoButton: {
-      backgroundColor: "#FF3B30",
-      flex: 0,
-      paddingHorizontal: theme.spacing(2),
-    },
-    deleteLogoButtonText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: "#FFF",
-    },
-    logoHelpTip: {
-      fontSize: 12,
-      color: theme.colors.muted,
-      fontStyle: "italic",
-      marginBottom: theme.spacing(1.5),
-    },
-    proFeatureNote: {
-      fontSize: 12,
-      color: theme.colors.muted,
-      fontStyle: "italic",
-      marginTop: theme.spacing(1),
-      textAlign: "center",
     },
     // Notification section styles
     notificationGroup: {

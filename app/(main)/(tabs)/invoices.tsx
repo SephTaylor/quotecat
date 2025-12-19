@@ -91,10 +91,7 @@ export default function InvoicesList() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
+  // Only load on focus - useFocusEffect fires on mount AND on focus
   useFocusEffect(
     useCallback(() => {
       load();

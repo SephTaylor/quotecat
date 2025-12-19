@@ -6,7 +6,6 @@ import { listContracts, deleteContract, createContractFromQuote } from "@/lib/co
 import { getUserState } from "@/lib/user";
 import { listQuotes } from "@/lib/quotes";
 import type { Contract } from "@/lib/types";
-import { ContractStatusMeta } from "@/lib/types";
 import type { Quote } from "@/lib/quotes";
 import {
   useFocusEffect,
@@ -26,6 +25,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SwipeableContractItem } from "@/components/SwipeableContractItem";
 
 export default function ContractsScreen() {
   const { theme } = useTheme();
@@ -186,32 +187,12 @@ export default function ContractsScreen() {
   const styles = React.useMemo(() => createStyles(theme, insets), [theme, insets]);
 
   const renderContract = ({ item }: { item: Contract }) => {
-    const statusMeta = ContractStatusMeta[item.status];
-
     return (
-      <Pressable
-        style={styles.contractCard}
+      <SwipeableContractItem
+        item={item}
         onPress={() => handleContractPress(item)}
-        onLongPress={() => handleDeleteContract(item)}
-      >
-        <View style={styles.contractHeader}>
-          <Text style={styles.contractNumber}>{item.contractNumber}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusMeta.color + "20" }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusMeta.color }]} />
-            <Text style={[styles.statusText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.projectName}>{item.projectName}</Text>
-        <Text style={styles.clientName}>{item.clientName}</Text>
-
-        <View style={styles.contractFooter}>
-          <Text style={styles.totalAmount}>${item.total.toFixed(2)}</Text>
-          <Text style={styles.dateText}>
-            {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
-        </View>
-      </Pressable>
+        onDelete={() => handleDeleteContract(item)}
+      />
     );
   };
 
@@ -253,29 +234,29 @@ export default function ContractsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-        {loading ? (
-          <View style={styles.center}>
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
-        ) : contracts.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="document-outline" size={64} color={theme.colors.muted} />
-            <Text style={styles.emptyTitle}>No Contracts Yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Tap + to create a contract from an approved quote
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={contracts}
-            keyExtractor={(item) => item.id}
-            renderItem={renderContract}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-    </View>
+    <GestureHandlerRootView style={styles.container}>
+      {loading ? (
+        <View style={styles.center}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      ) : contracts.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="document-outline" size={64} color={theme.colors.muted} />
+          <Text style={styles.emptyTitle}>No Contracts Yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Tap + to create a contract from an approved quote
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={contracts}
+          keyExtractor={(item) => item.id}
+          renderItem={renderContract}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+    </GestureHandlerRootView>
   );
 }
 
@@ -366,70 +347,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     listContent: {
       padding: theme.spacing(2),
       paddingBottom: Math.max(theme.spacing(2), insets.bottom),
-    },
-    contractCard: {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(2),
-    },
-    contractHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: theme.spacing(1),
-    },
-    contractNumber: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: theme.colors.accent,
-    },
-    statusBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: theme.spacing(1),
-      paddingVertical: 4,
-      borderRadius: 9999,
-      gap: 4,
-    },
-    statusDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-    },
-    statusText: {
-      fontSize: 12,
-      fontWeight: "600",
-    },
-    projectName: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: theme.colors.text,
-      marginBottom: 2,
-    },
-    clientName: {
-      fontSize: 14,
-      color: theme.colors.muted,
-      marginBottom: theme.spacing(1.5),
-    },
-    contractFooter: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingTop: theme.spacing(1.5),
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
-    },
-    totalAmount: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: theme.colors.accent,
-    },
-    dateText: {
-      fontSize: 12,
-      color: theme.colors.muted,
     },
   });
 }

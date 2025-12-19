@@ -93,33 +93,30 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [data, prefs, syncTime, available, userState] = await Promise.all([
+
+    // First get user state to know what to load
+    const userState = await getUserState();
+    const proAccess = canAccessAssemblies(userState);
+    const premiumAccess = userState.tier === 'premium';
+    setIsPro(proAccess);
+    setIsPremium(premiumAccess);
+
+    // Now load everything in parallel based on user tier
+    const [data, prefs, syncTime, available, invoiceData, contractData] = await Promise.all([
       listQuotes(),
       loadPreferences(),
       getLastSyncTime(),
       isSyncAvailable(),
-      getUserState(),
+      proAccess ? listInvoices() : Promise.resolve([]),
+      premiumAccess ? listContracts() : Promise.resolve([]),
     ]);
+
     setQuotes(data);
     setPreferences(prefs.dashboard);
     setLastSyncTime(syncTime);
     setSyncAvailable(available && (userState.tier === 'pro' || userState.tier === 'premium'));
-
-    // Load invoices for Pro users
-    const proAccess = canAccessAssemblies(userState);
-    setIsPro(proAccess);
-    if (proAccess) {
-      const invoiceData = await listInvoices();
-      setInvoices(invoiceData);
-    }
-
-    // Load contracts for Premium users
-    const premiumAccess = userState.tier === 'premium';
-    setIsPremium(premiumAccess);
-    if (premiumAccess) {
-      const contractData = await listContracts();
-      setContracts(contractData);
-    }
+    setInvoices(invoiceData);
+    setContracts(contractData);
 
     setLoading(false);
   }, []);
@@ -400,19 +397,19 @@ export default function Dashboard() {
             <View style={styles.valueSection}>
               <Text style={styles.valueSectionTitle}>Quote Value</Text>
               <View style={styles.valueGrid}>
-                <View style={styles.valueItem}>
+                <View style={styles.valueRow}>
                   <Text style={styles.valueLabel}>Pending</Text>
                   <Text style={styles.valueAmount}>
                     ${stats.pendingValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
-                <View style={styles.valueItem}>
+                <View style={styles.valueRow}>
                   <Text style={styles.valueLabel}>Approved</Text>
                   <Text style={styles.valueAmount}>
                     ${stats.approvedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
-                <View style={styles.valueItem}>
+                <View style={styles.valueRow}>
                   <Text style={styles.valueLabel}>To Invoice</Text>
                   <Text style={styles.valueAmount}>
                     ${stats.toInvoiceValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -669,25 +666,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginBottom: theme.spacing(1.5),
     },
     valueGrid: {
+      gap: 8,
+    },
+    valueRow: {
       flexDirection: "row",
       justifyContent: "space-between",
-      gap: theme.spacing(1.5),
-    },
-    valueItem: {
-      flex: 1,
       alignItems: "center",
+      paddingVertical: 6,
     },
     valueLabel: {
-      fontSize: 11,
+      fontSize: 14,
       color: theme.colors.muted,
-      marginBottom: 6,
-      textAlign: "center",
     },
     valueAmount: {
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
-      textAlign: "center",
     },
     sectionTitle: {
       fontSize: 18,

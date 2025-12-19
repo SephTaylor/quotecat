@@ -17,12 +17,22 @@ interface NotificationBellProps {
   side?: "left" | "right";
 }
 
+// Cache reminders for 30 seconds to avoid reloading on every focus
+const CACHE_TTL_MS = 30000;
+
 export function NotificationBell({ side = "right" }: NotificationBellProps) {
   const { theme } = useTheme();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showPanel, setShowPanel] = useState(false);
+  const [lastLoadTime, setLastLoadTime] = useState<number>(0);
 
-  const loadReminders = useCallback(async () => {
+  const loadReminders = useCallback(async (force = false) => {
+    // Skip if recently loaded (unless forced)
+    const now = Date.now();
+    if (!force && lastLoadTime > 0 && now - lastLoadTime < CACHE_TTL_MS) {
+      return;
+    }
+
     try {
       const [quotes, invoices, prefs, userState] = await Promise.all([
         listQuotes(),
@@ -49,12 +59,13 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
       }
 
       setReminders(active);
+      setLastLoadTime(now);
     } catch (error) {
       console.error("Failed to load reminders:", error);
     }
-  }, []);
+  }, [lastLoadTime]);
 
-  // Load on mount and focus
+  // Load on mount and focus (with cache check)
   useFocusEffect(
     useCallback(() => {
       loadReminders();
@@ -67,7 +78,7 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
   }, []);
 
   const handleRefresh = useCallback(() => {
-    loadReminders();
+    loadReminders(true); // Force reload when user manually refreshes
   }, [loadReminders]);
 
   const count = reminders.length;

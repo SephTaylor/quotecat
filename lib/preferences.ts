@@ -32,6 +32,11 @@ export type InvoiceSettings = {
   nextNumber: number; // Next invoice number to use
 };
 
+export type ContractSettings = {
+  prefix: string; // e.g., "CTR", "CONTRACT", etc.
+  nextNumber: number; // Next contract number to use
+};
+
 export type NotificationPreferences = {
   invoiceOverdue: boolean; // Notify when invoice becomes overdue
   invoiceDueSoon: boolean; // Notify 3 days before due date
@@ -52,6 +57,7 @@ export type UserPreferences = {
   privacy: PrivacyPreferences;
   company: CompanyDetails;
   invoice: InvoiceSettings;
+  contract: ContractSettings;
   notifications: NotificationPreferences;
   pricing: PricingSettings;
   // Add more preference categories as needed
@@ -88,6 +94,10 @@ export function getDefaultPreferences(): UserPreferences {
     },
     invoice: {
       prefix: "INV",
+      nextNumber: 1,
+    },
+    contract: {
+      prefix: "CTR",
       nextNumber: 1,
     },
     notifications: {
@@ -227,6 +237,24 @@ export async function updateInvoiceSettings(
     ...prefs,
     invoice: {
       ...prefs.invoice,
+      ...updates,
+    },
+  };
+  await savePreferences(updated);
+  return updated;
+}
+
+/**
+ * Update contract settings (prefix, next number)
+ */
+export async function updateContractSettings(
+  updates: Partial<ContractSettings>,
+): Promise<UserPreferences> {
+  const prefs = await loadPreferences();
+  const updated: UserPreferences = {
+    ...prefs,
+    contract: {
+      ...prefs.contract,
       ...updates,
     },
   };

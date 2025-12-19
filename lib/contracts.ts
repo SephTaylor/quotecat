@@ -4,34 +4,21 @@
 import { supabase } from "./supabase";
 import type { Contract, ContractUpdate, Signature, Quote, QuoteItem } from "./types";
 import { getCurrentUserId } from "./auth";
+import { loadPreferences, updateContractSettings } from "./preferences";
 
 /**
- * Generate next contract number for user
+ * Generate next contract number using user preferences
+ * Format: PREFIX-###  (e.g., CTR-001, CONTRACT-001, etc.)
+ * Number only increments, never resets (even after deletions)
  */
-export async function getNextContractNumber(): Promise<string> {
-  const userId = await getCurrentUserId();
-  if (!userId) return "CTR-001";
+async function generateContractNumber(): Promise<string> {
+  const prefs = await loadPreferences();
+  const { prefix, nextNumber } = prefs.contract;
 
-  const { data, error } = await supabase
-    .from("contracts")
-    .select("contract_number")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1);
+  // Increment the next number in preferences
+  await updateContractSettings({ nextNumber: nextNumber + 1 });
 
-  if (error || !data || data.length === 0) {
-    return "CTR-001";
-  }
-
-  // Extract number from "CTR-XXX" format
-  const lastNumber = data[0].contract_number;
-  const match = lastNumber.match(/CTR-(\d+)/);
-  if (match) {
-    const nextNum = parseInt(match[1], 10) + 1;
-    return `CTR-${String(nextNum).padStart(3, "0")}`;
-  }
-
-  return "CTR-001";
+  return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
 }
 
 /**
@@ -62,7 +49,7 @@ export async function createContractFromQuote(
       return null;
     }
 
-  const contractNumber = await getNextContractNumber();
+  const contractNumber = await generateContractNumber();
 
   // Calculate total
   const materialsTotal = quote.items.reduce(
