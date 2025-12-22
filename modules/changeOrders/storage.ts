@@ -3,6 +3,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { ChangeOrder, ChangeOrderUpdate } from "./types";
+import type { Quote, QuoteItem } from "@/lib/types";
 
 const STORAGE_KEY = "@quotecat/change-orders";
 
@@ -63,11 +64,12 @@ export async function getNextChangeOrderNumber(
 }
 
 /**
- * Save a new change order
+ * Save a new change order (auto-assigns CO number)
+ * Expects quoteNumber to be passed in from the quote
  */
 export async function createChangeOrder(
   changeOrder: ChangeOrder
-): Promise<void> {
+): Promise<ChangeOrder> {
   const all = await readAllChangeOrders();
   const quoteId = changeOrder.quoteId;
 
@@ -75,8 +77,20 @@ export async function createChangeOrder(
     all[quoteId] = [];
   }
 
-  all[quoteId].push(changeOrder);
+  // Auto-assign the next CO number
+  const existingCOs = all[quoteId];
+  const maxNumber = existingCOs.length > 0
+    ? Math.max(...existingCOs.map((co) => co.number))
+    : 0;
+  const coWithNumber: ChangeOrder = {
+    ...changeOrder,
+    number: maxNumber + 1,
+  };
+
+  all[quoteId].push(coWithNumber);
   await writeAllChangeOrders(all);
+
+  return coWithNumber;
 }
 
 /**
@@ -153,4 +167,88 @@ export async function getNetChangeForQuote(quoteId: string): Promise<number> {
   return cos
     .filter((co) => co.status !== "cancelled")
     .reduce((sum, co) => sum + co.netChange, 0);
+}
+
+/**
+ * Approve a change order and apply the changes to the quote
+ * This is the ONLY place where quote modifications happen for COs
+ *
+ * @param quoteId - The quote ID
+ * @param changeOrderId - The change order ID to approve
+ * @param getQuoteById - Function to get current quote (injected to avoid circular deps)
+ * @param updateQuote - Function to update the quote (injected to avoid circular deps)
+ */
+export async function approveChangeOrder(
+  quoteId: string,
+  changeOrderId: string,
+  getQuoteById: (id: string) => Promise<Quote | null>,
+  updateQuote: (id: string, patch: Partial<Quote>) => Promise<Quote | null>
+): Promise<void> {
+  // Get the change order
+  const co = await getChangeOrderById(quoteId, changeOrderId);
+  if (!co) {
+    throw new Error(`Change order ${changeOrderId} not found`);
+  }
+
+  if (co.status !== "pending") {
+    throw new Error("Only pending change orders can be approved");
+  }
+
+  // Get the current quote
+  const quote = await getQuoteById(quoteId);
+  if (!quote) {
+    throw new Error(`Quote ${quoteId} not found`);
+  }
+
+  // Apply the changes to the quote
+  // Build new items array based on CO diff
+  const newItems: QuoteItem[] = [];
+
+  // Start with current items
+  const itemsMap = new Map<string, QuoteItem>();
+  for (const item of quote.items) {
+    const key = item.productId || item.name;
+    itemsMap.set(key, { ...item });
+  }
+
+  // Apply CO item changes
+  for (const coItem of co.items) {
+    const key = coItem.productId || coItem.name;
+
+    if (coItem.qtyAfter === 0) {
+      // Item was removed
+      itemsMap.delete(key);
+    } else if (coItem.qtyBefore === 0) {
+      // Item was added
+      itemsMap.set(key, {
+        productId: coItem.productId,
+        name: coItem.name,
+        unitPrice: coItem.unitPrice,
+        qty: coItem.qtyAfter,
+      });
+    } else {
+      // Item quantity changed
+      const existing = itemsMap.get(key);
+      if (existing) {
+        existing.qty = coItem.qtyAfter;
+      }
+    }
+  }
+
+  // Convert map back to array
+  for (const item of itemsMap.values()) {
+    newItems.push(item);
+  }
+
+  // Update the quote with new items and labor
+  await updateQuote(quoteId, {
+    items: newItems,
+    labor: co.laborAfter,
+  });
+
+  // Mark the CO as approved
+  await updateChangeOrder(quoteId, {
+    id: changeOrderId,
+    status: "approved",
+  });
 }

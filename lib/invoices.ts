@@ -293,6 +293,9 @@ export async function createInvoiceFromContract(
     percentage: percentage === 100 ? undefined : percentage,
     isPartialInvoice: percentage !== 100,
 
+    // Currency
+    currency: "USD", // Default to USD
+
     // Metadata
     createdAt: now,
     updatedAt: now,

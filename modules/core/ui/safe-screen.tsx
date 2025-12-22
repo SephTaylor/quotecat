@@ -3,11 +3,11 @@ import React, { PropsWithChildren } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
   ViewStyle,
+  RefreshControlProps,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -22,7 +22,7 @@ type ScreenProps = PropsWithChildren<{
   /** Extra styles for the inner content container */
   contentStyle?: ViewStyle;
   /** RefreshControl for pull-to-refresh (only works when scroll=true) */
-  refreshControl?: React.ReactElement<typeof RefreshControl>;
+  refreshControl?: React.ReactElement<RefreshControlProps>;
 }>;
 
 /**

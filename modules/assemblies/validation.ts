@@ -42,7 +42,7 @@ export function validateAssembly(
     }
 
     // Check if quantity is valid (for fixed qty items)
-    if (typeof item.qty === "number") {
+    if ("qty" in item) {
       if (item.qty <= 0 || !isFinite(item.qty)) {
         errors.push({
           type: "invalid_quantity",
@@ -55,7 +55,7 @@ export function validateAssembly(
 
     // For qtyFn, we can't validate without variables
     // But we can check if the function exists
-    if (typeof item.qtyFn === "function") {
+    if ("qtyFn" in item) {
       try {
         // Test the function with empty vars to see if it throws
         const testResult = item.qtyFn({});

@@ -133,6 +133,8 @@ export default function InvoiceDetailScreen() {
         includeBranding: !isPro, // Free tier shows branding
         companyDetails: prefs.company,
         logoBase64,
+        // Pro/Premium users can add payment methods to invoices
+        paymentMethods: isPro ? prefs.paymentMethods : undefined,
       };
 
       await generateAndShareInvoicePDF(invoice, pdfOptions);

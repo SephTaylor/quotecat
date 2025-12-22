@@ -41,7 +41,6 @@ export default function Settings() {
 
     // Setters
     setSubscribeEmail,
-    setPreferences,
 
     // Handlers
     toggleSection,
@@ -311,8 +310,8 @@ export default function Settings() {
                     <Text style={styles.usageLabel}>Client Exports</Text>
                     <Text style={styles.usageValue}>
                       {isPro
-                        ? `${userState.pdfsExported} (Unlimited)`
-                        : `${userState.pdfsExported} / ${FREE_LIMITS.pdfsTotal}`}
+                        ? `${userState.pdfsThisMonth} (Unlimited)`
+                        : `${userState.pdfsThisMonth} / ${FREE_LIMITS.pdfsPerMonth}`}
                     </Text>
                   </View>
                   {!isPro && (
@@ -323,7 +322,7 @@ export default function Settings() {
                           {
                             width: `${Math.min(
                               100,
-                              (userState.pdfsExported / FREE_LIMITS.pdfsTotal) * 100
+                              (userState.pdfsThisMonth / FREE_LIMITS.pdfsPerMonth) * 100
                             )}%`,
                           },
                         ]}

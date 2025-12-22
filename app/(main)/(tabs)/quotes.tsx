@@ -16,6 +16,7 @@ import { generateAndShareMultiTierPDF } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
 import { getCachedLogo } from "@/lib/logo";
+import { getActiveChangeOrderCount } from "@/modules/changeOrders";
 import { Stack, useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import type { QuoteStatus } from "@/lib/types";
@@ -49,7 +50,7 @@ export default function QuotesList() {
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
   const [showUndo, setShowUndo] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<QuoteStatus | "all" | "pinned">(
+  const [selectedStatus, setSelectedStatus] = useState<QuoteStatus | "all" | "followup">(
     "all",
   );
   const [sortBy, setSortBy] = useState<"date" | "amount" | "name" | "client" | "followUp">("date");
@@ -59,9 +60,24 @@ export default function QuotesList() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // Change order counts per quote
+  const [coCounts, setCoCounts] = useState<Record<string, number>>({});
+
   const load = useCallback(async () => {
     const data = await listQuotes();
     setQuotes(data);
+
+    // Load CO counts for quotes that might have them (approved/completed)
+    const counts: Record<string, number> = {};
+    await Promise.all(
+      data
+        .filter((q) => q.status === "approved" || q.status === "completed")
+        .map(async (q) => {
+          const count = await getActiveChangeOrderCount(q.id);
+          if (count > 0) counts[q.id] = count;
+        })
+    );
+    setCoCounts(counts);
   }, []);
 
   useEffect(() => {
@@ -69,11 +85,11 @@ export default function QuotesList() {
   }, [load]);
 
   // Scroll to the selected filter chip
-  const scrollToFilter = useCallback((filter: QuoteStatus | "all" | "pinned") => {
+  const scrollToFilter = useCallback((filter: QuoteStatus | "all" | "followup") => {
     if (!filterScrollRef.current) return;
 
     // Calculate approximate position based on filter order
-    const filters = ["all", "pinned", "draft", "sent", "approved", "completed", "archived"];
+    const filters = ["all", "followup", "draft", "sent", "approved", "completed", "archived"];
     const index = filters.indexOf(filter);
 
     if (index === -1) return;
@@ -91,10 +107,10 @@ export default function QuotesList() {
   // Apply filter from navigation parameter
   useEffect(() => {
     if (params.filter && typeof params.filter === "string") {
-      const filter = params.filter as QuoteStatus | "all" | "pinned";
+      const filter = params.filter as QuoteStatus | "all" | "followup";
       if (
         filter === "all" ||
-        filter === "pinned" ||
+        filter === "followup" ||
         filter === "draft" ||
         filter === "sent" ||
         filter === "approved" ||
@@ -159,16 +175,6 @@ export default function QuotesList() {
   const handleDismissUndo = useCallback(() => {
     setShowUndo(false);
     setDeletedQuote(null);
-  }, []);
-
-  const handleTogglePin = useCallback(async (quote: Quote) => {
-    // Optimistically update UI
-    setQuotes((prev) =>
-      prev.map((q) => (q.id === quote.id ? { ...q, pinned: !q.pinned } : q)),
-    );
-
-    // Update in storage
-    await updateQuote(quote.id, { pinned: !quote.pinned });
   }, []);
 
   const handleDuplicate = useCallback(async (quote: Quote) => {
@@ -358,9 +364,16 @@ export default function QuotesList() {
   const filteredQuotes = React.useMemo(() => {
     let filtered = quotes;
 
-    // Filter by status or pinned
-    if (selectedStatus === "pinned") {
-      filtered = filtered.filter((quote) => quote.pinned);
+    // Filter by status or follow-up
+    if (selectedStatus === "followup") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      filtered = filtered.filter((quote) => {
+        if (!quote.followUpDate) return false;
+        const followUpDate = new Date(quote.followUpDate);
+        followUpDate.setHours(0, 0, 0, 0);
+        return followUpDate <= today;
+      });
     } else if (selectedStatus !== "all") {
       filtered = filtered.filter((quote) => quote.status === selectedStatus);
     }
@@ -489,10 +502,10 @@ export default function QuotesList() {
             theme={theme}
           />
           <FilterChip
-            label="Pinned"
-            active={selectedStatus === "pinned"}
-            onPress={() => setSelectedStatus("pinned")}
-            color="#FF8C00"
+            label="Follow-ups"
+            active={selectedStatus === "followup"}
+            onPress={() => setSelectedStatus("followup")}
+            color="#FF9500"
             theme={theme}
           />
           <FilterChip
@@ -667,11 +680,11 @@ export default function QuotesList() {
                     onEdit={(q) => router.push(`/quote/${q.id}/edit`)}
                     onDelete={handleDelete}
                     onDuplicate={handleDuplicate}
-                    onTogglePin={handleTogglePin}
                     onLongPress={(q) => enterSelectMode(q.id)}
                     onCreateTier={handleCreateTier}
                     onExportAllTiers={handleExportAllTiers}
                     onUnlink={handleUnlink}
+                    coCounts={coCounts}
                   />
                 );
               }
@@ -682,11 +695,11 @@ export default function QuotesList() {
                   onEdit={() => router.push(`/quote/${item.quote.id}/edit`)}
                   onDelete={() => handleDelete(item.quote)}
                   onDuplicate={() => handleDuplicate(item.quote)}
-                  onTogglePin={() => handleTogglePin(item.quote)}
                   onLongPress={() => enterSelectMode(item.quote.id)}
                   onCreateTier={() => handleCreateTier(item.quote)}
                   onExportAllTiers={() => handleExportAllTiers(item.quote)}
                   onUnlink={() => handleUnlink(item.quote)}
+                  changeOrderCount={coCounts[item.quote.id]}
                 />
               );
             }}
@@ -697,13 +710,17 @@ export default function QuotesList() {
                     ? "No quotes yet"
                     : searchQuery !== ""
                     ? "No matches"
-                    : `No ${selectedStatus === "pinned" ? "pinned" : selectedStatus} quotes`}
+                    : selectedStatus === "followup"
+                    ? "No follow-ups due"
+                    : `No ${selectedStatus} quotes`}
                 </Text>
                 <Text style={styles.emptyDescription}>
                   {selectedStatus === "all" && searchQuery === ""
                     ? "Tap the + to start"
                     : searchQuery !== ""
                     ? `Try a different search term`
+                    : selectedStatus === "followup"
+                    ? "You're all caught up!"
                     : `Tap the + to start`}
                 </Text>
               </View>

@@ -1,7 +1,6 @@
 // app/(main)/(tabs)/invoices.tsx
 // Invoices list - Pro feature
 import { useTheme } from "@/contexts/ThemeContext";
-import type { InvoiceStatus } from "@/lib/types";
 import { InvoiceStatusMeta } from "@/lib/types";
 import { calculateQuoteTotal } from "@/lib/calculations";
 import { Stack } from "expo-router";
@@ -36,7 +35,6 @@ export default function InvoicesList() {
     searchQuery,
     selectedStatus,
     isPro,
-    isPremium,
     deletedInvoice,
     showUndo,
     editingStatusForInvoice,

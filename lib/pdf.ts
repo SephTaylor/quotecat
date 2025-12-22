@@ -5,14 +5,15 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
-import type { Quote, Invoice } from './types';
-import type { CompanyDetails } from './preferences';
+import type { Quote, Invoice, ChangeOrder } from './types';
+import type { CompanyDetails, PaymentMethods } from './preferences';
 import { trackEvent, AnalyticsEvents } from './app-analytics';
 
 export type PDFOptions = {
   includeBranding: boolean; // true for free tier, false for pro
   companyDetails?: CompanyDetails;
   logoBase64?: string; // Base64 encoded logo image
+  paymentMethods?: PaymentMethods; // Payment options to display on invoices
 };
 
 /**
@@ -414,7 +415,7 @@ export async function generateAndSharePDF(
  * Generate HTML for the invoice PDF
  */
 function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
-  const { includeBranding, companyDetails, logoBase64 } = options;
+  const { includeBranding, companyDetails, logoBase64, paymentMethods } = options;
 
   // Calculate totals
   const materialsFromItems = invoice.items?.reduce(
@@ -524,6 +525,49 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
       <div class="section-title">Notes</div>
       <div style="padding: 16px; background: #f9f9f9; border-radius: 6px; color: #333; line-height: 1.6;">
         ${invoice.notes.replace(/\n/g, '<br>')}
+      </div>
+    </div>
+  ` : '';
+
+  // Payment methods section - only for Premium users with configured methods
+  const paymentMethodsLabels: Record<string, { label: string; icon: string }> = {
+    zelle: { label: 'Zelle', icon: '💵' },
+    venmo: { label: 'Venmo', icon: '📱' },
+    cashApp: { label: 'Cash App', icon: '💲' },
+    paypal: { label: 'PayPal', icon: '🅿️' },
+    check: { label: 'Check', icon: '📝' },
+    wire: { label: 'Wire/ACH', icon: '🏦' },
+    other: { label: 'Other', icon: '📋' },
+  };
+
+  const enabledPaymentMethods = paymentMethods
+    ? Object.entries(paymentMethods)
+        .filter(([_, method]) => method.enabled && method.value)
+        .map(([key, method]) => ({
+          key,
+          ...paymentMethodsLabels[key],
+          value: method.value,
+        }))
+    : [];
+
+  const paymentMethodsSection = enabledPaymentMethods.length > 0 ? `
+    <div class="section" style="margin-top: 24px;">
+      <div class="section-title" style="color: #22C55E;">Payment Options</div>
+      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 16px;">
+        <div style="margin-bottom: 8px; font-size: 13px; color: #166534;">
+          Please include invoice number <strong>${invoice.invoiceNumber}</strong> with your payment.
+        </div>
+        <div style="display: grid; gap: 12px;">
+          ${enabledPaymentMethods.map(method => `
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+              <span style="font-size: 18px;">${method.icon}</span>
+              <div>
+                <div style="font-weight: 600; color: #166534; font-size: 14px;">${method.label}</div>
+                <div style="color: #333; font-size: 13px; white-space: pre-line;">${method.value}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
       </div>
     </div>
   ` : '';
@@ -772,6 +816,8 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
       </div>
 
       ${notesSection}
+
+      ${paymentMethodsSection}
 
       ${brandingFooter}
       </div>
@@ -1228,6 +1274,276 @@ export async function generateAndShareMultiTierPDF(
     console.error('Error generating multi-tier PDF:', error);
     trackEvent(AnalyticsEvents.ERROR_OCCURRED, {
       context: 'multi_tier_pdf_generation',
+      error: String(error),
+    });
+    throw error;
+  }
+}
+
+/**
+ * Generate HTML for a change order PDF
+ */
+function generateChangeOrderHTML(
+  changeOrder: ChangeOrder,
+  quote: Quote,
+  options: PDFOptions
+): string {
+  const { includeBranding, companyDetails, logoBase64 } = options;
+
+  const dateString = new Date(changeOrder.createdAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const formatMoney = (amount: number) => {
+    const prefix = amount > 0 ? '+' : '';
+    return `${prefix}$${Math.abs(amount).toFixed(2)}`;
+  };
+
+  // Group items by type
+  const addedItems = changeOrder.items.filter(i => i.qtyBefore === 0);
+  const removedItems = changeOrder.items.filter(i => i.qtyAfter === 0);
+  const modifiedItems = changeOrder.items.filter(i => i.qtyBefore > 0 && i.qtyAfter > 0);
+
+  // Generate items HTML
+  const generateItemsTable = (items: typeof changeOrder.items, label: string, color: string) => {
+    if (items.length === 0) return '';
+    return `
+      <div style="margin-bottom: 24px;">
+        <div style="font-size: 14px; font-weight: 700; color: ${color}; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">
+          ${label}
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: #f5f5f5;">
+              <th style="padding: 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #ddd;">Item</th>
+              <th style="padding: 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #ddd;">Qty Change</th>
+              <th style="padding: 10px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd;">Unit Price</th>
+              <th style="padding: 10px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(item => `
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">
+                  ${item.qtyBefore} → ${item.qtyAfter} ${item.unit}
+                </td>
+                <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">$${item.unitPrice.toFixed(2)}</td>
+                <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee; font-weight: 600; color: ${item.lineDelta >= 0 ? '#22C55E' : '#EF4444'};">
+                  ${formatMoney(item.lineDelta)}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  // Company header
+  const companyHeader = companyDetails ? `
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
+      ${logoBase64 ? `
+        <div style="flex-shrink: 0;">
+          <img src="data:image/png;base64,${logoBase64}" style="max-width: 80px; max-height: 60px; object-fit: contain;" />
+        </div>
+      ` : ''}
+      <div style="flex: 1;">
+        ${companyDetails?.companyName ? `<div style="font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #000;">${companyDetails.companyName}</div>` : ''}
+        ${companyDetails?.email ? `<div style="font-size: 12px; color: #666;">${companyDetails.email}</div>` : ''}
+        ${companyDetails?.phone ? `<div style="font-size: 12px; color: #666;">${companyDetails.phone}</div>` : ''}
+      </div>
+    </div>
+  ` : '';
+
+  // Branding for free tier
+  const brandingFooter = includeBranding ? `
+    <div style="margin-top: 32px; padding: 16px; border-top: 3px solid #FF8C00; text-align: center; background: #FFF9F0;">
+      <div style="font-size: 14px; color: #FF8C00; margin-bottom: 6px; font-weight: 800;">
+        Powered by QuoteCat
+      </div>
+      <div style="font-size: 12px; color: #666;">
+        Create professional quotes in seconds • https://www.quotecat.ai
+      </div>
+    </div>
+  ` : '';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          margin: 0;
+          padding: 32px;
+          color: #333;
+          line-height: 1.5;
+        }
+        @media print {
+          body { padding: 20px; }
+        }
+      </style>
+    </head>
+    <body>
+      ${companyHeader}
+
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid #FF8C00;">
+        <div>
+          <h1 style="margin: 0 0 8px 0; font-size: 28px; font-weight: 800; color: #000;">
+            Change Order #${changeOrder.number}
+          </h1>
+          <div style="font-size: 14px; color: #666; margin-bottom: 4px;">
+            For: ${quote.name || 'Untitled Quote'}
+          </div>
+          ${quote.clientName ? `<div style="font-size: 14px; color: #666;">Client: ${quote.clientName}</div>` : ''}
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 14px; color: #666;">${dateString}</div>
+          <div style="margin-top: 8px; padding: 6px 12px; background: ${changeOrder.status === 'approved' ? '#22C55E' : changeOrder.status === 'cancelled' ? '#EF4444' : '#F59E0B'}20; color: ${changeOrder.status === 'approved' ? '#22C55E' : changeOrder.status === 'cancelled' ? '#EF4444' : '#F59E0B'}; border-radius: 4px; font-weight: 600; text-transform: uppercase; font-size: 12px;">
+            ${changeOrder.status}
+          </div>
+        </div>
+      </div>
+
+      ${changeOrder.note ? `
+        <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 8px;">
+          <div style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Reason for Change</div>
+          <div style="font-size: 14px; color: #333;">${changeOrder.note}</div>
+        </div>
+      ` : ''}
+
+      ${generateItemsTable(addedItems, 'Items Added', '#22C55E')}
+      ${generateItemsTable(removedItems, 'Items Removed', '#EF4444')}
+      ${generateItemsTable(modifiedItems, 'Items Modified', '#F59E0B')}
+
+      ${changeOrder.laborDelta !== 0 ? `
+        <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 14px; font-weight: 600; color: #333;">Labor Adjustment</div>
+            <div style="font-size: 12px; color: #666;">$${changeOrder.laborBefore.toFixed(2)} → $${changeOrder.laborAfter.toFixed(2)}</div>
+          </div>
+          <div style="font-size: 18px; font-weight: 700; color: ${changeOrder.laborDelta >= 0 ? '#22C55E' : '#EF4444'};">
+            ${formatMoney(changeOrder.laborDelta)}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Summary -->
+      <div style="background: #1a1a1a; color: white; padding: 24px; border-radius: 8px; margin-top: 32px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #999;">Original Quote Total</span>
+          <span>$${changeOrder.quoteTotalBefore.toFixed(2)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #333;">
+          <span style="color: #999;">Change Amount</span>
+          <span style="color: ${changeOrder.netChange >= 0 ? '#22C55E' : '#EF4444'}; font-weight: 600;">
+            ${formatMoney(changeOrder.netChange)}
+          </span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 18px; font-weight: 700;">New Quote Total</span>
+          <span style="font-size: 24px; font-weight: 800; color: #FF8C00;">
+            $${changeOrder.quoteTotalAfter.toFixed(2)}
+          </span>
+        </div>
+      </div>
+
+      <!-- Signature Lines -->
+      <div style="margin-top: 48px; display: flex; gap: 32px;">
+        <div style="flex: 1;">
+          <div style="border-bottom: 1px solid #999; height: 40px;"></div>
+          <div style="font-size: 12px; color: #666; margin-top: 8px;">Contractor Signature / Date</div>
+        </div>
+        <div style="flex: 1;">
+          <div style="border-bottom: 1px solid #999; height: 40px;"></div>
+          <div style="font-size: 12px; color: #666; margin-top: 8px;">Client Signature / Date</div>
+        </div>
+      </div>
+
+      ${brandingFooter}
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate and share a change order PDF
+ */
+export async function generateAndShareChangeOrderPDF(
+  changeOrder: ChangeOrder,
+  quote: Quote,
+  options: PDFOptions
+): Promise<void> {
+  try {
+    // Generate HTML
+    const html = generateChangeOrderHTML(changeOrder, quote, options);
+
+    // Generate PDF
+    const { uri } = await Print.printToFileAsync({ html });
+
+    // Track generation
+    trackEvent(AnalyticsEvents.PDF_GENERATED, {
+      type: 'change_order',
+      coNumber: changeOrder.number,
+      netChange: changeOrder.netChange,
+      includedBranding: options.includeBranding,
+    });
+
+    // Create descriptive filename
+    const sanitize = (str: string) => str.replace(/[^a-z0-9_\-\s]/gi, '_');
+    const projectPart = sanitize(quote.name || 'Quote');
+    const clientPart = quote.clientName ? ` - ${sanitize(quote.clientName)}` : '';
+    const coPart = `CO${changeOrder.number}`;
+    const now = new Date();
+    const datePart = now.toISOString().split('T')[0];
+    const fileName = `${projectPart}${clientPart} - ${coPart} - ${datePart}.pdf`;
+
+    // Rename and share
+    const renamedPath = `${FileSystem.cacheDirectory}${fileName}`;
+    await FileSystem.copyAsync({ from: uri, to: renamedPath });
+
+    let shareUri = renamedPath;
+    if (Platform.OS === 'android') {
+      const persistentPath = `${FileSystem.documentDirectory}${fileName}`;
+      await FileSystem.copyAsync({ from: renamedPath, to: persistentPath });
+      shareUri = persistentPath;
+    }
+
+    if (await Sharing.isAvailableAsync()) {
+      try {
+        await Sharing.shareAsync(shareUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: fileName,
+          UTI: 'com.adobe.pdf',
+        });
+
+        trackEvent(AnalyticsEvents.PDF_SHARED, {
+          type: 'change_order',
+          coNumber: changeOrder.number,
+        });
+      } finally {
+        try {
+          await FileSystem.deleteAsync(uri, { idempotent: true });
+          await FileSystem.deleteAsync(renamedPath, { idempotent: true });
+          if (Platform.OS === 'android') {
+            await FileSystem.deleteAsync(shareUri, { idempotent: true });
+          }
+        } catch (cleanupError) {
+          console.warn('Failed to clean up PDF files:', cleanupError);
+        }
+      }
+    } else {
+      throw new Error('Sharing is not available on this device');
+    }
+  } catch (error) {
+    console.error('Error generating change order PDF:', error);
+    trackEvent(AnalyticsEvents.ERROR_OCCURRED, {
+      context: 'change_order_pdf_generation',
       error: String(error),
     });
     throw error;

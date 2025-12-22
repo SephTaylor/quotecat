@@ -91,6 +91,7 @@ export type QuoteItem = {
  */
 export type Quote = {
   id: ID;
+  quoteNumber?: string; // Sequential number like "Q-001" - assigned on creation
   name: string;
   clientName?: string;
   clientEmail?: string; // Client email for sending quotes/invoices
@@ -287,7 +288,8 @@ export type ChangeOrderItem = {
 export type ChangeOrder = {
   id: ID;
   quoteId: ID;
-  number: number; // CO #1, #2, #3
+  quoteNumber?: string; // Quote's number for display (e.g., "Q-001")
+  number: number; // CO #1, #2, #3 within this quote
 
   // The diff
   items: ChangeOrderItem[];

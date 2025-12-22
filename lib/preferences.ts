@@ -37,6 +37,11 @@ export type ContractSettings = {
   nextNumber: number; // Next contract number to use
 };
 
+export type QuoteSettings = {
+  prefix: string; // e.g., "Q", "QT", "EST", etc.
+  nextNumber: number; // Next quote number to use
+};
+
 export type NotificationPreferences = {
   invoiceOverdue: boolean; // Notify when invoice becomes overdue
   invoiceDueSoon: boolean; // Notify 3 days before due date
@@ -52,16 +57,31 @@ export type PricingSettings = {
   defaultMarkupPercent: number; // Default markup % for new quotes
 };
 
+export type PaymentMethod = {
+  enabled: boolean;
+  value: string; // The actual payment info (email, username, address, etc.)
+};
+
+export type PaymentMethods = {
+  zelle: PaymentMethod; // Phone or email
+  venmo: PaymentMethod; // @username
+  cashApp: PaymentMethod; // $cashtag
+  paypal: PaymentMethod; // Email
+  check: PaymentMethod; // "Make payable to..." and mailing address
+  wire: PaymentMethod; // Bank name, routing, account (for larger jobs)
+  other: PaymentMethod; // Custom instructions
+};
+
 export type UserPreferences = {
   dashboard: DashboardPreferences;
   privacy: PrivacyPreferences;
   company: CompanyDetails;
   invoice: InvoiceSettings;
   contract: ContractSettings;
+  quote: QuoteSettings;
   notifications: NotificationPreferences;
   pricing: PricingSettings;
-  // Add more preference categories as needed
-  // appearance: AppearancePreferences;
+  paymentMethods: PaymentMethods;
 };
 
 const PREFERENCES_KEY = "@quotecat/preferences";
@@ -100,6 +120,10 @@ export function getDefaultPreferences(): UserPreferences {
       prefix: "CTR",
       nextNumber: 1,
     },
+    quote: {
+      prefix: "Q",
+      nextNumber: 1,
+    },
     notifications: {
       invoiceOverdue: false,
       invoiceDueSoon: false,
@@ -111,6 +135,15 @@ export function getDefaultPreferences(): UserPreferences {
       zipCode: "",
       defaultTaxPercent: 0,
       defaultMarkupPercent: 0,
+    },
+    paymentMethods: {
+      zelle: { enabled: false, value: "" },
+      venmo: { enabled: false, value: "" },
+      cashApp: { enabled: false, value: "" },
+      paypal: { enabled: false, value: "" },
+      check: { enabled: false, value: "" },
+      wire: { enabled: false, value: "" },
+      other: { enabled: false, value: "" },
     },
   };
 }
@@ -162,6 +195,10 @@ export async function loadPreferences(): Promise<UserPreferences> {
       pricing: {
         ...getDefaultPreferences().pricing,
         ...stored.pricing,
+      },
+      paymentMethods: {
+        ...getDefaultPreferences().paymentMethods,
+        ...stored.paymentMethods,
       },
     };
 
@@ -263,6 +300,24 @@ export async function updateContractSettings(
 }
 
 /**
+ * Update quote settings (prefix, next number)
+ */
+export async function updateQuoteSettings(
+  updates: Partial<QuoteSettings>,
+): Promise<UserPreferences> {
+  const prefs = await loadPreferences();
+  const updated: UserPreferences = {
+    ...prefs,
+    quote: {
+      ...prefs.quote,
+      ...updates,
+    },
+  };
+  await savePreferences(updated);
+  return updated;
+}
+
+/**
  * Update notification preferences
  */
 export async function updateNotificationPreferences(
@@ -291,6 +346,24 @@ export async function updatePricingSettings(
     ...prefs,
     pricing: {
       ...prefs.pricing,
+      ...updates,
+    },
+  };
+  await savePreferences(updated);
+  return updated;
+}
+
+/**
+ * Update payment methods
+ */
+export async function updatePaymentMethods(
+  updates: Partial<PaymentMethods>,
+): Promise<UserPreferences> {
+  const prefs = await loadPreferences();
+  const updated: UserPreferences = {
+    ...prefs,
+    paymentMethods: {
+      ...prefs.paymentMethods,
       ...updates,
     },
   };

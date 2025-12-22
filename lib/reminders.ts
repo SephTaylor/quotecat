@@ -213,8 +213,8 @@ export async function getActiveReminders(
 
   // Invoice reminders
   for (const invoice of invoices) {
-    // Skip paid or cancelled invoices
-    if (invoice.status === "paid" || invoice.status === "cancelled") continue;
+    // Skip paid invoices
+    if (invoice.status === "paid") continue;
 
     const daysLeft = daysUntil(invoice.dueDate);
     let shouldRemind = false;

@@ -3,7 +3,7 @@ export type ThemeMode = "light" | "dark";
 
 export type ColorScheme = {
   bg: string;
-  bgGradient: string[]; // [start, end] colors for gradient
+  bgGradient: readonly [string, string]; // [start, end] colors for gradient
   text: string;
   accent: string;
   muted: string;
@@ -14,7 +14,7 @@ export type ColorScheme = {
 
 const lightColors: ColorScheme = {
   bg: "#f7f7f7",
-  bgGradient: ["#d5d5d5", "#ffffff"], // More noticeable light gray to white
+  bgGradient: ["#d5d5d5", "#ffffff"] as const, // More noticeable light gray to white
   text: "#111111",
   accent: "#F97316", // Construction orange
   muted: "#666666",
@@ -25,7 +25,7 @@ const lightColors: ColorScheme = {
 
 const darkColors: ColorScheme = {
   bg: "#0a0a0a",
-  bgGradient: ["#000000", "#3a3a3a"], // More noticeable black to darker gray
+  bgGradient: ["#000000", "#3a3a3a"] as const, // More noticeable black to darker gray
   text: "#f5f5f5",
   accent: "#F97316", // Construction orange (same in both modes)
   muted: "#a0a0a0",

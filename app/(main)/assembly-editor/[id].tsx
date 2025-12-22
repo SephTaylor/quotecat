@@ -108,8 +108,8 @@ export default function AssemblyEditorScreen() {
       // Get existing assembly items
       const existingItems = assembly.items || [];
 
-      // Convert newly selected products to assembly items
-      const newlySelectedItems: AssemblyItem[] = Array.from(currentSelection.entries()).map(
+      // Convert newly selected products to assembly items (all have fixed qty)
+      const newlySelectedItems = Array.from(currentSelection.entries()).map(
         ([productId, { qty }]) => ({
           productId,
           qty,

@@ -1,7 +1,7 @@
 // modules/quotes/useQuoteForm.ts
 // Hook for managing quote form state, calculations, and persistence
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Alert } from "react-native";
 import {
   getQuoteById,
@@ -13,6 +13,9 @@ import type { Quote } from "@/lib/types";
 import { loadPreferences } from "@/lib/preferences";
 import { parseMoney } from "@/modules/settings/money";
 import type { QuoteStatus, QuoteItem } from "@/lib/types";
+import { createSnapshot, calculateDiff, type QuoteSnapshot } from "@/modules/changeOrders";
+import { getUserState } from "@/lib/user";
+import { canAccessChangeOrders } from "@/lib/features";
 
 export type QuoteFormState = {
   name: string;
@@ -67,6 +70,10 @@ export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
   const [tier, setTier] = useState("");
   const [isNewQuote, setIsNewQuote] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Change order detection
+  const originalSnapshotRef = useRef<QuoteSnapshot | null>(null);
+  const [shouldTrackChanges, setShouldTrackChanges] = useState(false);
 
   // Calculate totals
   const calculations = useMemo<QuoteCalculations>(() => {
@@ -142,6 +149,20 @@ export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
           q.taxPercent && q.taxPercent !== 0 ? q.taxPercent.toString() : ""
         );
       }
+
+      // For approved/completed quotes, take a snapshot for change order detection (Premium only)
+      const isAccepted = q.status === "approved" || q.status === "completed";
+      const userState = await getUserState();
+      const hasCOAccess = canAccessChangeOrders(userState);
+
+      if (isAccepted && !isNew && hasCOAccess) {
+        originalSnapshotRef.current = createSnapshot(q);
+        setShouldTrackChanges(true);
+      } else {
+        originalSnapshotRef.current = null;
+        setShouldTrackChanges(false);
+      }
+
       setIsLoaded(true);
     }
   }, [quoteId]);
@@ -273,6 +294,32 @@ export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
     }
   }, [quoteId, getFormData]);
 
+  // Check for material changes (for change order detection)
+  const checkForChanges = useCallback(() => {
+    if (!shouldTrackChanges || !originalSnapshotRef.current || !quote) {
+      return null;
+    }
+
+    // Build current quote state
+    const currentQuote: Quote = {
+      ...quote,
+      ...getFormData(),
+    };
+
+    const diff = calculateDiff(originalSnapshotRef.current, currentQuote);
+    return diff.hasMaterialChanges ? diff : null;
+  }, [shouldTrackChanges, quote, getFormData]);
+
+  // Reset snapshot after CO is created
+  const resetSnapshot = useCallback(() => {
+    if (quote) {
+      originalSnapshotRef.current = createSnapshot({
+        ...quote,
+        ...getFormData(),
+      } as Quote);
+    }
+  }, [quote, getFormData]);
+
   // Input formatters
   const formatLaborInput = (text: string): string => {
     const cleaned = text.replace(/[^0-9.]/g, "");
@@ -363,6 +410,11 @@ export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
     updateItems,
     ensureQuoteExists,
     getFormData,
+
+    // Change order detection
+    shouldTrackChanges,
+    checkForChanges,
+    resetSnapshot,
 
     // Formatters
     formatLaborInput,

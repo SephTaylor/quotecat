@@ -2,9 +2,9 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { type Product, SUPPLIER_NAMES } from "@/modules/catalog/seed";
 import React, { useState, useRef, useCallback, memo, useMemo } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View, ScrollView, RefreshControl, Keyboard, TouchableOpacity } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View, ScrollView, RefreshControlProps, Keyboard, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { FlashList } from "@shopify/flash-list";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import type { Selection } from "./types";
 
 export type Category = { id: string; name: string };
@@ -18,7 +18,7 @@ export type MaterialsPickerProps = {
   recentProductIds?: string[];
   lastSync?: Date | null;
   syncing?: boolean;
-  refreshControl?: React.ReactElement<typeof RefreshControl>;
+  refreshControl?: React.ReactElement<RefreshControlProps>;
   onFilterPress?: () => void;
   activeFilterCount?: number;
 };
@@ -127,7 +127,7 @@ function MaterialsPicker({
 }: MaterialsPickerProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const listRef = useRef<FlashList<ListItem>>(null);
+  const listRef = useRef<FlashListRef<ListItem>>(null);
 
   // Selected category state
   const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
@@ -380,21 +380,12 @@ function MaterialsPicker({
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
-        estimatedItemSize={56}
         ListHeaderComponent={renderRecentProducts}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={handleScrollBeginDrag}
         refreshControl={refreshControl}
-        // Performance optimizations
         drawDistance={250}
-        overrideItemLayout={(layout, item) => {
-          if (item.type === "header") {
-            layout.size = 44;
-          } else {
-            layout.size = 56;
-          }
-        }}
       />
     </Pressable>
   );

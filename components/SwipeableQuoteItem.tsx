@@ -17,33 +17,54 @@ type SwipeableQuoteItemProps = {
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate?: () => void;
-  onTogglePin?: () => void;
   onLongPress?: () => void;
   onCreateTier?: () => void;
   onExportAllTiers?: () => void;
   onUnlink?: () => void;
+  /** Number of change orders for this quote */
+  changeOrderCount?: number;
 };
 
 export const SwipeableQuoteItem = React.memo(
-  ({ item, onEdit, onDelete, onDuplicate, onTogglePin, onLongPress, onCreateTier, onExportAllTiers, onUnlink }: SwipeableQuoteItemProps) => {
+  ({ item, onEdit, onDelete, onDuplicate, onLongPress, onCreateTier, onExportAllTiers, onUnlink, changeOrderCount }: SwipeableQuoteItemProps) => {
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     const [isExporting, setIsExporting] = useState(false);
     const total = calculateQuoteTotal(item);
     const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-    const handlePinToggle = () => {
-      if (onTogglePin) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onTogglePin();
+    const handleExport = () => {
+      const hasLinkedQuotes = item.linkedQuoteIds && item.linkedQuoteIds.length > 0;
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      swipeableRef.current?.close();
+
+      if (hasLinkedQuotes && onExportAllTiers) {
+        // Show action sheet for linked quotes
+        Alert.alert(
+          "Export Options",
+          "What would you like to export?",
+          [
+            {
+              text: "This Option Only",
+              onPress: () => exportSinglePDF(),
+            },
+            {
+              text: "All Options",
+              onPress: () => onExportAllTiers(),
+            },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
+      } else {
+        // No linked quotes, export directly
+        exportSinglePDF();
       }
     };
 
-    const handleExportPDF = async () => {
+    const exportSinglePDF = async () => {
       try {
         setIsExporting(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        swipeableRef.current?.close();
 
         // Load user state, preferences, and logo
         const [userState, prefs] = await Promise.all([
@@ -82,22 +103,49 @@ export const SwipeableQuoteItem = React.memo(
       progress: Animated.AnimatedInterpolation<number>,
       dragX: Animated.AnimatedInterpolation<number>,
     ) => {
+      const actionCount = 1 + (onDuplicate ? 1 : 0);
+      const totalWidth = actionCount * 100;
+
       const translateX = dragX.interpolate({
-        inputRange: [-100, 0],
-        outputRange: [0, 100],
+        inputRange: [-totalWidth, 0],
+        outputRange: [0, totalWidth],
         extrapolate: "clamp",
       });
 
       const handleDelete = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         swipeableRef.current?.close();
-        onDelete();
+        Alert.alert(
+          "Delete Quote",
+          `Are you sure you want to delete "${item.name || "Untitled"}"?`,
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Delete",
+              style: "destructive",
+              onPress: onDelete,
+            },
+          ]
+        );
+      };
+
+      const handleDuplicate = () => {
+        if (onDuplicate) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          swipeableRef.current?.close();
+          onDuplicate();
+        }
       };
 
       return (
         <Animated.View
           style={[styles.actionsContainer, { transform: [{ translateX }] }]}
         >
+          {onDuplicate && (
+            <Pressable style={styles.duplicateButton} onPress={handleDuplicate}>
+              <Text style={styles.actionText}>Duplicate</Text>
+            </Pressable>
+          )}
           <Pressable style={styles.deleteButton} onPress={handleDelete}>
             <Text style={styles.actionText}>Delete</Text>
           </Pressable>
@@ -111,7 +159,7 @@ export const SwipeableQuoteItem = React.memo(
     ) => {
       // Calculate width based on available actions
       const hasLinkedQuotes = item.linkedQuoteIds && item.linkedQuoteIds.length > 0;
-      const actionCount = 1 + (onDuplicate ? 1 : 0) + (onCreateTier ? 1 : 0) + (hasLinkedQuotes && onExportAllTiers ? 1 : 0) + (hasLinkedQuotes && onUnlink ? 1 : 0);
+      const actionCount = 1 + (onCreateTier ? 1 : 0) + (hasLinkedQuotes && onUnlink ? 1 : 0);
       const totalWidth = actionCount * 100;
 
       const translateX = dragX.interpolate({
@@ -120,27 +168,11 @@ export const SwipeableQuoteItem = React.memo(
         extrapolate: "clamp",
       });
 
-      const handleDuplicate = () => {
-        if (onDuplicate) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          swipeableRef.current?.close();
-          onDuplicate();
-        }
-      };
-
       const handleCreateTier = () => {
         if (onCreateTier) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           swipeableRef.current?.close();
           onCreateTier();
-        }
-      };
-
-      const handleExportAllTiers = () => {
-        if (onExportAllTiers) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          swipeableRef.current?.close();
-          onExportAllTiers();
         }
       };
 
@@ -158,25 +190,15 @@ export const SwipeableQuoteItem = React.memo(
         >
           <Pressable
             style={styles.exportButton}
-            onPress={handleExportPDF}
+            onPress={handleExport}
             disabled={isExporting}
           >
             {isExporting ? (
               <ActivityIndicator size="small" color="#FFF" />
             ) : (
-              <Text style={styles.actionText}>Export PDF</Text>
+              <Text style={styles.actionText}>Export</Text>
             )}
           </Pressable>
-          {hasLinkedQuotes && onExportAllTiers && (
-            <Pressable style={styles.exportAllButton} onPress={handleExportAllTiers}>
-              <Text style={styles.actionText}>Export All</Text>
-            </Pressable>
-          )}
-          {onDuplicate && (
-            <Pressable style={styles.duplicateButton} onPress={handleDuplicate}>
-              <Text style={styles.actionText}>Duplicate</Text>
-            </Pressable>
-          )}
           {onCreateTier && (
             <Pressable style={styles.tierButton} onPress={handleCreateTier}>
               <Text style={styles.actionText}>Create Tier</Text>
@@ -199,6 +221,9 @@ export const SwipeableQuoteItem = React.memo(
         friction={2}
         overshootRight={false}
         overshootLeft={false}
+        leftThreshold={40}
+        rightThreshold={40}
+        overshootFriction={8}
       >
         <Pressable
           style={styles.card}
@@ -209,69 +234,56 @@ export const SwipeableQuoteItem = React.memo(
           accessibilityRole="button"
           accessibilityHint="Double tap to edit. Long press to select. Swipe left for export PDF and duplicate. Swipe right to delete."
         >
-          <View style={styles.header}>
-            <View style={styles.titleRow}>
-              <Text style={styles.title}>{item.name || "Untitled project"}</Text>
+          {/* Line 1: Title + Tier + Total */}
+          <View style={styles.row1}>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title} numberOfLines={1}>{item.name || "Untitled project"}</Text>
               {item.tier && (
-                <View style={styles.tierBadge}>
-                  <Text style={styles.tierText}>{item.tier}</Text>
-                </View>
-              )}
-              {item.linkedQuoteIds && item.linkedQuoteIds.length > 0 && (
-                <View style={styles.linkedBadge}>
-                  <Text style={styles.linkedText}>
-                    {item.linkedQuoteIds.length + 1} Options
-                  </Text>
-                </View>
+                <Text style={styles.tierLabel}>{item.tier}</Text>
               )}
             </View>
-            {onTogglePin && (
-              <Pressable
-                style={styles.pinButton}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handlePinToggle();
-                }}
-              >
-                <Text style={styles.pinIcon}>{item.pinned ? "⭐" : "☆"}</Text>
-              </Pressable>
-            )}
+            <Text style={styles.total}>${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
           </View>
-          <View style={styles.metaRow}>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: QuoteStatusMeta[item.status || "draft"].color },
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {QuoteStatusMeta[item.status || "draft"].label}
-              </Text>
-            </View>
-            {item.followUpDate && (
+
+          {/* Line 2: Status + Client + Indicators */}
+          <View style={styles.row2}>
+            <View style={styles.row2Left}>
               <View
                 style={[
                   styles.statusBadge,
-                  {
-                    backgroundColor: new Date(item.followUpDate) <= new Date()
-                      ? "#FF3B30" // Red if due/overdue
-                      : "#FF8C00" // Orange if upcoming
-                  },
+                  { backgroundColor: QuoteStatusMeta[item.status || "draft"].color },
                 ]}
               >
                 <Text style={styles.statusText}>
-                  Follow-up {new Date(item.followUpDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  {QuoteStatusMeta[item.status || "draft"].label}
                 </Text>
               </View>
-            )}
-            <Text style={styles.sub}>
-              {item.clientName ? `Client: ${item.clientName}  •  ` : ""}
-              Labor: {item.labor.toFixed(2)}
-            </Text>
+              {item.clientName && (
+                <Text style={styles.clientName} numberOfLines={1}>{item.clientName}</Text>
+              )}
+            </View>
+            <View style={styles.row2Right}>
+              {item.followUpDate && (
+                <Text
+                  style={[
+                    styles.indicator,
+                    {
+                      color: new Date(item.followUpDate) <= new Date()
+                        ? "#FF3B30"
+                        : "#FF9500"
+                    },
+                  ]}
+                >
+                  {new Date(item.followUpDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </Text>
+              )}
+              {changeOrderCount !== undefined && changeOrderCount > 0 && (
+                <Text style={[styles.indicator, styles.coIndicator]}>
+                  {changeOrderCount} CO
+                </Text>
+              )}
+            </View>
           </View>
-          <Text style={styles.total}>
-            Total: {total.toFixed(2)} {item.currency}
-          </Text>
         </Pressable>
       </Swipeable>
     );
@@ -285,62 +297,60 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     card: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
-      padding: theme.spacing(1),
+      padding: theme.spacing(1.5),
       marginBottom: theme.spacing(1),
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
-    header: {
+    row1: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
       marginBottom: 6,
     },
-    titleRow: {
+    titleContainer: {
       flex: 1,
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing(1),
-      flexWrap: "wrap",
+      marginRight: theme.spacing(2),
     },
     title: {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
+      flexShrink: 1,
     },
-    tierBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 999,
-      backgroundColor: theme.colors.accent,
-      opacity: 0.9,
+    tierLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: theme.colors.muted,
     },
-    tierText: {
-      fontSize: 11,
+    total: {
+      fontSize: 16,
       fontWeight: "700",
-      color: "#000",
-      textTransform: "uppercase",
-      letterSpacing: 0.3,
-    },
-    pinButton: {
-      padding: 4,
-      marginLeft: 8,
-    },
-    pinIcon: {
-      fontSize: 20,
       color: theme.colors.accent,
     },
-    metaRow: {
+    row2: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    row2Left: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 8,
       gap: theme.spacing(1),
+      flex: 1,
+    },
+    row2Right: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1.5),
     },
     statusBadge: {
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 999,
-      alignSelf: "flex-start",
     },
     statusText: {
       fontSize: 10,
@@ -349,79 +359,67 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       textTransform: "uppercase",
       letterSpacing: 0.5,
     },
-    sub: {
-      fontSize: 12,
+    clientName: {
+      fontSize: 13,
       color: theme.colors.muted,
       flex: 1,
     },
-    total: {
-      fontSize: 14,
+    indicator: {
+      fontSize: 12,
       fontWeight: "600",
-      color: theme.colors.text,
+    },
+    coIndicator: {
+      color: "#8B5CF6",
     },
     actionsContainer: {
       flexDirection: "row",
       marginBottom: theme.spacing(1),
     },
-    deleteButton: {
-      backgroundColor: "#FF3B30",
+    actionButton: {
+      flex: 1,
       justifyContent: "center",
       alignItems: "center",
+      borderRadius: theme.radius.lg,
+    },
+    deleteButton: {
+      backgroundColor: "#FF3B30",
       width: 100,
+      justifyContent: "center",
+      alignItems: "center",
       borderRadius: theme.radius.lg,
     },
     exportButton: {
-      backgroundColor: "#34C759", // Green for export action
+      backgroundColor: "#34C759",
+      width: 100,
       justifyContent: "center",
       alignItems: "center",
-      width: 100,
-      borderRadius: theme.radius.lg,
-    },
-    exportAllButton: {
-      backgroundColor: "#007AFF", // Blue for export all tiers
-      justifyContent: "center",
-      alignItems: "center",
-      width: 100,
       borderRadius: theme.radius.lg,
     },
     duplicateButton: {
       backgroundColor: theme.colors.accent,
+      width: 100,
       justifyContent: "center",
       alignItems: "center",
-      width: 100,
       borderRadius: theme.radius.lg,
     },
     tierButton: {
-      backgroundColor: "#5856D6", // Purple for tier action
+      backgroundColor: "#5856D6",
+      width: 100,
       justifyContent: "center",
       alignItems: "center",
-      width: 100,
       borderRadius: theme.radius.lg,
     },
     unlinkButton: {
-      backgroundColor: "#FF9500", // Orange for unlink action
+      backgroundColor: "#FF9500",
+      width: 100,
       justifyContent: "center",
       alignItems: "center",
-      width: 100,
       borderRadius: theme.radius.lg,
     },
     actionText: {
       color: "#FFFFFF",
-      fontSize: 14,
+      fontSize: 12,
       fontWeight: "600",
-    },
-    linkedBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 999,
-      backgroundColor: "#5856D6", // Purple to match tier button
-      opacity: 0.9,
-    },
-    linkedText: {
-      fontSize: 11,
-      fontWeight: "700",
-      color: "#FFF",
-      letterSpacing: 0.3,
     },
   });
 }

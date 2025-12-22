@@ -1,5 +1,5 @@
 // app/(auth)/sign-in.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,12 +12,17 @@ import {
   ActivityIndicator,
   Linking,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier } from "@/lib/user";
-import { migrateLocalQuotesToCloud, hasMigrated } from "@/lib/quotesSync";
+import { migrateLocalQuotesToCloud, hasMigrated, syncQuotes } from "@/lib/quotesSync";
+import { migrateLocalInvoicesToCloud, hasInvoicesMigrated, syncInvoices } from "@/lib/invoicesSync";
+import { migrateLocalClientsToCloud, syncClients } from "@/lib/clientsSync";
+
+const LAST_EMAIL_KEY = "@quotecat/last-email";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -25,6 +30,13 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Load last used email on mount
+  useEffect(() => {
+    AsyncStorage.getItem(LAST_EMAIL_KEY).then((savedEmail) => {
+      if (savedEmail) setEmail(savedEmail);
+    });
+  }, []);
 
   const handleSignIn = async () => {
     if (!email.trim() || !password) {
@@ -49,6 +61,9 @@ export default function SignInScreen() {
           .eq("id", data.user.id)
           .single();
 
+        // Save email for next time
+        await AsyncStorage.setItem(LAST_EMAIL_KEY, email.trim());
+
         if (profileError) {
           console.error("Profile fetch error:", profileError);
           // Default to free if profile doesn't exist yet
@@ -63,38 +78,40 @@ export default function SignInScreen() {
             await activateProTier(profile.email);
           }
 
-          // Auto-migrate local data to cloud for Pro/Premium users
+          // Auto-migrate and sync data for Pro/Premium users
           if (isPaidTier) {
-            const migrated = await hasMigrated();
-            if (!migrated) {
+            const [quotesMigrated, invoicesMigrated] = await Promise.all([
+              hasMigrated(),
+              hasInvoicesMigrated(),
+            ]);
+
+            const needsMigration = !quotesMigrated || !invoicesMigrated;
+
+            if (needsMigration) {
               Alert.alert(
-                "Backing up your data",
-                "We're uploading your data to the cloud. This may take a moment...",
+                "Syncing your data",
+                "We're syncing your data with the cloud. This may take a moment...",
                 [{ text: "OK" }]
               );
 
-              const result = await migrateLocalQuotesToCloud();
-
-              if (result.success && result.uploaded > 0) {
-                Alert.alert(
-                  "Backup Complete",
-                  "Your data has been backed up to the cloud!",
-                  [{ text: "Great!" }]
-                );
-              } else if (result.success) {
-                Alert.alert("Success", "Signed in successfully");
-              } else {
-                Alert.alert(
-                  "Backup Warning",
-                  "Some data couldn't be backed up. Your local data is safe. You can try syncing again from Settings.",
-                  [{ text: "OK" }]
-                );
-              }
-            } else {
-              Alert.alert("Success", "Signed in successfully");
+              // Migrate any unmigrated data
+              await Promise.all([
+                !quotesMigrated ? migrateLocalQuotesToCloud() : Promise.resolve(),
+                !invoicesMigrated ? migrateLocalInvoicesToCloud() : Promise.resolve(),
+                migrateLocalClientsToCloud(),
+              ]);
             }
+
+            // Always sync to get latest cloud data
+            await Promise.all([
+              syncQuotes(),
+              syncInvoices(),
+              syncClients(),
+            ]);
+
+            Alert.alert("Success", "Signed in and synced successfully");
           } else {
-            // Free tier users don't need activation (already default)
+            // Free tier users don't need cloud sync
             Alert.alert("Success", "Signed in successfully");
           }
         }

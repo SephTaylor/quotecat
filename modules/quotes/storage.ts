@@ -14,6 +14,7 @@ import {
 import { cache, CacheKeys } from "@/lib/cache";
 import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import { incrementQuoteCount, decrementQuoteCount } from "@/lib/user";
+import { loadPreferences, updateQuoteSettings } from "@/lib/preferences";
 // Note: quotesSync is imported dynamically to avoid circular dependency
 
 /**
@@ -168,6 +169,20 @@ export async function getQuoteById(id: string): Promise<Quote | null> {
 }
 
 /**
+ * Generate next quote number using user preferences
+ * Format: PREFIX-### (e.g., Q-001, EST-042, etc.)
+ */
+async function generateQuoteNumber(): Promise<string> {
+  const prefs = await loadPreferences();
+  const { prefix, nextNumber } = prefs.quote;
+
+  // Increment the next number in preferences
+  await updateQuoteSettings({ nextNumber: nextNumber + 1 });
+
+  return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
+}
+
+/**
  * Create a new quote with default values
  */
 export async function createQuote(
@@ -175,8 +190,11 @@ export async function createQuote(
   clientName: string = "",
 ): Promise<Quote> {
   const nowIso = new Date().toISOString();
+  const quoteNumber = await generateQuoteNumber();
+
   const newQuote: Quote = {
     id: `quote_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    quoteNumber,
     name,
     clientName,
     items: [],
@@ -351,9 +369,11 @@ export async function duplicateQuote(id: string): Promise<Quote | null> {
 
     // Create a copy with new ID and updated name
     const now = new Date().toISOString();
+    const quoteNumber = await generateQuoteNumber();
     const copy: Quote = {
       ...original,
       id: `quote-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+      quoteNumber, // New quote number
       name: original.name ? `${original.name} (Copy)` : "Untitled (Copy)",
       status: "draft", // Reset to draft
       createdAt: now,
@@ -548,9 +568,11 @@ export async function createTierFromQuote(
 
     // Create a copy with new ID
     const now = new Date().toISOString();
+    const quoteNumber = await generateQuoteNumber();
     const newQuote: Quote = {
       ...original,
       id: `quote-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+      quoteNumber, // New quote number
       name: original.name, // Keep same job name
       tier: tierName, // Set the tier name
       status: "draft", // Reset to draft

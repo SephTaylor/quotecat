@@ -19,7 +19,8 @@ import { trackProductUsage } from "@/lib/analytics";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 
 export default function QuoteMaterials() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, coMode } = useLocalSearchParams<{ id?: string; coMode?: string }>();
+  const isCoMode = coMode === "true";
   const router = useRouter();
   const { theme } = useTheme();
 
@@ -155,6 +156,25 @@ export default function QuoteMaterials() {
         return;
       }
 
+      // Convert current selection to items (use getSelection for latest state)
+      const newlySelectedItems = transformSelectionToItems(getSelection());
+
+      // Track usage for analytics (privacy-friendly)
+      newlySelectedItems.forEach((item) => {
+        trackProductUsage(item.productId || item.id || "", item.qty);
+      });
+
+      // In CO mode, pass items back to edit screen without saving
+      if (isCoMode) {
+        console.log("CO mode: returning items to edit screen", newlySelectedItems);
+        // Navigate back with the new items encoded in params
+        router.replace({
+          pathname: `/quote/${id}/edit` as any,
+          params: { newItems: JSON.stringify(newlySelectedItems) },
+        });
+        return;
+      }
+
       try {
         const q = await getQuoteById(id);
         if (!q) {
@@ -165,16 +185,8 @@ export default function QuoteMaterials() {
 
         // Get current quote items
         const existingItems = q.items ?? [];
-
-        // Convert current selection to items (use getSelection for latest state)
-        const newlySelectedItems = transformSelectionToItems(getSelection());
         console.log("Newly selected items:", newlySelectedItems);
         console.log("Existing quote items:", existingItems);
-
-        // Track usage for analytics (privacy-friendly)
-        newlySelectedItems.forEach((item) => {
-          trackProductUsage(item.productId || item.id || "", item.qty);
-        });
 
         // Merge existing items with newly selected items (accumulate mode)
         const mergedItems = mergeById(existingItems, newlySelectedItems);
@@ -203,7 +215,7 @@ export default function QuoteMaterials() {
         Alert.alert("Error", "Failed to add materials. Please try again.");
       }
     },
-    [id, getSelection, router, clear],
+    [id, getSelection, router, clear, isCoMode],
   );
 
   // Calculate status text for header

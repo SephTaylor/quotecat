@@ -85,7 +85,7 @@ export default function BusinessSettings() {
             setUploadingLogo(true);
             await deleteLogo();
             setLogo(null);
-          } catch (error) {
+          } catch {
             Alert.alert("Error", "Failed to delete logo");
           } finally {
             setUploadingLogo(false);
@@ -237,6 +237,32 @@ export default function BusinessSettings() {
           </View>
         </Pressable>
 
+        {/* Payment Methods Section */}
+        <Pressable style={styles.section} onPress={Keyboard.dismiss}>
+          <Text style={styles.sectionTitle}>Payment Collection</Text>
+          <View style={styles.card}>
+            <Pressable
+              style={styles.row}
+              onPress={() => hasProAccess ? router.push("/(main)/payment-methods" as never) : handleLearnMore()}
+            >
+              <Text style={styles.rowLabel}>Payment Methods</Text>
+              {hasProAccess ? (
+                <View style={styles.rowRight}>
+                  <Text style={styles.rowValue} numberOfLines={1}>
+                    Add Zelle, Venmo, etc.
+                  </Text>
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
+                </View>
+              ) : (
+                <LockBadge theme={theme} />
+              )}
+            </Pressable>
+          </View>
+          <Text style={styles.sectionHint}>
+            Payment info will appear on your invoices
+          </Text>
+        </Pressable>
+
         {/* Pricing Section */}
         <Pressable style={styles.section} onPress={Keyboard.dismiss}>
           <Text style={styles.sectionTitle}>Pricing Defaults</Text>
@@ -340,6 +366,16 @@ function LockBadge({ theme }: { theme: ReturnType<typeof useTheme>["theme"] }) {
     <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: `${theme.colors.accent}20`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, gap: 4 }}>
       <Ionicons name="lock-closed" size={12} color={theme.colors.accent} />
       <Text style={{ fontSize: 11, fontWeight: "600", color: theme.colors.accent }}>Pro</Text>
+    </View>
+  );
+}
+
+// Premium Badge Component
+function PremiumBadge({ theme }: { theme: ReturnType<typeof useTheme>["theme"] }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#7C3AED20", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, gap: 4 }}>
+      <Ionicons name="star" size={12} color="#7C3AED" />
+      <Text style={{ fontSize: 11, fontWeight: "600", color: "#7C3AED" }}>Premium</Text>
     </View>
   );
 }
@@ -465,6 +501,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.colors.bg },
     section: { marginBottom: 20 },
     sectionTitle: { fontSize: 13, fontWeight: "600", color: theme.colors.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, marginLeft: 4 },
+    sectionHint: { fontSize: 12, color: theme.colors.muted, marginTop: 8, marginLeft: 4 },
     card: { backgroundColor: theme.colors.card, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 16, paddingVertical: 8 },
     row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10 },
     rowLabel: { fontSize: 15, color: theme.colors.text },

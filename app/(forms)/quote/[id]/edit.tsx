@@ -6,7 +6,7 @@ import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { getItemId } from "@/lib/validation";
-import type { QuoteStatus, QuoteItem } from "@/lib/types";
+import type { QuoteStatus, QuoteItem, ChangeOrder } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
 import { useQuoteForm } from "@/modules/quotes";
 import {
@@ -15,8 +15,8 @@ import {
   useLocalSearchParams,
   useRouter,
 } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
@@ -24,10 +24,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { HeaderIconButton } from "@/components/HeaderIconButton";
 import { Ionicons } from "@expo/vector-icons";
+import { ChangeOrderModal } from "@/modules/changeOrders/ui";
+import { createChangeOrder, getActiveChangeOrderCount } from "@/modules/changeOrders";
+import { mergeById } from "@/modules/quotes/merge";
 
 export default function EditQuote() {
   const { theme } = useTheme();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, newItems: newItemsParam } = useLocalSearchParams<{ id?: string; newItems?: string }>();
   const router = useRouter();
 
   // Use the extracted form hook
@@ -52,10 +55,14 @@ export default function EditQuote() {
   const [deletedItem, setDeletedItem] = useState<QuoteItem | null>(null);
   const [deletedItemIndex, setDeletedItemIndex] = useState<number>(-1);
 
+  // Change order count for visibility banner
+  const [coCount, setCoCount] = useState(0);
+
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   // Destructure commonly used values from form hook
   const {
+    quote,
     name, setName,
     clientName, setClientName,
     clientEmail, setClientEmail,
@@ -81,7 +88,17 @@ export default function EditQuote() {
     formatLaborInput,
     formatMoneyOnBlur,
     formatPhoneNumber,
+    // Change order detection
+    shouldTrackChanges,
+    checkForChanges,
+    resetSnapshot,
+    getFormData,
   } = form;
+
+  // Change order modal state
+  const [showCOModal, setShowCOModal] = useState(false);
+  const [pendingDiff, setPendingDiff] = useState<ReturnType<typeof checkForChanges>>(null);
+  const [pendingSaveAction, setPendingSaveAction] = useState<"save" | "goback" | null>(null);
 
   // Load Pro status and saved clients
   useEffect(() => {
@@ -119,8 +136,34 @@ export default function EditQuote() {
         }
       };
       checkNewClient();
-    }, [load, setClientName, setClientEmail, setClientPhone, setClientAddress, setIsNewQuote]),
+
+      // Load change order count for visibility banner
+      const loadCoCount = async () => {
+        if (id) {
+          const count = await getActiveChangeOrderCount(id);
+          setCoCount(count);
+        }
+      };
+      loadCoCount();
+    }, [load, setClientName, setClientEmail, setClientPhone, setClientAddress, setIsNewQuote, id]),
   );
+
+  // Handle new items from materials screen (CO mode)
+  useEffect(() => {
+    if (!newItemsParam) return;
+
+    try {
+      const newItems = JSON.parse(newItemsParam) as QuoteItem[];
+      if (newItems.length > 0) {
+        // Merge new items into current items
+        const merged = mergeById(items, newItems);
+        setItems(merged);
+        console.log("CO mode: merged", newItems.length, "new items into form state");
+      }
+    } catch (e) {
+      console.error("Failed to parse newItems from materials screen:", e);
+    }
+  }, [newItemsParam]); // Only run when newItemsParam changes
 
   // Filter saved clients based on current input (for autocomplete)
   const filteredClients = React.useMemo(() => {
@@ -157,6 +200,105 @@ export default function EditQuote() {
     setIsNewQuote(false);
   };
 
+  // Change order handlers
+  const handleSaveWithChangeDetection = useCallback(async () => {
+    if (shouldTrackChanges) {
+      const diff = checkForChanges();
+      if (diff) {
+        setPendingDiff(diff);
+        setPendingSaveAction("save");
+        setShowCOModal(true);
+        return;
+      }
+    }
+    // No changes or not tracking - just save normally
+    await handleSave();
+  }, [shouldTrackChanges, checkForChanges, handleSave]);
+
+  const handleGoBackWithChangeDetection = useCallback(async () => {
+    if (shouldTrackChanges) {
+      const diff = checkForChanges();
+      if (diff) {
+        setPendingDiff(diff);
+        setPendingSaveAction("goback");
+        setShowCOModal(true);
+        return;
+      }
+    }
+    // No changes or not tracking - just go back
+    await handleGoBack();
+  }, [shouldTrackChanges, checkForChanges, handleGoBack]);
+
+  const handleCreateChangeOrder = useCallback(async (reason: string) => {
+    if (!id || !quote || !pendingDiff) return;
+
+    const now = new Date().toISOString();
+    const co: ChangeOrder = {
+      id: `co_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      quoteId: id,
+      quoteNumber: quote.quoteNumber, // Include quote number for display
+      number: 0, // Will be set by createChangeOrder
+      note: reason || undefined,
+      items: pendingDiff.items,
+      laborBefore: pendingDiff.laborBefore,
+      laborAfter: pendingDiff.laborAfter,
+      laborDelta: pendingDiff.laborDelta,
+      netChange: pendingDiff.netChange,
+      quoteTotalBefore: pendingDiff.quoteTotalBefore,
+      quoteTotalAfter: pendingDiff.quoteTotalAfter,
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await createChangeOrder(co as ChangeOrder);
+
+    // DO NOT save the quote changes - they stay in the pending CO
+    // The quote will only be modified when the CO is approved
+
+    // Reload the form to restore original values
+    await load();
+
+    // Update CO count for banner
+    const newCount = await getActiveChangeOrderCount(id);
+    setCoCount(newCount);
+
+    setShowCOModal(false);
+    setPendingDiff(null);
+
+    Alert.alert(
+      "Change Order Created",
+      "A change order has been created. The quote will be updated when the CO is approved.",
+      [{ text: "OK" }]
+    );
+
+    if (pendingSaveAction === "goback") {
+      router.back();
+    }
+    setPendingSaveAction(null);
+  }, [id, quote, pendingDiff, load, pendingSaveAction, router]);
+
+  const handleSaveWithoutCO = useCallback(async () => {
+    if (!id) return;
+
+    await updateQuote(id, getFormData());
+    resetSnapshot();
+    setShowCOModal(false);
+    setPendingDiff(null);
+
+    Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
+
+    if (pendingSaveAction === "goback") {
+      router.back();
+    }
+    setPendingSaveAction(null);
+  }, [id, getFormData, resetSnapshot, pendingSaveAction, router]);
+
+  const handleCancelCOModal = useCallback(() => {
+    setShowCOModal(false);
+    setPendingDiff(null);
+    setPendingSaveAction(null);
+  }, []);
 
   const handleUpdateItemQty = async (itemId: string, delta: number) => {
     if (!id) return;
@@ -172,8 +314,11 @@ export default function EditQuote() {
 
     setItems(updatedItems);
 
-    // Save to storage
-    await updateQuote(id, { items: updatedItems });
+    // Only auto-save if NOT tracking changes (i.e., not approved/completed quote)
+    // For approved/completed quotes, changes are saved via CO flow
+    if (!shouldTrackChanges) {
+      await updateQuote(id, { items: updatedItems });
+    }
   };
 
   const handleStartEditingQty = (itemId: string, currentQty: number) => {
@@ -202,7 +347,10 @@ export default function EditQuote() {
         return item;
       });
       setItems(updatedItems);
-      await updateQuote(id, { items: updatedItems });
+      // Only auto-save if NOT tracking changes
+      if (!shouldTrackChanges) {
+        await updateQuote(id, { items: updatedItems });
+      }
     } else if (!isNaN(newQty) && newQty === 0) {
       // Only delete if explicitly set to 0
       const updatedItems = items.filter((item) => {
@@ -210,7 +358,10 @@ export default function EditQuote() {
         return currentId !== itemId;
       });
       setItems(updatedItems);
-      await updateQuote(id, { items: updatedItems });
+      // Only auto-save if NOT tracking changes
+      if (!shouldTrackChanges) {
+        await updateQuote(id, { items: updatedItems });
+      }
     }
     // If invalid/empty (isNaN), do nothing - keep original value
 
@@ -231,7 +382,10 @@ export default function EditQuote() {
 
     const updatedItems = items.filter((item) => getItemId(item) !== itemId);
     setItems(updatedItems);
-    await updateQuote(id, { items: updatedItems });
+    // Only auto-save if NOT tracking changes
+    if (!shouldTrackChanges) {
+      await updateQuote(id, { items: updatedItems });
+    }
 
     setShowUndoSnackbar(true);
   };
@@ -243,7 +397,10 @@ export default function EditQuote() {
     const restoredItems = [...items];
     restoredItems.splice(deletedItemIndex, 0, deletedItem);
     setItems(restoredItems);
-    await updateQuote(id, { items: restoredItems });
+    // Only auto-save if NOT tracking changes
+    if (!shouldTrackChanges) {
+      await updateQuote(id, { items: restoredItems });
+    }
 
     setDeletedItem(null);
     setDeletedItemIndex(-1);
@@ -264,7 +421,7 @@ export default function EditQuote() {
           headerShown: true,
           headerTitleAlign: 'center',
           headerTintColor: theme.colors.accent,
-          headerLeft: () => <HeaderBackButton onPress={handleGoBack} />,
+          headerLeft: () => <HeaderBackButton onPress={handleGoBackWithChangeDetection} />,
           headerRight: () => (
             <HeaderIconButton onPress={() => setPinned(!pinned)} icon={pinned ? "⭐" : "☆"} side="right" />
           ),
@@ -292,7 +449,7 @@ export default function EditQuote() {
           <View style={styles.bottomBarRow}>
             <Pressable
               style={styles.saveBtn}
-              onPress={handleSave}
+              onPress={handleSaveWithChangeDetection}
             >
               <Ionicons name="save-outline" size={20} color={theme.colors.accent} />
               <Text style={styles.saveBtnText}>Save</Text>
@@ -312,6 +469,27 @@ export default function EditQuote() {
           </View>
         }
       >
+        {/* Change Order Banner */}
+        {coCount > 0 && (
+          <Pressable
+            style={styles.coBanner}
+            onPress={() => router.push(`/quote/${id}/review`)}
+          >
+            <View style={styles.coBannerContent}>
+              <Ionicons name="document-text" size={20} color="#FFF" />
+              <View style={styles.coBannerText}>
+                <Text style={styles.coBannerTitle}>
+                  {coCount} Change Order{coCount !== 1 ? "s" : ""}
+                </Text>
+                <Text style={styles.coBannerSubtitle}>
+                  Tap to view in Review & Export
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#FFF" />
+          </Pressable>
+        )}
+
         <Text style={styles.label}>Status</Text>
         <View style={styles.statusChips}>
           {(Object.keys(QuoteStatusMeta) as QuoteStatus[]).map((s) => (
@@ -481,7 +659,11 @@ export default function EditQuote() {
             onPress={async () => {
               if (!id) return;
               await ensureQuoteExists();
-              router.push(`/quote/${id}/materials`);
+              // Pass coMode flag for approved/completed quotes
+              const url = shouldTrackChanges
+                ? `/quote/${id}/materials?coMode=true`
+                : `/quote/${id}/materials`;
+              router.push(url as any);
             }}
             style={({ pressed }) => ({
               flex: 1,
@@ -851,6 +1033,19 @@ export default function EditQuote() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Change Order Modal */}
+      {quote && pendingDiff && (
+        <ChangeOrderModal
+          visible={showCOModal}
+          quote={quote}
+          diff={pendingDiff}
+          theme={theme}
+          onConfirm={handleCreateChangeOrder}
+          onCancel={handleCancelCOModal}
+          onSaveWithoutCO={handleSaveWithoutCO}
+        />
+      )}
     </>
   );
 }
@@ -858,6 +1053,33 @@ export default function EditQuote() {
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     label: { fontSize: 12, color: theme.colors.text, marginBottom: 6, fontWeight: "600" },
+    // Change Order Banner
+    coBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: "#8B5CF6", // Purple to match CO badge
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(1.5),
+      marginBottom: theme.spacing(2),
+    },
+    coBannerContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1.5),
+    },
+    coBannerText: {
+      gap: 2,
+    },
+    coBannerTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#FFF",
+    },
+    coBannerSubtitle: {
+      fontSize: 12,
+      color: "rgba(255, 255, 255, 0.8)",
+    },
     labelRow: {
       flexDirection: "row",
       justifyContent: "space-between",

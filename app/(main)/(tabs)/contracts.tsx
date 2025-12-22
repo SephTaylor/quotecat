@@ -130,7 +130,7 @@ export default function ContractsScreen() {
           text: q.name || q.clientName || "Untitled",
           onPress: () => createFromQuote(q),
         }));
-        buttons.push({ text: "Cancel", onPress: () => {} });
+        buttons.push({ text: "Cancel", onPress: async () => {} });
 
         Alert.alert("Select a Quote", "Choose an approved quote to create a contract from", buttons);
       } else {

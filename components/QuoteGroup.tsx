@@ -19,11 +19,12 @@ type QuoteGroupProps = {
   onEdit: (quote: Quote) => void;
   onDelete: (quote: Quote) => void;
   onDuplicate: (quote: Quote) => void;
-  onTogglePin: (quote: Quote) => void;
   onLongPress: (quote: Quote) => void;
   onCreateTier: (quote: Quote) => void;
   onExportAllTiers: (quote: Quote) => void;
   onUnlink: (quote: Quote) => void;
+  /** CO counts per quote ID */
+  coCounts?: Record<string, number>;
 };
 
 export function QuoteGroup({
@@ -31,11 +32,11 @@ export function QuoteGroup({
   onEdit,
   onDelete,
   onDuplicate,
-  onTogglePin,
   onLongPress,
   onCreateTier,
   onExportAllTiers,
   onUnlink,
+  coCounts,
 }: QuoteGroupProps) {
   const { theme } = useTheme();
   const [expanded, setExpanded] = useState(false);
@@ -110,11 +111,11 @@ export function QuoteGroup({
                   onEdit={() => onEdit(quote)}
                   onDelete={() => onDelete(quote)}
                   onDuplicate={() => onDuplicate(quote)}
-                  onTogglePin={() => onTogglePin(quote)}
                   onLongPress={() => onLongPress(quote)}
                   onCreateTier={() => onCreateTier(quote)}
                   onExportAllTiers={() => onExportAllTiers(quote)}
                   onUnlink={() => onUnlink(quote)}
+                  changeOrderCount={coCounts?.[quote.id]}
                 />
               </View>
             </View>

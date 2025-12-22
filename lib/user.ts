@@ -8,6 +8,7 @@ export type UserTier = "free" | "pro" | "premium";
 export type UserState = {
   tier: UserTier;
   email?: string;
+  displayName?: string; // User's display name for contracts
   quotesUsed: number;
   pdfsThisMonth: number;
   spreadsheetsThisMonth: number;

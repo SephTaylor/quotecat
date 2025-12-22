@@ -30,6 +30,7 @@ import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
 import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { createInvoiceFromQuote } from "@/lib/invoices";
 import { createContractFromQuote } from "@/lib/contracts";
+import { ChangeOrderList } from "@/modules/changeOrders/ui";
 
 export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -600,6 +601,11 @@ export default function QuoteReviewScreen() {
             </View>
           </View>
         </View>
+
+        {/* Change Orders Section - Pro/Premium only */}
+        {(isPro || isPremium) && qid && (
+          <ChangeOrderList quoteId={qid} theme={theme} limit={3} />
+        )}
 
         {/* Export Info for Free Users */}
         {!isPro && (

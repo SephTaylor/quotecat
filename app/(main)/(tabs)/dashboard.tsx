@@ -5,13 +5,14 @@ import { listQuotes, type Quote } from "@/lib/quotes";
 import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, type Contract } from "@/lib/types";
 import { calculateQuoteTotal, calculateInvoiceTotal } from "@/lib/calculations";
 import { loadPreferences, type DashboardPreferences } from "@/lib/preferences";
-import { deleteQuote, saveQuote, updateQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
+import { deleteQuote, saveQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { listContracts } from "@/lib/contracts";
 import { generateAndShareMultiTierPDF } from "@/lib/pdf";
 import { getCachedLogo } from "@/lib/logo";
 import { canAccessAssemblies } from "@/lib/features";
 import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
+import { QuoteGroup } from "@/components/QuoteGroup";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -20,6 +21,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { getLastSyncTime, isSyncAvailable } from "@/lib/quotesSync";
 import { getUserState } from "@/lib/user";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { getActiveChangeOrderCount } from "@/modules/changeOrders";
 
 /**
  * Format sync time as relative time (e.g., "just now", "2 minutes ago")
@@ -64,6 +66,7 @@ export default function Dashboard() {
   const [isPremium, setIsPremium] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [coCounts, setCoCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,6 +95,18 @@ export default function Dashboard() {
     setInvoices(invoiceData);
     setContracts(contractData);
 
+    // Load CO counts for approved/completed quotes
+    const counts: Record<string, number> = {};
+    await Promise.all(
+      data
+        .filter((q) => q.status === "approved" || q.status === "completed")
+        .map(async (q) => {
+          const count = await getActiveChangeOrderCount(q.id);
+          if (count > 0) counts[q.id] = count;
+        })
+    );
+    setCoCounts(counts);
+
     setLoading(false);
   }, []);
 
@@ -107,7 +122,33 @@ export default function Dashboard() {
     const sentQuotes = quotes.filter((q) => q.status === "sent");
     const approvedQuotes = quotes.filter((q) => q.status === "approved");
     const completedQuotes = quotes.filter((q) => q.status === "completed");
-    const pinnedQuotes = quotes.filter((q) => q.pinned);
+
+    // Follow-ups: quotes with follow-up dates today or in the past
+    // Count linked quotes (tiers) as one follow-up
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const countedIds = new Set<string>();
+    let followUpCount = 0;
+
+    for (const q of quotes) {
+      if (countedIds.has(q.id)) continue;
+      if (!q.followUpDate) continue;
+
+      const followUpDate = new Date(q.followUpDate);
+      followUpDate.setHours(0, 0, 0, 0);
+      if (followUpDate > today) continue;
+
+      // Count this as one follow-up
+      followUpCount++;
+      countedIds.add(q.id);
+
+      // Mark all linked quotes as counted too
+      if (q.linkedQuoteIds) {
+        for (const linkedId of q.linkedQuoteIds) {
+          countedIds.add(linkedId);
+        }
+      }
+    }
 
     // Value tracking by business stage
     const pendingValue = sentQuotes.reduce(
@@ -129,11 +170,10 @@ export default function Dashboard() {
       sent: sentQuotes.length,
       approved: approvedQuotes.length,
       completed: completedQuotes.length,
-      pinned: pinnedQuotes.length,
+      followUps: followUpCount,
       pendingValue,
       approvedValue,
       toInvoiceValue,
-      pinnedQuotes,
     };
   }, [quotes]);
 
@@ -143,6 +183,44 @@ export default function Dashboard() {
     }
     return quotes.slice(0, preferences.recentQuotesCount);
   }, [quotes, preferences.recentQuotesCount]);
+
+  // Group linked quotes together for display
+  type QuoteOrGroup = { type: "single"; quote: Quote } | { type: "group"; quotes: Quote[] };
+
+  const groupedRecentQuotes = React.useMemo((): QuoteOrGroup[] => {
+    const result: QuoteOrGroup[] = [];
+    const processedIds = new Set<string>();
+
+    for (const quote of recentQuotes) {
+      if (processedIds.has(quote.id)) continue;
+
+      if (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0) {
+        const groupQuotes = [quote];
+        for (const linkedId of quote.linkedQuoteIds) {
+          const linkedQuote = recentQuotes.find(q => q.id === linkedId);
+          if (linkedQuote && !processedIds.has(linkedId)) {
+            groupQuotes.push(linkedQuote);
+          }
+        }
+
+        for (const gq of groupQuotes) {
+          processedIds.add(gq.id);
+        }
+
+        if (groupQuotes.length >= 2) {
+          result.push({ type: "group", quotes: groupQuotes });
+        } else {
+          result.push({ type: "single", quote });
+        }
+      } else {
+        processedIds.add(quote.id);
+        result.push({ type: "single", quote });
+      }
+    }
+
+    return result;
+  }, [recentQuotes]);
+
 
   // Get recent invoices (max 5, prioritize unpaid/overdue)
   const recentInvoices = React.useMemo(() => {
@@ -160,16 +238,16 @@ export default function Dashboard() {
     return sorted.slice(0, 5);
   }, [invoices]);
 
-  // Get recent contracts (max 5, prioritize pending signature)
+  // Get recent contracts (max 5, prioritize sent/awaiting signature)
   const recentContracts = React.useMemo(() => {
-    // Sort: pending_signature first, then sent, then by date
+    // Sort: sent (awaiting signature) first, then viewed, then by date
     const sorted = [...contracts].sort((a, b) => {
-      // Pending signature comes first
-      if (a.status === "pending_signature" && b.status !== "pending_signature") return -1;
-      if (b.status === "pending_signature" && a.status !== "pending_signature") return 1;
-      // Then sent
+      // Sent (awaiting signature) comes first
       if (a.status === "sent" && b.status !== "sent") return -1;
       if (b.status === "sent" && a.status !== "sent") return 1;
+      // Then viewed
+      if (a.status === "viewed" && b.status !== "viewed") return -1;
+      if (b.status === "viewed" && a.status !== "viewed") return 1;
       // Then by date
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
@@ -208,15 +286,6 @@ export default function Dashboard() {
     setDeletedQuote(null);
   }, []);
 
-  const handleTogglePin = useCallback(async (quote: Quote) => {
-    // Optimistically update UI
-    setQuotes((prev) =>
-      prev.map((q) => (q.id === quote.id ? { ...q, pinned: !q.pinned } : q)),
-    );
-
-    // Update in storage
-    await updateQuote(quote.id, { pinned: !quote.pinned });
-  }, []);
 
   const handleDuplicate = useCallback(async (quote: Quote) => {
     const duplicated = await duplicateQuote(quote.id);
@@ -329,11 +398,11 @@ export default function Dashboard() {
                 onPress={() => router.push("./quotes?filter=all" as any)}
               />
               <StatCard
-                label="Pinned"
-                value={stats.pinned}
-                color={theme.colors.accent}
+                label="Follow-ups"
+                value={stats.followUps}
+                color="#FF9500"
                 theme={theme}
-                onPress={() => router.push("./quotes?filter=pinned" as any)}
+                onPress={() => router.push("./quotes?filter=followup" as any)}
               />
               <StatCard
                 label="Draft"
@@ -384,7 +453,7 @@ export default function Dashboard() {
                   </Text>
                 </View>
                 <View style={styles.valueRow}>
-                  <Text style={styles.valueLabel}>To Invoice</Text>
+                  <Text style={styles.valueLabel}>Completed</Text>
                   <Text style={styles.valueAmount}>
                     ${stats.toInvoiceValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
@@ -393,48 +462,48 @@ export default function Dashboard() {
             </View>
           )}
 
-          {/* Pinned Quotes */}
-          {preferences.showPinnedQuotes && stats.pinnedQuotes.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Pinned Quotes</Text>
-              {stats.pinnedQuotes.map((quote) => (
-                <SwipeableQuoteItem
-                  key={quote.id}
-                  item={quote}
-                  onEdit={() => router.push(`/quote/${quote.id}/edit`)}
-                  onDelete={() => handleDelete(quote)}
-                  onDuplicate={() => handleDuplicate(quote)}
-                  onTogglePin={() => handleTogglePin(quote)}
-                  onCreateTier={() => handleCreateTier(quote)}
-                  onExportAllTiers={() => handleExportAllTiers(quote)}
-                />
-              ))}
-            </View>
-          )}
 
           {/* Recent Activity */}
           {preferences.showRecentQuotes && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Quotes</Text>
-              {recentQuotes.length === 0 ? (
+              {groupedRecentQuotes.length === 0 ? (
                 <View style={styles.emptyStateSimple}>
                   <Text style={styles.emptyTextSimple}>
                     No quotes yet. Tap the + button above to create your first quote.
                   </Text>
                 </View>
               ) : (
-                recentQuotes.map((quote) => (
-                  <SwipeableQuoteItem
-                    key={quote.id}
-                    item={quote}
-                    onEdit={() => router.push(`/quote/${quote.id}/edit`)}
-                    onDelete={() => handleDelete(quote)}
-                    onDuplicate={() => handleDuplicate(quote)}
-                    onTogglePin={() => handleTogglePin(quote)}
-                    onCreateTier={() => handleCreateTier(quote)}
-                    onExportAllTiers={() => handleExportAllTiers(quote)}
-                  />
-                ))
+                groupedRecentQuotes.map((item) => {
+                  if (item.type === "group") {
+                    return (
+                      <QuoteGroup
+                        key={item.quotes[0].id}
+                        quotes={item.quotes}
+                        onEdit={(q) => router.push(`/quote/${q.id}/edit`)}
+                        onDelete={handleDelete}
+                        onDuplicate={handleDuplicate}
+                        onLongPress={() => {}}
+                        onCreateTier={handleCreateTier}
+                        onExportAllTiers={handleExportAllTiers}
+                        onUnlink={() => {}}
+                        coCounts={coCounts}
+                      />
+                    );
+                  }
+                  return (
+                    <SwipeableQuoteItem
+                      key={item.quote.id}
+                      item={item.quote}
+                      onEdit={() => router.push(`/quote/${item.quote.id}/edit`)}
+                      onDelete={() => handleDelete(item.quote)}
+                      onDuplicate={() => handleDuplicate(item.quote)}
+                      onCreateTier={() => handleCreateTier(item.quote)}
+                      onExportAllTiers={() => handleExportAllTiers(item.quote)}
+                      changeOrderCount={coCounts[item.quote.id]}
+                    />
+                  );
+                })
               )}
             </View>
           )}
