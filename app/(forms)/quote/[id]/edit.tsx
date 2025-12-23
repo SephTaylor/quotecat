@@ -22,7 +22,6 @@ import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
-import { HeaderIconButton } from "@/components/HeaderIconButton";
 import { Ionicons } from "@expo/vector-icons";
 import { ChangeOrderModal } from "@/modules/changeOrders/ui";
 import { createChangeOrder, getActiveChangeOrderCount } from "@/modules/changeOrders";
@@ -422,9 +421,6 @@ export default function EditQuote() {
           headerTitleAlign: 'center',
           headerTintColor: theme.colors.accent,
           headerLeft: () => <HeaderBackButton onPress={handleGoBackWithChangeDetection} />,
-          headerRight: () => (
-            <HeaderIconButton onPress={() => setPinned(!pinned)} icon={pinned ? "⭐" : "☆"} side="right" />
-          ),
           headerTitle: () => (
             <View style={{ alignItems: 'center' }}>
               <Text style={{ fontSize: 17, fontWeight: "700", color: theme.colors.text }}>
@@ -632,7 +628,7 @@ export default function EditQuote() {
             <GestureHandlerRootView style={styles.itemsList}>
               {items.map((item, index) => (
                 <SwipeableMaterialItem
-                  key={item.id}
+                  key={item.id || `item-${index}`}
                   item={{
                     id: getItemId(item),
                     name: item.name,

@@ -204,7 +204,7 @@ export async function getActiveReminders(
         entityId: quote.id,
         entityType: "quote",
         title: quote.name || "Untitled Quote",
-        subtitle: `${quote.clientName || "No client"} • ${subtitle}`,
+        subtitle: subtitle, // Just the timing info
         dueDate,
         createdAt: now,
       });

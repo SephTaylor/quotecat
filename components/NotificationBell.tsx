@@ -24,12 +24,13 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
   const { theme } = useTheme();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showPanel, setShowPanel] = useState(false);
-  const [lastLoadTime, setLastLoadTime] = useState<number>(0);
+  // Use a ref for cache timing to avoid dependency cycle in useCallback
+  const lastLoadTimeRef = React.useRef<number>(0);
 
   const loadReminders = useCallback(async (force = false) => {
     // Skip if recently loaded (unless forced)
     const now = Date.now();
-    if (!force && lastLoadTime > 0 && now - lastLoadTime < CACHE_TTL_MS) {
+    if (!force && lastLoadTimeRef.current > 0 && now - lastLoadTimeRef.current < CACHE_TTL_MS) {
       return;
     }
 
@@ -59,11 +60,11 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
       }
 
       setReminders(active);
-      setLastLoadTime(now);
+      lastLoadTimeRef.current = now;
     } catch (error) {
       console.error("Failed to load reminders:", error);
     }
-  }, [lastLoadTime]);
+  }, []);
 
   // Load on mount and focus (with cache check)
   useFocusEffect(

@@ -22,6 +22,7 @@ import { getLastSyncTime, isSyncAvailable } from "@/lib/quotesSync";
 import { getUserState } from "@/lib/user";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { getActiveChangeOrderCount } from "@/modules/changeOrders";
+import { WizardFAB } from "@/components/WizardFAB";
 
 /**
  * Format sync time as relative time (e.g., "just now", "2 minutes ago")
@@ -603,6 +604,9 @@ export default function Dashboard() {
           onUndo={handleUndo}
           onDismiss={handleDismissUndo}
         />
+
+        {/* Quote Wizard FAB */}
+        <WizardFAB />
       </GradientBackground>
     </GestureHandlerRootView>
   );
@@ -646,11 +650,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       justifyContent: "center",
     },
     scrollContent: {
-      padding: theme.spacing(3),
-      paddingBottom: theme.spacing(2),
+      paddingHorizontal: theme.spacing(3),
+      paddingTop: theme.spacing(1),
+      paddingBottom: theme.spacing(10), // Extra space for FAB
     },
     welcomeSection: {
-      marginBottom: theme.spacing(3),
+      marginBottom: theme.spacing(2),
     },
     welcomeText: {
       fontSize: 24,
@@ -671,8 +676,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     statsGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: theme.spacing(1.5),
-      marginBottom: theme.spacing(2),
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(1.5),
     },
     statCard: {
       flex: 1,
@@ -697,8 +702,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     valueSection: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.md,
-      padding: theme.spacing(2),
-      marginBottom: theme.spacing(3),
+      padding: theme.spacing(1.5),
+      marginBottom: theme.spacing(2),
       borderWidth: 1,
       borderColor: theme.colors.border,
     },

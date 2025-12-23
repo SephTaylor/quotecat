@@ -74,7 +74,8 @@ export function useProducts() {
     loadProducts();
     // Background sync after initial load
     backgroundSync();
-  }, [loadProducts, backgroundSync]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     products,

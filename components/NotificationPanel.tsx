@@ -276,6 +276,32 @@ interface ReminderItemProps {
   theme: ReturnType<typeof useTheme>["theme"];
 }
 
+// Get display info for reminder type
+function getReminderTypeInfo(reminder: Reminder): {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+} {
+  switch (reminder.type) {
+    case "quote_followup":
+      return { label: "FOLLOW UP", icon: "call-outline", color: "#FF9500" };
+    case "invoice_overdue":
+      return { label: "OVERDUE", icon: "alert-circle-outline", color: "#FF3B30" };
+    case "invoice_due_today":
+      return { label: "DUE TODAY", icon: "today-outline", color: "#FF9500" };
+    case "invoice_due_soon":
+      return { label: "DUE SOON", icon: "time-outline", color: "#007AFF" };
+    case "contract_signed":
+      return { label: "SIGNED", icon: "checkmark-circle-outline", color: "#34C759" };
+    case "contract_viewed":
+      return { label: "VIEWED", icon: "eye-outline", color: "#007AFF" };
+    case "contract_declined":
+      return { label: "DECLINED", icon: "close-circle-outline", color: "#FF3B30" };
+    default:
+      return { label: "NOTIFICATION", icon: "notifications-outline", color: "#8E8E93" };
+  }
+}
+
 function ReminderItem({
   reminder,
   onTap,
@@ -286,26 +312,20 @@ function ReminderItem({
   const [showActions, setShowActions] = useState(false);
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-  // Select icon based on entity type
-  let icon: keyof typeof Ionicons.glyphMap = "document-text-outline";
-  if (reminder.entityType === "invoice") {
-    icon = "receipt-outline";
-  } else if (reminder.entityType === "contract") {
-    icon = "document-lock-outline";
-  }
+  const typeInfo = getReminderTypeInfo(reminder);
 
   return (
     <View style={styles.reminderItem}>
       <Pressable style={styles.reminderContent} onPress={onTap}>
-        <View style={styles.reminderIcon}>
-          <Ionicons name={icon} size={20} color={theme.colors.accent} />
+        <View style={[styles.reminderIcon, { backgroundColor: `${typeInfo.color}20` }]}>
+          <Ionicons name={typeInfo.icon} size={20} color={typeInfo.color} />
         </View>
         <View style={styles.reminderText}>
+          <Text style={[styles.reminderLabel, { color: typeInfo.color }]}>
+            {typeInfo.label}
+          </Text>
           <Text style={styles.reminderTitle} numberOfLines={1}>
             {reminder.title}
-          </Text>
-          <Text style={styles.reminderSubtitle} numberOfLines={1}>
-            {reminder.subtitle}
           </Text>
         </View>
         <Pressable
@@ -330,25 +350,7 @@ function ReminderItem({
               onSnooze(1);
             }}
           >
-            <Text style={styles.actionText}>Tomorrow</Text>
-          </Pressable>
-          <Pressable
-            style={styles.actionButton}
-            onPress={() => {
-              setShowActions(false);
-              onSnooze(3);
-            }}
-          >
-            <Text style={styles.actionText}>3 days</Text>
-          </Pressable>
-          <Pressable
-            style={styles.actionButton}
-            onPress={() => {
-              setShowActions(false);
-              onSnooze(7);
-            }}
-          >
-            <Text style={styles.actionText}>1 week</Text>
+            <Text style={styles.actionText}>Snooze 24h</Text>
           </Pressable>
           <Pressable
             style={[styles.actionButton, styles.dismissButton]}
@@ -450,15 +452,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     reminderText: {
       flex: 1,
     },
+    reminderLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.5,
+      marginBottom: 2,
+    },
     reminderTitle: {
       fontSize: 15,
       fontWeight: "600",
       color: theme.colors.text,
-      marginBottom: 2,
-    },
-    reminderSubtitle: {
-      fontSize: 13,
-      color: theme.colors.muted,
     },
     reminderMenuButton: {
       padding: 4,

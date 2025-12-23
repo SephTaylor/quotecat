@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
+    "@jamsch/expo-speech-recognition": "^0.2.15",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-native-picker/picker": "2.11.1",
@@ -38,6 +39,7 @@
     "expo-router": "~6.0.13",
     "expo-secure-store": "^15.0.7",
     "expo-sharing": "~14.0.7",
+    "expo-speech": "^14.0.8",
     "expo-splash-screen": "~31.0.10",
     "expo-status-bar": "~3.0.8",
     "expo-symbols": "~1.0.7",

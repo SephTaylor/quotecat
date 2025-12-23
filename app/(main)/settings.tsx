@@ -88,7 +88,7 @@ export default function Settings() {
         options={{
           title: "Settings",
           headerShown: true,
-          headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
+          headerTitleAlign: 'center',
           headerBackTitle: "Back",
           headerStyle: {
             backgroundColor: theme.colors.bg,
