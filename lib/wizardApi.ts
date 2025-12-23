@@ -64,7 +64,7 @@ export async function sendWizardMessage(
 
 /**
  * Get a condensed catalog context string for the system prompt.
- * This gives Drew knowledge of available products.
+ * This gives Drew knowledge of available products with their IDs.
  */
 export function buildCatalogContext(
   categories: Array<{ id: string; name: string }>,
@@ -75,11 +75,12 @@ export function buildCatalogContext(
   const productsByCategory = products.reduce((acc, p) => {
     const catName = categoryMap.get(p.categoryId) || 'Other';
     if (!acc[catName]) acc[catName] = [];
-    acc[catName].push(`${p.name} ($${p.unitPrice}/${p.unit})`);
+    // Include product ID so Drew can reference it in addItem calls
+    acc[catName].push(`[${p.id}] ${p.name} - $${p.unitPrice}/${p.unit}`);
     return acc;
   }, {} as Record<string, string[]>);
 
   return Object.entries(productsByCategory)
-    .map(([cat, prods]) => `${cat}: ${prods.join(', ')}`)
-    .join('\n');
+    .map(([cat, prods]) => `## ${cat}\n${prods.join('\n')}`)
+    .join('\n\n');
 }
