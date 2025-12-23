@@ -6,7 +6,7 @@ import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, t
 import { calculateQuoteTotal, calculateInvoiceTotal } from "@/lib/calculations";
 import { loadPreferences, type DashboardPreferences } from "@/lib/preferences";
 import { deleteQuote, saveQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
-import { listInvoices } from "@/lib/invoices";
+import { listInvoices, getToInvoiceStats } from "@/lib/invoices";
 import { listContracts } from "@/lib/contracts";
 import { generateAndShareMultiTierPDF } from "@/lib/pdf";
 import { getCachedLogo } from "@/lib/logo";
@@ -68,6 +68,11 @@ export default function Dashboard() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [coCounts, setCoCounts] = useState<Record<string, number>>({});
+  const [toInvoiceStats, setToInvoiceStats] = useState<{ quoteCount: number; contractCount: number; totalValue: number }>({
+    quoteCount: 0,
+    contractCount: 0,
+    totalValue: 0,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,13 +85,14 @@ export default function Dashboard() {
     setIsPremium(premiumAccess);
 
     // Now load everything in parallel based on user tier
-    const [data, prefs, syncTime, available, invoiceData, contractData] = await Promise.all([
+    const [data, prefs, syncTime, available, invoiceData, contractData, toInvoice] = await Promise.all([
       listQuotes(),
       loadPreferences(),
       getLastSyncTime(),
       isSyncAvailable(),
       proAccess ? listInvoices() : Promise.resolve([]),
       premiumAccess ? listContracts() : Promise.resolve([]),
+      getToInvoiceStats(),
     ]);
 
     setQuotes(data);
@@ -95,6 +101,7 @@ export default function Dashboard() {
     setSyncAvailable(available && (userState.tier === 'pro' || userState.tier === 'premium'));
     setInvoices(invoiceData);
     setContracts(contractData);
+    setToInvoiceStats(toInvoice);
 
     // Load CO counts for approved/completed quotes
     const counts: Record<string, number> = {};
@@ -119,10 +126,22 @@ export default function Dashboard() {
 
   // Calculate stats
   const stats = React.useMemo(() => {
+    // Get quote IDs that have become contracts (don't double-count these)
+    const quotesWithContracts = new Set(
+      contracts.filter(c => c.quoteId).map(c => c.quoteId)
+    );
+
+    // Filter out quotes that have become contracts for value calculations
+    const quotesForValue = quotes.filter(q => !quotesWithContracts.has(q.id));
+
     const draftQuotes = quotes.filter((q) => q.status === "draft");
-    const sentQuotes = quotes.filter((q) => q.status === "sent");
-    const approvedQuotes = quotes.filter((q) => q.status === "approved");
-    const completedQuotes = quotes.filter((q) => q.status === "completed");
+    const sentQuotes = quotesForValue.filter((q) => q.status === "sent");
+    const approvedQuotes = quotesForValue.filter((q) => q.status === "approved");
+
+    // Contract stages
+    const sentContracts = contracts.filter((c) => c.status === "sent" || c.status === "viewed");
+    const signedContracts = contracts.filter((c) => c.status === "signed");
+    const completedContracts = contracts.filter((c) => c.status === "completed");
 
     // Follow-ups: quotes with follow-up dates today or in the past
     // Count linked quotes (tiers) as one follow-up
@@ -151,32 +170,46 @@ export default function Dashboard() {
       }
     }
 
-    // Value tracking by business stage
-    const pendingValue = sentQuotes.reduce(
+    // Value tracking by business stage (quotes + contracts, no double-counting)
+    const pendingQuoteValue = sentQuotes.reduce(
       (sum, q) => sum + calculateQuoteTotal(q),
       0,
     );
-    const approvedValue = approvedQuotes.reduce(
+    const pendingContractValue = sentContracts.reduce(
+      (sum, c) => sum + c.total,
+      0,
+    );
+
+    const approvedQuoteValue = approvedQuotes.reduce(
       (sum, q) => sum + calculateQuoteTotal(q),
       0,
     );
-    const toInvoiceValue = completedQuotes.reduce(
-      (sum, q) => sum + calculateQuoteTotal(q),
+    // Signed contracts = work authorized (like approved quotes)
+    const signedContractValue = signedContracts.reduce(
+      (sum, c) => sum + c.total,
       0,
     );
+    // Completed contracts = work finished, ready to invoice
+    const completedContractValue = completedContracts.reduce(
+      (sum, c) => sum + c.total,
+      0,
+    );
+
+    // To Invoice count = quotes needing invoice + contracts needing invoice
+    const toInvoiceCount = toInvoiceStats.quoteCount + toInvoiceStats.contractCount;
 
     return {
       total: quotes.length,
       draft: draftQuotes.length,
-      sent: sentQuotes.length,
-      approved: approvedQuotes.length,
-      completed: completedQuotes.length,
+      sent: quotes.filter(q => q.status === "sent").length, // Still show all sent for the stat card
+      approved: quotes.filter(q => q.status === "approved").length,
+      toInvoice: toInvoiceCount,
       followUps: followUpCount,
-      pendingValue,
-      approvedValue,
-      toInvoiceValue,
+      pendingValue: pendingQuoteValue + pendingContractValue,
+      approvedValue: approvedQuoteValue + signedContractValue,
+      toInvoiceValue: toInvoiceStats.totalValue,
     };
-  }, [quotes]);
+  }, [quotes, contracts, toInvoiceStats]);
 
   const recentQuotes = React.useMemo(() => {
     if (preferences.recentQuotesCount === "all") {
@@ -427,8 +460,8 @@ export default function Dashboard() {
                 onPress={() => router.push("./quotes?filter=approved" as any)}
               />
               <StatCard
-                label="Completed"
-                value={stats.completed}
+                label="To Invoice"
+                value={stats.toInvoice}
                 color={QuoteStatusMeta.completed.color}
                 theme={theme}
                 onPress={() => router.push("./quotes?filter=completed" as any)}
@@ -436,10 +469,10 @@ export default function Dashboard() {
             </View>
           )}
 
-          {/* Quote Value Tracking */}
+          {/* Business Value Tracking */}
           {preferences.showValueTracking && (
             <View style={styles.valueSection}>
-              <Text style={styles.valueSectionTitle}>Quote Value</Text>
+              <Text style={styles.valueSectionTitle}>Business Value</Text>
               <View style={styles.valueGrid}>
                 <View style={styles.valueRow}>
                   <Text style={styles.valueLabel}>Pending</Text>
@@ -454,7 +487,7 @@ export default function Dashboard() {
                   </Text>
                 </View>
                 <View style={styles.valueRow}>
-                  <Text style={styles.valueLabel}>Completed</Text>
+                  <Text style={styles.valueLabel}>To Invoice</Text>
                   <Text style={styles.valueAmount}>
                     ${stats.toInvoiceValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>

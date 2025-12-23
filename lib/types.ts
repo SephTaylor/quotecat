@@ -321,7 +321,8 @@ export type ContractStatus =
   | "draft" // Building the contract
   | "sent" // Sent to client for signature
   | "viewed" // Client has viewed it
-  | "signed" // Both parties signed
+  | "signed" // Both parties signed, work authorized
+  | "completed" // Work finished, ready to invoice
   | "declined" // Client declined
   | "expired"; // Contract expired without signature
 
@@ -350,7 +351,12 @@ export const ContractStatusMeta: Record<
   signed: {
     label: "Signed",
     color: "#34C759",
-    description: "Contract signed by all parties",
+    description: "Contract signed, work authorized",
+  },
+  completed: {
+    label: "Completed",
+    color: "#5856D6",
+    description: "Work finished, ready to invoice",
   },
   declined: {
     label: "Declined",

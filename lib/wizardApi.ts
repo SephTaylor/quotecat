@@ -30,6 +30,11 @@ export async function sendWizardMessage(
   messages: WizardMessage[],
   catalogContext?: string,
 ): Promise<WizardResponse> {
+  console.log('[wizardApi] Sending request with', messages.length, 'messages');
+  if (catalogContext) {
+    console.log('[wizardApi] Catalog context length:', catalogContext.length, 'chars');
+  }
+
   const { data, error } = await supabase.functions.invoke('wizard-chat', {
     body: {
       messages,
@@ -37,9 +42,17 @@ export async function sendWizardMessage(
     },
   });
 
+  console.log('[wizardApi] Response received - data:', !!data, 'error:', !!error);
+
   if (error) {
     console.error('[wizardApi] Error calling wizard-chat:', error);
     throw new Error(error.message || 'Failed to get response from Drew');
+  }
+
+  // Check for edge function error response
+  if (data?.error) {
+    console.error('[wizardApi] Edge function returned error:', data.error);
+    throw new Error(data.error);
   }
 
   console.log('[wizardApi] Raw response:', JSON.stringify(data, null, 2));
@@ -65,22 +78,30 @@ export async function sendWizardMessage(
 /**
  * Get a condensed catalog context string for the system prompt.
  * This gives Drew knowledge of available products with their IDs.
+ * Limited to ~200 products to keep context size manageable.
  */
 export function buildCatalogContext(
   categories: Array<{ id: string; name: string }>,
   products: Array<{ id: string; categoryId: string; name: string; unit: string; unitPrice: number }>,
 ): string {
+  const MAX_PRODUCTS_PER_CATEGORY = 25;
   const categoryMap = new Map(categories.map(c => [c.id, c.name]));
 
   const productsByCategory = products.reduce((acc, p) => {
     const catName = categoryMap.get(p.categoryId) || 'Other';
     if (!acc[catName]) acc[catName] = [];
-    // Include product ID so Drew can reference it in addItem calls
-    acc[catName].push(`[${p.id}] ${p.name} - $${p.unitPrice}/${p.unit}`);
+    // Limit products per category to keep context manageable
+    if (acc[catName].length < MAX_PRODUCTS_PER_CATEGORY) {
+      // Include product ID so Drew can reference it in addItem calls
+      acc[catName].push(`[${p.id}] ${p.name} - $${p.unitPrice}/${p.unit}`);
+    }
     return acc;
   }, {} as Record<string, string[]>);
 
-  return Object.entries(productsByCategory)
+  const result = Object.entries(productsByCategory)
     .map(([cat, prods]) => `## ${cat}\n${prods.join('\n')}`)
     .join('\n\n');
+
+  console.log(`[wizardApi] Catalog context: ${Object.keys(productsByCategory).length} categories, limited to ${MAX_PRODUCTS_PER_CATEGORY} products each`);
+  return result;
 }

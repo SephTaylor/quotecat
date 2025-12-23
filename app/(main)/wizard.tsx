@@ -347,7 +347,7 @@ export default function WizardScreen() {
                 <Ionicons name="chatbubble-ellipses" size={48} color={theme.colors.accent} />
               </View>
 
-              <Text style={styles.greeting}>Hey, I'm Drew!</Text>
+              <Text style={styles.greeting}>Hey, I&apos;m Drew!</Text>
               <Text style={styles.subtitle}>
                 Would you like me to help you draft a quote?
               </Text>
@@ -357,7 +357,7 @@ export default function WizardScreen() {
                   style={[styles.button, styles.primaryButton]}
                   onPress={handleStart}
                 >
-                  <Text style={styles.primaryButtonText}>Let's go</Text>
+                  <Text style={styles.primaryButtonText}>Let&apos;s go</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.button, styles.secondaryButton]}

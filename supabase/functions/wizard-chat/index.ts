@@ -83,16 +83,30 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[wizard-chat] Function started');
+
     if (!ANTHROPIC_API_KEY) {
+      console.error('[wizard-chat] ANTHROPIC_API_KEY is not set');
       throw new Error('ANTHROPIC_API_KEY not configured');
     }
+    console.log('[wizard-chat] API key present, length:', ANTHROPIC_API_KEY.length);
 
-    const { messages, catalogContext }: RequestBody = await req.json();
+    let body: RequestBody;
+    try {
+      body = await req.json();
+    } catch (parseError) {
+      console.error('[wizard-chat] Failed to parse request body:', parseError);
+      throw new Error('Invalid request body');
+    }
+
+    const { messages, catalogContext } = body;
+    console.log('[wizard-chat] Received request with', messages?.length || 0, 'messages');
 
     // Build the full system prompt with catalog context
     let fullSystemPrompt = SYSTEM_PROMPT;
     if (catalogContext) {
       fullSystemPrompt += `\n\n## Available Products\n${catalogContext}`;
+      console.log('[wizard-chat] System prompt size:', fullSystemPrompt.length, 'chars');
     }
 
     // Convert to Claude format
@@ -177,6 +191,7 @@ serve(async (req) => {
     ];
 
     // Call Claude API
+    console.log('[wizard-chat] Calling Claude API...');
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -193,13 +208,16 @@ serve(async (req) => {
       }),
     });
 
+    console.log('[wizard-chat] Claude API response status:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Claude API error:', errorText);
-      throw new Error(`Claude API error: ${response.status}`);
+      console.error('[wizard-chat] Claude API error:', errorText);
+      throw new Error(`Claude API error: ${response.status} - ${errorText}`);
     }
 
     const claudeResponse = await response.json();
+    console.log('[wizard-chat] Claude response stop_reason:', claudeResponse.stop_reason);
 
     // Extract text and tool calls from response
     let message = '';

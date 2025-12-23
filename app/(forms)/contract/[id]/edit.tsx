@@ -146,6 +146,31 @@ export default function EditContract() {
     router.push(`/(forms)/contract/${id}/sign`);
   };
 
+  const handleMarkComplete = async () => {
+    if (!id || !contract) return;
+
+    Alert.alert(
+      "Mark as Complete",
+      "This will mark the contract as completed, indicating the work is finished and ready for invoicing.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Mark Complete",
+          onPress: async () => {
+            try {
+              const updated = await updateContract(id, { status: "completed" });
+              if (updated) {
+                setContract(updated);
+              }
+            } catch {
+              Alert.alert("Error", "Failed to update contract status.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const formatPhoneNumber = (value: string): string => {
     const digits = value.replace(/\D/g, "");
     const limited = digits.slice(0, 10);
@@ -450,9 +475,18 @@ export default function EditContract() {
           </View>
         )}
         {contract.status === "signed" && (
-          <View style={styles.signedInfo}>
-            <Ionicons name="checkmark-circle" size={20} color="#34C759" />
-            <Text style={styles.signedText}>Contract Signed</Text>
+          <Pressable
+            style={[styles.buttonPrimary, { flex: 1 }]}
+            onPress={handleMarkComplete}
+          >
+            <Ionicons name="checkmark-done-outline" size={20} color="#000" />
+            <Text style={styles.buttonPrimaryText}>Mark Complete</Text>
+          </Pressable>
+        )}
+        {contract.status === "completed" && (
+          <View style={styles.completedInfo}>
+            <Ionicons name="checkmark-done-circle" size={20} color="#5856D6" />
+            <Text style={styles.completedText}>Work Completed - Ready to Invoice</Text>
           </View>
         )}
       </View>
@@ -663,6 +697,18 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       fontSize: 16,
       fontWeight: "600",
       color: "#34C759",
+    },
+    completedInfo: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    completedText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#5856D6",
     },
     signatureBlock: {
       paddingVertical: theme.spacing(2),

@@ -323,3 +323,86 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
 
   await saveInvoice(updated);
 }
+
+/**
+ * Get quotes that need invoicing (completed status, no invoice created, no contract)
+ * Excludes quotes that have become contracts (those are tracked separately)
+ */
+export async function getQuotesNeedingInvoice(): Promise<Quote[]> {
+  const { listQuotes } = await import("@/lib/quotes");
+  const { listContracts } = await import("@/lib/contracts");
+
+  // Get all completed quotes
+  const allQuotes = await listQuotes();
+  const completedQuotes = allQuotes.filter(q => q.status === "completed");
+
+  if (completedQuotes.length === 0) return [];
+
+  // Get all invoices to check which quotes have been invoiced
+  const invoices = await listInvoices();
+  const invoicedQuoteIds = new Set(
+    invoices
+      .filter(inv => inv.quoteId)
+      .map(inv => inv.quoteId)
+  );
+
+  // Get all contracts to exclude quotes that became contracts
+  const contracts = await listContracts();
+  const quotesWithContracts = new Set(
+    contracts.filter(c => c.quoteId).map(c => c.quoteId)
+  );
+
+  // Return completed quotes that don't have an invoice AND haven't become contracts
+  return completedQuotes.filter(q =>
+    !invoicedQuoteIds.has(q.id) && !quotesWithContracts.has(q.id)
+  );
+}
+
+/**
+ * Get contracts that need invoicing (completed status, no invoice created)
+ */
+export async function getContractsNeedingInvoice(): Promise<Contract[]> {
+  const { listContracts } = await import("@/lib/contracts");
+
+  // Get all completed contracts (work finished, ready to invoice)
+  const allContracts = await listContracts();
+  const completedContracts = allContracts.filter(c => c.status === "completed");
+
+  if (completedContracts.length === 0) return [];
+
+  // Get all invoices to check which contracts have been invoiced
+  const invoices = await listInvoices();
+  const invoicedContractIds = new Set(
+    invoices
+      .filter(inv => inv.contractId)
+      .map(inv => inv.contractId)
+  );
+
+  // Return completed contracts that don't have an invoice
+  return completedContracts.filter(c => !invoicedContractIds.has(c.id));
+}
+
+/**
+ * Get count and total value of items needing invoicing
+ */
+export async function getToInvoiceStats(): Promise<{
+  quoteCount: number;
+  contractCount: number;
+  totalValue: number;
+}> {
+  const { calculateQuoteTotal } = await import("@/lib/calculations");
+
+  const [quotes, contracts] = await Promise.all([
+    getQuotesNeedingInvoice(),
+    getContractsNeedingInvoice(),
+  ]);
+
+  const quoteValue = quotes.reduce((sum, q) => sum + calculateQuoteTotal(q), 0);
+  const contractValue = contracts.reduce((sum, c) => sum + c.total, 0);
+
+  return {
+    quoteCount: quotes.length,
+    contractCount: contracts.length,
+    totalValue: quoteValue + contractValue,
+  };
+}
