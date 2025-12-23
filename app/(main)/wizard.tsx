@@ -22,7 +22,7 @@ import { HeaderBackButton } from '@/components/HeaderBackButton';
 import { GradientBackground } from '@/components/GradientBackground';
 import {
   sendWizardMessage,
-  buildCatalogContext,
+  searchCatalog,
   type WizardMessage,
   type WizardTool,
 } from '@/lib/wizardApi';
@@ -58,6 +58,7 @@ export default function WizardScreen() {
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingTools, setPendingTools] = useState<WizardTool[]>([]);
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [draftQuote, setDraftQuote] = useState<DraftQuote>({
     name: '',
     clientName: '',
@@ -70,62 +71,124 @@ export default function WizardScreen() {
   const [speechAvailable, setSpeechAvailable] = useState(false);
   const speechModuleRef = useRef<any>(null);
 
-  // Load speech module only when entering chat (not on every render)
+  // Load speech module only in native builds (not Expo Go)
   useEffect(() => {
     if (state !== 'chat') return;
 
     let mounted = true;
+    let cleanup: (() => void) | undefined;
 
-    // Try to load speech recognition module
-    try {
-      const module = require('@jamsch/expo-speech-recognition');
-      if (mounted) {
-        speechModuleRef.current = module.ExpoSpeechRecognitionModule;
-        setSpeechAvailable(true);
+    // Only try to load in production/native builds
+    // __DEV__ is false in production builds where native modules work
+    if (!__DEV__) {
+      import('@jamsch/expo-speech-recognition')
+        .then((module: any) => {
+          if (!mounted || !module.ExpoSpeechRecognitionModule) return;
 
-        // Set up event listeners using addListener pattern
-        const startSub = module.ExpoSpeechRecognitionModule.addListener('start', () => {
-          if (mounted) setIsListening(true);
-        });
-        const endSub = module.ExpoSpeechRecognitionModule.addListener('end', () => {
-          if (mounted) setIsListening(false);
-        });
-        const resultSub = module.ExpoSpeechRecognitionModule.addListener('result', (event: any) => {
-          const transcript = event.results?.[0]?.transcript;
-          if (transcript && mounted) {
-            setInputText(transcript);
-          }
-        });
-        const errorSub = module.ExpoSpeechRecognitionModule.addListener('error', () => {
-          if (mounted) setIsListening(false);
-        });
+          speechModuleRef.current = module.ExpoSpeechRecognitionModule;
+          setSpeechAvailable(true);
 
-        // Cleanup subscriptions on unmount
-        return () => {
-          mounted = false;
-          startSub?.remove?.();
-          endSub?.remove?.();
-          resultSub?.remove?.();
-          errorSub?.remove?.();
-        };
-      }
-    } catch (e) {
-      // Speech recognition not available (Expo Go)
-      console.log('Speech recognition not available');
+          // Set up event listeners
+          const speechModule = module.ExpoSpeechRecognitionModule;
+          const startSub = speechModule.addListener('start', () => {
+            if (mounted) setIsListening(true);
+          });
+          const endSub = speechModule.addListener('end', () => {
+            if (mounted) setIsListening(false);
+          });
+          const resultSub = speechModule.addListener('result', (event: any) => {
+            const transcript = event.results?.[0]?.transcript;
+            if (transcript && mounted) {
+              setInputText(transcript);
+            }
+          });
+          const errorSub = speechModule.addListener('error', () => {
+            if (mounted) setIsListening(false);
+          });
+
+          cleanup = () => {
+            startSub?.remove?.();
+            endSub?.remove?.();
+            resultSub?.remove?.();
+            errorSub?.remove?.();
+          };
+        })
+        .catch(() => {
+          // Speech recognition not available
+          console.log('Speech recognition not available');
+        });
     }
 
     return () => {
       mounted = false;
+      cleanup?.();
     };
   }, [state]);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-  // Build catalog context for the AI
-  const catalogContext = React.useMemo(() => {
-    if (!categories.length || !products.length) return undefined;
-    return buildCatalogContext(categories, products);
-  }, [categories, products]);
+  // Helper to search the catalog (used when Drew calls searchCatalog tool)
+  const handleCatalogSearch = React.useCallback((query: string, category?: string, limit?: number): string => {
+    if (!products.length || !categories.length) {
+      return 'Catalog not loaded yet. Please try again.';
+    }
+    return searchCatalog(products, categories, query, category, limit);
+  }, [products, categories]);
+
+  // Generate quick reply options based on Drew's message
+  const generateQuickReplies = (message: string): string[] => {
+    const lower = message.toLowerCase();
+
+    // Check what Drew is asking about - use the LAST question in the message
+    // to determine what options to show
+
+    // Budget questions (check first - often combined with other questions)
+    if (lower.includes('budget') || (lower.includes('standard') && lower.includes('premium'))) {
+      return ['Budget-friendly', 'Mid-range', 'Premium'];
+    }
+
+    // Ceiling height questions
+    if (lower.includes('ceiling') && lower.includes('height')) {
+      return ['8 ft', '9 ft', '10 ft'];
+    }
+
+    // Full gut vs keeping existing
+    if (lower.includes('gut') || lower.includes('keeping') || lower.includes('existing')) {
+      return ['Full gut job', 'Keeping existing plumbing'];
+    }
+
+    // Preference/choice questions
+    if (lower.includes('which') || lower.includes('prefer') || lower.includes('would you like')) {
+      if (lower.includes('toilet')) {
+        return ['Standard', 'Comfort height'];
+      }
+      if (lower.includes('vanity') || lower.includes('sink')) {
+        return ['Drop-in', 'Undermount'];
+      }
+      return ['Go with defaults', 'Let me choose'];
+    }
+
+    // Confirmation questions
+    if (lower.includes('sound good') || lower.includes('look good') || lower.includes('ready to add') || lower.includes('shall i add') || lower.includes('add these')) {
+      return ['Yes, add them', 'Make changes'];
+    }
+
+    // Dimension questions - only if specifically asking for dimensions
+    if (lower.includes('dimension') || lower.includes('how big') || (lower.includes('what') && lower.includes('size') && !lower.includes('nice size'))) {
+      return ['8x10', '10x12', '12x14', '12x16'];
+    }
+
+    // General project type
+    if (lower.includes('what kind') || lower.includes('what type') || lower.includes('tell me about')) {
+      return ['Bathroom', 'Kitchen', 'Framing', 'Electrical'];
+    }
+
+    return [];
+  };
+
+  const handleQuickReply = (reply: string) => {
+    handleSendWithMessage(reply);
+  };
 
   const handleStart = () => {
     setState('chat');
@@ -164,68 +227,114 @@ export default function WizardScreen() {
   }, [isListening]);
 
 
-  const handleSend = async () => {
-    if (!inputText.trim() || isLoading) return;
+  const handleSendWithMessage = async (messageText: string) => {
+    if (!messageText.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputText.trim(),
+      content: messageText.trim(),
     };
 
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    setInputText('');
+    let currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
+    setQuickReplies([]); // Clear quick replies when sending
     setIsLoading(true);
 
     // Scroll to bottom
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
+    await sendMessageLoop(currentMessages);
+  };
+
+  const handleSend = async () => {
+    if (!inputText.trim() || isLoading) return;
+    const text = inputText.trim();
+    setInputText('');
+    await handleSendWithMessage(text);
+  };
+
+  const sendMessageLoop = async (currentMessages: Message[]) => {
+
+    // Scroll to bottom
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+
     try {
-      // Convert to API format (without id)
-      const apiMessages: WizardMessage[] = updatedMessages.map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
+      // Loop to handle searchCatalog tool calls (Drew searches, we respond, Drew continues)
+      let maxIterations = 5; // Prevent timeout - fewer iterations
+      let iteration = 0;
 
-      const response = await sendWizardMessage(apiMessages, catalogContext);
+      while (iteration < maxIterations) {
+        iteration++;
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.message || "I'm thinking...",
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+        // Convert to API format (without id)
+        const apiMessages: WizardMessage[] = currentMessages.map(m => ({
+          role: m.role,
+          content: m.content,
+        }));
 
-      // Handle any tool calls from the AI
-      if (response.toolCalls && response.toolCalls.length > 0) {
-        setPendingTools(response.toolCalls);
-        // Show what actions Drew wants to take
-        const toolSummary = response.toolCalls
-          .map(t => {
-            switch (t.type) {
-              case 'addItem': return `Add ${t.qty}x ${t.productName}`;
-              case 'setLabor': return `Set labor: ${t.hours}hrs @ $${t.rate}/hr`;
-              case 'applyMarkup': return `Apply ${t.percent}% markup`;
-              case 'setClientName': return `Client: ${t.name}`;
-              case 'setQuoteName': return `Quote: ${t.name}`;
-              case 'suggestAssembly': return `Use assembly: ${t.assemblyName}`;
-              default: return '';
+        // Don't send catalogContext - Drew will use searchCatalog tool instead
+        const response = await sendWizardMessage(apiMessages);
+
+        // Check for searchCatalog tool calls - handle them automatically
+        const searchCalls = response.toolCalls?.filter(t => t.type === 'searchCatalog') || [];
+        const otherCalls = response.toolCalls?.filter(t => t.type !== 'searchCatalog') || [];
+
+        if (searchCalls.length > 0) {
+          // Execute searches locally
+          const searchResults = searchCalls.map(t => {
+            if (t.type === 'searchCatalog') {
+              const result = handleCatalogSearch(t.query, t.category, t.limit);
+              return `Search for "${t.query}": ${result}`;
             }
-          })
-          .filter(Boolean)
-          .join('\n');
+            return '';
+          }).join('\n\n');
 
-        if (toolSummary) {
-          Alert.alert(
-            'Drew suggests:',
-            toolSummary,
-            [
-              { text: 'Skip', style: 'cancel', onPress: () => setPendingTools([]) },
-              { text: 'Apply', onPress: () => applyPendingTools(response.toolCalls!) },
-            ]
-          );
+          // Add Drew's message if there is one (for display only)
+          if (response.message) {
+            const assistantMessage: Message = {
+              id: (Date.now() + iteration).toString(),
+              role: 'assistant',
+              content: response.message,
+            };
+            // Only update UI display
+            setMessages((prev) => [...prev, assistantMessage]);
+            // Add to conversation for API
+            currentMessages = [...currentMessages, assistantMessage];
+          }
+
+          // Add search results to conversation for API (not displayed to user)
+          // Use 'user' role so Claude sees it as tool result and continues
+          currentMessages = [...currentMessages, {
+            id: (Date.now() + iteration + 1).toString(),
+            role: 'user' as const,
+            content: `[Catalog Search Results]\n${searchResults}`,
+          }];
+
+          // Continue the loop so Drew processes the results
+          continue;
         }
+
+        // No search calls - add the final response
+        const assistantMessage: Message = {
+          id: (Date.now() + iteration).toString(),
+          role: 'assistant',
+          content: response.message || "I'm thinking...",
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        // Handle other tool calls (addItem, setLabor, etc.) - show inline
+        if (otherCalls.length > 0) {
+          setPendingTools(otherCalls);
+        }
+
+        // Generate quick replies if Drew is asking questions
+        const message = response.message || '';
+        const replies = generateQuickReplies(message);
+        setQuickReplies(replies);
+
+        // Exit the loop - we're done
+        break;
       }
     } catch (error) {
       console.error('Wizard API error:', error);
@@ -403,6 +512,41 @@ export default function WizardScreen() {
                   </View>
                 )}
 
+                {/* Show pending suggestions from Drew */}
+                {pendingTools.length > 0 && (
+                  <View style={styles.suggestionCard}>
+                    <Text style={styles.suggestionTitle}>Drew suggests:</Text>
+                    {pendingTools.map((tool, index) => {
+                      let label = '';
+                      switch (tool.type) {
+                        case 'addItem': label = `Add ${tool.qty}x ${tool.productName}`; break;
+                        case 'setLabor': label = `Set labor: ${tool.hours}hrs @ $${tool.rate}/hr`; break;
+                        case 'applyMarkup': label = `Apply ${tool.percent}% markup`; break;
+                        case 'setClientName': label = `Client: ${tool.name}`; break;
+                        case 'setQuoteName': label = `Quote: ${tool.name}`; break;
+                        case 'suggestAssembly': label = `Use assembly: ${tool.assemblyName}`; break;
+                      }
+                      return (
+                        <Text key={index} style={styles.suggestionItem}>• {label}</Text>
+                      );
+                    })}
+                    <View style={styles.suggestionButtons}>
+                      <Pressable
+                        style={styles.suggestionButtonSkip}
+                        onPress={() => setPendingTools([])}
+                      >
+                        <Text style={styles.suggestionButtonSkipText}>Skip</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.suggestionButtonApply}
+                        onPress={() => applyPendingTools(pendingTools)}
+                      >
+                        <Text style={styles.suggestionButtonApplyText}>Apply All</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
+
                 {/* Show draft summary if we have items */}
                 {(draftQuote.name || draftQuote.items.length > 0) && (
                   <View style={styles.draftSummary}>
@@ -420,6 +564,21 @@ export default function WizardScreen() {
                   </View>
                 )}
               </ScrollView>
+
+              {/* Quick reply chips */}
+              {quickReplies.length > 0 && !isLoading && (
+                <View style={styles.quickRepliesContainer}>
+                  {quickReplies.map((reply, index) => (
+                    <Pressable
+                      key={index}
+                      style={styles.quickReplyChip}
+                      onPress={() => handleQuickReply(reply)}
+                    >
+                      <Text style={styles.quickReplyText}>{index + 1}. {reply}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
 
               {/* Input area */}
               <View style={styles.inputContainer}>
@@ -559,6 +718,76 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       lineHeight: 22,
     },
     userMessageText: {
+      color: '#000',
+    },
+    quickRepliesContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      gap: 8,
+    },
+    quickReplyChip: {
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.accent,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    quickReplyText: {
+      fontSize: 14,
+      color: theme.colors.accent,
+      fontWeight: '500',
+    },
+    suggestionCard: {
+      backgroundColor: theme.colors.card,
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+      borderRadius: theme.radius.md,
+      padding: 14,
+      marginTop: 8,
+    },
+    suggestionTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.colors.accent,
+      marginBottom: 8,
+    },
+    suggestionItem: {
+      fontSize: 14,
+      color: theme.colors.text,
+      marginBottom: 4,
+      lineHeight: 20,
+    },
+    suggestionButtons: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 12,
+    },
+    suggestionButtonSkip: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: 'center',
+    },
+    suggestionButtonSkipText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.muted,
+    },
+    suggestionButtonApply: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.accent,
+      alignItems: 'center',
+    },
+    suggestionButtonApplyText: {
+      fontSize: 14,
+      fontWeight: '600',
       color: '#000',
     },
     draftSummary: {

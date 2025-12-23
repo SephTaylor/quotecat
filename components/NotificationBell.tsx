@@ -43,8 +43,10 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
       ]);
       const active = await getActiveReminders(quotes, invoices, prefs.notifications);
 
-      // Add Pro welcome reminder if user is Pro/Premium and hasn't seen it
-      if (userState.tier === "pro" || userState.tier === "premium") {
+      // Add Pro welcome reminder if user was explicitly activated as Pro/Premium
+      // (not just defaulted to Pro for TestFlight). Check proActivatedAt to confirm.
+      const wasExplicitlyActivated = userState.proActivatedAt !== undefined;
+      if (wasExplicitlyActivated && (userState.tier === "pro" || userState.tier === "premium")) {
         const proWelcome = await getProWelcomeReminder();
         if (proWelcome) {
           // Put welcome at the top of the list

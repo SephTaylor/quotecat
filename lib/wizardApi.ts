@@ -9,6 +9,7 @@ export type WizardMessage = {
 };
 
 export type WizardTool =
+  | { type: 'searchCatalog'; query: string; category?: string; limit?: number }
   | { type: 'addItem'; productId: string; productName: string; qty: number; unitPrice: number }
   | { type: 'setLabor'; hours: number; rate: number }
   | { type: 'applyMarkup'; percent: number }
@@ -30,45 +31,40 @@ export async function sendWizardMessage(
   messages: WizardMessage[],
   catalogContext?: string,
 ): Promise<WizardResponse> {
-  console.log('[wizardApi] Sending request with', messages.length, 'messages');
-  if (catalogContext) {
-    console.log('[wizardApi] Catalog context length:', catalogContext.length, 'chars');
-  }
+  // Limit conversation history to last 20 messages to avoid timeout
+  const recentMessages = messages.slice(-20);
+
+  console.log('[wizardApi] Sending', recentMessages.length, 'messages');
 
   const { data, error } = await supabase.functions.invoke('wizard-chat', {
     body: {
-      messages,
+      messages: recentMessages,
       catalogContext,
     },
   });
 
-  console.log('[wizardApi] Response received - data:', !!data, 'error:', !!error);
-
   if (error) {
-    console.error('[wizardApi] Error calling wizard-chat:', error);
+    console.error('[wizardApi] Error:', error);
     throw new Error(error.message || 'Failed to get response from Drew');
   }
 
-  // Check for edge function error response
   if (data?.error) {
-    console.error('[wizardApi] Edge function returned error:', data.error);
+    console.error('[wizardApi] Edge function error:', data.error);
     throw new Error(data.error);
-  }
-
-  console.log('[wizardApi] Raw response:', JSON.stringify(data, null, 2));
-  if (catalogContext) {
-    console.log('[wizardApi] Full catalog context:\n', catalogContext);
-  } else {
-    console.log('[wizardApi] No catalog context sent');
   }
 
   // Handle different response formats from edge function
   const response: WizardResponse = {
     message: data?.message || '',
-    toolCalls: data?.toolCalls?.map((tc: any) => ({
-      type: tc.name || tc.type,
-      ...(tc.input || tc.arguments || {}), // handle both input and arguments formats
-    })),
+    toolCalls: data?.toolCalls?.map((tc: any) => {
+      // The edge function returns: { type: 'searchCatalog', query: '...', ... }
+      // But it might also have nested input/arguments from Claude's format
+      const params = tc.input || tc.arguments || tc;
+      return {
+        type: tc.name || tc.type || params.type,
+        ...params,
+      };
+    }),
     done: data?.done,
   };
 
@@ -76,9 +72,88 @@ export async function sendWizardMessage(
 }
 
 /**
+ * Search products in the catalog.
+ * Used by the wizard to find products on-demand instead of loading everything upfront.
+ * Supports 30k+ products by searching locally.
+ */
+export function searchCatalog(
+  products: Array<{ id: string; categoryId: string; name: string; unit: string; unitPrice: number }>,
+  categories: Array<{ id: string; name: string }>,
+  query: string,
+  categoryFilter?: string,
+  limit: number = 10,
+): string {
+  // Guard against undefined/null inputs
+  if (!query) {
+    return 'Search query is required.';
+  }
+  if (!products || products.length === 0) {
+    return 'No products in catalog.';
+  }
+  if (!categories || categories.length === 0) {
+    return 'No categories in catalog.';
+  }
+
+  const categoryMap = new Map(categories.map(c => [c.id, c.name?.toLowerCase() || '']));
+  const categoryIdMap = new Map(categories.map(c => [c.name?.toLowerCase() || '', c.id]));
+
+  const queryLower = query.toLowerCase();
+  const categoryFilterLower = categoryFilter?.toLowerCase();
+
+  // Find matching category ID if filter provided
+  let filterCategoryId: string | undefined;
+  if (categoryFilterLower) {
+    // Try exact match first, then partial match
+    filterCategoryId = categoryIdMap.get(categoryFilterLower);
+    if (!filterCategoryId) {
+      // Partial match - find first category containing the filter term
+      for (const [catName, catId] of categoryIdMap) {
+        if (catName.includes(categoryFilterLower) || categoryFilterLower.includes(catName)) {
+          filterCategoryId = catId;
+          break;
+        }
+      }
+    }
+  }
+
+  // Search products
+  const matches = products
+    .filter(p => {
+      // Category filter
+      if (filterCategoryId && p.categoryId !== filterCategoryId) {
+        return false;
+      }
+      // Text search - match query against product name
+      return p.name?.toLowerCase().includes(queryLower) || false;
+    })
+    .slice(0, limit)
+    .map(p => {
+      const catName = categoryMap.get(p.categoryId) || 'Other';
+      return `[${p.id}] ${p.name} - $${p.unitPrice}/${p.unit} (${catName})`;
+    });
+
+  if (matches.length === 0) {
+    return `No "${query}" found${categoryFilter ? ` in ${categoryFilter}` : ''}`;
+  }
+
+  // Return concise format for display, but include IDs for Drew to use
+  const displayMatches = products
+    .filter(p => {
+      if (filterCategoryId && p.categoryId !== filterCategoryId) return false;
+      return p.name?.toLowerCase().includes(queryLower) || false;
+    })
+    .slice(0, limit)
+    .map(p => `• ${p.name} - $${p.unitPrice}/${p.unit} [${p.id}]`);
+
+  return `Found ${displayMatches.length}:\n${displayMatches.join('\n')}`;
+}
+
+/**
  * Get a condensed catalog context string for the system prompt.
  * This gives Drew knowledge of available products with their IDs.
  * Limited to ~200 products to keep context size manageable.
+ *
+ * @deprecated Use searchCatalog instead for large catalogs (30k+ products)
  */
 export function buildCatalogContext(
   categories: Array<{ id: string; name: string }>,
