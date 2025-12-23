@@ -13,6 +13,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -451,10 +452,11 @@ export default function WizardScreen() {
         <SafeAreaView style={styles.container}>
           {state === 'intro' ? (
             <View style={styles.introContainer}>
-              {/* Drew's avatar placeholder */}
-              <View style={styles.avatarContainer}>
-                <Ionicons name="chatbubble-ellipses" size={48} color={theme.colors.accent} />
-              </View>
+              {/* Drew's avatar */}
+              <Image
+                source={require('@/assets/images/drew-avatar.png')}
+                style={styles.drewAvatar}
+              />
 
               <Text style={styles.greeting}>Hey, I&apos;m Drew!</Text>
               <Text style={styles.subtitle}>
@@ -638,13 +640,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       padding: 24,
     },
-    avatarContainer: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: `${theme.colors.accent}20`,
-      justifyContent: 'center',
-      alignItems: 'center',
+    drewAvatar: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
       marginBottom: 24,
     },
     greeting: {
