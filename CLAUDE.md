@@ -485,6 +485,62 @@ After all groups pass local testing:
 
 ---
 
+## 🚧 Current Work: Drew State Machine (Dec 26, 2025)
+
+### Problem
+
+Drew (the Quote Wizard AI) keeps asking repeated questions and loses track of where he is in the conversation. This happens because Claude is managing conversation flow directly, and LLMs aren't great at state management.
+
+### Solution: Server-Side State Machine
+
+The fix is to have the **server control the flow** while **Claude just adds personality**. State machine code has been drafted and saved.
+
+**Draft code location:** `docs/state-machine-draft.ts`
+
+### State Machine Phases
+
+```
+setup (4 questions) → generating_checklist → building (walk through items) → wrapup (labor, markup, name, client) → done
+```
+
+### What Happened Dec 26
+
+1. Implemented full state machine in edge function ✅
+2. Updated client to pass state back and forth ✅
+3. **BUT** rewrote too much of wizard.tsx and broke the UI ❌
+4. Had to revert all changes to get back to working state
+5. Saved state machine code to `docs/state-machine-draft.ts` for next session
+
+### Next Steps (Implementation Plan)
+
+1. **Edge function only first** - Update `supabase/functions/wizard-chat/index.ts` with state machine logic
+2. **Minimal client changes** - Only add state passing to `lib/wizardApi.ts`:
+   - Add `WizardState` type
+   - Update `sendWizardMessage(message, state)` to accept and return state
+3. **Surgical wizard.tsx changes** - Keep ALL existing UI/styling, only change:
+   - Add `useState` for `wizardState`
+   - Pass state to API calls
+   - Update state from responses
+4. **Test after each change** - Don't batch changes
+
+### Key Files
+
+| File | Change Needed |
+|------|--------------|
+| `supabase/functions/wizard-chat/index.ts` | Replace with state machine logic from draft |
+| `lib/wizardApi.ts` | Add state parameter, keep everything else |
+| `app/(main)/wizard.tsx` | Add state tracking, DO NOT touch UI/styling |
+
+### What NOT to Do
+
+- Don't remove the intro screen
+- Don't change quick reply button styling
+- Don't change message bubble styling
+- Don't remove any existing functionality
+- Don't rewrite the whole file
+
+---
+
 ## 📋 Pending Features (Stashed - Nov 24, 2025)
 
 ### Background
