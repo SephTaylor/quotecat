@@ -11,7 +11,6 @@ import {
   Platform,
   TextInput,
   ScrollView,
-  ActivityIndicator,
   Alert,
   Image,
 } from 'react-native';
@@ -28,7 +27,7 @@ import {
   type WizardTool,
 } from '@/lib/wizardApi';
 import { useProducts } from '@/modules/catalog/useProducts';
-import { createQuote, updateQuote, type Quote, type QuoteItem } from '@/modules/quotes';
+import { createQuote, updateQuote, type QuoteItem } from '@/modules/quotes';
 
 type WizardState = 'intro' | 'chat';
 
@@ -140,48 +139,67 @@ export default function WizardScreen() {
   const generateQuickReplies = (message: string): string[] => {
     const lower = message.toLowerCase();
 
-    // Check what Drew is asking about - use the LAST question in the message
-    // to determine what options to show
-
-    // Budget questions (check first - often combined with other questions)
-    if (lower.includes('budget') || (lower.includes('standard') && lower.includes('premium'))) {
-      return ['Budget-friendly', 'Mid-range', 'Premium'];
+    // Budget/finish level questions (most common)
+    if (lower.includes('budget') || lower.includes('finish') ||
+        (lower.includes('standard') && lower.includes('premium')) ||
+        lower.includes('level of finish')) {
+      return ['Budget', 'Standard', 'Premium'];
     }
 
-    // Ceiling height questions
-    if (lower.includes('ceiling') && lower.includes('height')) {
+    // Size/dimension questions
+    if (lower.includes('what size') || lower.includes('how big') ||
+        lower.includes('dimensions') || lower.includes('square feet') ||
+        (lower.includes('size') && lower.includes('?'))) {
+      return ['Small (5x8)', 'Medium (8x10)', 'Large (10x12)'];
+    }
+
+    // Ceiling height
+    if (lower.includes('ceiling') && (lower.includes('height') || lower.includes('tall'))) {
       return ['8 ft', '9 ft', '10 ft'];
     }
 
-    // Full gut vs keeping existing
-    if (lower.includes('gut') || lower.includes('keeping') || lower.includes('existing')) {
-      return ['Full gut job', 'Keeping existing plumbing'];
+    // Scope questions (full reno vs partial)
+    if (lower.includes('gut') || lower.includes('keeping') ||
+        lower.includes('existing') || lower.includes('scope') ||
+        lower.includes('full') || lower.includes('partial')) {
+      return ['Full remodel', 'Keep plumbing', 'Cosmetic only'];
     }
 
-    // Preference/choice questions
-    if (lower.includes('which') || lower.includes('prefer') || lower.includes('would you like')) {
-      if (lower.includes('toilet')) {
-        return ['Standard', 'Comfort height'];
-      }
-      if (lower.includes('vanity') || lower.includes('sink')) {
-        return ['Drop-in', 'Undermount'];
-      }
-      return ['Go with defaults', 'Let me choose'];
+    // Product preference questions (which/prefer/like)
+    if (lower.includes('which') || lower.includes('prefer') || lower.includes('works for')) {
+      // Try to detect the product type
+      if (lower.includes('toilet')) return ['Standard', 'Comfort height', 'Elongated'];
+      if (lower.includes('vanity') || lower.includes('sink')) return ['Single sink', 'Double sink'];
+      if (lower.includes('tile')) return ['Ceramic', 'Porcelain', 'Natural stone'];
+      if (lower.includes('floor')) return ['Tile', 'Vinyl', 'Hardwood'];
+      // Generic numbered options if we can extract them
+      return ['Option 1', 'Option 2', 'Let me think'];
     }
 
     // Confirmation questions
-    if (lower.includes('sound good') || lower.includes('look good') || lower.includes('ready to add') || lower.includes('shall i add') || lower.includes('add these')) {
-      return ['Yes, add them', 'Make changes'];
+    if (lower.includes('sound good') || lower.includes('look good') ||
+        lower.includes('ready to add') || lower.includes('shall i') ||
+        lower.includes('add these') || lower.includes('go ahead') ||
+        lower.includes('want me to')) {
+      return ['Yes, add them', 'Make changes', 'Start over'];
     }
 
-    // Dimension questions - only if specifically asking for dimensions
-    if (lower.includes('dimension') || lower.includes('how big') || (lower.includes('what') && lower.includes('size') && !lower.includes('nice size'))) {
-      return ['8x10', '10x12', '12x14', '12x16'];
+    // Project type questions (at the start)
+    if (lower.includes('what kind') || lower.includes('what type') ||
+        lower.includes('tell me about') || lower.includes('working on') ||
+        lower.includes('quoting')) {
+      return ['Bathroom', 'Kitchen', 'Bedroom', 'Other'];
     }
 
-    // General project type
-    if (lower.includes('what kind') || lower.includes('what type') || lower.includes('tell me about')) {
-      return ['Bathroom', 'Kitchen', 'Framing', 'Electrical'];
+    // Anything else question
+    if (lower.includes('anything else') || lower.includes('what else') ||
+        lower.includes('need anything')) {
+      return ['Add labor', 'Add markup', 'Done for now'];
+    }
+
+    // Labor questions
+    if (lower.includes('labor') || lower.includes('hours')) {
+      return ['Light (8 hrs)', 'Medium (16 hrs)', 'Heavy (24+ hrs)'];
     }
 
     return [];
@@ -193,12 +211,19 @@ export default function WizardScreen() {
 
   const handleStart = () => {
     setState('chat');
-    // Add Drew's opening message
+    // Drew's opening messages - pick one randomly for variety
+    const openers = [
+      "Alright, let's build something! What kind of project are we quoting?",
+      "Let's get this quote rolling. What are we working on?",
+      "Ready when you are! What's the project?",
+      "Cool, let's do this. Tell me about the job.",
+    ];
+    const randomOpener = openers[Math.floor(Math.random() * openers.length)];
     setMessages([
       {
         id: '1',
         role: 'assistant',
-        content: "Great! Tell me about the project. What kind of work are you quoting?",
+        content: randomOpener,
       },
     ]);
   };
@@ -339,10 +364,18 @@ export default function WizardScreen() {
       }
     } catch (error) {
       console.error('Wizard API error:', error);
+      // Drew-style error messages
+      const errorMessages = [
+        "Hmm, lost my train of thought there. Mind saying that again?",
+        "Signal's a bit spotty. Let's try that again.",
+        "Hit a snag on my end. One more time?",
+        "My brain froze for a sec. What were we talking about?",
+      ];
+      const randomError = errorMessages[Math.floor(Math.random() * errorMessages.length)];
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "Sorry, I'm having trouble connecting. Please try again.",
+        content: randomError,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -494,23 +527,46 @@ export default function WizardScreen() {
                   <View
                     key={msg.id}
                     style={[
-                      styles.messageBubble,
-                      msg.role === 'user' ? styles.userBubble : styles.assistantBubble,
+                      styles.messageRow,
+                      msg.role === 'user' && styles.userMessageRow,
                     ]}
                   >
-                    <Text
+                    {msg.role === 'assistant' && (
+                      <Image
+                        source={require('@/assets/images/drew-avatar.png')}
+                        style={styles.chatAvatar}
+                      />
+                    )}
+                    <View
                       style={[
-                        styles.messageText,
-                        msg.role === 'user' && styles.userMessageText,
+                        styles.messageBubble,
+                        msg.role === 'user' ? styles.userBubble : styles.assistantBubble,
                       ]}
                     >
-                      {msg.content}
-                    </Text>
+                      <Text
+                        style={[
+                          styles.messageText,
+                          msg.role === 'user' && styles.userMessageText,
+                        ]}
+                      >
+                        {msg.content}
+                      </Text>
+                    </View>
                   </View>
                 ))}
                 {isLoading && (
-                  <View style={[styles.messageBubble, styles.assistantBubble]}>
-                    <ActivityIndicator size="small" color={theme.colors.muted} />
+                  <View style={styles.messageRow}>
+                    <Image
+                      source={require('@/assets/images/drew-avatar.png')}
+                      style={styles.chatAvatar}
+                    />
+                    <View style={[styles.messageBubble, styles.assistantBubble, styles.typingBubble]}>
+                      <View style={styles.typingDots}>
+                        <View style={[styles.typingDot, styles.typingDot1]} />
+                        <View style={[styles.typingDot, styles.typingDot2]} />
+                        <View style={[styles.typingDot, styles.typingDot3]} />
+                      </View>
+                    </View>
                   </View>
                 )}
 
@@ -696,10 +752,25 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       padding: 16,
       gap: 12,
     },
+    messageRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+    },
+    userMessageRow: {
+      justifyContent: 'flex-end',
+    },
+    chatAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      marginBottom: 2,
+    },
     messageBubble: {
       padding: 14,
       borderRadius: theme.radius.md,
-      maxWidth: '85%',
+      maxWidth: '80%',
+      flexShrink: 1,
     },
     assistantBubble: {
       backgroundColor: theme.colors.card,
@@ -718,6 +789,29 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     userMessageText: {
       color: '#000',
+    },
+    typingBubble: {
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+    },
+    typingDots: {
+      flexDirection: 'row',
+      gap: 4,
+    },
+    typingDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.colors.muted,
+    },
+    typingDot1: {
+      opacity: 0.4,
+    },
+    typingDot2: {
+      opacity: 0.6,
+    },
+    typingDot3: {
+      opacity: 0.8,
     },
     quickRepliesContainer: {
       flexDirection: 'row',

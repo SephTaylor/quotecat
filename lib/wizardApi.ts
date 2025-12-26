@@ -136,16 +136,18 @@ export function searchCatalog(
     return `No "${query}" found${categoryFilter ? ` in ${categoryFilter}` : ''}`;
   }
 
-  // Return concise format for display, but include IDs for Drew to use
+  // Return clean format - Drew will present these nicely to the user
   const displayMatches = products
     .filter(p => {
       if (filterCategoryId && p.categoryId !== filterCategoryId) return false;
       return p.name?.toLowerCase().includes(queryLower) || false;
     })
     .slice(0, limit)
-    .map(p => `• ${p.name} - $${p.unitPrice}/${p.unit} [${p.id}]`);
+    .map(p => `• ${p.name} - $${p.unitPrice.toFixed(2)}/${p.unit} (ID: ${p.id})`);
 
-  return `Found ${displayMatches.length}:\n${displayMatches.join('\n')}`;
+  const count = displayMatches.length;
+  const header = count === 1 ? '1 match' : `${count} matches`;
+  return `${header}:\n${displayMatches.join('\n')}`;
 }
 
 /**
