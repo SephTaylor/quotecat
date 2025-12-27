@@ -1,7 +1,49 @@
 // lib/wizardApi.ts
 // API client for the Quote Wizard (Drew) - calls Supabase Edge Function
+// Now supports server-side state machine for reliable conversation flow
 
 import { supabase } from './supabase';
+
+// =============================================================================
+// STATE MACHINE TYPES (must match edge function)
+// =============================================================================
+
+export interface WizardState {
+  phase: 'setup' | 'generating_checklist' | 'building' | 'review' | 'wrapup' | 'done';
+  setupStep: number;
+  projectType?: string;
+  size?: string;
+  scope?: string;
+  finishes?: string;
+  checklist: string[];
+  checklistIndex: number;
+  waitingForSelection: boolean;
+  lastSearchResults?: Array<{ id: string; name: string; price: number }>;
+  itemsAdded: Array<{ id: string; name: string; price: number; qty: number }>;
+  reviewDone?: boolean;
+  wrapupStep: number;
+  laborHours?: number;
+  laborRate?: number;
+  markup?: number;
+  quoteName?: string;
+  clientName?: string;
+}
+
+export function createInitialState(): WizardState {
+  return {
+    phase: 'setup',
+    setupStep: 0,
+    checklist: [],
+    checklistIndex: 0,
+    waitingForSelection: false,
+    itemsAdded: [],
+    wrapupStep: 0,
+  };
+}
+
+// =============================================================================
+// LEGACY TYPES (kept for backward compatibility)
+// =============================================================================
 
 export type WizardMessage = {
   role: 'user' | 'assistant';
@@ -15,60 +57,58 @@ export type WizardTool =
   | { type: 'applyMarkup'; percent: number }
   | { type: 'setClientName'; name: string }
   | { type: 'setQuoteName'; name: string }
-  | { type: 'suggestAssembly'; assemblyId: string; assemblyName: string };
+  | { type: 'suggestAssembly'; assemblyId: string; assemblyName: string }
+  | { type: 'showRemoveItem' }
+  | { type: 'showEditQuantity' };
 
 export type WizardResponse = {
   message: string;
   toolCalls?: WizardTool[];
-  done?: boolean; // True when wizard has finished building the quote
+  quickReplies?: string[];
+  state?: WizardState;
+  done?: boolean;
 };
 
 /**
  * Send a message to Drew (the Quote Wizard) and get a response.
- * This calls a Supabase Edge Function that wraps Claude API.
+ * Uses server-side state machine for reliable conversation flow.
+ *
+ * @param userMessage - The user's message text
+ * @param state - Current wizard state (use createInitialState() for first message)
  */
 export async function sendWizardMessage(
-  messages: WizardMessage[],
-  catalogContext?: string,
+  userMessage: string,
+  state: WizardState,
 ): Promise<WizardResponse> {
-  // Limit conversation history to last 20 messages to avoid timeout
-  const recentMessages = messages.slice(-20);
-
-  console.log('[wizardApi] Sending', recentMessages.length, 'messages');
+  console.log('[wizardApi] Sending message:', userMessage.substring(0, 30), 'Phase:', state.phase);
 
   const { data, error } = await supabase.functions.invoke('wizard-chat', {
     body: {
-      messages: recentMessages,
-      catalogContext,
+      userMessage,
+      state,
     },
   });
 
   if (error) {
     console.error('[wizardApi] Error:', error);
+    console.error('[wizardApi] Error context:', JSON.stringify(error.context || {}));
     throw new Error(error.message || 'Failed to get response from Drew');
   }
 
   if (data?.error) {
     console.error('[wizardApi] Edge function error:', data.error);
+    console.error('[wizardApi] Stack:', data.stack);
     throw new Error(data.error);
   }
 
-  // Handle different response formats from edge function
-  const response: WizardResponse = {
-    message: data?.message || '',
-    toolCalls: data?.toolCalls?.map((tc: any) => {
-      // The edge function returns: { type: 'searchCatalog', query: '...', ... }
-      // But it might also have nested input/arguments from Claude's format
-      const params = tc.input || tc.arguments || tc;
-      return {
-        type: tc.name || tc.type || params.type,
-        ...params,
-      };
-    }),
-    done: data?.done,
-  };
+  console.log('[wizardApi] Response - Phase:', data.state?.phase, 'Message:', data.message?.substring(0, 30));
 
-  return response;
+  return {
+    message: data.message || '',
+    quickReplies: data.quickReplies,
+    toolCalls: data.toolCalls,
+    state: data.state,
+  };
 }
 
 /**

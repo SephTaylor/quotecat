@@ -23,13 +23,14 @@ import { GradientBackground } from '@/components/GradientBackground';
 import {
   sendWizardMessage,
   searchCatalog,
-  type WizardMessage,
+  createInitialState,
+  type WizardState as ServerWizardState,
   type WizardTool,
 } from '@/lib/wizardApi';
 import { useProducts } from '@/modules/catalog/useProducts';
 import { createQuote, updateQuote, type QuoteItem } from '@/modules/quotes';
 
-type WizardState = 'intro' | 'chat';
+type ScreenState = 'intro' | 'chat';
 
 type Message = {
   id: string;
@@ -52,13 +53,14 @@ export default function WizardScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const { categories, products } = useProducts();
 
-  const [state, setState] = useState<WizardState>('intro');
+  const [screenState, setScreenState] = useState<ScreenState>('intro');
+  const [wizardState, setWizardState] = useState<ServerWizardState>(createInitialState());
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [pendingTools, setPendingTools] = useState<WizardTool[]>([]);
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [editMode, setEditMode] = useState<'none' | 'remove' | 'quantity'>('none');
   const [draftQuote, setDraftQuote] = useState<DraftQuote>({
     name: '',
     clientName: '',
@@ -73,7 +75,7 @@ export default function WizardScreen() {
 
   // Load speech module only in native builds (not Expo Go)
   useEffect(() => {
-    if (state !== 'chat') return;
+    if (screenState !== 'chat') return;
 
     let mounted = true;
     let cleanup: (() => void) | undefined;
@@ -123,7 +125,7 @@ export default function WizardScreen() {
       mounted = false;
       cleanup?.();
     };
-  }, [state]);
+  }, [screenState]);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -206,26 +208,54 @@ export default function WizardScreen() {
   };
 
   const handleQuickReply = (reply: string) => {
+    if (reply === 'Save Quote') {
+      saveQuoteAndExit();
+      return;
+    }
+    if (reply === 'Start Over') {
+      handleStart();
+      return;
+    }
     handleSendWithMessage(reply);
   };
 
-  const handleStart = () => {
-    setState('chat');
-    // Drew's opening messages - pick one randomly for variety
-    const openers = [
-      "Alright, let's build something! What kind of project are we quoting?",
-      "Let's get this quote rolling. What are we working on?",
-      "Ready when you are! What's the project?",
-      "Cool, let's do this. Tell me about the job.",
-    ];
-    const randomOpener = openers[Math.floor(Math.random() * openers.length)];
-    setMessages([
-      {
-        id: '1',
-        role: 'assistant',
-        content: randomOpener,
-      },
-    ]);
+  const handleStart = async () => {
+    setScreenState('chat');
+    setIsLoading(true);
+    const initialState = createInitialState();
+    setWizardState(initialState);
+    setMessages([]);
+
+    try {
+      // Get Drew's opening message from the state machine
+      const response = await sendWizardMessage('', initialState);
+
+      setWizardState(response.state || initialState);
+      setMessages([
+        {
+          id: '1',
+          role: 'assistant',
+          content: response.message || "Hey! What kind of project are we quoting?",
+        },
+      ]);
+
+      // Use quick replies from server if provided
+      if (response.quickReplies && response.quickReplies.length > 0) {
+        setQuickReplies(response.quickReplies);
+      }
+    } catch (error) {
+      console.error('Failed to start wizard:', error);
+      // Fallback to local opener
+      setMessages([
+        {
+          id: '1',
+          role: 'assistant',
+          content: "Hey! What kind of project are we quoting?",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleMaybeLater = () => {
@@ -280,87 +310,123 @@ export default function WizardScreen() {
     await handleSendWithMessage(text);
   };
 
-  const sendMessageLoop = async (currentMessages: Message[]) => {
+  // Silently apply tools to the draft quote (no confirmation message)
+  const applyToolsSilently = (tools: WizardTool[]) => {
+    for (const tool of tools) {
+      // Handle UI mode switches separately
+      if (tool.type === 'showRemoveItem') {
+        setEditMode('remove');
+        continue;
+      }
+      if (tool.type === 'showEditQuantity') {
+        setEditMode('quantity');
+        continue;
+      }
+    }
 
+    setDraftQuote(prev => {
+      let updated = { ...prev };
+      for (const tool of tools) {
+        switch (tool.type) {
+          case 'setQuoteName':
+            updated.name = tool.name;
+            break;
+          case 'setClientName':
+            updated.clientName = tool.name;
+            break;
+          case 'addItem':
+            updated.items = [
+              ...updated.items,
+              {
+                id: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+                productId: tool.productId,
+                name: tool.productName,
+                qty: tool.qty,
+                unitPrice: tool.unitPrice,
+              },
+            ];
+            break;
+          case 'setLabor':
+            updated.labor = tool.hours * tool.rate;
+            break;
+          case 'applyMarkup':
+            updated.markupPercent = tool.percent;
+            break;
+        }
+      }
+      return updated;
+    });
+  };
+
+  // Remove an item by index
+  const removeItem = (index: number) => {
+    setDraftQuote(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+    setEditMode('none');
+    // Add confirmation message
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: 'Removed! Anything else?',
+    }]);
+    setQuickReplies(['Save Quote', 'Make Changes', 'Start Over']);
+  };
+
+  // Update quantity for an item
+  const updateItemQty = (index: number, newQty: number) => {
+    setDraftQuote(prev => ({
+      ...prev,
+      items: prev.items.map((item, i) => i === index ? { ...item, qty: newQty } : item),
+    }));
+    setEditMode('none');
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `Updated to ${newQty}! Anything else?`,
+    }]);
+    setQuickReplies(['Save Quote', 'Make Changes', 'Start Over']);
+  };
+
+  const sendMessageLoop = async (currentMessages: Message[]) => {
     // Scroll to bottom
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
-      // Loop to handle searchCatalog tool calls (Drew searches, we respond, Drew continues)
-      let maxIterations = 5; // Prevent timeout - fewer iterations
-      let iteration = 0;
+      // Get the last user message
+      const lastUserMessage = currentMessages.filter(m => m.role === 'user').pop();
+      const userMessageText = lastUserMessage?.content || '';
 
-      while (iteration < maxIterations) {
-        iteration++;
+      // Call the state machine API
+      const response = await sendWizardMessage(userMessageText, wizardState);
 
-        // Convert to API format (without id)
-        const apiMessages: WizardMessage[] = currentMessages.map(m => ({
-          role: m.role,
-          content: m.content,
-        }));
+      // Update state from response
+      if (response.state) {
+        setWizardState(response.state);
+      }
 
-        // Don't send catalogContext - Drew will use searchCatalog tool instead
-        const response = await sendWizardMessage(apiMessages);
+      // Add Drew's response
+      const assistantMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: response.message || "I'm thinking...",
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
 
-        // Check for searchCatalog tool calls - handle them automatically
-        const searchCalls = response.toolCalls?.filter(t => t.type === 'searchCatalog') || [];
-        const otherCalls = response.toolCalls?.filter(t => t.type !== 'searchCatalog') || [];
+      // Auto-apply tool calls (addItem, setLabor, etc.) silently
+      if (response.toolCalls && response.toolCalls.length > 0) {
+        applyToolsSilently(response.toolCalls);
+      }
 
-        if (searchCalls.length > 0) {
-          // Execute searches locally
-          const searchResults = searchCalls.map(t => {
-            if (t.type === 'searchCatalog') {
-              const result = handleCatalogSearch(t.query, t.category, t.limit);
-              return `Search for "${t.query}": ${result}`;
-            }
-            return '';
-          }).join('\n\n');
-
-          // Add Drew's message if there is one (for display only)
-          if (response.message) {
-            const assistantMessage: Message = {
-              id: (Date.now() + iteration).toString(),
-              role: 'assistant',
-              content: response.message,
-            };
-            // Only update UI display
-            setMessages((prev) => [...prev, assistantMessage]);
-            // Add to conversation for API
-            currentMessages = [...currentMessages, assistantMessage];
-          }
-
-          // Add search results to conversation for API (not displayed to user)
-          // Use 'user' role so Claude sees it as tool result and continues
-          currentMessages = [...currentMessages, {
-            id: (Date.now() + iteration + 1).toString(),
-            role: 'user' as const,
-            content: `[Catalog Search Results]\n${searchResults}`,
-          }];
-
-          // Continue the loop so Drew processes the results
-          continue;
-        }
-
-        // No search calls - add the final response
-        const assistantMessage: Message = {
-          id: (Date.now() + iteration).toString(),
-          role: 'assistant',
-          content: response.message || "I'm thinking...",
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-
-        // Handle other tool calls (addItem, setLabor, etc.) - show inline
-        if (otherCalls.length > 0) {
-          setPendingTools(otherCalls);
-        }
-
-        // Generate quick replies if Drew is asking questions
+      // Use quick replies from server (state machine provides them)
+      // Fall back to local generation if server doesn't provide any
+      if (response.quickReplies && response.quickReplies.length > 0) {
+        setQuickReplies(response.quickReplies);
+      } else {
         const message = response.message || '';
         const replies = generateQuickReplies(message);
         setQuickReplies(replies);
-
-        // Exit the loop - we're done
-        break;
       }
     } catch (error) {
       console.error('Wizard API error:', error);
@@ -384,59 +450,7 @@ export default function WizardScreen() {
     }
   };
 
-  const applyPendingTools = async (tools: WizardTool[]) => {
-    console.log('Applying tools:', tools);
-
-    // Apply each tool to the draft quote
-    let updatedDraft = { ...draftQuote };
-    const appliedActions: string[] = [];
-
-    for (const tool of tools) {
-      switch (tool.type) {
-        case 'setQuoteName':
-          updatedDraft.name = tool.name;
-          appliedActions.push(`Named quote "${tool.name}"`);
-          break;
-        case 'setClientName':
-          updatedDraft.clientName = tool.name;
-          appliedActions.push(`Set client to "${tool.name}"`);
-          break;
-        case 'addItem':
-          updatedDraft.items = [
-            ...updatedDraft.items,
-            {
-              id: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-              productId: tool.productId,
-              name: tool.productName,
-              qty: tool.qty,
-              unitPrice: tool.unitPrice,
-            },
-          ];
-          appliedActions.push(`Added ${tool.qty}x ${tool.productName}`);
-          break;
-        case 'setLabor':
-          updatedDraft.labor = tool.hours * tool.rate;
-          appliedActions.push(`Set labor to ${tool.hours}hrs @ $${tool.rate}/hr`);
-          break;
-        case 'applyMarkup':
-          updatedDraft.markupPercent = tool.percent;
-          appliedActions.push(`Applied ${tool.percent}% markup`);
-          break;
-      }
-    }
-
-    setDraftQuote(updatedDraft);
-    setPendingTools([]);
-
-    const confirmMessage: Message = {
-      id: Date.now().toString(),
-      role: 'assistant',
-      content: `Done! ${appliedActions.join(', ')}. What else do you need?`,
-    };
-    setMessages((prev) => [...prev, confirmMessage]);
-  };
-
-  const saveQuoteAndExit = async () => {
+    const saveQuoteAndExit = async () => {
     if (!draftQuote.name && draftQuote.items.length === 0) {
       Alert.alert('Empty Quote', 'Add some items before saving.');
       return;
@@ -483,7 +497,7 @@ export default function WizardScreen() {
       />
       <GradientBackground>
         <SafeAreaView style={styles.container}>
-          {state === 'intro' ? (
+          {screenState === 'intro' ? (
             <View style={styles.introContainer}>
               {/* Drew's avatar */}
               <Image
@@ -570,55 +584,96 @@ export default function WizardScreen() {
                   </View>
                 )}
 
-                {/* Show pending suggestions from Drew */}
-                {pendingTools.length > 0 && (
-                  <View style={styles.suggestionCard}>
-                    <Text style={styles.suggestionTitle}>Drew suggests:</Text>
-                    {pendingTools.map((tool, index) => {
-                      let label = '';
-                      switch (tool.type) {
-                        case 'addItem': label = `Add ${tool.qty}x ${tool.productName}`; break;
-                        case 'setLabor': label = `Set labor: ${tool.hours}hrs @ $${tool.rate}/hr`; break;
-                        case 'applyMarkup': label = `Apply ${tool.percent}% markup`; break;
-                        case 'setClientName': label = `Client: ${tool.name}`; break;
-                        case 'setQuoteName': label = `Quote: ${tool.name}`; break;
-                        case 'suggestAssembly': label = `Use assembly: ${tool.assemblyName}`; break;
-                      }
-                      return (
-                        <Text key={index} style={styles.suggestionItem}>• {label}</Text>
-                      );
-                    })}
-                    <View style={styles.suggestionButtons}>
-                      <Pressable
-                        style={styles.suggestionButtonSkip}
-                        onPress={() => setPendingTools([])}
-                      >
-                        <Text style={styles.suggestionButtonSkipText}>Skip</Text>
-                      </Pressable>
-                      <Pressable
-                        style={styles.suggestionButtonApply}
-                        onPress={() => applyPendingTools(pendingTools)}
-                      >
-                        <Text style={styles.suggestionButtonApplyText}>Apply All</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                )}
+                {/* Quote Summary - shown when done */}
+                {wizardState.phase === 'done' && (
+                  <View style={styles.summaryCard}>
+                    <Text style={styles.summaryTitle}>Quote Summary</Text>
 
-                {/* Show draft summary if we have items */}
-                {(draftQuote.name || draftQuote.items.length > 0) && (
-                  <View style={styles.draftSummary}>
-                    <Text style={styles.draftTitle}>
-                      {draftQuote.name || 'Draft Quote'}
-                    </Text>
-                    <Text style={styles.draftInfo}>
-                      {draftQuote.items.length} items
-                      {draftQuote.labor > 0 ? ` • $${draftQuote.labor} labor` : ''}
-                    </Text>
-                    <Pressable style={styles.saveButton} onPress={saveQuoteAndExit}>
-                      <Ionicons name="checkmark-circle" size={18} color="#000" />
-                      <Text style={styles.saveButtonText}>Save Quote</Text>
-                    </Pressable>
+                    {draftQuote.name && (
+                      <Text style={styles.summaryLabel}>
+                        <Text style={styles.summaryBold}>Quote: </Text>
+                        {draftQuote.name}
+                      </Text>
+                    )}
+
+                    {draftQuote.clientName && (
+                      <Text style={styles.summaryLabel}>
+                        <Text style={styles.summaryBold}>Client: </Text>
+                        {draftQuote.clientName}
+                      </Text>
+                    )}
+
+                    {draftQuote.items.length > 0 && (
+                      <View style={styles.summarySection}>
+                        <Text style={styles.summaryBold}>
+                          Items ({draftQuote.items.length}):
+                          {editMode !== 'none' && <Text style={styles.editHint}> (tap to {editMode === 'remove' ? 'remove' : 'edit'})</Text>}
+                        </Text>
+                        {draftQuote.items.map((item, i) => (
+                          <Pressable
+                            key={i}
+                            onPress={() => {
+                              if (editMode === 'remove') {
+                                removeItem(i);
+                              } else if (editMode === 'quantity') {
+                                Alert.prompt(
+                                  'Change Quantity',
+                                  `Enter new quantity for ${item.name}:`,
+                                  [
+                                    { text: 'Cancel', style: 'cancel', onPress: () => setEditMode('none') },
+                                    { text: 'Update', onPress: (val) => updateItemQty(i, parseInt(val || '1') || 1) },
+                                  ],
+                                  'plain-text',
+                                  String(item.qty)
+                                );
+                              }
+                            }}
+                            style={[
+                              styles.summaryItemRow,
+                              editMode !== 'none' && styles.summaryItemTappable,
+                            ]}
+                          >
+                            <Text style={[
+                              styles.summaryItem,
+                              editMode === 'remove' && styles.summaryItemRemove,
+                            ]}>
+                              • {item.qty}x {item.name} - ${(item.qty * item.unitPrice).toFixed(2)}
+                            </Text>
+                          </Pressable>
+                        ))}
+                        {editMode !== 'none' && (
+                          <Pressable onPress={() => setEditMode('none')} style={styles.cancelEditBtn}>
+                            <Text style={styles.cancelEditText}>Cancel</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    )}
+
+                    {draftQuote.labor > 0 && (
+                      <Text style={styles.summaryLabel}>
+                        <Text style={styles.summaryBold}>Labor: </Text>
+                        ${draftQuote.labor.toFixed(2)}
+                      </Text>
+                    )}
+
+                    {draftQuote.markupPercent > 0 && (
+                      <Text style={styles.summaryLabel}>
+                        <Text style={styles.summaryBold}>Markup: </Text>
+                        {draftQuote.markupPercent}%
+                      </Text>
+                    )}
+
+                    <View style={styles.summaryTotal}>
+                      <Text style={styles.summaryTotalLabel}>Total:</Text>
+                      <Text style={styles.summaryTotalValue}>
+                        ${(() => {
+                          const itemsTotal = draftQuote.items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+                          const subtotal = itemsTotal + draftQuote.labor;
+                          const markup = subtotal * (draftQuote.markupPercent / 100);
+                          return (subtotal + markup).toFixed(2);
+                        })()}
+                      </Text>
+                    </View>
                   </View>
                 )}
               </ScrollView>
@@ -833,88 +888,87 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.accent,
       fontWeight: '500',
     },
-    suggestionCard: {
+    summaryCard: {
       backgroundColor: theme.colors.card,
       borderWidth: 2,
       borderColor: theme.colors.accent,
       borderRadius: theme.radius.md,
-      padding: 14,
-      marginTop: 8,
+      padding: 16,
+      marginTop: 12,
     },
-    suggestionTitle: {
-      fontSize: 15,
+    summaryTitle: {
+      fontSize: 18,
       fontWeight: '700',
       color: theme.colors.accent,
+      marginBottom: 12,
+    },
+    summaryLabel: {
+      fontSize: 15,
+      color: theme.colors.text,
+      marginBottom: 6,
+    },
+    summaryBold: {
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    summarySection: {
+      marginTop: 8,
       marginBottom: 8,
     },
-    suggestionItem: {
-      fontSize: 14,
-      color: theme.colors.text,
-      marginBottom: 4,
-      lineHeight: 20,
-    },
-    suggestionButtons: {
-      flexDirection: 'row',
-      gap: 10,
-      marginTop: 12,
-    },
-    suggestionButtonSkip: {
-      flex: 1,
-      paddingVertical: 10,
-      borderRadius: theme.radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      alignItems: 'center',
-    },
-    suggestionButtonSkipText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.colors.muted,
-    },
-    suggestionButtonApply: {
-      flex: 1,
-      paddingVertical: 10,
-      borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.accent,
-      alignItems: 'center',
-    },
-    suggestionButtonApplyText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#000',
-    },
-    draftSummary: {
-      backgroundColor: theme.colors.card,
-      borderWidth: 1,
-      borderColor: theme.colors.accent,
-      borderRadius: theme.radius.md,
-      padding: 14,
-      marginTop: 8,
-    },
-    draftTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: theme.colors.text,
-    },
-    draftInfo: {
+    summaryItem: {
       fontSize: 14,
       color: theme.colors.muted,
+      marginLeft: 8,
       marginTop: 4,
     },
-    saveButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.accent,
-      borderRadius: theme.radius.md,
-      paddingVertical: 10,
-      marginTop: 12,
-      gap: 6,
+    summaryItemRow: {
+      paddingVertical: 4,
     },
-    saveButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: '#000',
+    summaryItemTappable: {
+      backgroundColor: `${theme.colors.accent}15`,
+      borderRadius: 6,
+      paddingHorizontal: 8,
+      marginLeft: 0,
+      marginRight: 4,
+    },
+    summaryItemRemove: {
+      color: theme.colors.danger || '#ff4444',
+    },
+    editHint: {
+      fontWeight: '400',
+      fontSize: 12,
+      color: theme.colors.muted,
+      fontStyle: 'italic',
+    },
+    cancelEditBtn: {
+      marginTop: 8,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      alignSelf: 'flex-start',
+    },
+    cancelEditText: {
+      fontSize: 14,
+      color: theme.colors.accent,
+      fontWeight: '500',
+    },
+    summaryTotal: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    summaryTotalLabel: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    summaryTotalValue: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.colors.accent,
     },
     inputContainer: {
       flexDirection: 'row',
