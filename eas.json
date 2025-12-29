@@ -26,7 +26,8 @@
       "ios": {
         "ascApiKeyPath": "./keys/AuthKey_XRMPFXY7DD.p8",
         "ascApiKeyIssuerId": "c9d4edf4-5f05-4a5b-84e0-0203f00b921a",
-        "ascApiKeyId": "XRMPFXY7DD"
+        "ascApiKeyId": "XRMPFXY7DD",
+        "ascAppId": "6754611668"
       }
     }
   }
