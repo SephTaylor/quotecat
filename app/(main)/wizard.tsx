@@ -26,9 +26,12 @@ import {
   createInitialState,
   type WizardState as ServerWizardState,
   type WizardTool,
+  type WizardDisplay,
+  type UserDefaults,
 } from '@/lib/wizardApi';
 import { useProducts } from '@/modules/catalog/useProducts';
 import { createQuote, updateQuote, type QuoteItem } from '@/modules/quotes';
+import { loadPreferences } from '@/lib/preferences';
 
 type ScreenState = 'intro' | 'chat';
 
@@ -36,6 +39,7 @@ type Message = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  display?: WizardDisplay;
 };
 
 // Draft quote being built by Drew
@@ -61,6 +65,8 @@ export default function WizardScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [editMode, setEditMode] = useState<'none' | 'remove' | 'quantity'>('none');
+  // Track product selections: { productId: quantity }
+  const [selections, setSelections] = useState<Record<string, number>>({});
   const [draftQuote, setDraftQuote] = useState<DraftQuote>({
     name: '',
     clientName: '',
@@ -68,6 +74,18 @@ export default function WizardScreen() {
     labor: 0,
     markupPercent: 0,
   });
+  // User defaults loaded from preferences
+  const [userDefaults, setUserDefaults] = useState<UserDefaults>({});
+
+  // Load user preferences on mount
+  useEffect(() => {
+    loadPreferences().then(prefs => {
+      setUserDefaults({
+        defaultMarkupPercent: prefs.pricing?.defaultMarkupPercent || undefined,
+        defaultLaborRate: prefs.pricing?.defaultLaborRate || undefined,
+      });
+    });
+  }, []);
 
   // Speech recognition - only initialize when user is in chat mode
   const [speechAvailable, setSpeechAvailable] = useState(false);
@@ -207,6 +225,38 @@ export default function WizardScreen() {
     return [];
   };
 
+  // Toggle product selection
+  const toggleSelection = (productId: string, suggestedQty: number) => {
+    setSelections(prev => {
+      if (prev[productId] !== undefined) {
+        // Remove selection
+        const { [productId]: _, ...rest } = prev;
+        return rest;
+      } else {
+        // Add selection with suggested qty
+        return { ...prev, [productId]: suggestedQty };
+      }
+    });
+  };
+
+  // Update quantity for a selected product
+  const updateSelectionQty = (productId: string, qty: number) => {
+    if (qty < 1) qty = 1;
+    setSelections(prev => ({ ...prev, [productId]: qty }));
+  };
+
+  // Send batch selections to server
+  const submitSelections = () => {
+    const selectionArray = Object.entries(selections).map(([id, qty]) => ({ id, qty }));
+    if (selectionArray.length === 0) return;
+
+    // Machine-readable message for API
+    const apiMessage = `ADD_SELECTED:${JSON.stringify(selectionArray)}`;
+
+    setSelections({}); // Clear selections
+    handleSendWithMessage(apiMessage, "Added");
+  };
+
   const handleQuickReply = (reply: string) => {
     if (reply === 'Save Quote') {
       saveQuoteAndExit();
@@ -216,6 +266,12 @@ export default function WizardScreen() {
       handleStart();
       return;
     }
+    if (reply === 'Add Selected') {
+      submitSelections();
+      return;
+    }
+    // Clear selections when moving on
+    setSelections({});
     handleSendWithMessage(reply);
   };
 
@@ -228,7 +284,7 @@ export default function WizardScreen() {
 
     try {
       // Get Drew's opening message from the state machine
-      const response = await sendWizardMessage('', initialState);
+      const response = await sendWizardMessage('', initialState, userDefaults);
 
       setWizardState(response.state || initialState);
       setMessages([
@@ -283,13 +339,14 @@ export default function WizardScreen() {
   }, [isListening]);
 
 
-  const handleSendWithMessage = async (messageText: string) => {
+  // displayText is what the user sees in chat; messageText is what's sent to the API
+  const handleSendWithMessage = async (messageText: string, displayText?: string) => {
     if (!messageText.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: messageText.trim(),
+      content: displayText || messageText.trim(),
     };
 
     let currentMessages = [...messages, userMessage];
@@ -300,7 +357,7 @@ export default function WizardScreen() {
     // Scroll to bottom
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
-    await sendMessageLoop(currentMessages);
+    await sendMessageLoop(currentMessages, messageText.trim());
   };
 
   const handleSend = async () => {
@@ -389,28 +446,30 @@ export default function WizardScreen() {
     setQuickReplies(['Save Quote', 'Make Changes', 'Start Over']);
   };
 
-  const sendMessageLoop = async (currentMessages: Message[]) => {
+  // apiMessage is what's sent to the API (may differ from displayed message)
+  const sendMessageLoop = async (currentMessages: Message[], apiMessage?: string) => {
     // Scroll to bottom
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
-      // Get the last user message
+      // Use provided apiMessage, or fall back to last displayed user message
       const lastUserMessage = currentMessages.filter(m => m.role === 'user').pop();
-      const userMessageText = lastUserMessage?.content || '';
+      const userMessageText = apiMessage || lastUserMessage?.content || '';
 
       // Call the state machine API
-      const response = await sendWizardMessage(userMessageText, wizardState);
+      const response = await sendWizardMessage(userMessageText, wizardState, userDefaults);
 
       // Update state from response
       if (response.state) {
         setWizardState(response.state);
       }
 
-      // Add Drew's response
+      // Add Drew's response with structured display data
       const assistantMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
         content: response.message || "I'm thinking...",
+        display: response.display,
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -538,34 +597,112 @@ export default function WizardScreen() {
                 contentContainerStyle={styles.messagesContent}
               >
                 {messages.map((msg) => (
-                  <View
-                    key={msg.id}
-                    style={[
-                      styles.messageRow,
-                      msg.role === 'user' && styles.userMessageRow,
-                    ]}
-                  >
-                    {msg.role === 'assistant' && (
-                      <Image
-                        source={require('@/assets/images/drew-avatar.png')}
-                        style={styles.chatAvatar}
-                      />
-                    )}
+                  <View key={msg.id}>
                     <View
                       style={[
-                        styles.messageBubble,
-                        msg.role === 'user' ? styles.userBubble : styles.assistantBubble,
+                        styles.messageRow,
+                        msg.role === 'user' && styles.userMessageRow,
                       ]}
                     >
-                      <Text
+                      {msg.role === 'assistant' && (
+                        <Image
+                          source={require('@/assets/images/drew-avatar.png')}
+                          style={styles.chatAvatar}
+                        />
+                      )}
+                      <View
                         style={[
-                          styles.messageText,
-                          msg.role === 'user' && styles.userMessageText,
+                          styles.messageBubble,
+                          msg.role === 'user' ? styles.userBubble : styles.assistantBubble,
                         ]}
                       >
-                        {msg.content}
-                      </Text>
+                        <Text
+                          style={[
+                            styles.messageText,
+                            msg.role === 'user' && styles.userMessageText,
+                          ]}
+                        >
+                          {msg.content}
+                        </Text>
+                      </View>
                     </View>
+
+                    {/* Structured display data - products with multi-select */}
+                    {msg.display?.type === 'products' && msg.display.products && (
+                      <View style={styles.displayCard}>
+                        <Text style={styles.displayCardHeader}>Select items and adjust quantities:</Text>
+                        {msg.display.products.map((product) => {
+                          const isSelected = selections[product.id] !== undefined;
+                          const qty = selections[product.id] ?? product.suggestedQty;
+                          return (
+                            <View key={product.id} style={styles.productRow}>
+                              {/* Checkbox */}
+                              <Pressable
+                                style={[styles.checkbox, isSelected && styles.checkboxSelected]}
+                                onPress={() => toggleSelection(product.id, product.suggestedQty)}
+                              >
+                                {isSelected && <Ionicons name="checkmark" size={16} color="#000" />}
+                              </Pressable>
+
+                              {/* Product info */}
+                              <Pressable
+                                style={styles.productInfo}
+                                onPress={() => toggleSelection(product.id, product.suggestedQty)}
+                              >
+                                <Text style={styles.productName}>{product.name}</Text>
+                                <Text style={styles.productPrice}>
+                                  ${product.price.toFixed(2)}/{product.unit}
+                                </Text>
+                              </Pressable>
+
+                              {/* Qty stepper - only show when selected */}
+                              {isSelected && (
+                                <View style={styles.qtyStepper}>
+                                  <Pressable
+                                    style={styles.qtyButton}
+                                    onPress={() => updateSelectionQty(product.id, qty - 1)}
+                                  >
+                                    <Text style={styles.qtyButtonText}>−</Text>
+                                  </Pressable>
+                                  <Text style={styles.qtyValue}>{qty}</Text>
+                                  <Pressable
+                                    style={styles.qtyButton}
+                                    onPress={() => updateSelectionQty(product.id, qty + 1)}
+                                  >
+                                    <Text style={styles.qtyButtonText}>+</Text>
+                                  </Pressable>
+                                </View>
+                              )}
+                            </View>
+                          );
+                        })}
+
+                        {/* Add Selected button */}
+                        {Object.keys(selections).length > 0 && (
+                          <Pressable style={styles.addSelectedButton} onPress={submitSelections}>
+                            <Text style={styles.addSelectedText}>
+                              Add {Object.keys(selections).length} item{Object.keys(selections).length > 1 ? 's' : ''} to quote
+                            </Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    )}
+
+                    {msg.display?.type === 'added' && msg.display.addedItems && (
+                      <View style={styles.addedCard}>
+                        <Text style={styles.addedTitle}>Added to quote:</Text>
+                        {msg.display.addedItems.map((item, i) => (
+                          <Text key={i} style={styles.addedItem}>
+                            {item.qty}x {item.name}
+                          </Text>
+                        ))}
+                        {msg.display.relatedItems && msg.display.relatedItems.length > 0 && (
+                          <Text style={styles.relatedHint}>
+                            You might also need: {msg.display.relatedItems.join(', ')}
+                          </Text>
+                        )}
+                      </View>
+                    )}
                   </View>
                 ))}
                 {isLoading && (
@@ -621,7 +758,7 @@ export default function WizardScreen() {
                                   `Enter new quantity for ${item.name}:`,
                                   [
                                     { text: 'Cancel', style: 'cancel', onPress: () => setEditMode('none') },
-                                    { text: 'Update', onPress: (val) => updateItemQty(i, parseInt(val || '1') || 1) },
+                                    { text: 'Update', onPress: (val: string | undefined) => updateItemQty(i, parseInt(val || '1') || 1) },
                                   ],
                                   'plain-text',
                                   String(item.qty)
@@ -887,6 +1024,126 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       color: theme.colors.accent,
       fontWeight: '500',
+    },
+    // Display card styles (products, added items)
+    displayCard: {
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      marginLeft: 48, // Align with message bubble (avatar width + gap)
+      marginTop: 8,
+      overflow: 'hidden',
+    },
+    displayCardHeader: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      paddingHorizontal: 12,
+      paddingTop: 10,
+      paddingBottom: 6,
+    },
+    productRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: theme.colors.border,
+      marginRight: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkboxSelected: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    productInfo: {
+      flex: 1,
+    },
+    productName: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.colors.text,
+      marginBottom: 2,
+    },
+    productPrice: {
+      fontSize: 13,
+      color: theme.colors.muted,
+    },
+    qtyStepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.bg,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    qtyButton: {
+      width: 32,
+      height: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    qtyButtonText: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.colors.accent,
+    },
+    qtyValue: {
+      minWidth: 36,
+      textAlign: 'center',
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    addSelectedButton: {
+      backgroundColor: theme.colors.accent,
+      margin: 12,
+      paddingVertical: 12,
+      borderRadius: theme.radius.md,
+      alignItems: 'center',
+    },
+    addSelectedText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#000',
+    },
+    addedCard: {
+      backgroundColor: `${theme.colors.accent}15`,
+      borderWidth: 1,
+      borderColor: theme.colors.accent,
+      borderRadius: theme.radius.md,
+      marginLeft: 48,
+      marginTop: 8,
+      padding: 12,
+    },
+    addedTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.accent,
+      marginBottom: 6,
+    },
+    addedItem: {
+      fontSize: 14,
+      color: theme.colors.text,
+      marginLeft: 8,
+      marginBottom: 2,
+    },
+    relatedHint: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      fontStyle: 'italic',
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: `${theme.colors.accent}30`,
     },
     summaryCard: {
       backgroundColor: theme.colors.card,

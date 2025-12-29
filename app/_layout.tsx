@@ -28,12 +28,21 @@ function RootNavigator() {
 export default function RootLayout() {
   useEffect(() => {
     // Initialize analytics and auth on app start
-    Promise.all([
-      initAnalytics().then(() => {
+    const init = async () => {
+      try {
+        await initAnalytics();
         trackEvent(AnalyticsEvents.APP_OPENED);
-      }),
-      initializeAuth(), // Auto-login if session exists
-    ]);
+      } catch (e) {
+        console.error("Analytics init error:", e);
+      }
+
+      try {
+        await initializeAuth();
+      } catch (e) {
+        console.error("Auth init error:", e);
+      }
+    };
+    init();
   }, []);
 
   return (

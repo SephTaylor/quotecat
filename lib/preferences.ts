@@ -55,6 +55,7 @@ export type PricingSettings = {
   zipCode: string; // User's zip code for regional pricing
   defaultTaxPercent: number; // Default tax % for new quotes
   defaultMarkupPercent: number; // Default markup % for new quotes
+  defaultLaborRate: number; // Default hourly labor rate
 };
 
 export type PaymentMethod = {
@@ -135,6 +136,7 @@ export function getDefaultPreferences(): UserPreferences {
       zipCode: "",
       defaultTaxPercent: 0,
       defaultMarkupPercent: 0,
+      defaultLaborRate: 0,
     },
     paymentMethods: {
       zelle: { enabled: false, value: "" },
@@ -178,27 +180,27 @@ export async function loadPreferences(): Promise<UserPreferences> {
       },
       privacy: {
         ...getDefaultPreferences().privacy,
-        ...stored.privacy,
+        ...(stored.privacy || {}),
       },
       company: {
         ...getDefaultPreferences().company,
-        ...stored.company,
+        ...(stored.company || {}),
       },
       invoice: {
         ...getDefaultPreferences().invoice,
-        ...stored.invoice,
+        ...(stored.invoice || {}),
       },
       notifications: {
         ...getDefaultPreferences().notifications,
-        ...stored.notifications,
+        ...(stored.notifications || {}),
       },
       pricing: {
         ...getDefaultPreferences().pricing,
-        ...stored.pricing,
+        ...(stored.pricing || {}),
       },
       paymentMethods: {
         ...getDefaultPreferences().paymentMethods,
-        ...stored.paymentMethods,
+        ...(stored.paymentMethods || {}),
       },
     };
 

@@ -1,5 +1,5 @@
 // app/(auth)/sign-in.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -18,9 +18,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier } from "@/lib/user";
-import { migrateLocalQuotesToCloud, hasMigrated, syncQuotes } from "@/lib/quotesSync";
-import { migrateLocalInvoicesToCloud, hasInvoicesMigrated, syncInvoices } from "@/lib/invoicesSync";
-import { migrateLocalClientsToCloud, syncClients } from "@/lib/clientsSync";
 
 const LAST_EMAIL_KEY = "@quotecat/last-email";
 
@@ -30,11 +27,20 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const isMountedRef = useRef(true);
+
+  // Track mounted state to avoid state updates on unmounted component
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Load last used email on mount
   useEffect(() => {
     AsyncStorage.getItem(LAST_EMAIL_KEY).then((savedEmail) => {
-      if (savedEmail) setEmail(savedEmail);
+      if (savedEmail && isMountedRef.current) setEmail(savedEmail);
     });
   }, []);
 
@@ -78,42 +84,9 @@ export default function SignInScreen() {
             await activateProTier(profile.email);
           }
 
-          // Auto-migrate and sync data for Pro/Premium users
-          if (isPaidTier) {
-            const [quotesMigrated, invoicesMigrated] = await Promise.all([
-              hasMigrated(),
-              hasInvoicesMigrated(),
-            ]);
-
-            const needsMigration = !quotesMigrated || !invoicesMigrated;
-
-            if (needsMigration) {
-              Alert.alert(
-                "Syncing your data",
-                "We're syncing your data with the cloud. This may take a moment...",
-                [{ text: "OK" }]
-              );
-
-              // Migrate any unmigrated data
-              await Promise.all([
-                !quotesMigrated ? migrateLocalQuotesToCloud() : Promise.resolve(),
-                !invoicesMigrated ? migrateLocalInvoicesToCloud() : Promise.resolve(),
-                migrateLocalClientsToCloud(),
-              ]);
-            }
-
-            // Always sync to get latest cloud data
-            await Promise.all([
-              syncQuotes(),
-              syncInvoices(),
-              syncClients(),
-            ]);
-
-            Alert.alert("Success", "Signed in and synced successfully");
-          } else {
-            // Free tier users don't need cloud sync
-            Alert.alert("Success", "Signed in successfully");
-          }
+          // Show success - sync will happen via initializeAuth on next launch
+          // or when dashboard loads (avoids OOM from double-loading data)
+          Alert.alert("Success", "Signed in successfully");
         }
 
         // Navigate to main app
@@ -126,7 +99,9 @@ export default function SignInScreen() {
         error instanceof Error ? error.message : "Please check your credentials and try again"
       );
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 

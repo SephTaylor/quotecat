@@ -34,9 +34,15 @@ interface WizardState {
   clientName?: string;
 }
 
+interface UserDefaults {
+  defaultMarkupPercent?: number;
+  defaultLaborRate?: number;
+}
+
 interface RequestBody {
   userMessage: string;
   state?: WizardState;
+  userDefaults?: UserDefaults;
 }
 
 // =============================================================================
@@ -51,8 +57,8 @@ const SETUP_QUESTIONS = [
   },
   {
     key: 'size',
-    prompt: 'Ask about the size. Be brief.',
-    quickReplies: ['Small', 'Medium', 'Large', 'Custom'],
+    prompt: 'Ask about the square footage. Mention they can type a number or pick a typical size. Keep it brief.',
+    quickReplies: ['~50 sqft', '~100 sqft', '~150 sqft', '~200+ sqft'],
   },
   {
     key: 'scope',
@@ -91,7 +97,50 @@ function createInitialState(): WizardState {
 
 async function searchProducts(supabase: any, query: string, limit = 5): Promise<Array<{ id: string; name: string; price: number; unit: string }>> {
   try {
-    // Simple ilike search - no fuzzy matching, just exact substring match
+    // First try to find a matching category
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('id, name')
+      .ilike('name', `%${query}%`)
+      .limit(1);
+
+    if (categories && categories.length > 0) {
+      // Found a category - return products in that category (excluding screws/fasteners unless that's the category)
+      const categoryId = categories[0].id;
+      const categoryName = categories[0].name.toLowerCase();
+
+      let productsQuery = supabase
+        .from('products')
+        .select('id, name, unit, unit_price')
+        .eq('category_id', categoryId)
+        .limit(limit);
+
+      // If this isn't the fasteners category, exclude items with "screw" or "nail" in the name
+      // to avoid overlap with the dedicated Fasteners category
+      if (!categoryName.includes('fastener') && !categoryName.includes('hardware')) {
+        // Can't easily exclude with Supabase, so we'll filter after
+      }
+
+      const { data } = await productsQuery;
+
+      // Filter out fasteners from non-fastener categories to avoid overlap
+      let filtered = data || [];
+      if (!categoryName.includes('fastener') && !categoryName.includes('hardware') && !categoryName.includes('screw')) {
+        filtered = filtered.filter((p: any) => {
+          const name = p.name.toLowerCase();
+          return !name.includes('screw') && !name.includes('nail ') && !name.startsWith('nail');
+        });
+      }
+
+      return filtered.slice(0, limit).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        price: p.unit_price,
+        unit: p.unit,
+      }));
+    }
+
+    // No category match - fall back to name search
     const { data } = await supabase
       .from('products')
       .select('id, name, unit, unit_price')
@@ -137,15 +186,23 @@ async function callClaude(prompt: string): Promise<string> {
 // SIZE & QUANTITY HELPERS
 // =============================================================================
 
-// Map size labels to approximate square footage by project type
+// Parse size input to square footage
+// Handles: "~100 sqft", "100 sqft", "100", "small", "medium", "large"
 function getSqftFromSize(size: string, projectType: string): number {
+  // First, try to extract a number from the input
+  const numMatch = size.match(/(\d+)/);
+  if (numMatch) {
+    return parseInt(numMatch[1], 10);
+  }
+
+  // Fall back to label-based sizes for legacy compatibility
   const sizeMap: Record<string, Record<string, number>> = {
-    bathroom: { small: 50, medium: 80, large: 120, custom: 80 },
-    kitchen: { small: 100, medium: 150, large: 250, custom: 150 },
-    deck: { small: 100, medium: 200, large: 400, custom: 200 },
-    bedroom: { small: 100, medium: 150, large: 200, custom: 150 },
-    basement: { small: 400, medium: 600, large: 1000, custom: 600 },
-    default: { small: 100, medium: 200, large: 300, custom: 200 },
+    bathroom: { small: 50, medium: 80, large: 120 },
+    kitchen: { small: 100, medium: 150, large: 250 },
+    deck: { small: 100, medium: 200, large: 400 },
+    bedroom: { small: 100, medium: 150, large: 200 },
+    basement: { small: 400, medium: 600, large: 1000 },
+    default: { small: 100, medium: 200, large: 300 },
   };
 
   const sizeLower = size.toLowerCase();
@@ -155,71 +212,269 @@ function getSqftFromSize(size: string, projectType: string): number {
   const typeKey = Object.keys(sizeMap).find(k => typeLower.includes(k)) || 'default';
   const sizes = sizeMap[typeKey];
 
-  // Find matching size
+  // Find matching size label
   const sizeKey = Object.keys(sizes).find(k => sizeLower.includes(k)) || 'medium';
   return sizes[sizeKey];
+}
+
+// =============================================================================
+// UNIT SIZE PARSING - Extract package/unit sizes from product names
+// =============================================================================
+
+interface ParsedUnitSize {
+  weight?: number;      // lbs (for screws, nails, compound)
+  sheetSqft?: number;   // sqft (for drywall, plywood - WxH)
+  lengthFt?: number;    // feet (for lumber, pipe, wire, trim)
+  volume?: number;      // gallons (for paint, primer)
+  rollFt?: number;      // feet per roll (for wire, tape)
+  bagCoverage?: number; // sqft per bag (for concrete, grout)
+}
+
+function parseUnitSize(item: string): ParsedUnitSize {
+  const result: ParsedUnitSize = {};
+
+  // Weight: "1lb", "5lb", "25lb", "50 lb"
+  const weightMatch = item.match(/(\d+)\s*lb/i);
+  if (weightMatch) {
+    result.weight = parseInt(weightMatch[1], 10);
+  }
+
+  // Sheet dimensions: "4x8", "4x10", "4x12", "4'x8'"
+  const sheetMatch = item.match(/(\d+)\s*[x']\s*(\d+)/);
+  if (sheetMatch) {
+    const w = parseInt(sheetMatch[1], 10);
+    const h = parseInt(sheetMatch[2], 10);
+    // Only use as sheet sqft if dimensions look like sheets (both > 2)
+    if (w >= 3 && h >= 3) {
+      result.sheetSqft = w * h;
+    }
+  }
+
+  // Linear length: "8'", "10'", "12'", "8ft", "10 ft", "96in" (8ft)
+  // Common lumber: 8', 10', 12', 16'
+  const ftMatch = item.match(/(\d+)\s*(?:ft|'|foot|feet)\b/i);
+  if (ftMatch) {
+    result.lengthFt = parseInt(ftMatch[1], 10);
+  }
+  // Check for inches and convert (96" = 8')
+  const inMatch = item.match(/(\d+)\s*(?:in|")\b/i);
+  if (inMatch && !result.lengthFt) {
+    const inches = parseInt(inMatch[1], 10);
+    if (inches >= 48) { // Only convert if looks like lumber length
+      result.lengthFt = inches / 12;
+    }
+  }
+
+  // Volume: "1gal", "5gal", "1 gallon"
+  const galMatch = item.match(/(\d+)\s*gal/i);
+  if (galMatch) {
+    result.volume = parseInt(galMatch[1], 10);
+  }
+
+  // Roll length: "50ft roll", "100' roll", "250ft"
+  const rollMatch = item.match(/(\d+)\s*(?:ft|')\s*(?:roll)?/i);
+  if (rollMatch && (item.includes('roll') || item.includes('wire') || item.includes('romex'))) {
+    result.rollFt = parseInt(rollMatch[1], 10);
+  }
+
+  return result;
 }
 
 // Calculate suggested quantity based on item type and square footage
 function suggestQty(itemType: string, sqft: number, projectType: string): number {
   const item = itemType.toLowerCase();
   const type = projectType.toLowerCase();
+  const parsed = parseUnitSize(item);
 
-  // Fixed quantities (one per room/project)
-  if (['toilet', 'vanity', 'shower', 'sink', 'countertop'].some(i => item.includes(i))) {
+  // Estimate linear feet needed (perimeter for a room)
+  const perimeterFt = Math.sqrt(sqft) * 4;
+  // Estimate wall sqft (assuming 8ft ceiling, all 4 walls)
+  const wallSqft = perimeterFt * 8;
+
+  // === FIXTURES (1 per room unless specified) ===
+  if (['toilet', 'vanity', 'shower', 'tub', 'bathtub', 'sink', 'countertop', 'mirror', 'medicine cabinet'].some(i => item.includes(i))) {
     return 1;
   }
   if (item.includes('faucet')) {
-    return type.includes('kitchen') ? 1 : (type.includes('bathroom') ? 2 : 1); // bathroom might have sink + shower
+    return type.includes('kitchen') ? 1 : (type.includes('bathroom') ? 2 : 1);
   }
 
-  // Area-based quantities
-  if (item.includes('tile')) {
-    return Math.ceil(sqft * 1.1); // 10% waste factor
+  // === CONSUMABLES & SUPPLIES (small quantities) ===
+  if (item.includes('compound') || item.includes('mud') || item.includes('spackle')) {
+    const galPerUnit = parsed.volume || 1;
+    const totalGalNeeded = sqft / 200; // ~1 gal per 200 sqft
+    return Math.max(1, Math.ceil(totalGalNeeded / galPerUnit));
   }
-  if (item.includes('flooring') || item.includes('floor')) {
+  if (item.includes('tape') && (item.includes('drywall') || item.includes('joint'))) {
+    const ftPerRoll = parsed.rollFt || 75; // default 75ft roll
+    const totalFtNeeded = perimeterFt * 2; // seams
+    return Math.max(1, Math.ceil(totalFtNeeded / ftPerRoll));
+  }
+  if (item.includes('caulk') || item.includes('sealant') || item.includes('adhesive')) {
+    return Math.max(1, Math.ceil(sqft / 100)); // tubes
+  }
+  if (item.includes('primer')) {
+    const galPerUnit = parsed.volume || 1;
+    const totalGalNeeded = sqft / 300;
+    return Math.max(1, Math.ceil(totalGalNeeded / galPerUnit));
+  }
+  if (item.includes('grout')) {
+    return Math.max(1, Math.ceil(sqft / 50)); // bags
+  }
+  if (item.includes('thinset') || item.includes('mortar')) {
+    return Math.max(1, Math.ceil(sqft / 40)); // bags
+  }
+
+  // === FASTENERS (weight-based) ===
+  if (item.includes('screw') || item.includes('nail') || item.includes('fastener')) {
+    const weightLbs = parsed.weight || 1;
+    // Base: ~2lbs of fasteners per 100 sqft
+    const totalLbsNeeded = (sqft / 100) * 2;
+    return Math.max(1, Math.ceil(totalLbsNeeded / weightLbs));
+  }
+
+  // === SHEET GOODS (dimension-based) ===
+  if (item.includes('drywall') || item.includes('sheetrock') || item.includes('gypsum')) {
+    const sheetSqft = parsed.sheetSqft || 32; // default 4x8
+    return Math.max(1, Math.ceil(wallSqft / sheetSqft));
+  }
+  if (item.includes('plywood') || item.includes('osb') || item.includes('subfloor')) {
+    const sheetSqft = parsed.sheetSqft || 32;
+    return Math.max(1, Math.ceil(sqft / sheetSqft));
+  }
+  if (item.includes('backer') || item.includes('cement board') || item.includes('hardie')) {
+    const sheetSqft = parsed.sheetSqft || 15; // default 3x5
+    return Math.max(1, Math.ceil(sqft / sheetSqft));
+  }
+
+  // === FLOORING & TILE (sqft based) ===
+  if (item.includes('tile') && !item.includes('adhesive')) {
+    return Math.ceil(sqft * 1.1); // 10% waste
+  }
+  if (item.includes('flooring') || item.includes('vinyl') || item.includes('laminate') || item.includes('hardwood')) {
     return Math.ceil(sqft * 1.1);
   }
-  if (item.includes('drywall')) {
-    return Math.ceil(sqft / 32); // 4x8 sheets = 32 sqft each
-  }
-  if (item.includes('paint')) {
-    return Math.ceil(sqft / 350); // ~350 sqft per gallon
-  }
-  if (item.includes('insulation')) {
-    return Math.ceil(sqft / 40); // batts cover ~40 sqft
+  if (item.includes('carpet')) {
+    return Math.ceil(sqft * 1.15); // more waste for carpet
   }
 
-  // Linear/count-based
-  if (item.includes('lighting') || item.includes('light')) {
-    return Math.max(1, Math.ceil(sqft / 50)); // roughly 1 per 50 sqft
+  // === PAINT (volume-based) ===
+  if (item.includes('paint') || item.includes('stain')) {
+    const galPerUnit = parsed.volume || 1;
+    const totalGalNeeded = sqft / 350; // ~350 sqft per gallon
+    return Math.max(1, Math.ceil(totalGalNeeded / galPerUnit));
   }
-  if (item.includes('cabinet')) {
-    return Math.ceil(sqft / 20); // rough cabinet count
+
+  // === INSULATION ===
+  if (item.includes('insulation') || item.includes('batt')) {
+    return Math.ceil(wallSqft / 40); // batts
   }
-  if (item.includes('lumber') || item.includes('framing')) {
-    return Math.ceil(sqft / 8); // 2x4 studs roughly
+
+  // === LUMBER & FRAMING (length-based) ===
+  if (item.includes('stud') || item.includes('2x4') || item.includes('2x6')) {
+    const lengthFt = parsed.lengthFt || 8; // default 8ft studs
+    // Studs every 16" = 0.75 studs per linear ft of wall
+    const studsNeeded = perimeterFt * 0.75;
+    // Longer studs can be cut, but 8ft is standard wall height
+    // If they pick 10' or 12' studs, they need fewer (can cut to size)
+    const adjustmentFactor = 8 / lengthFt;
+    return Math.max(1, Math.ceil(studsNeeded * adjustmentFactor));
+  }
+  if (item.includes('lumber') || item.includes('board') || item.includes('plank')) {
+    const lengthFt = parsed.lengthFt || 8;
+    const totalFtNeeded = perimeterFt;
+    return Math.max(1, Math.ceil(totalFtNeeded / lengthFt));
+  }
+  if (item.includes('joist') || item.includes('rafter')) {
+    const lengthFt = parsed.lengthFt || 10;
+    // Joists every 16" across the span
+    const joistsNeeded = Math.sqrt(sqft) * 0.75;
+    return Math.max(1, Math.ceil(joistsNeeded));
+  }
+
+  // === TRIM & MOLDING (length-based) ===
+  if (item.includes('trim') || item.includes('molding') || item.includes('baseboard') || item.includes('casing')) {
+    const lengthFt = parsed.lengthFt || 8; // default 8ft pieces
+    const totalFtNeeded = perimeterFt;
+    return Math.max(1, Math.ceil(totalFtNeeded / lengthFt));
+  }
+  if (item.includes('transition') || item.includes('threshold')) {
+    return Math.max(1, Math.ceil(Math.sqrt(sqft) / 10)); // ~1 per doorway
+  }
+
+  // === ELECTRICAL ===
+  if (item.includes('outlet') || item.includes('receptacle') || item.includes('switch')) {
+    return Math.max(2, Math.ceil(sqft / 40)); // code: outlet every 12ft
+  }
+  if (item.includes('light') || item.includes('fixture') || item.includes('can')) {
+    return Math.max(1, Math.ceil(sqft / 50));
+  }
+  if (item.includes('wire') || item.includes('romex')) {
+    const rollFt = parsed.rollFt || parsed.lengthFt || 50; // default 50ft
+    const totalFtNeeded = sqft * 1.5; // rough estimate: 1.5ft wire per sqft
+    return Math.max(1, Math.ceil(totalFtNeeded / rollFt));
+  }
+  if (item.includes('box') && item.includes('electric')) {
+    return Math.max(2, Math.ceil(sqft / 40));
+  }
+
+  // === PLUMBING (length-based) ===
+  if (item.includes('pipe') || item.includes('pvc') || item.includes('copper')) {
+    const lengthFt = parsed.lengthFt || 10; // default 10ft
+    const totalFtNeeded = sqft / 5; // rough estimate
+    return Math.max(1, Math.ceil(totalFtNeeded / lengthFt));
+  }
+  if (item.includes('fitting') || item.includes('elbow') || item.includes('coupling')) {
+    return Math.max(4, Math.ceil(sqft / 15));
+  }
+  if (item.includes('valve') || item.includes('shutoff')) {
+    return Math.max(2, Math.ceil(sqft / 50));
+  }
+
+  // === DECK & OUTDOOR ===
+  if (item.includes('decking') || item.includes('deck board')) {
+    const lengthFt = parsed.lengthFt || 8;
+    // Deck boards ~5.5" wide, need enough to cover sqft
+    const boardsNeeded = (sqft / (lengthFt * 0.46)) * 1.1; // 5.5"/12 = 0.46ft, +10% waste
+    return Math.max(1, Math.ceil(boardsNeeded));
   }
   if (item.includes('post')) {
-    return Math.ceil(sqft / 50); // deck posts
+    return Math.max(4, Math.ceil(sqft / 50));
   }
-  if (item.includes('railing')) {
-    return Math.ceil(Math.sqrt(sqft) * 2); // perimeter estimate in linear ft
+  if (item.includes('railing') || item.includes('baluster')) {
+    return Math.ceil(Math.sqrt(sqft) * 2);
   }
-  if (item.includes('decking')) {
-    return Math.ceil(sqft * 1.1); // deck boards in sqft with waste
+  if (item.includes('concrete') || item.includes('cement')) {
+    return Math.ceil(sqft / 30); // bags for footings/pads
   }
-  if (item.includes('screw') || item.includes('nail')) {
-    return Math.ceil(sqft / 10); // boxes/pounds
-  }
-  if (item.includes('concrete')) {
-    return Math.ceil(sqft / 30); // bags for footings
-  }
-  if (item.includes('trim')) {
-    return Math.ceil(Math.sqrt(sqft) * 4); // perimeter in linear ft
+  if (item.includes('joist hanger') || item.includes('bracket') || item.includes('hardware')) {
+    return Math.max(4, Math.ceil(sqft / 20));
   }
 
-  // Default: 1
+  // === CABINET & STORAGE ===
+  if (item.includes('cabinet')) {
+    return Math.max(1, Math.ceil(sqft / 25));
+  }
+  if (item.includes('drawer') || item.includes('pull') || item.includes('knob') || item.includes('handle')) {
+    return Math.max(4, Math.ceil(sqft / 15));
+  }
+  if (item.includes('shelf') || item.includes('shelving')) {
+    return Math.max(2, Math.ceil(sqft / 30));
+  }
+  if (item.includes('hinge')) {
+    return Math.max(4, Math.ceil(sqft / 10));
+  }
+
+  // === UNDERLAYMENT & BARRIERS ===
+  if (item.includes('underlayment') || item.includes('membrane') || item.includes('barrier')) {
+    const rollSqft = parsed.rollFt ? parsed.rollFt * 3 : 100; // assume 3ft wide rolls
+    return Math.max(1, Math.ceil(sqft / rollSqft));
+  }
+  if (item.includes('felt') || item.includes('paper')) {
+    return Math.ceil(sqft / 400); // rolls
+  }
+
+  // Default: 1 unit
   return 1;
 }
 
@@ -319,17 +574,47 @@ function getRelatedItems(category: string): string[] {
 }
 
 // =============================================================================
+// RESPONSE TYPES
+// =============================================================================
+
+interface WizardProduct {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+  suggestedQty: number;  // Per-product qty based on sqft and product type
+}
+
+interface WizardDisplay {
+  type: 'products' | 'added' | 'review';
+  products?: WizardProduct[];          // Each product has its own suggestedQty
+  addedItems?: Array<{ name: string; qty: number }>;
+  reviewNotes?: string;
+  relatedItems?: string[];
+}
+
+interface ProcessResult {
+  message: string;
+  display?: WizardDisplay;
+  quickReplies?: string[];
+  toolCalls?: any[];
+  newState: WizardState;
+}
+
+// =============================================================================
 // STATE MACHINE LOGIC
 // =============================================================================
 
 async function processMessage(
   supabase: any,
   userMessage: string,
-  state: WizardState
-): Promise<{ message: string; quickReplies?: string[]; toolCalls?: any[]; newState: WizardState }> {
+  state: WizardState,
+  userDefaults: UserDefaults = {}
+): Promise<ProcessResult> {
 
   const newState = { ...state };
   let message = '';
+  let display: WizardDisplay | undefined;
   let quickReplies: string[] | undefined;
   let toolCalls: any[] | undefined;
 
@@ -360,7 +645,7 @@ async function processMessage(
       newState.checklistIndex = 0;
 
       const firstCategory = newState.checklist[0];
-      const categoryMessage = await callClaude(`Say "First up: ${firstCategory}. Need one or skip?" Keep it super brief.`);
+      const categoryMessage = await callClaude(`Say "First up: ${firstCategory}. Needed or skip?" Keep it super brief.`);
       message = message + '\n\n' + categoryMessage;
       quickReplies = ['Show options', 'Skip'];
 
@@ -378,23 +663,98 @@ async function processMessage(
 
   // PHASE: BUILDING
   else if (state.phase === 'building') {
-    const currentCategory = state.checklist[state.checklistIndex];
+    const currentCategory = state.checklist[state.checklistIndex] || null;
+    const isPostChecklist = state.checklistIndex >= state.checklist.length; // Adding items after checklist/review
 
     if (state.waitingForSelection) {
-      // Parse numbers from input (supports "1", "1,3", "1 3 5", "1, 2, 3")
-      const numbers = userMessage.match(/\d+/g)?.map(n => parseInt(n)) || [];
-      const validSelections = numbers.filter(n => state.lastSearchResults && state.lastSearchResults[n - 1]);
+      // Handle skip even while waiting for selection
+      if (userMessage.toLowerCase() === 'skip') {
+        newState.waitingForSelection = false;
+        newState.lastSearchResults = undefined;
+        newState.checklistIndex++;
 
-      if (validSelections.length > 0) {
+        if (newState.checklistIndex >= newState.checklist.length) {
+          newState.phase = 'review';
+          message = await callClaude('Say "Got it! That\'s the checklist done. Let me do a quick review to make sure we didn\'t miss anything..."');
+        } else {
+          const nextCategory = newState.checklist[newState.checklistIndex];
+          message = await callClaude(`Say "Skipped." Then offer the next category: ${nextCategory}. Ask "Needed or skip?"`);
+          quickReplies = ['Show options', 'Skip'];
+        }
+      }
+      // Handle batch selections from UI: ADD_SELECTED:[{id,qty},{id,qty}]
+      else if (userMessage.startsWith('ADD_SELECTED:')) {
+        try {
+          const selectionsJson = userMessage.substring('ADD_SELECTED:'.length);
+          const selections: Array<{ id: string; qty: number }> = JSON.parse(selectionsJson);
+
+          if (selections.length > 0 && state.lastSearchResults) {
+            toolCalls = [];
+            const addedItemsList: Array<{ name: string; qty: number }> = [];
+
+            for (const sel of selections) {
+              const product = state.lastSearchResults.find(p => p.id === sel.id);
+              if (product) {
+                newState.itemsAdded.push({ ...product, qty: sel.qty });
+                toolCalls.push({
+                  type: 'addItem',
+                  productId: product.id,
+                  productName: product.name,
+                  qty: sel.qty,
+                  unitPrice: product.price,
+                });
+                addedItemsList.push({ name: product.name, qty: sel.qty });
+              }
+            }
+
+            newState.waitingForSelection = false;
+            newState.lastSearchResults = undefined;
+            newState.checklistIndex++;
+
+            display = {
+              type: 'added',
+              addedItems: addedItemsList,
+            };
+
+            if (isPostChecklist) {
+              newState.phase = 'wrapup';
+              newState.wrapupStep = 1;
+              message = await callClaude('Items added! Now ask how many labor hours for this job. Keep it brief.');
+            } else if (newState.checklistIndex >= newState.checklist.length) {
+              newState.phase = 'review';
+              message = await callClaude('Items added! That\'s the checklist done. Say you\'re doing a quick review. Keep it brief.');
+            } else {
+              const nextCategory = newState.checklist[newState.checklistIndex];
+              message = await callClaude(`Items added! Offer next category: ${nextCategory}. Ask "Needed or skip?" Keep it brief.`);
+              quickReplies = ['Show options', 'Skip'];
+            }
+          } else {
+            message = await callClaude('No items selected. Ask them to select items or skip.');
+            quickReplies = ['Skip'];
+          }
+        } catch (e) {
+          console.error('Failed to parse selections:', e);
+          message = await callClaude('Something went wrong. Ask them to try again.');
+          quickReplies = ['Skip'];
+        }
+      }
+      // Legacy: Parse numbers from input (supports "1", "1,3", "1 3 5", "1, 2, 3")
+      else {
+        const numbers = userMessage.match(/\d+/g)?.map(n => parseInt(n)) || [];
+        const validSelections = numbers.filter(n => state.lastSearchResults && state.lastSearchResults[n - 1]);
+
+        if (validSelections.length > 0) {
         // Calculate sqft for quantity suggestions
         const sqft = getSqftFromSize(state.size || 'medium', state.projectType || 'room');
 
         // Add selected products with suggested quantities
         toolCalls = [];
-        const addedItems: string[] = [];
+        const addedItemsList: Array<{ name: string; qty: number }> = [];
         for (const selection of validSelections) {
           const product = state.lastSearchResults![selection - 1];
-          const qty = suggestQty(currentCategory, sqft, state.projectType || 'room');
+          // Use product name for qty suggestion if no current category
+          const qtyCategory = currentCategory || product.name;
+          const qty = suggestQty(qtyCategory, sqft, state.projectType || 'room');
           newState.itemsAdded.push({ ...product, qty });
           toolCalls.push({
             type: 'addItem',
@@ -403,29 +763,30 @@ async function processMessage(
             qty,
             unitPrice: product.price,
           });
-          addedItems.push(`${qty}x ${product.name}`);
+          addedItemsList.push({ name: product.name, qty });
         }
         newState.waitingForSelection = false;
         newState.lastSearchResults = undefined;
         newState.checklistIndex++;
 
-        const count = toolCalls.length;
-        const addedSummary = addedItems.join(', ');
-        const addedText = count === 1 ? `Added ${addedSummary}!` : `Added: ${addedSummary}!`;
+        // Return structured data showing what was added
+        display = {
+          type: 'added',
+          addedItems: addedItemsList,
+        };
 
-        // Check for related items they might need
-        const relatedItems = getRelatedItems(currentCategory);
-        const relatedNote = relatedItems.length > 0
-          ? ` You might also mention they may need ${relatedItems.slice(0, 3).join(', ')} to go with that - ask if they want to add any.`
-          : '';
-
-        if (newState.checklistIndex >= newState.checklist.length) {
+        if (isPostChecklist) {
+          // Adding items after checklist/review - go to wrapup
+          newState.phase = 'wrapup';
+          newState.wrapupStep = 1;
+          message = await callClaude('Items added! Now ask how many labor hours for this job. Keep it brief.');
+        } else if (newState.checklistIndex >= newState.checklist.length) {
           // Go to review phase to check for forgotten items
           newState.phase = 'review';
-          message = await callClaude(`Say "${addedText} That's the main checklist done."${relatedNote} Then say "Let me do a quick review to make sure we didn't miss anything..."`);
+          message = await callClaude(`Items added! That's the checklist done. Say you're doing a quick review. Keep it brief.`);
         } else {
           const nextCategory = newState.checklist[newState.checklistIndex];
-          message = await callClaude(`Say "${addedText}"${relatedNote} Then offer the next category: ${nextCategory}. Ask "Need one or skip?" Keep it brief.`);
+          message = await callClaude(`Items added! Offer next category: ${nextCategory}. Ask "Needed or skip?" Keep it brief.`);
           quickReplies = ['Show options', 'Skip'];
         }
       } else {
@@ -433,23 +794,36 @@ async function processMessage(
         const searchTerm = userMessage.trim();
         const products = await searchProducts(supabase, searchTerm);
 
-        // Calculate sqft for quantity suggestions
+        // Calculate sqft for quantity suggestions (use search term if no current category)
         const sqft = getSqftFromSize(state.size || 'medium', state.projectType || 'room');
-        const suggestedQty = suggestQty(currentCategory, sqft, state.projectType || 'room');
-        const qtyNote = suggestedQty > 1 ? ` (I'd suggest ${suggestedQty} for this size)` : '';
+        const qtyCategory = currentCategory || searchTerm;
+        const suggestedQty = suggestQty(qtyCategory, sqft, state.projectType || 'room');
 
         if (products.length > 0) {
           newState.lastSearchResults = products;
-          const productList = products.map((p, i) => `${i + 1}. ${p.name} - $${p.price}/${p.unit}`).join('\n');
-          message = await callClaude(`Found these for "${searchTerm}":\n${productList}${qtyNote}\n\nBriefly show the options. If there's a qty suggestion, mention it. Ask which ones they want.`);
-          quickReplies = products.map((_, i) => String(i + 1));
+          newState.waitingForSelection = true;
+
+          // Return structured product data with per-product qty
+          display = {
+            type: 'products',
+            products: products.map(p => ({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              unit: p.unit,
+              suggestedQty: suggestQty(p.name, sqft, state.projectType || 'room'),
+            })),
+          };
+
+          message = await callClaude(`Found some "${searchTerm}" options. One brief sentence - nothing else.`);
+          quickReplies = ['Add Selected', 'Skip'];
         } else {
-          // Keep showing current results
-          const productList = state.lastSearchResults?.map((p, i) => `${i + 1}. ${p.name} - $${p.price}`).join('\n') || '';
-          message = await callClaude(`Couldn't find "${searchTerm}". Current options:\n${productList}\n\nBriefly say you didn't find that, show the options again.`);
-          quickReplies = [...(state.lastSearchResults?.map((_, i) => String(i + 1)) || []), 'Skip'];
+          // No results found
+          message = await callClaude(`Couldn't find "${searchTerm}" in the catalog. Ask them to try a different search term.`);
+          quickReplies = isPostChecklist ? ['Done adding', 'Try another search'] : ['Skip'];
         }
       }
+      } // close the else block for non-skip handling
 
     } else if (userMessage.toLowerCase() === 'skip') {
       newState.checklistIndex++;
@@ -460,11 +834,12 @@ async function processMessage(
         message = await callClaude('Say "Got it! That\'s the checklist done. Let me do a quick review to make sure we didn\'t miss anything..."');
       } else {
         const nextCategory = newState.checklist[newState.checklistIndex];
-        message = await callClaude(`Say "Skipped." Then offer the next category: ${nextCategory}. Ask "Need one or skip?"`);
+        message = await callClaude(`Say "Skipped." Then offer the next category: ${nextCategory}. Ask "Needed or skip?"`);
         quickReplies = ['Show options', 'Skip'];
       }
 
-    } else if (userMessage.toLowerCase() === 'show options' || userMessage.toLowerCase().includes('show')) {
+    } else if ((userMessage.toLowerCase() === 'show options' || userMessage.toLowerCase().includes('show')) && currentCategory) {
+      // Show options for current checklist category
       const products = await searchProducts(supabase, currentCategory);
 
       if (products.length === 0) {
@@ -474,20 +849,37 @@ async function processMessage(
         newState.lastSearchResults = products;
         newState.waitingForSelection = true;
 
-        // Calculate sqft and show suggested qty in the list
+        // Calculate sqft for quantity suggestions
         const sqft = getSqftFromSize(state.size || 'medium', state.projectType || 'room');
-        const suggestedQty = suggestQty(currentCategory, sqft, state.projectType || 'room');
-        const qtyNote = suggestedQty > 1 ? ` (I'd suggest ${suggestedQty} for this size)` : '';
 
-        const productList = products.map((p, i) => `${i + 1}. ${p.name} - $${p.price}/${p.unit}`).join('\n');
-        message = await callClaude(`Present these ${currentCategory} options briefly:\n${productList}${qtyNote}\n\nJust say "Here's what I've got:" and list them with numbers. If there's a qty suggestion, mention it naturally. Ask which ones they want.`);
-        quickReplies = products.map((_, i) => String(i + 1));
+        // Return structured product data with per-product qty suggestions
+        display = {
+          type: 'products',
+          products: products.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            unit: p.unit,
+            suggestedQty: suggestQty(p.name, sqft, state.projectType || 'room'),
+          })),
+        };
+
+        // Claude just provides brief personality message - products shown by UI
+        message = await callClaude(`Here's what I've got for ${currentCategory}. One brief sentence like "Pick what you need:" - nothing else.`);
+        quickReplies = ['Add Selected', 'Skip'];
       }
 
-    } else if (userMessage.toLowerCase() === "that's it" || userMessage.toLowerCase() === 'done') {
-      // Go to review phase to check for forgotten items
-      newState.phase = 'review';
-      message = await callClaude('Say "Sounds good! Let me do a quick review to make sure we didn\'t miss anything..."');
+    } else if (userMessage.toLowerCase() === "that's it" || userMessage.toLowerCase() === 'done' || userMessage.toLowerCase() === 'done adding') {
+      // Done adding - go to wrapup if post-checklist, otherwise review
+      if (isPostChecklist) {
+        newState.phase = 'wrapup';
+        newState.wrapupStep = 1;
+        message = await callClaude('Say "Sounds good!" Then ask how many labor hours for this job.');
+        quickReplies = ['8 hrs', '16 hrs', '24 hrs', '40 hrs'];
+      } else {
+        newState.phase = 'review';
+        message = await callClaude('Say "Sounds good! Let me do a quick review to make sure we didn\'t miss anything..."');
+      }
     } else {
       // Treat any other input as a search term - be helpful, not picky
       const searchTerm = userMessage.trim();
@@ -495,131 +887,183 @@ async function processMessage(
 
       // Calculate sqft for quantity suggestions
       const sqft = getSqftFromSize(state.size || 'medium', state.projectType || 'room');
-      const suggestedQty = suggestQty(currentCategory, sqft, state.projectType || 'room');
-      const qtyNote = suggestedQty > 1 ? ` (I'd suggest ${suggestedQty} for this size)` : '';
+      const qtyCategory = currentCategory || searchTerm;
+      const suggestedQty = suggestQty(qtyCategory, sqft, state.projectType || 'room');
 
       if (products.length === 0) {
-        // No results - try the category instead and mention it
-        const categoryProducts = await searchProducts(supabase, currentCategory);
-        if (categoryProducts.length > 0) {
-          newState.lastSearchResults = categoryProducts;
-          newState.waitingForSelection = true;
-          const productList = categoryProducts.map((p, i) => `${i + 1}. ${p.name} - $${p.price}/${p.unit}`).join('\n');
-          message = await callClaude(`Couldn't find "${searchTerm}" but here's what I have for ${currentCategory}:\n${productList}${qtyNote}\n\nBriefly say you didn't find that exact thing but here are the ${currentCategory} options. If there's a qty suggestion, mention it.`);
-          quickReplies = [...categoryProducts.map((_, i) => String(i + 1)), 'Skip'];
+        // No results - try the category instead if we have one
+        if (currentCategory) {
+          const categoryProducts = await searchProducts(supabase, currentCategory);
+          if (categoryProducts.length > 0) {
+            newState.lastSearchResults = categoryProducts;
+            newState.waitingForSelection = true;
+
+            // Return structured product data with per-product qty
+            display = {
+              type: 'products',
+              products: categoryProducts.map(p => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                unit: p.unit,
+                suggestedQty: suggestQty(p.name, sqft, state.projectType || 'room'),
+              })),
+            };
+
+            message = await callClaude(`Couldn't find "${searchTerm}" but here's what I have for ${currentCategory}. Keep it brief.`);
+            quickReplies = ['Add Selected', 'Skip'];
+          } else {
+            message = await callClaude(`Say you couldn't find "${searchTerm}" or any ${currentCategory}. Offer to skip or try something else.`);
+            quickReplies = ['Skip'];
+          }
         } else {
-          message = await callClaude(`Say you couldn't find "${searchTerm}" or any ${currentCategory}. Offer to skip or try something else.`);
-          quickReplies = ['Skip'];
+          // Post-checklist mode - just say not found
+          message = await callClaude(`Couldn't find "${searchTerm}" in the catalog. Ask them to try a different search term.`);
+          quickReplies = ['Done adding'];
         }
       } else {
         // Found products matching their search
         newState.lastSearchResults = products;
         newState.waitingForSelection = true;
-        const productList = products.map((p, i) => `${i + 1}. ${p.name} - $${p.price}/${p.unit}`).join('\n');
-        message = await callClaude(`Found these for "${searchTerm}":\n${productList}${qtyNote}\n\nBriefly present the options. If there's a qty suggestion, mention it. Ask which ones they want.`);
-        quickReplies = products.map((_, i) => String(i + 1));
+
+        // Return structured product data with per-product qty
+        display = {
+          type: 'products',
+          products: products.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            unit: p.unit,
+            suggestedQty: suggestQty(p.name, sqft, state.projectType || 'room'),
+          })),
+        };
+
+        message = await callClaude(`Found some "${searchTerm}" options. One brief sentence - nothing else.`);
+        quickReplies = ['Add Selected', 'Skip'];
       }
     }
   }
 
   // PHASE: REVIEW - Check for forgotten items AND quantity sanity before wrapup
   else if (state.phase === 'review') {
-    if (!state.reviewDone) {
-      // First time in review - have Claude check for missing items AND quantity issues
-      const sqft = getSqftFromSize(state.size || 'medium', state.projectType || 'room');
-      const itemsList = state.itemsAdded.map(i => `${i.qty}x ${i.name}`).join(', ');
-
-      // Fetch categories for Claude to reference
-      const { data: categories } = await supabase
-        .from('categories')
-        .select('name')
-        .order('name');
-      const availableCategories = (categories || []).map((c: any) => c.name).join(', ');
-
-      const reviewPrompt = `You're a master contractor with 50 years experience reviewing a quote.
-
-Project: ${state.size} ${state.projectType} (${state.scope}) - approximately ${sqft} sq ft
-Items on quote: ${itemsList || 'none yet'}
-Available categories: ${availableCategories}
-
-Review this quote with your expert eye:
-
-1. QUANTITIES - Do any quantities look wrong for a ${sqft} sq ft ${state.projectType}?
-   - Too little tile/flooring for the space?
-   - Way too much paint or drywall?
-   - Missing multiples (should have 2 faucets but only 1)?
-
-2. FORGOTTEN ITEMS - Any commonly forgotten items?
-   - Fasteners, adhesives, caulk, sealants
-   - Prep materials (primer, backer board, underlayment)
-   - Finishing touches (trim, transition strips, hardware)
-
-If you spot issues, list them briefly (be specific about what's wrong).
-If everything looks solid for this size project, say so.
-Keep to 2-3 sentences max.`;
-
-      const reviewResult = await callClaude(reviewPrompt);
-      newState.reviewDone = true;
-
-      // Check if Claude found missing items
-      const hasSuggestions = !reviewResult.toLowerCase().includes('looks complete') &&
-                             !reviewResult.toLowerCase().includes('looks good') &&
-                             !reviewResult.toLowerCase().includes('covered');
-
-      if (hasSuggestions) {
-        message = reviewResult + '\n\nWant me to search for any of these?';
-        quickReplies = ['Yes, show me', 'No, move on'];
-      } else {
-        message = await callClaude('Say the quote looks solid - nothing obvious missing. Then ask how many labor hours for this job.');
-        newState.phase = 'wrapup';
-        newState.wrapupStep = 1;
-      }
-    } else if (userMessage.toLowerCase().includes('yes') || userMessage.toLowerCase().includes('show')) {
-      // User wants to see forgotten items - go back to building mode
+    if (userMessage.toLowerCase().includes('yes') || userMessage.toLowerCase().includes('show')) {
+      // User wants to add more items - go back to building mode
       newState.phase = 'building';
       newState.waitingForSelection = false;
-      message = await callClaude('Ask what they want to search for and add.');
+      message = await callClaude('Ask what category or item they want to add. They can search or say "Done adding" when finished.');
+      // Offer common forgotten items as quick replies
+      quickReplies = ['Caulk', 'Primer', 'Tape', 'Done adding'];
     } else {
-      // User says no, move on to wrapup
+      // User says no (or anything else), move on to wrapup
       newState.phase = 'wrapup';
       newState.wrapupStep = 1;
       message = await callClaude('Say "No problem!" Then ask how many labor hours for this job.');
+      quickReplies = ['8 hrs', '16 hrs', '24 hrs', '40 hrs'];
     }
   }
 
   // PHASE: WRAPUP
   else if (state.phase === 'wrapup') {
-    if (state.wrapupStep === 1 && userMessage) {
-      const hours = parseFloat(userMessage);
-      if (!isNaN(hours)) {
+    let validInput = false;
+
+    // Step 1: Labor hours
+    if (state.wrapupStep === 1) {
+      // Extract number from input like "8", "16 hrs", "Medium (16 hrs)"
+      const hoursMatch = userMessage.match(/(\d+)/);
+      if (hoursMatch) {
+        const hours = parseInt(hoursMatch[1], 10);
         newState.laborHours = hours;
-        newState.laborRate = 75;
-        toolCalls = [{ type: 'setLabor', hours, rate: 75 }];
+        validInput = true;
       }
-    } else if (state.wrapupStep === 2 && userMessage) {
-      const markup = parseFloat(userMessage.replace('%', ''));
-      if (!isNaN(markup)) {
+    }
+    // Step 2: Labor rate (hourly)
+    else if (state.wrapupStep === 2) {
+      // Extract number from input like "75", "$75", "75/hr"
+      const rateMatch = userMessage.match(/(\d+)/);
+      if (rateMatch) {
+        const rate = parseInt(rateMatch[1], 10);
+        newState.laborRate = rate;
+        // Now we have both hours and rate, set the labor
+        toolCalls = [{ type: 'setLabor', hours: newState.laborHours || state.laborHours || 8, rate }];
+        validInput = true;
+      }
+    }
+    // Step 3: Markup percentage
+    else if (state.wrapupStep === 3) {
+      // Extract number from input like "15", "15%", "20 percent"
+      const markupMatch = userMessage.match(/(\d+)/);
+      if (markupMatch) {
+        const markup = parseInt(markupMatch[1], 10);
         newState.markup = markup;
         toolCalls = [{ type: 'applyMarkup', percent: markup }];
+        validInput = true;
       }
-    } else if (state.wrapupStep === 3 && userMessage) {
-      newState.quoteName = userMessage;
-      toolCalls = [{ type: 'setQuoteName', name: userMessage }];
-    } else if (state.wrapupStep === 4 && userMessage) {
-      newState.clientName = userMessage;
-      toolCalls = [{ type: 'setClientName', name: userMessage }];
+    }
+    // Step 4: Quote name - accept any reasonable text (not quick reply placeholders)
+    else if (state.wrapupStep === 4) {
+      const trimmed = userMessage.trim();
+      const lower = trimmed.toLowerCase();
+      // Reject placeholders and questions
+      if (trimmed.length > 0 && trimmed.length < 100 &&
+          !trimmed.includes('?') &&
+          lower !== 'custom name' && lower !== 'enter name' &&
+          !lower.includes("didn't") && !lower.includes('option')) {
+        newState.quoteName = trimmed;
+        toolCalls = [{ type: 'setQuoteName', name: trimmed }];
+        validInput = true;
+      }
+    }
+    // Step 5: Client name - accept any reasonable name (not placeholders)
+    else if (state.wrapupStep === 5) {
+      const trimmed = userMessage.trim();
+      const lower = trimmed.toLowerCase();
+      // Reject placeholders
+      if (trimmed.length > 0 && trimmed.length < 100 &&
+          !trimmed.includes('?') &&
+          lower !== 'enter name' && lower !== 'custom name') {
+        newState.clientName = trimmed;
+        toolCalls = [{ type: 'setClientName', name: trimmed }];
+        validInput = true;
+      }
     }
 
-    newState.wrapupStep++;
+    // Only advance if we got valid input, otherwise re-ask
+    if (validInput) {
+      newState.wrapupStep++;
+    }
 
+    // Auto-apply defaults if available
+    // If we're at step 2 (labor rate) and user has default, auto-apply and skip
+    if (newState.wrapupStep === 2 && userDefaults.defaultLaborRate && userDefaults.defaultLaborRate > 0) {
+      newState.laborRate = userDefaults.defaultLaborRate;
+      toolCalls = [{ type: 'setLabor', hours: newState.laborHours || state.laborHours || 8, rate: userDefaults.defaultLaborRate }];
+      newState.wrapupStep = 3; // Skip to markup
+    }
+    // If we're at step 3 (markup) and user has default, auto-apply and skip
+    if (newState.wrapupStep === 3 && userDefaults.defaultMarkupPercent && userDefaults.defaultMarkupPercent > 0) {
+      newState.markup = userDefaults.defaultMarkupPercent;
+      toolCalls = [...(toolCalls || []), { type: 'applyMarkup', percent: userDefaults.defaultMarkupPercent }];
+      newState.wrapupStep = 4; // Skip to quote name
+    }
+
+    // Show appropriate question with quick replies
     if (newState.wrapupStep === 1) {
       message = await callClaude('Ask how many labor hours this job will take. Keep it casual.');
+      quickReplies = ['8 hrs', '16 hrs', '24 hrs', '40 hrs'];
     } else if (newState.wrapupStep === 2) {
-      message = await callClaude('Ask what markup percentage they want. Keep it brief.');
+      message = await callClaude('Ask what their hourly labor rate is. Keep it brief.');
+      quickReplies = ['$50/hr', '$75/hr', '$100/hr', '$125/hr'];
     } else if (newState.wrapupStep === 3) {
-      message = await callClaude('Ask what they want to name this quote.');
+      message = await callClaude('Ask what markup percentage they want. Keep it brief.');
+      quickReplies = ['10%', '15%', '20%', '25%'];
     } else if (newState.wrapupStep === 4) {
-      message = await callClaude('Ask who the client is.');
+      // Suggest quote name based on project
+      const suggestedName = `${state.projectType || 'Project'} Remodel`;
+      message = await callClaude(`Ask what they want to name this quote. Suggest "${suggestedName}" or they can type their own.`);
+      quickReplies = [suggestedName];
+    } else if (newState.wrapupStep === 5) {
+      message = await callClaude('Ask for the client name. They can type it in.');
+      quickReplies = [];
     } else {
       newState.phase = 'done';
       message = await callClaude('Say "All set! Your quote is ready to save." Be enthusiastic but brief.');
@@ -632,21 +1076,28 @@ Keep to 2-3 sentences max.`;
     const input = userMessage.toLowerCase();
 
     // Handle correction requests
-    if (input.includes('labor') || input.includes('hour')) {
+    if (input.includes('hour') && !input.includes('rate')) {
       newState.phase = 'wrapup';
       newState.wrapupStep = 1;
       message = await callClaude('Ask what they want to change the labor hours to.');
-    } else if (input.includes('markup') || input.includes('percent')) {
+      quickReplies = ['8 hrs', '16 hrs', '24 hrs', '40 hrs'];
+    } else if (input.includes('rate') || (input.includes('labor') && !input.includes('hour'))) {
       newState.phase = 'wrapup';
       newState.wrapupStep = 2;
-      message = await callClaude('Ask what markup percentage they want instead.');
-    } else if (input.includes('name') || input.includes('quote name') || input.includes('title')) {
+      message = await callClaude('Ask what hourly rate they want.');
+      quickReplies = ['$50/hr', '$75/hr', '$100/hr', '$125/hr'];
+    } else if (input.includes('markup') || input.includes('percent')) {
       newState.phase = 'wrapup';
       newState.wrapupStep = 3;
+      message = await callClaude('Ask what markup percentage they want instead.');
+      quickReplies = ['10%', '15%', '20%', '25%'];
+    } else if (input.includes('name') || input.includes('quote name') || input.includes('title')) {
+      newState.phase = 'wrapup';
+      newState.wrapupStep = 4;
       message = await callClaude('Ask what they want to rename the quote to.');
     } else if (input.includes('client')) {
       newState.phase = 'wrapup';
-      newState.wrapupStep = 4;
+      newState.wrapupStep = 5;
       message = await callClaude('Ask who the client should be.');
     } else if (input === 'make changes' || input === 'edit' || input === 'change') {
       message = await callClaude('Ask what they want to change: items, labor, markup, or names?');
@@ -676,7 +1127,69 @@ Keep to 2-3 sentences max.`;
     }
   }
 
-  return { message, quickReplies, toolCalls, newState };
+  // ==========================================================================
+  // AUTO-RUN REVIEW: When transitioning to review phase, run review immediately
+  // This is a post-processing step that runs after phase handling
+  // ==========================================================================
+  if (newState.phase === 'review' && !newState.reviewDone) {
+    const sqft = getSqftFromSize(newState.size || 'medium', newState.projectType || 'room');
+    const itemsList = newState.itemsAdded.map(i => `${i.qty}x ${i.name}`).join(', ');
+
+    // Fetch categories for Claude to reference
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('name')
+      .order('name');
+    const availableCategories = (categories || []).map((c: any) => c.name).join(', ');
+
+    const reviewPrompt = `You're a master contractor with 50 years experience reviewing a quote.
+
+Project: ${newState.size} ${newState.projectType} (${newState.scope}) - approximately ${sqft} sq ft
+Items on quote: ${itemsList || 'none yet'}
+Available categories: ${availableCategories}
+
+Review this quote with your expert eye:
+
+1. QUANTITIES - Do any quantities look wrong for a ${sqft} sq ft ${newState.projectType}?
+   - Too little tile/flooring for the space?
+   - Way too much paint or drywall?
+   - Missing multiples (should have 2 faucets but only 1)?
+
+2. FORGOTTEN ITEMS - Any commonly forgotten items?
+   - Fasteners, adhesives, caulk, sealants
+   - Prep materials (primer, backer board, underlayment)
+   - Finishing touches (trim, transition strips, hardware)
+
+If you spot issues, list them briefly (be specific about what's wrong).
+If everything looks solid for this size project, say so.
+Keep to 2-3 sentences max.`;
+
+    const reviewResult = await callClaude(reviewPrompt);
+    newState.reviewDone = true;
+
+    // Check if Claude found suggestions
+    const hasSuggestions = !reviewResult.toLowerCase().includes('looks complete') &&
+                           !reviewResult.toLowerCase().includes('looks good') &&
+                           !reviewResult.toLowerCase().includes('looks solid') &&
+                           !reviewResult.toLowerCase().includes('covered');
+
+    if (hasSuggestions) {
+      display = {
+        type: 'review',
+        reviewNotes: reviewResult,
+      };
+      message = reviewResult + '\n\nWant me to search for any of these?';
+      quickReplies = ['Yes, show me', 'No, move on'];
+    } else {
+      // Quote looks good, skip to wrapup
+      message = await callClaude('Say the quote looks solid - nothing obvious missing. Then ask how many labor hours for this job.');
+      newState.phase = 'wrapup';
+      newState.wrapupStep = 1;
+      quickReplies = ['8 hrs', '16 hrs', '24 hrs', '40 hrs'];
+    }
+  }
+
+  return { message, display, quickReplies, toolCalls, newState };
 }
 
 // =============================================================================
@@ -703,16 +1216,18 @@ serve(async (req) => {
 
     const state = body.state || createInitialState();
     const userMessage = body.userMessage || '';
+    const userDefaults = body.userDefaults || {};
 
     console.log('[wizard-chat] Phase:', state.phase, 'Step:', state.setupStep, 'Message:', userMessage.substring(0, 50));
 
-    const result = await processMessage(supabase, userMessage, state);
+    const result = await processMessage(supabase, userMessage, state, userDefaults);
 
     console.log('[wizard-chat] Result - Phase:', result.newState.phase, 'Message:', result.message.substring(0, 50));
 
     return new Response(
       JSON.stringify({
         message: result.message,
+        display: result.display,
         quickReplies: result.quickReplies,
         toolCalls: result.toolCalls,
         state: result.newState,

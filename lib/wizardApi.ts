@@ -51,23 +51,55 @@ export type WizardMessage = {
 };
 
 export type WizardTool =
-  | { type: 'searchCatalog'; query: string; category?: string; limit?: number }
   | { type: 'addItem'; productId: string; productName: string; qty: number; unitPrice: number }
   | { type: 'setLabor'; hours: number; rate: number }
   | { type: 'applyMarkup'; percent: number }
   | { type: 'setClientName'; name: string }
   | { type: 'setQuoteName'; name: string }
-  | { type: 'suggestAssembly'; assemblyId: string; assemblyName: string }
   | { type: 'showRemoveItem' }
   | { type: 'showEditQuantity' };
 
+// Product displayed in selection list - each has its own suggested qty
+export interface WizardProduct {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+  suggestedQty: number;  // Per-product qty based on sqft and product type
+}
+
+// Structured display data from wizard - UI renders this consistently
+export interface WizardDisplay {
+  type: 'products' | 'added' | 'review';
+  products?: WizardProduct[];          // Products to show for selection (each with suggestedQty)
+  addedItems?: Array<{ name: string; qty: number }>;  // Items just added
+  reviewNotes?: string;                // Review phase findings
+  relatedItems?: string[];             // Related items they might need
+}
+
+// Structured response from wizard - UI renders this consistently
 export type WizardResponse = {
+  // Drew's personality message (from Claude)
   message: string;
-  toolCalls?: WizardTool[];
+
+  // What the UI should display
+  display?: WizardDisplay;
+
+  // Quick reply buttons
   quickReplies?: string[];
+
+  // Tool calls to apply to draft quote
+  toolCalls?: WizardTool[];
+
+  // Updated state
   state?: WizardState;
-  done?: boolean;
 };
+
+// User defaults that can be passed to the wizard
+export interface UserDefaults {
+  defaultMarkupPercent?: number;
+  defaultLaborRate?: number;
+}
 
 /**
  * Send a message to Drew (the Quote Wizard) and get a response.
@@ -75,10 +107,12 @@ export type WizardResponse = {
  *
  * @param userMessage - The user's message text
  * @param state - Current wizard state (use createInitialState() for first message)
+ * @param userDefaults - Optional user defaults (markup %, labor rate)
  */
 export async function sendWizardMessage(
   userMessage: string,
   state: WizardState,
+  userDefaults?: UserDefaults,
 ): Promise<WizardResponse> {
   console.log('[wizardApi] Sending message:', userMessage.substring(0, 30), 'Phase:', state.phase);
 
@@ -86,6 +120,7 @@ export async function sendWizardMessage(
     body: {
       userMessage,
       state,
+      userDefaults,
     },
   });
 
@@ -101,10 +136,11 @@ export async function sendWizardMessage(
     throw new Error(data.error);
   }
 
-  console.log('[wizardApi] Response - Phase:', data.state?.phase, 'Message:', data.message?.substring(0, 30));
+  console.log('[wizardApi] Response - Phase:', data.state?.phase, 'Message:', data.message?.substring(0, 30), 'Display:', data.display?.type);
 
   return {
     message: data.message || '',
+    display: data.display,
     quickReplies: data.quickReplies,
     toolCalls: data.toolCalls,
     state: data.state,

@@ -77,45 +77,49 @@ export default function Dashboard() {
   const load = useCallback(async () => {
     setLoading(true);
 
-    // First get user state to know what to load
-    const userState = await getUserState();
-    const proAccess = canAccessAssemblies(userState);
-    const premiumAccess = userState.tier === 'premium';
-    setIsPro(proAccess);
-    setIsPremium(premiumAccess);
+    try {
+      // First get user state to know what to load
+      const userState = await getUserState();
+      const proAccess = canAccessAssemblies(userState);
+      const premiumAccess = userState.tier === 'premium';
+      setIsPro(proAccess);
+      setIsPremium(premiumAccess);
 
-    // Now load everything in parallel based on user tier
-    const [data, prefs, syncTime, available, invoiceData, contractData, toInvoice] = await Promise.all([
-      listQuotes(),
-      loadPreferences(),
-      getLastSyncTime(),
-      isSyncAvailable(),
-      proAccess ? listInvoices() : Promise.resolve([]),
-      premiumAccess ? listContracts() : Promise.resolve([]),
-      getToInvoiceStats(),
-    ]);
+      // Now load everything in parallel based on user tier
+      const [data, prefs, syncTime, available, invoiceData, contractData, toInvoice] = await Promise.all([
+        listQuotes(),
+        loadPreferences(),
+        getLastSyncTime(),
+        isSyncAvailable(),
+        proAccess ? listInvoices() : Promise.resolve([]),
+        premiumAccess ? listContracts() : Promise.resolve([]),
+        getToInvoiceStats(),
+      ]);
 
-    setQuotes(data);
-    setPreferences(prefs.dashboard);
-    setLastSyncTime(syncTime);
-    setSyncAvailable(available && (userState.tier === 'pro' || userState.tier === 'premium'));
-    setInvoices(invoiceData);
-    setContracts(contractData);
-    setToInvoiceStats(toInvoice);
+      setQuotes(data);
+      setPreferences(prefs.dashboard);
+      setLastSyncTime(syncTime);
+      setSyncAvailable(available && (userState.tier === 'pro' || userState.tier === 'premium'));
+      setInvoices(invoiceData);
+      setContracts(contractData);
+      setToInvoiceStats(toInvoice);
 
-    // Load CO counts for approved/completed quotes
-    const counts: Record<string, number> = {};
-    await Promise.all(
-      data
-        .filter((q) => q.status === "approved" || q.status === "completed")
-        .map(async (q) => {
-          const count = await getActiveChangeOrderCount(q.id);
-          if (count > 0) counts[q.id] = count;
-        })
-    );
-    setCoCounts(counts);
-
-    setLoading(false);
+      // Load CO counts for approved/completed quotes
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        data
+          .filter((q) => q.status === "approved" || q.status === "completed")
+          .map(async (q) => {
+            const count = await getActiveChangeOrderCount(q.id);
+            if (count > 0) counts[q.id] = count;
+          })
+      );
+      setCoCounts(counts);
+    } catch (error) {
+      console.error("Dashboard load error:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useFocusEffect(
@@ -141,7 +145,6 @@ export default function Dashboard() {
     // Contract stages
     const sentContracts = contracts.filter((c) => c.status === "sent" || c.status === "viewed");
     const signedContracts = contracts.filter((c) => c.status === "signed");
-    const completedContracts = contracts.filter((c) => c.status === "completed");
 
     // Follow-ups: quotes with follow-up dates today or in the past
     // Count linked quotes (tiers) as one follow-up
@@ -186,11 +189,6 @@ export default function Dashboard() {
     );
     // Signed contracts = work authorized (like approved quotes)
     const signedContractValue = signedContracts.reduce(
-      (sum, c) => sum + c.total,
-      0,
-    );
-    // Completed contracts = work finished, ready to invoice
-    const completedContractValue = completedContracts.reduce(
       (sum, c) => sum + c.total,
       0,
     );

@@ -288,6 +288,17 @@ export default function BusinessSettings() {
               theme={theme}
             />
             <InlineField
+              label="Default Labor Rate"
+              value={String(preferences.pricing?.defaultLaborRate || 0)}
+              prefix="$"
+              suffix="/hr"
+              keyboardType="decimal-pad"
+              enabled={hasProAccess}
+              onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0) setPreferences(await updatePricingSettings({ defaultLaborRate: n })); }}
+              onLocked={handleLearnMore}
+              theme={theme}
+            />
+            <InlineField
               label="Zip Code"
               value={preferences.pricing?.zipCode || ""}
               placeholder="—"
@@ -382,11 +393,12 @@ function PremiumBadge({ theme }: { theme: ReturnType<typeof useTheme>["theme"] }
 
 // Inline Field Component
 function InlineField({
-  label, value, placeholder, suffix, keyboardType = "default", enabled, premium, onSave, onLocked, theme
+  label, value, placeholder, prefix, suffix, keyboardType = "default", enabled, premium, onSave, onLocked, theme
 }: {
   label: string;
   value: string;
   placeholder?: string;
+  prefix?: string;
   suffix?: string;
   keyboardType?: "default" | "number-pad" | "decimal-pad";
   enabled: boolean;
@@ -420,6 +432,7 @@ function InlineField({
       </Pressable>
       {enabled ? (
         <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {prefix && <Text style={{ fontSize: 15, color: theme.colors.muted, marginRight: 2 }}>{prefix}</Text>}
           <TextInput
             style={{
               fontSize: 15,
@@ -448,6 +461,7 @@ function InlineField({
         </View>
       ) : (
         <Pressable onPress={onLocked} style={{ flexDirection: "row", alignItems: "center" }}>
+          {prefix && <Text style={{ fontSize: 15, color: theme.colors.muted, marginRight: 2, opacity: 0.6 }}>{prefix}</Text>}
           <View style={{
             paddingVertical: 6,
             paddingHorizontal: 10,
