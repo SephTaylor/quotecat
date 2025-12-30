@@ -623,6 +623,35 @@ When launched, track:
 
 ---
 
+## 🐛 Known Issues / To Investigate
+
+### Sync Crash with Dual Webapp/Mobile Access (Dec 30, 2025)
+
+**Problem:** When triggering cloud sync on the mobile app while also using the webapp, the app slows down significantly and eventually crashes. Requires uninstall/reinstall to recover.
+
+**Symptoms:**
+- App becomes very slow after sync
+- Eventually crashes
+- Requires full reinstall to recover
+
+**Possible Causes:**
+1. Race condition between webapp and mobile modifying data simultaneously
+2. Sync loop - webapp changes trigger mobile sync, which triggers more changes
+3. Incremental sync still loads ALL local quotes to check for uploads (memory issue)
+4. Orphan data in cloud (invoices that were deleted locally but still exist in Supabase)
+
+**Related:**
+- 21 invoices exist in Supabase but not on mobile (user believes these were deleted)
+- Invoices showing in webapp but "not found" when clicked (RLS policy was missing - fixed)
+
+**To Fix:**
+- Add better error isolation to sync (wrap each entity sync in try/catch)
+- Add sync debounce/cooldown to prevent rapid re-syncing
+- Consider cleaning up orphan cloud data
+- Optimize incremental sync to not load all local data for upload check
+
+---
+
 ## 🎬 Vision
 
 QuoteCat aims to be the **fastest, simplest construction quoting app** for contractors and builders:
