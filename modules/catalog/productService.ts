@@ -7,6 +7,8 @@ import { PRODUCT_KEYS, CATEGORY_KEYS } from "@/lib/storageKeys";
 const STORAGE_KEY = PRODUCT_KEYS.CACHE;
 const SYNC_TIMESTAMP_KEY = PRODUCT_KEYS.SYNC_TIMESTAMP;
 const CATEGORY_STORAGE_KEY = CATEGORY_KEYS.CACHE;
+const MAX_PRODUCTS_PER_SYNC = 5000; // Prevent unbounded data fetches
+const MAX_CATEGORIES_PER_SYNC = 100;
 
 // In-memory cache to avoid repeated AsyncStorage reads
 let inMemoryProductCache: Product[] | null = null;
@@ -37,8 +39,26 @@ export async function getProducts(): Promise<Product[]> {
   try {
     const cached = await AsyncStorage.getItem(STORAGE_KEY);
     if (cached) {
-      const cache: ProductCache = JSON.parse(cached);
-      inMemoryProductCache = cache.data;
+      const parsed = JSON.parse(cached);
+
+      // Validate parsed data structure
+      if (typeof parsed !== 'object' || parsed === null) {
+        console.warn("Invalid product cache format");
+        return [];
+      }
+
+      const cache = parsed as ProductCache;
+
+      // Validate cache.data is an array
+      if (!Array.isArray(cache.data)) {
+        console.warn("Invalid product cache data format");
+        return [];
+      }
+
+      // Filter out invalid products
+      inMemoryProductCache = cache.data.filter((p): p is Product =>
+        p && typeof p === 'object' && p.id && p.name
+      );
       return inMemoryProductCache;
     }
 
@@ -94,7 +114,10 @@ export async function needsSync(): Promise<boolean> {
  */
 export async function syncProducts(): Promise<boolean> {
   try {
-    const { data, error } = await supabase.from("products").select("*");
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .limit(MAX_PRODUCTS_PER_SYNC);
 
     if (error) {
       console.error("Cloud sync error:", error);
@@ -106,15 +129,29 @@ export async function syncProducts(): Promise<boolean> {
       return false;
     }
 
-    // Map Supabase data to Product type
-    const products: Product[] = data.map((row: any) => ({
-      id: row.id,
-      categoryId: row.category_id,
-      name: row.name,
-      unit: row.unit,
-      unitPrice: parseFloat(row.unit_price),
-      supplierId: row.supplier_id || undefined,
-    }));
+    // Map Supabase data to Product type with validation
+    const products: Product[] = [];
+    for (const row of data) {
+      try {
+        // Skip invalid rows
+        if (!row || !row.id || !row.name) {
+          console.warn("Skipping invalid product row:", row);
+          continue;
+        }
+
+        products.push({
+          id: row.id,
+          categoryId: row.category_id,
+          name: row.name,
+          unit: row.unit || "each",
+          unitPrice: parseFloat(row.unit_price) || 0,
+          supplierId: row.supplier_id || undefined,
+        });
+      } catch (parseError) {
+        console.error(`Failed to parse product ${row?.id}:`, parseError);
+        // Continue with next product
+      }
+    }
 
     // Save to cache
     const cache: ProductCache = {
@@ -197,8 +234,26 @@ export async function getCategories(): Promise<Category[]> {
   try {
     const cached = await AsyncStorage.getItem(CATEGORY_STORAGE_KEY);
     if (cached) {
-      const cache: CategoryCache = JSON.parse(cached);
-      inMemoryCategoryCache = cache.data;
+      const parsed = JSON.parse(cached);
+
+      // Validate parsed data structure
+      if (typeof parsed !== 'object' || parsed === null) {
+        console.warn("Invalid category cache format");
+        return [];
+      }
+
+      const cache = parsed as CategoryCache;
+
+      // Validate cache.data is an array
+      if (!Array.isArray(cache.data)) {
+        console.warn("Invalid category cache data format");
+        return [];
+      }
+
+      // Filter out invalid categories
+      inMemoryCategoryCache = cache.data.filter((c): c is Category =>
+        c && typeof c === 'object' && c.id && c.name
+      );
       return inMemoryCategoryCache;
     }
     // No cache - return empty array
@@ -218,7 +273,8 @@ export async function syncCategories(): Promise<boolean> {
     const { data, error } = await supabase
       .from("categories")
       .select("*")
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true })
+      .limit(MAX_CATEGORIES_PER_SYNC);
 
     if (error) {
       console.error("Cloud category sync error:", error);
@@ -230,11 +286,25 @@ export async function syncCategories(): Promise<boolean> {
       return false;
     }
 
-    // Map Supabase data to Category type
-    const categories: Category[] = data.map((row: any) => ({
-      id: row.id,
-      name: row.name,
-    }));
+    // Map Supabase data to Category type with validation
+    const categories: Category[] = [];
+    for (const row of data) {
+      try {
+        // Skip invalid rows
+        if (!row || !row.id || !row.name) {
+          console.warn("Skipping invalid category row:", row);
+          continue;
+        }
+
+        categories.push({
+          id: row.id,
+          name: row.name,
+        });
+      } catch (parseError) {
+        console.error(`Failed to parse category ${row?.id}:`, parseError);
+        // Continue with next category
+      }
+    }
 
     // Save to cache
     const cache: CategoryCache = {

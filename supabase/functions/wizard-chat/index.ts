@@ -717,9 +717,10 @@ async function processMessage(
             };
 
             if (isPostChecklist) {
-              newState.phase = 'wrapup';
-              newState.wrapupStep = 1;
-              message = await callClaude('Items added! Now ask how many labor hours for this job. Keep it brief.');
+              // Adding items after checklist/review - stay in building, let user add more
+              newState.phase = 'building';
+              message = await callClaude('Got it! Ask what else they need, or they can say "Done adding" when finished.');
+              quickReplies = ['Caulk', 'Primer', 'Tape', 'Screws', 'Done adding'];
             } else if (newState.checklistIndex >= newState.checklist.length) {
               newState.phase = 'review';
               message = await callClaude('Items added! That\'s the checklist done. Say you\'re doing a quick review. Keep it brief.');
@@ -776,10 +777,10 @@ async function processMessage(
         };
 
         if (isPostChecklist) {
-          // Adding items after checklist/review - go to wrapup
-          newState.phase = 'wrapup';
-          newState.wrapupStep = 1;
-          message = await callClaude('Items added! Now ask how many labor hours for this job. Keep it brief.');
+          // Adding items after checklist/review - stay in building, let user add more
+          newState.phase = 'building';
+          message = await callClaude('Got it! Ask what else they need, or they can say "Done adding" when finished.');
+          quickReplies = ['Caulk', 'Primer', 'Tape', 'Screws', 'Done adding'];
         } else if (newState.checklistIndex >= newState.checklist.length) {
           // Go to review phase to check for forgotten items
           newState.phase = 'review';

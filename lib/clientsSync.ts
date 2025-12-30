@@ -8,6 +8,20 @@ import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SYNC_METADATA_KEY = "@quotecat/clients_sync_metadata";
+const MAX_CLIENTS_PER_BATCH = 500; // Batch size for incremental sync
+const MAX_CLIENTS_INITIAL_SYNC = 2000; // Limit for first-time full sync
+
+// Sync lock to prevent concurrent sync operations
+let syncInProgress = false;
+
+/**
+ * Safe timestamp extractor - returns 0 for invalid dates
+ */
+function safeGetTimestamp(dateString?: string): number {
+  if (!dateString) return 0;
+  const time = new Date(dateString).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
 
 type SyncMetadata = {
   lastSyncAt: string | null;
@@ -19,23 +33,34 @@ type SyncMetadata = {
  * Get sync metadata from storage
  */
 async function getSyncMetadata(): Promise<SyncMetadata> {
+  const defaultMetadata: SyncMetadata = {
+    lastSyncAt: null,
+    hasMigrated: false,
+    syncEnabled: true,
+  };
+
   try {
     const json = await AsyncStorage.getItem(SYNC_METADATA_KEY);
     if (!json) {
-      return {
-        lastSyncAt: null,
-        hasMigrated: false,
-        syncEnabled: true,
-      };
+      return defaultMetadata;
     }
-    return JSON.parse(json);
+
+    const parsed = JSON.parse(json);
+
+    // Validate parsed data has expected structure
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.warn("Invalid clients sync metadata format, using defaults");
+      return defaultMetadata;
+    }
+
+    return {
+      lastSyncAt: typeof parsed.lastSyncAt === 'string' ? parsed.lastSyncAt : null,
+      hasMigrated: typeof parsed.hasMigrated === 'boolean' ? parsed.hasMigrated : false,
+      syncEnabled: typeof parsed.syncEnabled === 'boolean' ? parsed.syncEnabled : true,
+    };
   } catch (error) {
     console.error("Failed to load clients sync metadata:", error);
-    return {
-      lastSyncAt: null,
-      hasMigrated: false,
-      syncEnabled: true,
-    };
+    return defaultMetadata;
   }
 }
 
@@ -95,9 +120,11 @@ export async function uploadClient(client: Client): Promise<boolean> {
 }
 
 /**
- * Download all clients from Supabase for current user
+ * Download clients from Supabase for current user
+ * @param since - Only fetch clients updated after this timestamp (incremental sync)
+ * @param isInitialSync - If true, this is a first-time sync (higher limit)
  */
-export async function downloadClients(): Promise<Client[]> {
+export async function downloadClients(since?: string, isInitialSync = false): Promise<Client[]> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -105,12 +132,23 @@ export async function downloadClients(): Promise<Client[]> {
       return [];
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("clients")
       .select("*")
       .eq("user_id", userId)
-      .is("deleted_at", null)
-      .order("name", { ascending: true });
+      .is("deleted_at", null);
+
+    // Incremental sync: only fetch clients updated since last sync
+    if (since) {
+      query = query.gt("updated_at", since);
+      console.log(`📥 Incremental sync: fetching clients updated since ${since}`);
+    }
+
+    const limit = isInitialSync ? MAX_CLIENTS_INITIAL_SYNC : MAX_CLIENTS_PER_BATCH;
+
+    const { data, error } = await query
+      .order("updated_at", { ascending: false })
+      .limit(limit);
 
     if (error) {
       console.error("Failed to download clients:", error);
@@ -121,17 +159,31 @@ export async function downloadClients(): Promise<Client[]> {
       return [];
     }
 
-    // Map Supabase data to local Client type
-    const clients: Client[] = data.map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      email: row.email || undefined,
-      phone: row.phone || undefined,
-      address: row.address || undefined,
-      notes: row.notes || undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    // Map Supabase data to local Client type with validation
+    const clients: Client[] = [];
+    for (const row of data) {
+      try {
+        // Skip invalid rows
+        if (!row || !row.id) {
+          console.warn("Skipping invalid client row:", row);
+          continue;
+        }
+
+        clients.push({
+          id: row.id,
+          name: row.name || "",
+          email: row.email || undefined,
+          phone: row.phone || undefined,
+          address: row.address || undefined,
+          notes: row.notes || undefined,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        });
+      } catch (parseError) {
+        console.error(`Failed to parse client ${row?.id}:`, parseError);
+        // Continue with next client instead of failing entire sync
+      }
+    }
 
     console.log(`✅ Downloaded ${clients.length} clients from cloud`);
     return clients;
@@ -206,14 +258,23 @@ export async function migrateLocalClientsToCloud(): Promise<{
 }
 
 /**
- * Sync clients bi-directionally (download from cloud, merge with local, upload changes)
- * Conflict resolution: last-write-wins based on updatedAt
+ * Sync clients bi-directionally with INCREMENTAL sync
+ * - Only fetches clients changed since last sync (huge performance win at scale)
+ * - Conflict resolution: last-write-wins based on updatedAt
  */
 export async function syncClients(): Promise<{
   success: boolean;
   downloaded: number;
   uploaded: number;
 }> {
+  // Prevent concurrent sync operations
+  if (syncInProgress) {
+    console.warn("Client sync already in progress, skipping");
+    return { success: false, downloaded: 0, uploaded: 0 };
+  }
+
+  syncInProgress = true;
+
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -221,11 +282,23 @@ export async function syncClients(): Promise<{
       return { success: false, downloaded: 0, uploaded: 0 };
     }
 
+    // Get sync metadata to determine if this is initial or incremental sync
+    const metadata = await getSyncMetadata();
+    const lastSyncAt = metadata.lastSyncAt;
+    const isInitialSync = !lastSyncAt;
+
+    if (isInitialSync) {
+      console.log("🔄 Starting initial full clients sync...");
+    } else {
+      console.log(`🔄 Starting incremental clients sync since ${lastSyncAt}`);
+    }
+
     let downloaded = 0;
     let uploaded = 0;
 
-    // Download cloud clients
-    const cloudClients = await downloadClients();
+    // Download cloud clients (incremental - only changed since lastSyncAt)
+    const cloudClients = await downloadClients(lastSyncAt || undefined, isInitialSync);
+    console.log(`📥 Fetched ${cloudClients.length} clients from cloud`);
 
     // Get local clients (dynamic import to avoid circular dependency)
     const { getClients, saveClient } = await import("./clients");
@@ -237,61 +310,85 @@ export async function syncClients(): Promise<{
 
     // Process cloud clients (download new or updated)
     for (const cloudClient of cloudClients) {
-      const localClient = localMap.get(cloudClient.id);
+      try {
+        const localClient = localMap.get(cloudClient.id);
 
-      if (!localClient) {
-        // New client from cloud - save locally
-        await saveClient(cloudClient);
-        downloaded++;
-      } else {
-        // Client exists in both - check which is newer
-        const cloudUpdated = new Date(cloudClient.updatedAt).getTime();
-        const localUpdated = new Date(localClient.updatedAt).getTime();
-
-        if (cloudUpdated > localUpdated) {
-          // Cloud is newer - update local
+        if (!localClient) {
+          // New client from cloud - save locally
           await saveClient(cloudClient);
           downloaded++;
+        } else {
+          // Client exists in both - check which is newer (use safe timestamp)
+          const cloudUpdated = safeGetTimestamp(cloudClient.updatedAt);
+          const localUpdated = safeGetTimestamp(localClient.updatedAt);
+
+          if (cloudUpdated > localUpdated && cloudUpdated > 0) {
+            // Cloud is newer - update local
+            await saveClient(cloudClient);
+            downloaded++;
+          }
         }
+      } catch (error) {
+        console.error(`Failed to sync cloud client ${cloudClient.id}:`, error);
+        // Continue with next client
       }
     }
 
-    // Process local clients (upload new or updated)
+    // Process local clients (upload new or updated since last sync)
     for (const localClient of localClients) {
-      const cloudClient = cloudMap.get(localClient.id);
+      try {
+        // For incremental sync, only upload clients modified since last sync
+        if (lastSyncAt) {
+          const localUpdated = safeGetTimestamp(localClient.updatedAt);
+          const lastSync = safeGetTimestamp(lastSyncAt);
 
-      if (!cloudClient) {
-        // New local client - upload to cloud
-        const success = await uploadClient(localClient);
-        if (success) uploaded++;
-      } else {
-        // Client exists in both - check which is newer
-        const cloudUpdated = new Date(cloudClient.updatedAt).getTime();
-        const localUpdated = new Date(localClient.updatedAt).getTime();
+          // Skip clients that haven't changed since last sync
+          if (localUpdated <= lastSync) {
+            continue;
+          }
+        }
 
-        if (localUpdated > cloudUpdated) {
-          // Local is newer - upload to cloud
+        const cloudClient = cloudMap.get(localClient.id);
+
+        if (!cloudClient) {
+          // New local client - upload to cloud
           const success = await uploadClient(localClient);
           if (success) uploaded++;
+        } else {
+          // Client exists in both - check which is newer (use safe timestamp)
+          const cloudUpdated = safeGetTimestamp(cloudClient.updatedAt);
+          const localUpdated = safeGetTimestamp(localClient.updatedAt);
+
+          if (localUpdated > cloudUpdated && localUpdated > 0) {
+            // Local is newer - upload to cloud
+            const success = await uploadClient(localClient);
+            if (success) uploaded++;
+          }
         }
+      } catch (error) {
+        console.error(`Failed to sync local client ${localClient.id}:`, error);
+        // Continue with next client
       }
     }
 
-    // Update sync metadata
-    const metadata = await getSyncMetadata();
+    // Update sync metadata with current timestamp
     await saveSyncMetadata({
       ...metadata,
       lastSyncAt: new Date().toISOString(),
     });
 
+    const syncType = isInitialSync ? "Initial sync" : "Incremental sync";
     console.log(
-      `✅ Clients sync complete: ${downloaded} downloaded, ${uploaded} uploaded`
+      `✅ Clients ${syncType} complete: ${downloaded} downloaded, ${uploaded} uploaded`
     );
 
     return { success: true, downloaded, uploaded };
   } catch (error) {
     console.error("Clients sync error:", error);
     return { success: false, downloaded: 0, uploaded: 0 };
+  } finally {
+    // Always release the sync lock
+    syncInProgress = false;
   }
 }
 

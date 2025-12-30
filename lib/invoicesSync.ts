@@ -8,6 +8,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const INVOICE_STORAGE_KEY = "@quotecat/invoices";
 const SYNC_METADATA_KEY = "@quotecat/invoices_sync_metadata";
+const MAX_INVOICES_PER_BATCH = 500; // Batch size for incremental sync
+const MAX_INVOICES_INITIAL_SYNC = 2000; // Limit for first-time full sync
+
+// Sync lock to prevent concurrent sync operations
+let syncInProgress = false;
+
+/**
+ * Safe timestamp extractor - returns 0 for invalid dates
+ */
+function safeGetTimestamp(dateString?: string): number {
+  if (!dateString) return 0;
+  const time = new Date(dateString).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
 
 type SyncMetadata = {
   lastSyncAt: string | null;
@@ -19,23 +33,34 @@ type SyncMetadata = {
  * Get sync metadata from storage
  */
 async function getSyncMetadata(): Promise<SyncMetadata> {
+  const defaultMetadata: SyncMetadata = {
+    lastSyncAt: null,
+    hasMigrated: false,
+    syncEnabled: true,
+  };
+
   try {
     const json = await AsyncStorage.getItem(SYNC_METADATA_KEY);
     if (!json) {
-      return {
-        lastSyncAt: null,
-        hasMigrated: false,
-        syncEnabled: true,
-      };
+      return defaultMetadata;
     }
-    return JSON.parse(json);
+
+    const parsed = JSON.parse(json);
+
+    // Validate parsed data has expected structure
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.warn("Invalid invoices sync metadata format, using defaults");
+      return defaultMetadata;
+    }
+
+    return {
+      lastSyncAt: typeof parsed.lastSyncAt === 'string' ? parsed.lastSyncAt : null,
+      hasMigrated: typeof parsed.hasMigrated === 'boolean' ? parsed.hasMigrated : false,
+      syncEnabled: typeof parsed.syncEnabled === 'boolean' ? parsed.syncEnabled : true,
+    };
   } catch (error) {
     console.error("Failed to load invoices sync metadata:", error);
-    return {
-      lastSyncAt: null,
-      hasMigrated: false,
-      syncEnabled: true,
-    };
+    return defaultMetadata;
   }
 }
 
@@ -57,9 +82,19 @@ async function getLocalInvoices(): Promise<Invoice[]> {
   try {
     const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
     if (!json) return [];
-    const invoices = JSON.parse(json) as Invoice[];
-    // Filter out deleted invoices for active list
-    return invoices.filter((inv) => !inv.deletedAt);
+
+    const parsed = JSON.parse(json);
+
+    // Validate parsed data is an array
+    if (!Array.isArray(parsed)) {
+      console.warn("Invalid invoices data format, returning empty array");
+      return [];
+    }
+
+    // Filter out deleted and invalid invoices
+    return parsed.filter((inv): inv is Invoice =>
+      inv && typeof inv === 'object' && inv.id && !inv.deletedAt
+    );
   } catch (error) {
     console.error("Failed to get local invoices:", error);
     return [];
@@ -70,18 +105,31 @@ async function getLocalInvoices(): Promise<Invoice[]> {
  * Save invoice locally (without triggering cloud sync - used during sync)
  */
 async function saveInvoiceLocally(invoice: Invoice): Promise<void> {
-  const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
-  const allInvoices = json ? (JSON.parse(json) as Invoice[]) : [];
+  try {
+    const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
+    let allInvoices: Invoice[] = [];
 
-  const existingIndex = allInvoices.findIndex((inv) => inv.id === invoice.id);
+    if (json) {
+      const parsed = JSON.parse(json);
+      if (Array.isArray(parsed)) {
+        allInvoices = parsed.filter((inv): inv is Invoice =>
+          inv && typeof inv === 'object' && inv.id
+        );
+      }
+    }
 
-  if (existingIndex >= 0) {
-    allInvoices[existingIndex] = invoice;
-  } else {
-    allInvoices.push(invoice);
+    const existingIndex = allInvoices.findIndex((inv) => inv.id === invoice.id);
+
+    if (existingIndex >= 0) {
+      allInvoices[existingIndex] = invoice;
+    } else {
+      allInvoices.push(invoice);
+    }
+
+    await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(allInvoices));
+  } catch (error) {
+    console.error("Failed to save invoice locally:", error);
   }
-
-  await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(allInvoices));
 }
 
 /**
@@ -96,16 +144,25 @@ async function getLocalInvoiceById(id: string): Promise<Invoice | null> {
  * Mark a local invoice as deleted
  */
 async function markLocalInvoiceDeleted(id: string): Promise<void> {
-  const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
-  if (!json) return;
+  try {
+    const json = await AsyncStorage.getItem(INVOICE_STORAGE_KEY);
+    if (!json) return;
 
-  const allInvoices = JSON.parse(json) as Invoice[];
-  const invoice = allInvoices.find((inv) => inv.id === id);
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) return;
 
-  if (invoice && !invoice.deletedAt) {
-    invoice.deletedAt = new Date().toISOString();
-    invoice.updatedAt = invoice.deletedAt;
-    await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(allInvoices));
+    const allInvoices = parsed.filter((inv): inv is Invoice =>
+      inv && typeof inv === 'object' && inv.id
+    );
+    const invoice = allInvoices.find((inv) => inv.id === id);
+
+    if (invoice && !invoice.deletedAt) {
+      invoice.deletedAt = new Date().toISOString();
+      invoice.updatedAt = invoice.deletedAt;
+      await AsyncStorage.setItem(INVOICE_STORAGE_KEY, JSON.stringify(allInvoices));
+    }
+  } catch (error) {
+    console.error("Failed to mark invoice as deleted:", error);
   }
 }
 
@@ -168,26 +225,36 @@ export async function uploadInvoice(invoice: Invoice): Promise<boolean> {
 
 /**
  * Get IDs of deleted invoices from cloud (for syncing deletions across devices)
+ * @param since - Only fetch deletions after this timestamp (incremental sync)
  */
-async function getDeletedInvoiceIds(): Promise<string[]> {
+async function getDeletedInvoiceIds(since?: string): Promise<string[]> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
       return [];
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("invoices")
       .select("id")
       .eq("user_id", userId)
       .not("deleted_at", "is", null);
+
+    // Incremental: only fetch deletions since last sync
+    if (since) {
+      query = query.gt("updated_at", since);
+    }
+
+    const { data, error } = await query
+      .order("updated_at", { ascending: false })
+      .limit(MAX_INVOICES_PER_BATCH);
 
     if (error) {
       console.error("Failed to fetch deleted invoice IDs:", error);
       return [];
     }
 
-    return (data || []).map((row: any) => row.id);
+    return (data || []).map((row: { id: string }) => row.id);
   } catch (error) {
     console.error("Get deleted invoice IDs error:", error);
     return [];
@@ -195,9 +262,11 @@ async function getDeletedInvoiceIds(): Promise<string[]> {
 }
 
 /**
- * Download all invoices from Supabase for current user
+ * Download invoices from Supabase for current user
+ * @param since - Only fetch invoices updated after this timestamp (incremental sync)
+ * @param isInitialSync - If true, this is a first-time sync (higher limit)
  */
-export async function downloadInvoices(): Promise<Invoice[]> {
+export async function downloadInvoices(since?: string, isInitialSync = false): Promise<Invoice[]> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -205,12 +274,23 @@ export async function downloadInvoices(): Promise<Invoice[]> {
       return [];
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("invoices")
       .select("*")
       .eq("user_id", userId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .is("deleted_at", null);
+
+    // Incremental sync: only fetch invoices updated since last sync
+    if (since) {
+      query = query.gt("updated_at", since);
+      console.log(`📥 Incremental sync: fetching invoices updated since ${since}`);
+    }
+
+    const limit = isInitialSync ? MAX_INVOICES_INITIAL_SYNC : MAX_INVOICES_PER_BATCH;
+
+    const { data, error } = await query
+      .order("updated_at", { ascending: false })
+      .limit(limit);
 
     if (error) {
       console.error("Failed to download invoices:", error);
@@ -221,39 +301,51 @@ export async function downloadInvoices(): Promise<Invoice[]> {
       return [];
     }
 
-    // Map Supabase data to local Invoice type
-    const invoices: Invoice[] = data.map((row: any) => {
-      const invoice: Invoice = {
-        id: row.id,
-        quoteId: row.quote_id || undefined,
-        invoiceNumber: row.invoice_number,
-        name: row.name,
-        clientName: row.client_name || undefined,
-        items: row.items || [],
-        labor: parseFloat(row.labor) || 0,
-        materialEstimate: row.material_estimate
-          ? parseFloat(row.material_estimate)
-          : undefined,
-        overhead: row.overhead ? parseFloat(row.overhead) : undefined,
-        markupPercent: row.markup_percent
-          ? parseFloat(row.markup_percent)
-          : undefined,
-        notes: row.notes || undefined,
-        invoiceDate: row.invoice_date,
-        dueDate: row.due_date,
-        status: row.status || "unpaid",
-        paidDate: row.paid_date || undefined,
-        paidAmount: row.paid_amount ? parseFloat(row.paid_amount) : undefined,
-        percentage: row.percentage ? parseFloat(row.percentage) : undefined,
-        isPartialInvoice: row.is_partial_invoice || false,
-        currency: row.currency || "USD",
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        deletedAt: row.deleted_at || undefined,
-      };
+    // Map Supabase data to local Invoice type with validation
+    const invoices: Invoice[] = [];
+    for (const row of data) {
+      try {
+        // Skip invalid rows
+        if (!row || !row.id) {
+          console.warn("Skipping invalid invoice row:", row);
+          continue;
+        }
 
-      return invoice;
-    });
+        const invoice: Invoice = {
+          id: row.id,
+          quoteId: row.quote_id || undefined,
+          invoiceNumber: row.invoice_number || "",
+          name: row.name || "",
+          clientName: row.client_name || undefined,
+          items: Array.isArray(row.items) ? row.items : [],
+          labor: parseFloat(row.labor) || 0,
+          materialEstimate: row.material_estimate
+            ? parseFloat(row.material_estimate)
+            : undefined,
+          overhead: row.overhead ? parseFloat(row.overhead) : undefined,
+          markupPercent: row.markup_percent
+            ? parseFloat(row.markup_percent)
+            : undefined,
+          notes: row.notes || undefined,
+          invoiceDate: row.invoice_date,
+          dueDate: row.due_date,
+          status: row.status || "unpaid",
+          paidDate: row.paid_date || undefined,
+          paidAmount: row.paid_amount ? parseFloat(row.paid_amount) : undefined,
+          percentage: row.percentage ? parseFloat(row.percentage) : undefined,
+          isPartialInvoice: row.is_partial_invoice || false,
+          currency: row.currency || "USD",
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          deletedAt: row.deleted_at || undefined,
+        };
+
+        invoices.push(invoice);
+      } catch (parseError) {
+        console.error(`Failed to parse invoice ${row?.id}:`, parseError);
+        // Continue with next invoice instead of failing entire sync
+      }
+    }
 
     console.log(`✅ Downloaded ${invoices.length} invoices from cloud`);
     return invoices;
@@ -375,8 +467,10 @@ export async function hasInvoicesMigrated(): Promise<boolean> {
 }
 
 /**
- * Sync invoices bi-directionally (download from cloud, merge with local, upload changes)
- * Conflict resolution: last-write-wins based on updatedAt
+ * Sync invoices bi-directionally with INCREMENTAL sync
+ * - Only fetches invoices changed since last sync (huge performance win at scale)
+ * - Conflict resolution: last-write-wins based on updatedAt
+ * - Also syncs deletions across devices
  */
 export async function syncInvoices(): Promise<{
   success: boolean;
@@ -384,6 +478,14 @@ export async function syncInvoices(): Promise<{
   uploaded: number;
   deleted: number;
 }> {
+  // Prevent concurrent sync operations
+  if (syncInProgress) {
+    console.warn("Invoice sync already in progress, skipping");
+    return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
+  }
+
+  syncInProgress = true;
+
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -391,26 +493,42 @@ export async function syncInvoices(): Promise<{
       return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
     }
 
+    // Get sync metadata to determine if this is initial or incremental sync
+    const metadata = await getSyncMetadata();
+    const lastSyncAt = metadata.lastSyncAt;
+    const isInitialSync = !lastSyncAt;
+
+    if (isInitialSync) {
+      console.log("🔄 Starting initial full invoices sync...");
+    } else {
+      console.log(`🔄 Starting incremental invoices sync since ${lastSyncAt}`);
+    }
+
     let downloaded = 0;
     let uploaded = 0;
     let deleted = 0;
 
-    // Step 1: Sync deletions - apply cloud deletions to local
-    const deletedIds = await getDeletedInvoiceIds();
+    // Step 1: Sync deletions - only fetch deletions since last sync
+    const deletedIds = await getDeletedInvoiceIds(lastSyncAt || undefined);
     for (const deletedId of deletedIds) {
-      const localInvoice = await getLocalInvoiceById(deletedId);
-      if (localInvoice && !localInvoice.deletedAt) {
-        // Invoice exists locally but is deleted in cloud - mark as deleted locally
-        await markLocalInvoiceDeleted(deletedId);
-        deleted++;
-        console.log(`🗑️ Applied invoice deletion from cloud: ${deletedId}`);
+      try {
+        const localInvoice = await getLocalInvoiceById(deletedId);
+        if (localInvoice && !localInvoice.deletedAt) {
+          // Invoice exists locally but is deleted in cloud - mark as deleted locally
+          await markLocalInvoiceDeleted(deletedId);
+          deleted++;
+          console.log(`🗑️ Applied invoice deletion from cloud: ${deletedId}`);
+        }
+      } catch (error) {
+        console.error(`Failed to apply invoice deletion ${deletedId}:`, error);
       }
     }
 
-    // Step 2: Download active cloud invoices
-    const cloudInvoices = await downloadInvoices();
+    // Step 2: Download cloud invoices (incremental - only changed since lastSyncAt)
+    const cloudInvoices = await downloadInvoices(lastSyncAt || undefined, isInitialSync);
+    console.log(`📥 Fetched ${cloudInvoices.length} invoices from cloud`);
 
-    // Step 3: Get local active invoices
+    // Step 3: Get local invoices
     const localInvoices = await getLocalInvoices();
 
     // Build maps for efficient lookup
@@ -419,60 +537,84 @@ export async function syncInvoices(): Promise<{
 
     // Step 4: Process cloud invoices (download new or updated)
     for (const cloudInvoice of cloudInvoices) {
-      const localInvoice = localMap.get(cloudInvoice.id);
+      try {
+        const localInvoice = localMap.get(cloudInvoice.id);
 
-      if (!localInvoice) {
-        // New invoice from cloud - save locally
-        await saveInvoiceLocally(cloudInvoice);
-        downloaded++;
-      } else {
-        // Invoice exists in both - check which is newer
-        const cloudUpdated = new Date(cloudInvoice.updatedAt).getTime();
-        const localUpdated = new Date(localInvoice.updatedAt).getTime();
-
-        if (cloudUpdated > localUpdated) {
-          // Cloud is newer - update local
+        if (!localInvoice) {
+          // New invoice from cloud - save locally
           await saveInvoiceLocally(cloudInvoice);
           downloaded++;
+        } else {
+          // Invoice exists in both - check which is newer (use safe timestamp)
+          const cloudUpdated = safeGetTimestamp(cloudInvoice.updatedAt);
+          const localUpdated = safeGetTimestamp(localInvoice.updatedAt);
+
+          if (cloudUpdated > localUpdated && cloudUpdated > 0) {
+            // Cloud is newer - update local
+            await saveInvoiceLocally(cloudInvoice);
+            downloaded++;
+          }
         }
+      } catch (error) {
+        console.error(`Failed to sync cloud invoice ${cloudInvoice.id}:`, error);
+        // Continue with next invoice
       }
     }
 
-    // Step 5: Process local invoices (upload new or updated)
+    // Step 5: Process local invoices (upload new or updated since last sync)
     for (const localInvoice of localInvoices) {
-      const cloudInvoice = cloudMap.get(localInvoice.id);
+      try {
+        // For incremental sync, only upload invoices modified since last sync
+        if (lastSyncAt) {
+          const localUpdated = safeGetTimestamp(localInvoice.updatedAt);
+          const lastSync = safeGetTimestamp(lastSyncAt);
 
-      if (!cloudInvoice) {
-        // New local invoice - upload to cloud
-        const success = await uploadInvoice(localInvoice);
-        if (success) uploaded++;
-      } else {
-        // Invoice exists in both - check which is newer
-        const cloudUpdated = new Date(cloudInvoice.updatedAt).getTime();
-        const localUpdated = new Date(localInvoice.updatedAt).getTime();
+          // Skip invoices that haven't changed since last sync
+          if (localUpdated <= lastSync) {
+            continue;
+          }
+        }
 
-        if (localUpdated > cloudUpdated) {
-          // Local is newer - upload to cloud
+        const cloudInvoice = cloudMap.get(localInvoice.id);
+
+        if (!cloudInvoice) {
+          // New local invoice - upload to cloud
           const success = await uploadInvoice(localInvoice);
           if (success) uploaded++;
+        } else {
+          // Invoice exists in both - check which is newer (use safe timestamp)
+          const cloudUpdated = safeGetTimestamp(cloudInvoice.updatedAt);
+          const localUpdated = safeGetTimestamp(localInvoice.updatedAt);
+
+          if (localUpdated > cloudUpdated && localUpdated > 0) {
+            // Local is newer - upload to cloud
+            const success = await uploadInvoice(localInvoice);
+            if (success) uploaded++;
+          }
         }
+      } catch (error) {
+        console.error(`Failed to sync local invoice ${localInvoice.id}:`, error);
+        // Continue with next invoice
       }
     }
 
-    // Update sync metadata
-    const metadata = await getSyncMetadata();
+    // Update sync metadata with current timestamp
     await saveSyncMetadata({
       ...metadata,
       lastSyncAt: new Date().toISOString(),
     });
 
+    const syncType = isInitialSync ? "Initial sync" : "Incremental sync";
     console.log(
-      `✅ Invoices sync complete: ${downloaded} downloaded, ${uploaded} uploaded, ${deleted} deleted`
+      `✅ Invoices ${syncType} complete: ${downloaded} downloaded, ${uploaded} uploaded, ${deleted} deleted`
     );
 
     return { success: true, downloaded, uploaded, deleted };
   } catch (error) {
     console.error("Invoices sync error:", error);
     return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
+  } finally {
+    // Always release the sync lock
+    syncInProgress = false;
   }
 }

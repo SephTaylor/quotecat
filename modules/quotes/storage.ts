@@ -519,22 +519,24 @@ export async function unlinkQuote(quoteId: string): Promise<void> {
 /**
  * Get all quotes linked to a given quote (including the original)
  * Returns quotes sorted by tier name or creation date
+ * Optimized to read all quotes once instead of N+1 queries
  */
 export async function getLinkedQuotes(quoteId: string): Promise<Quote[]> {
-  const quote = await getQuoteById(quoteId);
+  // Get all quotes in a single read
+  const allQuotes = await listQuotes();
+
+  // Find the target quote
+  const quote = allQuotes.find((q) => q.id === quoteId);
   if (!quote) return [];
 
   const linkedIds = quote.linkedQuoteIds || [];
   if (linkedIds.length === 0) return [quote]; // Just the original if no links
 
-  // Get all linked quotes
-  const allIds = [quoteId, ...linkedIds];
-  const quotes: Quote[] = [];
+  // Create a Set for O(1) lookup
+  const allIds = new Set([quoteId, ...linkedIds]);
 
-  for (const id of allIds) {
-    const q = await getQuoteById(id);
-    if (q) quotes.push(q);
-  }
+  // Filter quotes by IDs (single pass through array)
+  const quotes = allQuotes.filter((q) => allIds.has(q.id));
 
   // Sort by tier name if present, otherwise by creation date
   return quotes.sort((a, b) => {

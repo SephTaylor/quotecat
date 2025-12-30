@@ -1212,7 +1212,7 @@
                 </a>
                 <div class="header-nav">
                     <a href="https://portal.quotecat.ai/login" class="nav-link" style="color: #f97316; text-decoration: none; font-weight: 500; margin-right: 16px;">Login</a>
-                    <a href="#beta-signup" class="status-badge" style="text-decoration: none; cursor: pointer;">Join Beta Now</a>
+                    <a href="#pricing" class="status-badge" style="text-decoration: none; cursor: pointer;">Get Started</a>
                     <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
                         <span class="hamburger-line"></span>
                         <span class="hamburger-line"></span>
@@ -1265,7 +1265,7 @@
                     <span class="value-prop">Win more bids</span>
                     <span class="value-prop">Look professional</span>
                 </div>
-                <a href="#beta-signup" class="cta-button">Join Beta Testing</a>
+                <a href="#pricing" class="cta-button">Start Free Today</a>
             </div>
         </div>
     </section>
@@ -1362,7 +1362,7 @@
                         <li>Professional templates</li>
                         <li>Local storage only</li>
                     </ul>
-                    <a href="#beta-signup" class="tier-button tier-button-outline">Get Started Free</a>
+                    <a href="#download" class="tier-button tier-button-outline">Get Started Free</a>
                 </div>
                 <div class="tier-card featured">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
@@ -1406,48 +1406,23 @@
         </div>
     </section>
 
-    <!-- Beta Signup Section -->
-    <section class="cta-section" id="beta-signup">
+    <!-- Download Section -->
+    <section class="cta-section" id="download">
         <div class="container">
             <div class="cta-box">
-                <h2>Join the Beta</h2>
-                <p>Get early access to QuoteCat. We'll send you TestFlight (iOS) or Play Store (Android) access within 24 hours.</p>
+                <h2>Download QuoteCat</h2>
+                <p>Start creating professional quotes in minutes. Free to download, no credit card required.</p>
 
-                <form name="beta-signup" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="beta-success.html" style="max-width: 500px; margin: 32px auto 0;">
-                    <input type="hidden" name="form-name" value="beta-signup">
-                    <p style="display: none;">
-                        <label>Don't fill this out: <input name="bot-field"></label>
-                    </p>
-
-                    <div style="margin-bottom: 20px;">
-                        <input
-                            type="email"
-                            name="email"
-                            placeholder="your@email.com"
-                            required
-                            style="width: 100%; padding: 16px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.95); font-size: 16px; color: #1f2937; font-weight: 500;"
-                        >
-                    </div>
-
-                    <div style="margin-bottom: 24px; display: flex; gap: 12px; justify-content: center;">
-                        <label style="flex: 1; cursor: pointer;">
-                            <input type="radio" name="phone-type" value="iOS" required style="margin-right: 8px;">
-                            <span style="font-weight: 600; font-size: 16px;">📱 iOS</span>
-                        </label>
-                        <label style="flex: 1; cursor: pointer;">
-                            <input type="radio" name="phone-type" value="Android" required style="margin-right: 8px;">
-                            <span style="font-weight: 600; font-size: 16px;">🤖 Android</span>
-                        </label>
-                    </div>
-
-                    <button
-                        type="submit"
-                        class="cta-button-white"
-                        style="width: 100%; border: none; cursor: pointer;"
-                    >
-                        Get Beta Access
-                    </button>
-                </form>
+                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 32px;">
+                    <a href="https://apps.apple.com/app/quotecat" target="_blank" class="cta-button-white" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                        App Store
+                    </a>
+                    <a href="https://play.google.com/store/apps/details?id=com.quotecat.app" target="_blank" class="cta-button-white" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/></svg>
+                        Google Play
+                    </a>
+                </div>
             </div>
         </div>
     </section>

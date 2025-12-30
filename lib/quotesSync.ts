@@ -9,6 +9,11 @@ import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SYNC_METADATA_KEY = "@quotecat/sync_metadata";
+const MAX_QUOTES_PER_BATCH = 500; // Batch size for incremental sync
+const MAX_QUOTES_INITIAL_SYNC = 2000; // Limit for first-time full sync
+
+// Sync lock to prevent concurrent sync operations
+let syncInProgress = false;
 
 type SyncMetadata = {
   lastSyncAt: string | null;
@@ -17,26 +22,46 @@ type SyncMetadata = {
 };
 
 /**
+ * Safe timestamp extractor - returns 0 for invalid dates
+ */
+function safeGetTimestamp(dateString?: string): number {
+  if (!dateString) return 0;
+  const time = new Date(dateString).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+/**
  * Get sync metadata from storage
  */
 async function getSyncMetadata(): Promise<SyncMetadata> {
+  const defaultMetadata: SyncMetadata = {
+    lastSyncAt: null,
+    hasMigrated: false,
+    syncEnabled: true,
+  };
+
   try {
     const json = await AsyncStorage.getItem(SYNC_METADATA_KEY);
     if (!json) {
-      return {
-        lastSyncAt: null,
-        hasMigrated: false,
-        syncEnabled: true,
-      };
+      return defaultMetadata;
     }
-    return JSON.parse(json);
+
+    const parsed = JSON.parse(json);
+
+    // Validate parsed data has expected structure
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.warn("Invalid sync metadata format, using defaults");
+      return defaultMetadata;
+    }
+
+    return {
+      lastSyncAt: typeof parsed.lastSyncAt === 'string' ? parsed.lastSyncAt : null,
+      hasMigrated: typeof parsed.hasMigrated === 'boolean' ? parsed.hasMigrated : false,
+      syncEnabled: typeof parsed.syncEnabled === 'boolean' ? parsed.syncEnabled : true,
+    };
   } catch (error) {
     console.error("Failed to load sync metadata:", error);
-    return {
-      lastSyncAt: null,
-      hasMigrated: false,
-      syncEnabled: true,
-    };
+    return defaultMetadata;
   }
 }
 
@@ -107,26 +132,36 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
 
 /**
  * Get IDs of deleted quotes from cloud (for syncing deletions across devices)
+ * @param since - Only fetch deletions after this timestamp (incremental sync)
  */
-async function getDeletedQuoteIds(): Promise<string[]> {
+async function getDeletedQuoteIds(since?: string): Promise<string[]> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
       return [];
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("quotes")
       .select("id")
       .eq("user_id", userId)
       .not("deleted_at", "is", null);
+
+    // Incremental: only fetch deletions since last sync
+    if (since) {
+      query = query.gt("updated_at", since);
+    }
+
+    const { data, error } = await query
+      .order("updated_at", { ascending: false })
+      .limit(MAX_QUOTES_PER_BATCH);
 
     if (error) {
       console.error("Failed to fetch deleted quote IDs:", error);
       return [];
     }
 
-    return (data || []).map((row: any) => row.id);
+    return (data || []).map((row: { id: string }) => row.id);
   } catch (error) {
     console.error("Get deleted quote IDs error:", error);
     return [];
@@ -134,9 +169,11 @@ async function getDeletedQuoteIds(): Promise<string[]> {
 }
 
 /**
- * Download all quotes from Supabase for current user
+ * Download quotes from Supabase for current user
+ * @param since - Only fetch quotes updated after this timestamp (incremental sync)
+ * @param isInitialSync - If true, this is a first-time sync (higher limit)
  */
-export async function downloadQuotes(): Promise<Quote[]> {
+export async function downloadQuotes(since?: string, isInitialSync = false): Promise<Quote[]> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -144,12 +181,23 @@ export async function downloadQuotes(): Promise<Quote[]> {
       return [];
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("quotes")
       .select("*")
       .eq("user_id", userId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .is("deleted_at", null);
+
+    // Incremental sync: only fetch quotes updated since last sync
+    if (since) {
+      query = query.gt("updated_at", since);
+      console.log(`📥 Incremental sync: fetching quotes updated since ${since}`);
+    }
+
+    const limit = isInitialSync ? MAX_QUOTES_INITIAL_SYNC : MAX_QUOTES_PER_BATCH;
+
+    const { data, error } = await query
+      .order("updated_at", { ascending: false })
+      .limit(limit);
 
     if (error) {
       console.error("Failed to download quotes:", error);
@@ -160,34 +208,46 @@ export async function downloadQuotes(): Promise<Quote[]> {
       return [];
     }
 
-    // Map Supabase data to local Quote type
-    const quotes: Quote[] = data.map((row: any) => {
-      const quote: Quote = {
-        id: row.id,
-        name: row.name,
-        clientName: row.client_name || undefined,
-        items: row.items || [],
-        labor: parseFloat(row.labor) || 0,
-        materialEstimate: row.material_estimate
-          ? parseFloat(row.material_estimate)
-          : undefined,
-        overhead: row.overhead ? parseFloat(row.overhead) : undefined,
-        markupPercent: row.markup_percent
-          ? parseFloat(row.markup_percent)
-          : undefined,
-        currency: row.currency || "USD",
-        status: row.status || "draft",
-        pinned: row.pinned || false,
-        tier: row.tier || undefined,
-        linkedQuoteIds: row.linked_quote_ids || undefined,
-        followUpDate: row.follow_up_date || undefined,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        deletedAt: row.deleted_at || undefined,
-      };
+    // Map Supabase data to local Quote type with validation
+    const quotes: Quote[] = [];
+    for (const row of data) {
+      try {
+        // Skip invalid rows
+        if (!row || !row.id) {
+          console.warn("Skipping invalid quote row:", row);
+          continue;
+        }
 
-      return normalizeQuote(quote);
-    });
+        const quote: Quote = {
+          id: row.id,
+          name: row.name || "",
+          clientName: row.client_name || undefined,
+          items: Array.isArray(row.items) ? row.items : [],
+          labor: parseFloat(row.labor) || 0,
+          materialEstimate: row.material_estimate
+            ? parseFloat(row.material_estimate)
+            : undefined,
+          overhead: row.overhead ? parseFloat(row.overhead) : undefined,
+          markupPercent: row.markup_percent
+            ? parseFloat(row.markup_percent)
+            : undefined,
+          currency: row.currency || "USD",
+          status: row.status || "draft",
+          pinned: row.pinned || false,
+          tier: row.tier || undefined,
+          linkedQuoteIds: row.linked_quote_ids || undefined,
+          followUpDate: row.follow_up_date || undefined,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          deletedAt: row.deleted_at || undefined,
+        };
+
+        quotes.push(normalizeQuote(quote));
+      } catch (parseError) {
+        console.error(`Failed to parse quote ${row?.id}:`, parseError);
+        // Continue with next quote instead of failing entire sync
+      }
+    }
 
     console.log(`✅ Downloaded ${quotes.length} quotes from cloud`);
     return quotes;
@@ -261,9 +321,10 @@ export async function migrateLocalQuotesToCloud(): Promise<{
 }
 
 /**
- * Sync quotes bi-directionally (download from cloud, merge with local, upload changes)
- * Conflict resolution: last-write-wins based on updatedAt
- * Also syncs deletions across devices
+ * Sync quotes bi-directionally with INCREMENTAL sync
+ * - Only fetches quotes changed since last sync (huge performance win at scale)
+ * - Conflict resolution: last-write-wins based on updatedAt
+ * - Also syncs deletions across devices
  */
 export async function syncQuotes(): Promise<{
   success: boolean;
@@ -271,6 +332,14 @@ export async function syncQuotes(): Promise<{
   uploaded: number;
   deleted: number;
 }> {
+  // Prevent concurrent sync operations
+  if (syncInProgress) {
+    console.warn("Quote sync already in progress, skipping");
+    return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
+  }
+
+  syncInProgress = true;
+
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -278,29 +347,47 @@ export async function syncQuotes(): Promise<{
       return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
     }
 
+    // Get sync metadata to determine if this is initial or incremental sync
+    const metadata = await getSyncMetadata();
+    const lastSyncAt = metadata.lastSyncAt;
+    const isInitialSync = !lastSyncAt;
+
+    if (isInitialSync) {
+      console.log("🔄 Starting initial full sync...");
+    } else {
+      console.log(`🔄 Starting incremental sync since ${lastSyncAt}`);
+    }
+
     let downloaded = 0;
     let uploaded = 0;
     let deleted = 0;
 
-    // Step 1: Sync deletions - apply cloud deletions to local
-    const deletedIds = await getDeletedQuoteIds();
+    // Step 1: Sync deletions - only fetch deletions since last sync
+    const deletedIds = await getDeletedQuoteIds(lastSyncAt || undefined);
     for (const deletedId of deletedIds) {
-      const localQuote = await getQuoteById(deletedId);
-      if (localQuote && !localQuote.deletedAt) {
-        // Quote exists locally but is deleted in cloud - mark as deleted locally
-        await updateQuote(deletedId, {
-          deletedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        deleted++;
-        console.log(`🗑️ Applied deletion from cloud: ${deletedId}`);
+      try {
+        const localQuote = await getQuoteById(deletedId);
+        if (localQuote && !localQuote.deletedAt) {
+          // Quote exists locally but is deleted in cloud - mark as deleted locally
+          await updateQuote(deletedId, {
+            deletedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          deleted++;
+          console.log(`🗑️ Applied deletion from cloud: ${deletedId}`);
+        }
+      } catch (error) {
+        console.error(`Failed to apply deletion ${deletedId}:`, error);
       }
     }
 
-    // Step 2: Download active cloud quotes
-    const cloudQuotes = await downloadQuotes();
+    // Step 2: Download cloud quotes (incremental - only changed since lastSyncAt)
+    const cloudQuotes = await downloadQuotes(lastSyncAt || undefined, isInitialSync);
+    console.log(`📥 Fetched ${cloudQuotes.length} quotes from cloud`);
 
-    // Step 3: Get local active quotes
+    // Step 3: Get local quotes
+    // For incremental sync, we still need all local quotes to check for uploads
+    // But we could optimize this later with local change tracking
     const localQuotes = await listQuotes();
 
     // Build maps for efficient lookup
@@ -309,61 +396,85 @@ export async function syncQuotes(): Promise<{
 
     // Step 4: Process cloud quotes (download new or updated)
     for (const cloudQuote of cloudQuotes) {
-      const localQuote = localMap.get(cloudQuote.id);
+      try {
+        const localQuote = localMap.get(cloudQuote.id);
 
-      if (!localQuote) {
-        // New quote from cloud - save locally
-        await saveQuote(cloudQuote);
-        downloaded++;
-      } else {
-        // Quote exists in both - check which is newer
-        const cloudUpdated = new Date(cloudQuote.updatedAt).getTime();
-        const localUpdated = new Date(localQuote.updatedAt).getTime();
-
-        if (cloudUpdated > localUpdated) {
-          // Cloud is newer - update local
+        if (!localQuote) {
+          // New quote from cloud - save locally
           await saveQuote(cloudQuote);
           downloaded++;
+        } else {
+          // Quote exists in both - check which is newer (use safe timestamp)
+          const cloudUpdated = safeGetTimestamp(cloudQuote.updatedAt);
+          const localUpdated = safeGetTimestamp(localQuote.updatedAt);
+
+          if (cloudUpdated > localUpdated && cloudUpdated > 0) {
+            // Cloud is newer - update local
+            await saveQuote(cloudQuote);
+            downloaded++;
+          }
         }
+      } catch (error) {
+        console.error(`Failed to sync cloud quote ${cloudQuote.id}:`, error);
+        // Continue with next quote
       }
     }
 
-    // Step 5: Process local quotes (upload new or updated)
+    // Step 5: Process local quotes (upload new or updated since last sync)
     for (const localQuote of localQuotes) {
-      const cloudQuote = cloudMap.get(localQuote.id);
+      try {
+        // For incremental sync, only upload quotes modified since last sync
+        if (lastSyncAt) {
+          const localUpdated = safeGetTimestamp(localQuote.updatedAt);
+          const lastSync = safeGetTimestamp(lastSyncAt);
 
-      if (!cloudQuote) {
-        // New local quote - upload to cloud
-        const success = await uploadQuote(localQuote);
-        if (success) uploaded++;
-      } else {
-        // Quote exists in both - check which is newer
-        const cloudUpdated = new Date(cloudQuote.updatedAt).getTime();
-        const localUpdated = new Date(localQuote.updatedAt).getTime();
+          // Skip quotes that haven't changed since last sync
+          if (localUpdated <= lastSync) {
+            continue;
+          }
+        }
 
-        if (localUpdated > cloudUpdated) {
-          // Local is newer - upload to cloud
+        const cloudQuote = cloudMap.get(localQuote.id);
+
+        if (!cloudQuote) {
+          // New local quote - upload to cloud
           const success = await uploadQuote(localQuote);
           if (success) uploaded++;
+        } else {
+          // Quote exists in both - check which is newer (use safe timestamp)
+          const cloudUpdated = safeGetTimestamp(cloudQuote.updatedAt);
+          const localUpdated = safeGetTimestamp(localQuote.updatedAt);
+
+          if (localUpdated > cloudUpdated && localUpdated > 0) {
+            // Local is newer - upload to cloud
+            const success = await uploadQuote(localQuote);
+            if (success) uploaded++;
+          }
         }
+      } catch (error) {
+        console.error(`Failed to sync local quote ${localQuote.id}:`, error);
+        // Continue with next quote
       }
     }
 
-    // Update sync metadata
-    const metadata = await getSyncMetadata();
+    // Update sync metadata with current timestamp
     await saveSyncMetadata({
       ...metadata,
       lastSyncAt: new Date().toISOString(),
     });
 
+    const syncType = isInitialSync ? "Initial sync" : "Incremental sync";
     console.log(
-      `✅ Sync complete: ${downloaded} downloaded, ${uploaded} uploaded, ${deleted} deleted`
+      `✅ ${syncType} complete: ${downloaded} downloaded, ${uploaded} uploaded, ${deleted} deleted`
     );
 
     return { success: true, downloaded, uploaded, deleted };
   } catch (error) {
     console.error("Sync error:", error);
     return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
+  } finally {
+    // Always release the sync lock
+    syncInProgress = false;
   }
 }
 

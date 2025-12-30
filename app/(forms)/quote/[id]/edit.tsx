@@ -102,12 +102,17 @@ export default function EditQuote() {
   // Load Pro status and saved clients
   useEffect(() => {
     const loadProAndClients = async () => {
-      const user = await getUserState();
-      const proStatus = canAccessAssemblies(user);
-      setIsPro(proStatus);
-      if (proStatus) {
-        const clients = await getClients();
-        setSavedClients(clients);
+      try {
+        const user = await getUserState();
+        const proStatus = canAccessAssemblies(user);
+        setIsPro(proStatus);
+        if (proStatus) {
+          const clients = await getClients();
+          setSavedClients(clients);
+        }
+      } catch (error) {
+        console.error("Failed to load Pro status or clients:", error);
+        // Continue with default state (not Pro)
       }
     };
     loadProAndClients();
@@ -119,28 +124,36 @@ export default function EditQuote() {
 
       // Check if a new client was just created and auto-select it
       const checkNewClient = async () => {
-        const newClientId = await getAndClearLastCreatedClientId();
-        if (newClientId) {
-          const client = await getClientById(newClientId);
-          if (client) {
-            setClientName(client.name);
-            setClientEmail(client.email || "");
-            setClientPhone(client.phone || "");
-            setClientAddress(client.address || "");
-            setIsNewQuote(false);
-            // Refresh the clients list
-            const clients = await getClients();
-            setSavedClients(clients);
+        try {
+          const newClientId = await getAndClearLastCreatedClientId();
+          if (newClientId) {
+            const client = await getClientById(newClientId);
+            if (client) {
+              setClientName(client.name);
+              setClientEmail(client.email || "");
+              setClientPhone(client.phone || "");
+              setClientAddress(client.address || "");
+              setIsNewQuote(false);
+              // Refresh the clients list
+              const clients = await getClients();
+              setSavedClients(clients);
+            }
           }
+        } catch (error) {
+          console.error("Failed to check/load new client:", error);
         }
       };
       checkNewClient();
 
       // Load change order count for visibility banner
       const loadCoCount = async () => {
-        if (id) {
-          const count = await getActiveChangeOrderCount(id);
-          setCoCount(count);
+        try {
+          if (id) {
+            const count = await getActiveChangeOrderCount(id);
+            setCoCount(count);
+          }
+        } catch (error) {
+          console.error("Failed to load change order count:", error);
         }
       };
       loadCoCount();

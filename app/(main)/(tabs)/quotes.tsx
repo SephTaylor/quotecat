@@ -64,20 +64,29 @@ export default function QuotesList() {
   const [coCounts, setCoCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
-    const data = await listQuotes();
-    setQuotes(data);
+    try {
+      const data = await listQuotes();
+      setQuotes(data);
 
-    // Load CO counts for quotes that might have them (approved/completed)
-    const counts: Record<string, number> = {};
-    await Promise.all(
-      data
-        .filter((q) => q.status === "approved" || q.status === "completed")
-        .map(async (q) => {
-          const count = await getActiveChangeOrderCount(q.id);
-          if (count > 0) counts[q.id] = count;
-        })
-    );
-    setCoCounts(counts);
+      // Load CO counts for quotes that might have them (approved/completed)
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        data
+          .filter((q) => q.status === "approved" || q.status === "completed")
+          .map(async (q) => {
+            try {
+              const count = await getActiveChangeOrderCount(q.id);
+              if (count > 0) counts[q.id] = count;
+            } catch {
+              // Skip this quote's CO count on error
+            }
+          })
+      );
+      setCoCounts(counts);
+    } catch (error) {
+      console.error("Failed to load quotes:", error);
+      // Keep existing quotes state on error
+    }
   }, []);
 
   useEffect(() => {
@@ -135,8 +144,13 @@ export default function QuotesList() {
 
   // Create new quote handler
   const handleCreateNewQuote = useCallback(async () => {
-    const q = await createNewQuote("", "");
-    router.push(`/quote/${q.id}/edit`);
+    try {
+      const q = await createNewQuote("", "");
+      router.push(`/quote/${q.id}/edit`);
+    } catch (error) {
+      console.error("Failed to create quote:", error);
+      Alert.alert("Error", "Failed to create new quote. Please try again.");
+    }
   }, [router]);
 
   const onRefresh = useCallback(async () => {
@@ -152,8 +166,19 @@ export default function QuotesList() {
     // Optimistically remove from list
     setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
 
-    // Delete from storage
-    await deleteQuote(quote.id);
+    try {
+      // Delete from storage
+      await deleteQuote(quote.id);
+    } catch (error) {
+      console.error("Failed to delete quote:", error);
+      // Restore the quote on error
+      setQuotes((prev) => [...prev, quote].sort((a, b) =>
+        new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+      ));
+      setDeletedQuote(null);
+      Alert.alert("Error", "Failed to delete quote. Please try again.");
+      return;
+    }
 
     // Show undo snackbar
     setShowUndo(true);
@@ -162,14 +187,19 @@ export default function QuotesList() {
   const handleUndo = useCallback(async () => {
     if (!deletedQuote) return;
 
-    // Restore the quote
-    await saveQuote(deletedQuote);
+    try {
+      // Restore the quote
+      await saveQuote(deletedQuote);
 
-    // Reload list
-    await load();
+      // Reload list
+      await load();
 
-    // Clear deleted quote
-    setDeletedQuote(null);
+      // Clear deleted quote
+      setDeletedQuote(null);
+    } catch (error) {
+      console.error("Failed to restore quote:", error);
+      Alert.alert("Error", "Failed to restore quote. Please try again.");
+    }
   }, [deletedQuote, load]);
 
   const handleDismissUndo = useCallback(() => {
@@ -178,13 +208,18 @@ export default function QuotesList() {
   }, []);
 
   const handleDuplicate = useCallback(async (quote: Quote) => {
-    const duplicated = await duplicateQuote(quote.id);
-    if (duplicated) {
-      // Optimistically add to list at the top
-      setQuotes((prev) => [duplicated, ...prev]);
+    try {
+      const duplicated = await duplicateQuote(quote.id);
+      if (duplicated) {
+        // Optimistically add to list at the top
+        setQuotes((prev) => [duplicated, ...prev]);
 
-      // Navigate to edit the new quote
-      router.push(`/quote/${duplicated.id}/edit`);
+        // Navigate to edit the new quote
+        router.push(`/quote/${duplicated.id}/edit`);
+      }
+    } catch (error) {
+      console.error("Failed to duplicate quote:", error);
+      Alert.alert("Error", "Failed to duplicate quote. Please try again.");
     }
   }, [router]);
 
@@ -201,12 +236,17 @@ export default function QuotesList() {
               Alert.alert("Error", "Please enter a tier name");
               return;
             }
-            const newTier = await createTierFromQuote(quote.id, tierName.trim());
-            if (newTier) {
-              // Reload list to get updated linked quotes
-              await load();
-              // Navigate to edit the new tier
-              router.push(`/quote/${newTier.id}/edit`);
+            try {
+              const newTier = await createTierFromQuote(quote.id, tierName.trim());
+              if (newTier) {
+                // Reload list to get updated linked quotes
+                await load();
+                // Navigate to edit the new tier
+                router.push(`/quote/${newTier.id}/edit`);
+              }
+            } catch (error) {
+              console.error("Failed to create tier:", error);
+              Alert.alert("Error", "Failed to create tier. Please try again.");
             }
           },
         },
@@ -266,8 +306,13 @@ export default function QuotesList() {
           text: "Unlink",
           style: "destructive",
           onPress: async () => {
-            await unlinkQuote(quote.id);
-            await load();
+            try {
+              await unlinkQuote(quote.id);
+              await load();
+            } catch (error) {
+              console.error("Failed to unlink quote:", error);
+              Alert.alert("Error", "Failed to unlink quote. Please try again.");
+            }
           },
         },
       ]
@@ -312,12 +357,18 @@ export default function QuotesList() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            for (const id of selectedIds) {
-              await deleteQuote(id);
+            try {
+              for (const id of selectedIds) {
+                await deleteQuote(id);
+              }
+              await load();
+              setSelectMode(false);
+              setSelectedIds(new Set());
+            } catch (error) {
+              console.error("Failed to delete quotes:", error);
+              Alert.alert("Error", "Some quotes failed to delete. Please try again.");
+              await load(); // Reload to show current state
             }
-            await load();
-            setSelectMode(false);
-            setSelectedIds(new Set());
           },
         },
       ]
@@ -327,12 +378,18 @@ export default function QuotesList() {
   const handleBulkArchive = useCallback(async () => {
     if (selectedIds.size === 0) return;
 
-    for (const id of selectedIds) {
-      await updateQuote(id, { status: "archived" });
+    try {
+      for (const id of selectedIds) {
+        await updateQuote(id, { status: "archived" });
+      }
+      await load();
+      setSelectMode(false);
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error("Failed to archive quotes:", error);
+      Alert.alert("Error", "Some quotes failed to archive. Please try again.");
+      await load(); // Reload to show current state
     }
-    await load();
-    setSelectMode(false);
-    setSelectedIds(new Set());
   }, [selectedIds, load]);
 
   const handleBulkStatusChange = useCallback(() => {
@@ -347,12 +404,18 @@ export default function QuotesList() {
         ...statusOptions.map((status) => ({
           text: QuoteStatusMeta[status].label,
           onPress: async () => {
-            for (const id of selectedIds) {
-              await updateQuote(id, { status });
+            try {
+              for (const id of selectedIds) {
+                await updateQuote(id, { status });
+              }
+              await load();
+              setSelectMode(false);
+              setSelectedIds(new Set());
+            } catch (error) {
+              console.error("Failed to update quote status:", error);
+              Alert.alert("Error", "Some quotes failed to update. Please try again.");
+              await load(); // Reload to show current state
             }
-            await load();
-            setSelectMode(false);
-            setSelectedIds(new Set());
           },
         })),
         { text: "Cancel", style: "cancel" as const },
