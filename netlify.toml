@@ -1,0 +1,12 @@
+[build]
+  publish = "website"
+  command = "echo 'Static site - no build needed'"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[functions]
+  directory = "website/netlify/functions"
