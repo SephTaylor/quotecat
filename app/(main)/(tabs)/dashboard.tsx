@@ -16,11 +16,11 @@ import { QuoteGroup } from "@/components/QuoteGroup";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getLastSyncTime, isSyncAvailable } from "@/lib/quotesSync";
 import { getUserState } from "@/lib/user";
-import { hasSyncCompletedSince } from "@/lib/syncState";
+import { hasSyncCompletedSince, onSyncComplete } from "@/lib/syncState";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { getActiveChangeOrderCount } from "@/modules/changeOrders";
 import { WizardFAB } from "@/components/WizardFAB";
@@ -157,6 +157,15 @@ export default function Dashboard() {
       }
     }, [load]),
   );
+
+  // Auto-refresh when background sync completes (even if user is on this screen)
+  useEffect(() => {
+    const unsubscribe = onSyncComplete(() => {
+      // Sync just completed - refresh data from SQLite
+      load();
+    });
+    return unsubscribe;
+  }, [load]);
 
   // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {

@@ -128,9 +128,9 @@ async function handleAuthChange(userId: string): Promise<void> {
  * IMPORTANT: All operations run SEQUENTIALLY with GC breaks to prevent OOM
  */
 async function runBackgroundSync(): Promise<void> {
-  // Wait 2 seconds before starting sync to let UI render and settle
-  // This prevents OOM from sync + UI loading competing for memory
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  // Short delay to let UI render before sync starts
+  // SQLite is memory-efficient so we don't need the old 2-second delay
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   console.log("📡 Starting background sync...");
 
