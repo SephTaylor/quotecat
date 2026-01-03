@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -19,6 +20,7 @@ import {
   type Reminder,
   dismissReminder,
   markProWelcomeAsSeen,
+  markPremiumWelcomeAsSeen,
   markNotificationAsRead,
 } from "@/lib/reminders";
 
@@ -109,6 +111,11 @@ export function NotificationPanel({
     onRefresh();
   }, [onRefresh]);
 
+  const handlePremiumWelcomeDismiss = useCallback(async () => {
+    await markPremiumWelcomeAsSeen();
+    onRefresh();
+  }, [onRefresh]);
+
   const handleProFeatureTap = useCallback((route: string) => {
     onClose();
     router.push(route as any);
@@ -170,6 +177,13 @@ export function NotificationPanel({
                   <ProWelcomeCard
                     key={reminder.id}
                     onDismiss={handleProWelcomeDismiss}
+                    onFeatureTap={handleProFeatureTap}
+                    theme={theme}
+                  />
+                ) : reminder.type === "premium_welcome" ? (
+                  <PremiumWelcomeCard
+                    key={reminder.id}
+                    onDismiss={handlePremiumWelcomeDismiss}
                     onFeatureTap={handleProFeatureTap}
                     theme={theme}
                   />
@@ -263,6 +277,84 @@ function ProWelcomeCard({ onDismiss, onFeatureTap, theme }: ProWelcomeCardProps)
 
       <Pressable style={styles.proWelcomeDismiss} onPress={onDismiss}>
         <Text style={styles.proWelcomeDismissText}>Got it!</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// Premium feature list for welcome card
+const PREMIUM_FEATURES = [
+  { icon: "laptop-outline" as const, label: "Exclusive web portal", route: "https://portal.quotecat.ai", isExternal: true },
+  { icon: "document-text-outline" as const, label: "Contracts & e-signatures", route: "/(main)/(tabs)/contracts", isExternal: false },
+  { icon: "pricetag-outline" as const, label: "Custom price book", route: "/(main)/price-book", isExternal: false },
+  { icon: "sparkles-outline" as const, label: "Quote Wizard (AI)", route: "/(main)/wizard", isExternal: false },
+  { icon: "cube-outline" as const, label: "Reusable assemblies", route: "/(main)/(tabs)/assemblies", isExternal: false },
+  { icon: "infinite-outline" as const, label: "Everything in Pro, plus more", route: null, isExternal: false },
+];
+
+interface PremiumWelcomeCardProps {
+  onDismiss: () => void;
+  onFeatureTap: (route: string) => void;
+  theme: ReturnType<typeof useTheme>["theme"];
+}
+
+function PremiumWelcomeCard({ onDismiss, onFeatureTap, theme }: PremiumWelcomeCardProps) {
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  const handleFeaturePress = useCallback((feature: typeof PREMIUM_FEATURES[0]) => {
+    if (!feature.route) return;
+    if (feature.isExternal) {
+      Linking.openURL(feature.route);
+    } else {
+      onFeatureTap(feature.route);
+    }
+  }, [onFeatureTap]);
+
+  return (
+    <View style={[styles.proWelcomeCard, styles.premiumWelcomeCard]}>
+      <View style={styles.proWelcomeHeader}>
+        <View style={[styles.proWelcomeIcon, styles.premiumWelcomeIcon]}>
+          <Ionicons name="diamond" size={24} color="#5856D6" />
+        </View>
+        <View style={styles.proWelcomeHeaderText}>
+          <Text style={styles.proWelcomeTitle}>Welcome to Premium!</Text>
+          <Text style={styles.proWelcomeSubtitle}>Here&apos;s what you unlocked</Text>
+        </View>
+      </View>
+
+      <View style={styles.proFeatureList}>
+        {PREMIUM_FEATURES.map((feature, index) => (
+          <Pressable
+            key={index}
+            style={styles.proFeatureItem}
+            onPress={() => handleFeaturePress(feature)}
+            disabled={!feature.route}
+          >
+            <Ionicons
+              name={feature.icon}
+              size={18}
+              color="#5856D6"
+              style={styles.proFeatureIcon}
+            />
+            <Text style={[
+              styles.proFeatureLabel,
+              feature.route && styles.proFeatureLabelTappable
+            ]}>
+              {feature.label}
+            </Text>
+            {feature.route && (
+              <Ionicons
+                name={feature.isExternal ? "open-outline" : "chevron-forward"}
+                size={16}
+                color={theme.colors.muted}
+              />
+            )}
+          </Pressable>
+        ))}
+      </View>
+
+      <Pressable style={[styles.proWelcomeDismiss, styles.premiumWelcomeDismiss]} onPress={onDismiss}>
+        <Text style={[styles.proWelcomeDismissText, styles.premiumWelcomeDismissText]}>Got it!</Text>
       </Pressable>
     </View>
   );
@@ -557,6 +649,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: "#000",
+    },
+    // Premium welcome card overrides
+    premiumWelcomeCard: {
+      borderColor: "#5856D6",
+    },
+    premiumWelcomeIcon: {
+      backgroundColor: "#5856D620",
+    },
+    premiumWelcomeDismiss: {
+      backgroundColor: "#5856D6",
+    },
+    premiumWelcomeDismissText: {
+      color: "#FFF",
     },
   });
 }

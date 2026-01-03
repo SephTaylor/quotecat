@@ -153,27 +153,6 @@ export default function ProTools() {
             />
           </View>
 
-          {/* Coming Soon Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Coming Soon</Text>
-
-            <View style={styles.comingSoonList}>
-              <View style={styles.comingSoonItem}>
-                <Text style={styles.comingSoonTitle}>Quote Wizard</Text>
-                <Text style={styles.comingSoonDescription}>
-                  Calculate materials from room dimensions
-                </Text>
-              </View>
-
-              <View style={styles.comingSoonItem}>
-                <Text style={styles.comingSoonTitle}>Advanced Analytics</Text>
-                <Text style={styles.comingSoonDescription}>
-                  Track quote value and performance
-                </Text>
-              </View>
-            </View>
-          </View>
-
           {!isPro && (
             <View style={styles.upgradeSection}>
               <Pressable style={styles.upgradeButton} onPress={handleSignIn}>
@@ -341,22 +320,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     launchButtonTextPremium: {
       color: "#FFF",
-    },
-    comingSoonList: {
-      gap: theme.spacing(2),
-    },
-    comingSoonItem: {
-      paddingLeft: theme.spacing(1),
-    },
-    comingSoonTitle: {
-      fontSize: 15,
-      fontWeight: "600",
-      color: theme.colors.text,
-      marginBottom: 2,
-    },
-    comingSoonDescription: {
-      fontSize: 13,
-      color: theme.colors.muted,
     },
     upgradeSection: {
       marginTop: theme.spacing(2),

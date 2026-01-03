@@ -9,7 +9,7 @@ import { useFocusEffect } from "expo-router";
 import { listQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { loadPreferences } from "@/lib/preferences";
-import { getActiveReminders, getProWelcomeReminder, getContractNotifications, type Reminder } from "@/lib/reminders";
+import { getActiveReminders, getProWelcomeReminder, getPremiumWelcomeReminder, getContractNotifications, type Reminder } from "@/lib/reminders";
 import { getUserState } from "@/lib/user";
 import { NotificationPanel } from "./NotificationPanel";
 
@@ -43,21 +43,26 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
       ]);
       const active = await getActiveReminders(quotes, invoices, prefs.notifications);
 
-      // Add Pro welcome reminder if user was explicitly activated as Pro/Premium
+      // Add welcome reminder if user was explicitly activated as Pro/Premium
       // (not just defaulted to Pro for TestFlight). Check proActivatedAt to confirm.
       const wasExplicitlyActivated = userState.proActivatedAt !== undefined;
-      if (wasExplicitlyActivated && (userState.tier === "pro" || userState.tier === "premium")) {
-        const proWelcome = await getProWelcomeReminder();
-        if (proWelcome) {
-          // Put welcome at the top of the list
-          active.unshift(proWelcome);
-        }
-
-        // Fetch contract notifications for Premium users
+      if (wasExplicitlyActivated) {
         if (userState.tier === "premium") {
+          // Premium users get Premium welcome
+          const premiumWelcome = await getPremiumWelcomeReminder();
+          if (premiumWelcome) {
+            active.unshift(premiumWelcome);
+          }
+          // Fetch contract notifications for Premium users
           const contractNotifications = await getContractNotifications();
           // Add contract notifications at the top (most important)
           active.unshift(...contractNotifications);
+        } else if (userState.tier === "pro") {
+          // Pro users get Pro welcome
+          const proWelcome = await getProWelcomeReminder();
+          if (proWelcome) {
+            active.unshift(proWelcome);
+          }
         }
       }
 

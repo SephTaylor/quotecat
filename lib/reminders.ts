@@ -14,6 +14,7 @@ export type ReminderType =
   | "invoice_due_soon"    // Invoice due in 3 days
   | "invoice_due_today"   // Invoice due today
   | "pro_welcome"         // Welcome notification for new Pro users
+  | "premium_welcome"     // Welcome notification for new Premium users
   | "contract_signed"     // Client signed a contract
   | "contract_viewed"     // Client viewed a contract
   | "contract_declined";  // Client declined a contract
@@ -343,6 +344,68 @@ export async function getProWelcomeReminder(): Promise<Reminder | null> {
   if (isReminderDismissed(PRO_WELCOME_REMINDER_ID, dismissed)) return null;
 
   return createProWelcomeReminder();
+}
+
+// ============================================
+// Premium Welcome Notification
+// ============================================
+
+const PREMIUM_WELCOME_KEY = "@quotecat/premium_welcome_shown";
+const PREMIUM_WELCOME_REMINDER_ID = "premium_welcome";
+
+/**
+ * Check if the Premium welcome notification has been shown
+ */
+export async function hasSeenPremiumWelcome(): Promise<boolean> {
+  try {
+    const value = await AsyncStorage.getItem(PREMIUM_WELCOME_KEY);
+    return value === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Mark the Premium welcome notification as shown
+ */
+export async function markPremiumWelcomeAsSeen(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PREMIUM_WELCOME_KEY, "true");
+    // Also dismiss the reminder so it doesn't show in the panel
+    await dismissReminder(PREMIUM_WELCOME_REMINDER_ID);
+  } catch (error) {
+    console.error("Failed to mark Premium welcome as seen:", error);
+  }
+}
+
+/**
+ * Create the Premium welcome reminder (called when user activates Premium tier)
+ */
+export function createPremiumWelcomeReminder(): Reminder {
+  const now = new Date().toISOString();
+  return {
+    id: PREMIUM_WELCOME_REMINDER_ID,
+    type: "premium_welcome",
+    entityId: "system",
+    entityType: "system",
+    title: "Welcome to Premium!",
+    subtitle: "Tap to explore contracts, price book & more",
+    dueDate: now,
+    createdAt: now,
+  };
+}
+
+/**
+ * Get the Premium welcome reminder if it should be shown
+ */
+export async function getPremiumWelcomeReminder(): Promise<Reminder | null> {
+  const hasSeen = await hasSeenPremiumWelcome();
+  if (hasSeen) return null;
+
+  const dismissed = await loadDismissedReminders();
+  if (isReminderDismissed(PREMIUM_WELCOME_REMINDER_ID, dismissed)) return null;
+
+  return createPremiumWelcomeReminder();
 }
 
 // ============================================
