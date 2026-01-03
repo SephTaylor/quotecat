@@ -6,6 +6,7 @@ import { activateProTier, activatePremiumTier, deactivateProTier, signOutUser } 
 import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync";
 import { syncClients, migrateLocalClientsToCloud } from "./clientsSync";
 import { syncInvoices, hasInvoicesMigrated, migrateLocalInvoicesToCloud } from "./invoicesSync";
+import { markSyncComplete } from "./syncState";
 
 // Re-export auth utilities for backwards compatibility
 export { isAuthenticated, getCurrentUserEmail, getCurrentUserId } from "./authUtils";
@@ -186,5 +187,7 @@ async function runBackgroundSync(): Promise<void> {
     console.error("❌ Clients sync failed:", error);
   }
 
+  // Mark sync as complete so UI components know to refresh
+  markSyncComplete();
   console.log("✅ Background sync complete");
 }

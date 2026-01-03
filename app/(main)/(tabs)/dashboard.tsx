@@ -16,10 +16,11 @@ import { QuoteGroup } from "@/components/QuoteGroup";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getLastSyncTime, isSyncAvailable } from "@/lib/quotesSync";
 import { getUserState } from "@/lib/user";
+import { hasSyncCompletedSince } from "@/lib/syncState";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { getActiveChangeOrderCount } from "@/modules/changeOrders";
 import { WizardFAB } from "@/components/WizardFAB";
@@ -74,6 +75,10 @@ export default function Dashboard() {
     totalValue: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
+
+  // Track when we last loaded data (for smart refresh after sync)
+  const lastLoadedAt = useRef<number>(0);
+  const hasLoadedOnce = useRef<boolean>(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,12 +137,24 @@ export default function Dashboard() {
       console.error("Dashboard load error:", error);
     } finally {
       setLoading(false);
+      lastLoadedAt.current = Date.now();
+      hasLoadedOnce.current = true;
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      // First load: always load data
+      if (!hasLoadedOnce.current) {
+        load();
+        return;
+      }
+
+      // Subsequent focus: only reload if background sync completed since last load
+      // This avoids unnecessary reloads while ensuring fresh data after sync
+      if (hasSyncCompletedSince(lastLoadedAt.current)) {
+        load();
+      }
     }, [load]),
   );
 
