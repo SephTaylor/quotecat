@@ -17,7 +17,7 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getLastSyncTime, isSyncAvailable } from "@/lib/quotesSync";
 import { getUserState } from "@/lib/user";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -73,6 +73,7 @@ export default function Dashboard() {
     contractCount: 0,
     totalValue: 0,
   });
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,6 +140,13 @@ export default function Dashboard() {
       load();
     }, [load]),
   );
+
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   // Calculate stats
   const stats = React.useMemo(() => {
@@ -419,7 +427,12 @@ export default function Dashboard() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GradientBackground>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
           {/* Welcome message */}
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeText}>Welcome back!</Text>
