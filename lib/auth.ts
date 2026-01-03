@@ -128,14 +128,15 @@ async function handleAuthChange(userId: string): Promise<void> {
  * IMPORTANT: All operations run SEQUENTIALLY with GC breaks to prevent OOM
  */
 async function runBackgroundSync(): Promise<void> {
-  // Short delay to let UI render before sync starts
-  // SQLite is memory-efficient so we don't need the old 2-second delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+  // Minimal delay to let UI render before sync starts
+  // SQLite is memory-efficient so we can start almost immediately
+  await new Promise(resolve => setTimeout(resolve, 100));
 
   console.log("📡 Starting background sync...");
 
   // Helper for GC breaks between heavy operations
-  const gcBreak = () => new Promise(resolve => setTimeout(resolve, 500));
+  // Reduced from 500ms since SQLite is much lighter than AsyncStorage
+  const gcBreak = () => new Promise(resolve => setTimeout(resolve, 50));
 
   // Auto-migrate if needed (first time Pro/Premium user)
   const quotesMigrated = await hasMigrated();
