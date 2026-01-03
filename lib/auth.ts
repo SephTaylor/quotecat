@@ -10,6 +10,9 @@ import { syncInvoices, hasInvoicesMigrated, migrateLocalInvoicesToCloud } from "
 // Re-export auth utilities for backwards compatibility
 export { isAuthenticated, getCurrentUserEmail, getCurrentUserId } from "./authUtils";
 
+// Track if we've set up the auth listener
+let authListenerSetup = false;
+
 /**
  * Sign out current user
  */
@@ -21,8 +24,26 @@ export async function signOut(): Promise<void> {
 /**
  * Initialize auth - check session and sync user state
  * Call this on app launch
+ * OPTIMIZED: Sync runs in background, doesn't block app startup
  */
 export async function initializeAuth(): Promise<void> {
+  // Set up auth state listener (only once)
+  if (!authListenerSetup) {
+    authListenerSetup = true;
+    supabase.auth.onAuthStateChange((event, session) => {
+      console.log("🔐 Auth state changed:", event);
+      if (event === "SIGNED_IN" && session?.user) {
+        // User just logged in - run sync
+        handleAuthChange(session.user.id).catch(error => {
+          console.error("Auth change handler failed:", error);
+        });
+      } else if (event === "SIGNED_OUT") {
+        // User logged out
+        deactivateProTier().catch(console.error);
+      }
+    });
+  }
+
   try {
     const { data } = await supabase.auth.getSession();
 
@@ -46,28 +67,11 @@ export async function initializeAuth(): Promise<void> {
             await activateProTier(profile.email);
           }
 
-          // Auto-migrate if needed (first time Pro/Premium user)
-          const quotesMigrated = await hasMigrated();
-          const invoicesMigrated = await hasInvoicesMigrated();
-
-          if (!quotesMigrated) {
-            console.log("🔄 Auto-migrating quotes to cloud...");
-            await migrateLocalQuotesToCloud();
-          }
-          if (!invoicesMigrated) {
-            console.log("🔄 Auto-migrating invoices to cloud...");
-            await migrateLocalInvoicesToCloud();
-          }
-          console.log("🔄 Auto-migrating clients to cloud...");
-          await migrateLocalClientsToCloud();
-
-          // Sync all data
-          console.log("🔄 Syncing quotes...");
-          await syncQuotes();
-          console.log("🔄 Syncing invoices...");
-          await syncInvoices();
-          console.log("🔄 Syncing clients...");
-          await syncClients();
+          // Run sync in BACKGROUND - don't block app startup
+          // This is the key optimization for fast launches
+          runBackgroundSync().catch(error => {
+            console.error("Background sync failed:", error);
+          });
         } else {
           await deactivateProTier();
         }
@@ -81,4 +85,106 @@ export async function initializeAuth(): Promise<void> {
     // On error, default to free tier
     await deactivateProTier();
   }
+}
+
+/**
+ * Handle auth state change (user logged in)
+ * This is called by the auth listener when SIGNED_IN event fires
+ */
+async function handleAuthChange(userId: string): Promise<void> {
+  console.log("🔐 Handling auth change for user:", userId);
+
+  // Fetch their profile
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tier, email")
+    .eq("id", userId)
+    .single();
+
+  if (profile) {
+    const isPaidTier = profile.tier === "pro" || profile.tier === "premium";
+
+    if (isPaidTier) {
+      if (profile.tier === "premium") {
+        await activatePremiumTier(profile.email);
+      } else {
+        await activateProTier(profile.email);
+      }
+
+      // Run sync in background
+      runBackgroundSync().catch(error => {
+        console.error("Background sync failed:", error);
+      });
+    } else {
+      await deactivateProTier();
+    }
+  }
+}
+
+/**
+ * Run sync operations in background
+ * Called after auth is established, doesn't block UI
+ * IMPORTANT: All operations run SEQUENTIALLY with GC breaks to prevent OOM
+ */
+async function runBackgroundSync(): Promise<void> {
+  // Wait 2 seconds before starting sync to let UI render and settle
+  // This prevents OOM from sync + UI loading competing for memory
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  console.log("📡 Starting background sync...");
+
+  // Helper for GC breaks between heavy operations
+  const gcBreak = () => new Promise(resolve => setTimeout(resolve, 500));
+
+  // Auto-migrate if needed (first time Pro/Premium user)
+  const quotesMigrated = await hasMigrated();
+  const invoicesMigrated = await hasInvoicesMigrated();
+
+  if (!quotesMigrated) {
+    try {
+      console.log("🔄 Auto-migrating quotes to cloud...");
+      await migrateLocalQuotesToCloud();
+      await gcBreak();
+    } catch (error) {
+      console.error("❌ Quotes migration failed:", error);
+    }
+  }
+  if (!invoicesMigrated) {
+    try {
+      console.log("🔄 Auto-migrating invoices to cloud...");
+      await migrateLocalInvoicesToCloud();
+      await gcBreak();
+    } catch (error) {
+      console.error("❌ Invoices migration failed:", error);
+    }
+  }
+  try {
+    await migrateLocalClientsToCloud();
+    await gcBreak();
+  } catch (error) {
+    console.error("❌ Clients migration failed:", error);
+  }
+
+  // Sync all data - each sync is isolated with GC breaks
+  try {
+    await syncQuotes();
+    await gcBreak();
+  } catch (error) {
+    console.error("❌ Quotes sync failed:", error);
+  }
+
+  try {
+    await syncInvoices();
+    await gcBreak();
+  } catch (error) {
+    console.error("❌ Invoices sync failed:", error);
+  }
+
+  try {
+    await syncClients();
+  } catch (error) {
+    console.error("❌ Clients sync failed:", error);
+  }
+
+  console.log("✅ Background sync complete");
 }

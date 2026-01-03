@@ -2,18 +2,88 @@
 // Cloud sync service for quotes (Pro/Premium feature)
 
 import { supabase } from "./supabase";
-import { listQuotes, saveQuote, getQuoteById, updateQuote } from "@/modules/quotes/storage";
+import { listQuotes, saveQuoteLocally, saveQuotesBatch, getQuoteById, updateQuoteLocally } from "@/modules/quotes";
 import type { Quote } from "./types";
 import { normalizeQuote } from "./validation";
 import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SYNC_METADATA_KEY = "@quotecat/sync_metadata";
-const MAX_QUOTES_PER_BATCH = 500; // Batch size for incremental sync
-const MAX_QUOTES_INITIAL_SYNC = 2000; // Limit for first-time full sync
+const SYNC_LOCK_KEY = "@quotecat/quotes_sync_lock";
+const MAX_QUOTES_PER_BATCH = 50; // Batch size for incremental sync
+const MAX_QUOTES_INITIAL_SYNC = 200; // Limit for first-time full sync
+const SYNC_COOLDOWN_MS = 5000; // Minimum 5 seconds between syncs
 
-// Sync lock to prevent concurrent sync operations
+// Memory lock for current session
 let syncInProgress = false;
+
+/**
+ * Get persistent sync lock state
+ */
+async function getSyncLock(): Promise<{ inProgress: boolean; startedAt: string | null }> {
+  try {
+    const json = await AsyncStorage.getItem(SYNC_LOCK_KEY);
+    if (!json) return { inProgress: false, startedAt: null };
+    return JSON.parse(json);
+  } catch {
+    return { inProgress: false, startedAt: null };
+  }
+}
+
+/**
+ * Set persistent sync lock
+ */
+async function setSyncLock(inProgress: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SYNC_LOCK_KEY, JSON.stringify({
+      inProgress,
+      startedAt: inProgress ? new Date().toISOString() : null,
+    }));
+  } catch (error) {
+    console.error("Failed to set sync lock:", error);
+  }
+}
+
+/**
+ * Check if enough time has passed since last sync (cooldown)
+ */
+async function checkSyncCooldown(): Promise<boolean> {
+  try {
+    const metadata = await getSyncMetadata();
+    if (!metadata.lastSyncAt) return true; // No previous sync, allow
+
+    const lastSync = new Date(metadata.lastSyncAt).getTime();
+    const now = Date.now();
+    const elapsed = now - lastSync;
+
+    if (elapsed < SYNC_COOLDOWN_MS) {
+      console.log(`⏳ Sync cooldown: ${Math.ceil((SYNC_COOLDOWN_MS - elapsed) / 1000)}s remaining`);
+      return false;
+    }
+    return true;
+  } catch {
+    return true; // On error, allow sync
+  }
+}
+
+/**
+ * Clear stale sync lock (if sync was stuck for more than 5 minutes)
+ */
+async function clearStalelock(): Promise<void> {
+  try {
+    const lock = await getSyncLock();
+    if (lock.inProgress && lock.startedAt) {
+      const started = new Date(lock.startedAt).getTime();
+      const elapsed = Date.now() - started;
+      if (elapsed > 60 * 1000) { // 1 minute
+        console.warn("⚠️ Clearing stale sync lock (>1 min old)");
+        await setSyncLock(false);
+      }
+    }
+  } catch (error) {
+    console.error("Error checking stale lock:", error);
+  }
+}
 
 type SyncMetadata = {
   lastSyncAt: string | null;
@@ -325,6 +395,8 @@ export async function migrateLocalQuotesToCloud(): Promise<{
  * - Only fetches quotes changed since last sync (huge performance win at scale)
  * - Conflict resolution: last-write-wins based on updatedAt
  * - Also syncs deletions across devices
+ * - Uses local-only saves to prevent sync loops
+ * - Has cooldown to prevent rapid re-syncing
  */
 export async function syncQuotes(): Promise<{
   success: boolean;
@@ -332,13 +404,31 @@ export async function syncQuotes(): Promise<{
   uploaded: number;
   deleted: number;
 }> {
-  // Prevent concurrent sync operations
-  if (syncInProgress) {
-    console.warn("Quote sync already in progress, skipping");
+  // Clear any stale locks from crashed syncs
+  await clearStalelock();
+
+  // Check cooldown
+  const canSync = await checkSyncCooldown();
+  if (!canSync) {
+    console.warn("Quote sync skipped: cooldown active");
     return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
   }
 
+  // Check both memory and persistent locks
+  if (syncInProgress) {
+    console.warn("Quote sync already in progress (memory lock), skipping");
+    return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
+  }
+
+  const persistentLock = await getSyncLock();
+  if (persistentLock.inProgress) {
+    console.warn("Quote sync already in progress (persistent lock), skipping");
+    return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
+  }
+
+  // Set both locks
   syncInProgress = true;
+  await setSyncLock(true);
 
   try {
     const userId = await getCurrentUserId();
@@ -362,28 +452,31 @@ export async function syncQuotes(): Promise<{
     let uploaded = 0;
     let deleted = 0;
 
-    // Step 1: Sync deletions - only fetch deletions since last sync
+    // Step 1: Sync deletions (limited to prevent memory issues)
+    // Only process up to 10 deletions per sync to avoid OOM
     const deletedIds = await getDeletedQuoteIds(lastSyncAt || undefined);
-    for (const deletedId of deletedIds) {
+    const deletionsToProcess = deletedIds.slice(0, 10); // Limit to 10
+    for (const deletedId of deletionsToProcess) {
       try {
         const localQuote = await getQuoteById(deletedId);
         if (localQuote && !localQuote.deletedAt) {
-          // Quote exists locally but is deleted in cloud - mark as deleted locally
-          await updateQuote(deletedId, {
+          await updateQuoteLocally(deletedId, {
             deletedAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
           deleted++;
-          console.log(`🗑️ Applied deletion from cloud: ${deletedId}`);
         }
       } catch (error) {
-        console.error(`Failed to apply deletion ${deletedId}:`, error);
+        // Silently continue - deletion sync is best-effort
       }
     }
 
     // Step 2: Download cloud quotes (incremental - only changed since lastSyncAt)
     const cloudQuotes = await downloadQuotes(lastSyncAt || undefined, isInitialSync);
     console.log(`📥 Fetched ${cloudQuotes.length} quotes from cloud`);
+
+    // Small delay to let GC run
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Step 3: Get local quotes
     // For incremental sync, we still need all local quotes to check for uploads
@@ -394,14 +487,16 @@ export async function syncQuotes(): Promise<{
     const cloudMap = new Map(cloudQuotes.map((q) => [q.id, q]));
     const localMap = new Map(localQuotes.map((q) => [q.id, q]));
 
-    // Step 4: Process cloud quotes (download new or updated)
+    // Step 4: Collect cloud quotes to save locally (instead of saving one by one)
+    // This is MUCH more efficient - reads storage once, writes once
+    const quotesToSave: Quote[] = [];
     for (const cloudQuote of cloudQuotes) {
       try {
         const localQuote = localMap.get(cloudQuote.id);
 
         if (!localQuote) {
-          // New quote from cloud - save locally
-          await saveQuote(cloudQuote);
+          // New quote from cloud - queue for batch save
+          quotesToSave.push(cloudQuote);
           downloaded++;
         } else {
           // Quote exists in both - check which is newer (use safe timestamp)
@@ -409,14 +504,32 @@ export async function syncQuotes(): Promise<{
           const localUpdated = safeGetTimestamp(localQuote.updatedAt);
 
           if (cloudUpdated > localUpdated && cloudUpdated > 0) {
-            // Cloud is newer - update local
-            await saveQuote(cloudQuote);
+            // Cloud is newer - queue for batch save
+            quotesToSave.push(cloudQuote);
             downloaded++;
           }
         }
       } catch (error) {
-        console.error(`Failed to sync cloud quote ${cloudQuote.id}:`, error);
+        console.error(`Failed to process cloud quote ${cloudQuote.id}:`, error);
         // Continue with next quote
+      }
+    }
+
+    // Batch save all quotes at once (1 read + 1 write instead of N reads + N writes)
+    if (quotesToSave.length > 0) {
+      try {
+        await saveQuotesBatch(quotesToSave);
+        console.log(`✅ Batch saved ${quotesToSave.length} quotes locally`);
+      } catch (error) {
+        console.error("Failed to batch save quotes:", error);
+        // Fall back to individual saves on batch failure
+        for (const quote of quotesToSave) {
+          try {
+            await saveQuoteLocally(quote);
+          } catch (e) {
+            console.error(`Failed to save quote ${quote.id}:`, e);
+          }
+        }
       }
     }
 
@@ -473,8 +586,9 @@ export async function syncQuotes(): Promise<{
     console.error("Sync error:", error);
     return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
   } finally {
-    // Always release the sync lock
+    // Always release both locks
     syncInProgress = false;
+    await setSyncLock(false);
   }
 }
 

@@ -625,30 +625,52 @@ When launched, track:
 
 ## 🐛 Known Issues / To Investigate
 
-### Sync Crash with Dual Webapp/Mobile Access (Dec 30, 2025)
+### ✅ FIXED: Sync Crash with Dual Webapp/Mobile Access (Jan 2, 2026)
 
-**Problem:** When triggering cloud sync on the mobile app while also using the webapp, the app slows down significantly and eventually crashes. Requires uninstall/reinstall to recover.
+**Problem:** When triggering cloud sync on the mobile app while also using the webapp, the app slowed down significantly and eventually crashed. Required uninstall/reinstall to recover.
 
-**Symptoms:**
-- App becomes very slow after sync
-- Eventually crashes
-- Requires full reinstall to recover
+**Root Cause Analysis:**
+The core issue was a **SYNC LOOP** caused by `saveQuote()` automatically triggering `uploadQuote()` after every local save. When sync downloaded quotes from cloud and saved them locally, each save triggered an upload back to cloud, creating an infinite loop:
 
-**Possible Causes:**
-1. Race condition between webapp and mobile modifying data simultaneously
-2. Sync loop - webapp changes trigger mobile sync, which triggers more changes
-3. Incremental sync still loads ALL local quotes to check for uploads (memory issue)
-4. Orphan data in cloud (invoices that were deleted locally but still exist in Supabase)
+```
+Cloud Sync downloads 10 quotes
+   ↓ saveQuote() called 10 times
+   ↓ Each saveQuote() triggers uploadQuote()
+   ↓ Uploads change synced_at in cloud
+   ↓ Next sync sees 10 "updated" quotes
+   ↓ Loop repeats → memory exhaustion → CRASH
+```
 
-**Related:**
-- 21 invoices exist in Supabase but not on mobile (user believes these were deleted)
-- Invoices showing in webapp but "not found" when clicked (RLS policy was missing - fixed)
+**Files that had this bug:**
+- `modules/quotes/storage.ts:274-283` - `saveQuote()` always uploaded
+- `lib/clients.ts:63-72` - `saveClient()` always uploaded
 
-**To Fix:**
-- Add better error isolation to sync (wrap each entity sync in try/catch)
-- Add sync debounce/cooldown to prevent rapid re-syncing
-- Consider cleaning up orphan cloud data
-- Optimize incremental sync to not load all local data for upload check
+**Fix Applied (Jan 2, 2026):**
+
+1. **Created local-only save functions:**
+   - `saveQuoteLocally()` / `updateQuoteLocally()` in `modules/quotes/storage.ts`
+   - `saveClientLocally()` in `lib/clients.ts`
+   - These save to AsyncStorage WITHOUT triggering cloud upload
+
+2. **Updated sync to use local saves:**
+   - `quotesSync.ts` now uses `saveQuoteLocally()` / `updateQuoteLocally()` during sync
+   - `clientsSync.ts` now uses `saveClientLocally()` during sync
+   - `invoicesSync.ts` already had correct pattern (`saveInvoiceLocally()`)
+
+3. **Added persistent sync lock:**
+   - Sync lock is now stored in AsyncStorage, surviving app crashes
+   - Stale locks (>1 min old) are automatically cleared
+
+4. **Added sync cooldown (5 seconds):**
+   - Prevents button-mashing but stays responsive
+   - Each sync type (quotes/invoices/clients) has independent cooldown
+
+5. **Added error isolation to `initializeAuth()`:**
+   - Each sync operation is wrapped in try/catch
+   - One sync failure no longer crashes entire app startup
+
+**Remaining:**
+- Consider cleaning up orphan cloud data (21 invoices that were deleted locally but still exist in Supabase)
 
 ---
 

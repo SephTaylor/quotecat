@@ -32,8 +32,8 @@ export default function Settings() {
     lastSyncTime,
     syncAvailable,
     syncing,
-    localQuoteCount,
-    cloudQuoteCount,
+    localCounts,
+    cloudCounts,
     subscribeEmail,
     isSubscribed,
     subscribing,
@@ -225,16 +225,26 @@ export default function Settings() {
                   )}
                 </View>
 
-                {/* Quote Counts */}
-                <View style={styles.syncCountsRow}>
-                  <View style={styles.syncCountItem}>
-                    <Text style={styles.syncCountLabel}>Local</Text>
-                    <Text style={styles.syncCountValue}>{localQuoteCount}</Text>
+                {/* File Counts */}
+                <View style={styles.syncCountsContainer}>
+                  <View style={styles.syncCountsRow}>
+                    <Text style={styles.syncCountHeader}>Local</Text>
+                    <Text style={styles.syncCountHeader}>Cloud</Text>
                   </View>
-                  <View style={styles.syncCountDivider} />
-                  <View style={styles.syncCountItem}>
-                    <Text style={styles.syncCountLabel}>Cloud</Text>
-                    <Text style={styles.syncCountValue}>{cloudQuoteCount}</Text>
+                  <View style={styles.syncCountsRow}>
+                    <Text style={styles.syncCountLabel}>Quotes</Text>
+                    <Text style={styles.syncCountValue}>{localCounts.quotes}</Text>
+                    <Text style={styles.syncCountValue}>{cloudCounts.quotes}</Text>
+                  </View>
+                  <View style={styles.syncCountsRow}>
+                    <Text style={styles.syncCountLabel}>Invoices</Text>
+                    <Text style={styles.syncCountValue}>{localCounts.invoices}</Text>
+                    <Text style={styles.syncCountValue}>{cloudCounts.invoices}</Text>
+                  </View>
+                  <View style={styles.syncCountsRow}>
+                    <Text style={styles.syncCountLabel}>Clients</Text>
+                    <Text style={styles.syncCountValue}>{localCounts.clients}</Text>
+                    <Text style={styles.syncCountValue}>{cloudCounts.clients}</Text>
                   </View>
                 </View>
 
@@ -1134,30 +1144,38 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.muted,
       marginTop: theme.spacing(0.25),
     },
+    syncCountsContainer: {
+      marginHorizontal: theme.spacing(2),
+      marginTop: theme.spacing(2),
+      borderRadius: 8,
+      backgroundColor: theme.colors.card,
+      overflow: "hidden",
+    },
     syncCountsRow: {
       flexDirection: "row",
-      padding: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(2),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
-      gap: theme.spacing(2),
     },
-    syncCountItem: {
+    syncCountHeader: {
       flex: 1,
-      alignItems: "center",
-    },
-    syncCountDivider: {
-      width: 1,
-      backgroundColor: theme.colors.border,
+      fontSize: 12,
+      fontWeight: "600",
+      color: theme.colors.muted,
+      textAlign: "center",
     },
     syncCountLabel: {
-      fontSize: 12,
-      color: theme.colors.muted,
-      marginBottom: theme.spacing(0.5),
+      flex: 1,
+      fontSize: 14,
+      color: theme.colors.text,
     },
     syncCountValue: {
-      fontSize: 24,
-      fontWeight: "700",
+      flex: 1,
+      fontSize: 14,
+      fontWeight: "600",
       color: theme.colors.text,
+      textAlign: "center",
     },
     syncButton: {
       flexDirection: "row",

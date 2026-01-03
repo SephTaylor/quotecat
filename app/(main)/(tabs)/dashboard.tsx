@@ -85,35 +85,47 @@ export default function Dashboard() {
       setIsPro(proAccess);
       setIsPremium(premiumAccess);
 
-      // Now load everything in parallel based on user tier
-      const [data, prefs, syncTime, available, invoiceData, contractData, toInvoice] = await Promise.all([
-        listQuotes(),
-        loadPreferences(),
-        getLastSyncTime(),
-        isSyncAvailable(),
-        proAccess ? listInvoices() : Promise.resolve([]),
-        premiumAccess ? listContracts() : Promise.resolve([]),
-        getToInvoiceStats(),
-      ]);
-
-      setQuotes(data);
+      // Load data SEQUENTIALLY to avoid OOM from parallel loading
+      // This is critical when background sync may also be running
+      const prefs = await loadPreferences();
       setPreferences(prefs.dashboard);
+
+      const syncTime = await getLastSyncTime();
       setLastSyncTime(syncTime);
+
+      const available = await isSyncAvailable();
       setSyncAvailable(available && (userState.tier === 'pro' || userState.tier === 'premium'));
-      setInvoices(invoiceData);
-      setContracts(contractData);
+
+      // Load quotes with GC break
+      const data = await listQuotes();
+      setQuotes(data);
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Load invoices with GC break
+      if (proAccess) {
+        const invoiceData = await listInvoices();
+        setInvoices(invoiceData);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Load contracts with GC break
+      if (premiumAccess) {
+        const contractData = await listContracts();
+        setContracts(contractData);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Load to-invoice stats
+      const toInvoice = await getToInvoiceStats();
       setToInvoiceStats(toInvoice);
 
-      // Load CO counts for approved/completed quotes
+      // Load CO counts SEQUENTIALLY (not in parallel) to reduce memory pressure
       const counts: Record<string, number> = {};
-      await Promise.all(
-        data
-          .filter((q) => q.status === "approved" || q.status === "completed")
-          .map(async (q) => {
-            const count = await getActiveChangeOrderCount(q.id);
-            if (count > 0) counts[q.id] = count;
-          })
-      );
+      const approvedQuotes = data.filter((q) => q.status === "approved" || q.status === "completed");
+      for (const q of approvedQuotes) {
+        const count = await getActiveChangeOrderCount(q.id);
+        if (count > 0) counts[q.id] = count;
+      }
       setCoCounts(counts);
     } catch (error) {
       console.error("Dashboard load error:", error);

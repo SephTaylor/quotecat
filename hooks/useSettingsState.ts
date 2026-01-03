@@ -19,12 +19,13 @@ import {
   syncQuotes,
   getLastSyncTime,
   isSyncAvailable,
-  downloadQuotes,
   resetSyncMetadata,
 } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
 import { syncClients } from "@/lib/clientsSync";
 import { listQuotes } from "@/lib/quotes";
+import { listInvoices } from "@/lib/invoices";
+import { getClients } from "@/lib/clients";
 import { supabase } from "@/lib/supabase";
 
 export type ExpandedSections = {
@@ -49,8 +50,8 @@ export function useSettingsState() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncAvailable, setSyncAvailable] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [localQuoteCount, setLocalQuoteCount] = useState(0);
-  const [cloudQuoteCount, setCloudQuoteCount] = useState(0);
+  const [localCounts, setLocalCounts] = useState({ quotes: 0, invoices: 0, clients: 0 });
+  const [cloudCounts, setCloudCounts] = useState({ quotes: 0, invoices: 0, clients: 0 });
 
   // Email capture state
   const [subscribeEmail, setSubscribeEmail] = useState("");
@@ -87,25 +88,38 @@ export function useSettingsState() {
     setUserState(user);
     setPreferences(fullPrefs);
 
-    // Load sync state
-    const [syncTime, available, localQuotes] = await Promise.all([
-      getLastSyncTime(),
-      isSyncAvailable(),
-      listQuotes(),
-    ]);
+    // Load sync state - SEQUENTIALLY to avoid OOM from parallel loading
+    const syncTime = await getLastSyncTime();
+    const available = await isSyncAvailable();
 
     setLastSyncTime(syncTime);
     setSyncAvailable(available && isPaidTier);
-    setLocalQuoteCount(localQuotes.length);
 
-    // Load cloud quote count if available
+    // Load counts SEQUENTIALLY with GC breaks to prevent memory pressure
+    // This is critical when background sync may also be running
+    const localQuotes = await listQuotes();
+    const quotesCount = localQuotes.length;
+    // Allow GC to clean up before loading next batch
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const localInvoices = await listInvoices();
+    const invoicesCount = localInvoices.length;
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const localClients = await getClients();
+    const clientsCount = localClients.length;
+
+    const counts = {
+      quotes: quotesCount,
+      invoices: invoicesCount,
+      clients: clientsCount,
+    };
+    setLocalCounts(counts);
+
+    // Show local counts as cloud counts (they should match after sync)
+    // On fresh install, this will be 0 until first sync completes
     if (available && isPaidTier) {
-      try {
-        const cloudQuotes = await downloadQuotes();
-        setCloudQuoteCount(cloudQuotes.length);
-      } catch (error) {
-        console.error("Failed to load cloud quote count:", error);
-      }
+      setCloudCounts(counts);
     }
 
     // Check if user has already subscribed to updates
@@ -275,23 +289,44 @@ export function useSettingsState() {
 
     setSyncing(true);
     try {
-      // Sync all data types
-      const [quotesResult, invoicesResult, clientsResult] = await Promise.all([
-        syncQuotes(),
-        syncInvoices(),
-        syncClients(),
-      ]);
+      // Sync data types SEQUENTIALLY with delays for GC to prevent memory pressure
+      console.log("🔄 Starting quotes sync...");
+      const quotesResult = await syncQuotes();
+
+      // Give GC time to clean up
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log("🔄 Starting invoices sync...");
+      const invoicesResult = await syncInvoices();
+
+      // Give GC time to clean up
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log("🔄 Starting clients sync...");
+      const clientsResult = await syncClients();
 
       if (quotesResult.success && invoicesResult.success && clientsResult.success) {
         setLastSyncTime(new Date());
 
-        // Reload counts
-        const [localQuotes, cloudQuotes] = await Promise.all([
-          listQuotes(),
-          downloadQuotes(),
-        ]);
-        setLocalQuoteCount(localQuotes.length);
-        setCloudQuoteCount(cloudQuotes.length);
+        // Reload counts SEQUENTIALLY to avoid memory pressure
+        const localQuotes = await listQuotes();
+        const quotesCount = localQuotes.length;
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const localInvoices = await listInvoices();
+        const invoicesCount = localInvoices.length;
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const localClients = await getClients();
+        const clientsCount = localClients.length;
+
+        const counts = {
+          quotes: quotesCount,
+          invoices: invoicesCount,
+          clients: clientsCount,
+        };
+        setLocalCounts(counts);
+        setCloudCounts(counts);
 
         const totalDownloaded = quotesResult.downloaded + invoicesResult.downloaded + clientsResult.downloaded;
         const totalUploaded = quotesResult.uploaded + invoicesResult.uploaded + clientsResult.uploaded;
@@ -335,23 +370,42 @@ export function useSettingsState() {
               // Reset sync metadata to force re-upload
               await resetSyncMetadata();
 
-              // Run sync for all data types
-              const [quotesResult, invoicesResult, clientsResult] = await Promise.all([
-                syncQuotes(),
-                syncInvoices(),
-                syncClients(),
-              ]);
+              // Run sync SEQUENTIALLY with delays for GC
+              console.log("🔄 Force sync: starting quotes...");
+              const quotesResult = await syncQuotes();
+
+              await new Promise(resolve => setTimeout(resolve, 500));
+
+              console.log("🔄 Force sync: starting invoices...");
+              const invoicesResult = await syncInvoices();
+
+              await new Promise(resolve => setTimeout(resolve, 500));
+
+              console.log("🔄 Force sync: starting clients...");
+              const clientsResult = await syncClients();
 
               if (quotesResult.success && invoicesResult.success && clientsResult.success) {
                 setLastSyncTime(new Date());
 
-                // Reload counts
-                const [localQuotes, cloudQuotes] = await Promise.all([
-                  listQuotes(),
-                  downloadQuotes(),
-                ]);
-                setLocalQuoteCount(localQuotes.length);
-                setCloudQuoteCount(cloudQuotes.length);
+                // Reload counts SEQUENTIALLY to avoid memory pressure
+                const localQuotes = await listQuotes();
+                const quotesCount = localQuotes.length;
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const localInvoices = await listInvoices();
+                const invoicesCount = localInvoices.length;
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const localClients = await getClients();
+                const clientsCount = localClients.length;
+
+                const counts = {
+                  quotes: quotesCount,
+                  invoices: invoicesCount,
+                  clients: clientsCount,
+                };
+                setLocalCounts(counts);
+                setCloudCounts(counts);
 
                 const totalUploaded = quotesResult.uploaded + invoicesResult.uploaded + clientsResult.uploaded;
 
@@ -410,8 +464,8 @@ export function useSettingsState() {
     lastSyncTime,
     syncAvailable,
     syncing,
-    localQuoteCount,
-    cloudQuoteCount,
+    localCounts,
+    cloudCounts,
     subscribeEmail,
     isSubscribed,
     subscribing,

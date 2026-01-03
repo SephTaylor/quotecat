@@ -15,7 +15,11 @@ import { cache, CacheKeys } from "@/lib/cache";
 import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import { incrementQuoteCount, decrementQuoteCount } from "@/lib/user";
 import { loadPreferences, updateQuoteSettings } from "@/lib/preferences";
+import { safeRead, clearCorruptData } from "@/lib/safeStorage";
 // Note: quotesSync is imported dynamically to avoid circular dependency
+
+// Flag to track if we've detected corruption this session
+let corruptionDetectedThisSession = false;
 
 /**
  * Internal map type for de-duplication
@@ -42,23 +46,48 @@ function getLatestTimestamp(quote: Quote): number {
 /**
  * Read quotes from all storage keys (primary + legacy)
  * De-duplicates by ID, keeping the most recently updated version
+ * Uses safe reads to detect and recover from corruption
  */
 async function readAllQuotes(): Promise<Quote[]> {
-  // Read from all keys in parallel
   const allKeys = [QUOTE_KEYS.PRIMARY, ...QUOTE_KEYS.LEGACY];
-  const results = await Promise.all(
-    allKeys.map((key) => AsyncStorage.getItem(key)),
-  );
-
-  // Parse and merge all quotes
   const allQuotes: Quote[] = [];
-  for (const json of results) {
-    if (json) {
-      const parsed = safeJsonParse<any[]>(json, []);
-      if (Array.isArray(parsed)) {
-        allQuotes.push(...parsed.map(normalizeQuote));
+  let hadCorruption = false;
+
+  // Read from each key with corruption detection
+  for (const key of allKeys) {
+    try {
+      const result = await safeRead<Quote[]>(key);
+
+      if (result.wasCorrupt) {
+        hadCorruption = true;
+        console.error(`🚨 Corrupt data detected in ${key}, clearing...`);
+        await clearCorruptData(key);
+        continue; // Skip this corrupt data
       }
+
+      if (result.data && Array.isArray(result.data)) {
+        // Normalize each quote safely
+        for (const rawQuote of result.data) {
+          try {
+            allQuotes.push(normalizeQuote(rawQuote));
+          } catch (e) {
+            console.warn(`Skipping invalid quote:`, e);
+            // Continue with other quotes
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`Error reading ${key}:`, e);
+      // Clear the corrupt key
+      await clearCorruptData(key);
+      hadCorruption = true;
     }
+  }
+
+  // If we had corruption, flag it for potential cloud recovery
+  if (hadCorruption && !corruptionDetectedThisSession) {
+    corruptionDetectedThisSession = true;
+    console.warn("📡 Local data was corrupt. Will rebuild from cloud on next sync.");
   }
 
   // De-duplicate by ID, preferring newest
@@ -76,6 +105,21 @@ async function readAllQuotes(): Promise<Quote[]> {
   }
 
   return Object.values(quotesMap);
+}
+
+/**
+ * Check if corruption was detected this session
+ * Used by sync to know if it should do a full rebuild
+ */
+export function wasCorruptionDetected(): boolean {
+  return corruptionDetectedThisSession;
+}
+
+/**
+ * Reset the corruption flag (after successful sync)
+ */
+export function clearCorruptionFlag(): void {
+  corruptionDetectedThisSession = false;
 }
 
 /**
@@ -222,6 +266,91 @@ export async function createQuote(
 }
 
 /**
+ * Save a quote locally WITHOUT triggering cloud upload
+ * Used during sync to prevent sync loops
+ * @internal - Use saveQuote() for normal user operations
+ */
+export async function saveQuoteLocally(quote: Quote): Promise<Quote> {
+  const result = await withErrorHandling(async () => {
+    const allQuotes = await readAllQuotes();
+    const index = allQuotes.findIndex((q) => q.id === quote.id);
+
+    // Normalize but preserve the existing updatedAt from cloud
+    const updated: Quote = {
+      ...normalizeQuote(quote),
+      updatedAt: quote.updatedAt || new Date().toISOString(),
+    };
+
+    // Recalculate derived fields
+    updated.materialSubtotal = calculateMaterialSubtotal(updated.items);
+    updated.total = updated.materialSubtotal + (updated.labor || 0);
+
+    if (index === -1) {
+      allQuotes.push(updated);
+    } else {
+      allQuotes[index] = updated;
+    }
+
+    await writeQuotes(allQuotes);
+    return updated;
+  }, ErrorType.STORAGE);
+
+  if (result.success) {
+    // Invalidate caches
+    cache.invalidate(CacheKeys.quotes.all());
+    cache.invalidate(CacheKeys.quotes.byId(result.data.id));
+    return result.data;
+  } else {
+    logError(result.error, "saveQuoteLocally");
+    throw result.error;
+  }
+}
+
+/**
+ * Batch save multiple quotes locally WITHOUT triggering cloud upload
+ * Much more efficient than calling saveQuoteLocally multiple times
+ * Reads storage once, merges all quotes, writes once
+ * @internal - Used by sync for efficient batch operations
+ */
+export async function saveQuotesBatch(quotes: Quote[]): Promise<void> {
+  if (quotes.length === 0) return;
+
+  const result = await withErrorHandling(async () => {
+    // Read all quotes ONCE
+    const allQuotes = await readAllQuotes();
+    const quotesMap = new Map(allQuotes.map((q) => [q.id, q]));
+
+    // Merge all incoming quotes
+    for (const quote of quotes) {
+      const updated: Quote = {
+        ...normalizeQuote(quote),
+        updatedAt: quote.updatedAt || new Date().toISOString(),
+      };
+
+      // Recalculate derived fields
+      updated.materialSubtotal = calculateMaterialSubtotal(updated.items);
+      updated.total = updated.materialSubtotal + (updated.labor || 0);
+
+      quotesMap.set(quote.id, updated);
+    }
+
+    // Write ALL quotes ONCE
+    await writeQuotes(Array.from(quotesMap.values()));
+  }, ErrorType.STORAGE);
+
+  if (result.success) {
+    // Invalidate caches once
+    cache.invalidate(CacheKeys.quotes.all());
+    for (const quote of quotes) {
+      cache.invalidate(CacheKeys.quotes.byId(quote.id));
+    }
+  } else {
+    logError(result.error, "saveQuotesBatch");
+    throw result.error;
+  }
+}
+
+/**
  * Save (create or update) a quote
  * Automatically recalculates derived fields and updates timestamp
  * Invalidates relevant caches
@@ -306,6 +435,27 @@ export async function updateQuote(
   };
 
   return saveQuote(merged);
+}
+
+/**
+ * Update a quote locally WITHOUT triggering cloud upload
+ * Used during sync to prevent sync loops
+ * @internal - Use updateQuote() for normal user operations
+ */
+export async function updateQuoteLocally(
+  id: string,
+  patch: Partial<Quote>,
+): Promise<Quote | null> {
+  const current = await getQuoteById(id);
+  if (!current) return null;
+
+  const merged: Quote = {
+    ...current,
+    ...patch,
+    id, // Ensure ID doesn't change
+  };
+
+  return saveQuoteLocally(merged);
 }
 
 /**

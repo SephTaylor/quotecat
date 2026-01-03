@@ -8,11 +8,80 @@ import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SYNC_METADATA_KEY = "@quotecat/clients_sync_metadata";
-const MAX_CLIENTS_PER_BATCH = 500; // Batch size for incremental sync
-const MAX_CLIENTS_INITIAL_SYNC = 2000; // Limit for first-time full sync
+const SYNC_LOCK_KEY = "@quotecat/clients_sync_lock";
+const MAX_CLIENTS_PER_BATCH = 50; // Batch size for incremental sync
+const MAX_CLIENTS_INITIAL_SYNC = 200; // Limit for first-time full sync
+const SYNC_COOLDOWN_MS = 5000; // Minimum 5 seconds between syncs
 
-// Sync lock to prevent concurrent sync operations
+// Memory lock for current session
 let syncInProgress = false;
+
+/**
+ * Get persistent sync lock state
+ */
+async function getSyncLock(): Promise<{ inProgress: boolean; startedAt: string | null }> {
+  try {
+    const json = await AsyncStorage.getItem(SYNC_LOCK_KEY);
+    if (!json) return { inProgress: false, startedAt: null };
+    return JSON.parse(json);
+  } catch {
+    return { inProgress: false, startedAt: null };
+  }
+}
+
+/**
+ * Set persistent sync lock
+ */
+async function setSyncLock(inProgress: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SYNC_LOCK_KEY, JSON.stringify({
+      inProgress,
+      startedAt: inProgress ? new Date().toISOString() : null,
+    }));
+  } catch (error) {
+    console.error("Failed to set clients sync lock:", error);
+  }
+}
+
+/**
+ * Check if enough time has passed since last sync (cooldown)
+ */
+async function checkSyncCooldown(): Promise<boolean> {
+  try {
+    const metadata = await getSyncMetadata();
+    if (!metadata.lastSyncAt) return true;
+
+    const lastSync = new Date(metadata.lastSyncAt).getTime();
+    const elapsed = Date.now() - lastSync;
+
+    if (elapsed < SYNC_COOLDOWN_MS) {
+      console.log(`⏳ Clients sync cooldown: ${Math.ceil((SYNC_COOLDOWN_MS - elapsed) / 1000)}s remaining`);
+      return false;
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Clear stale sync lock (if sync was stuck for more than 5 minutes)
+ */
+async function clearStaleLock(): Promise<void> {
+  try {
+    const lock = await getSyncLock();
+    if (lock.inProgress && lock.startedAt) {
+      const started = new Date(lock.startedAt).getTime();
+      const elapsed = Date.now() - started;
+      if (elapsed > 60 * 1000) { // 1 minute
+        console.warn("⚠️ Clearing stale clients sync lock (>1 min old)");
+        await setSyncLock(false);
+      }
+    }
+  } catch (error) {
+    console.error("Error checking stale clients lock:", error);
+  }
+}
 
 /**
  * Safe timestamp extractor - returns 0 for invalid dates
@@ -261,19 +330,39 @@ export async function migrateLocalClientsToCloud(): Promise<{
  * Sync clients bi-directionally with INCREMENTAL sync
  * - Only fetches clients changed since last sync (huge performance win at scale)
  * - Conflict resolution: last-write-wins based on updatedAt
+ * - Uses local-only saves to prevent sync loops
+ * - Has cooldown to prevent rapid re-syncing
  */
 export async function syncClients(): Promise<{
   success: boolean;
   downloaded: number;
   uploaded: number;
 }> {
-  // Prevent concurrent sync operations
-  if (syncInProgress) {
-    console.warn("Client sync already in progress, skipping");
+  // Clear any stale locks from crashed syncs
+  await clearStaleLock();
+
+  // Check cooldown
+  const canSync = await checkSyncCooldown();
+  if (!canSync) {
+    console.warn("Client sync skipped: cooldown active");
     return { success: false, downloaded: 0, uploaded: 0 };
   }
 
+  // Check both memory and persistent locks
+  if (syncInProgress) {
+    console.warn("Client sync already in progress (memory lock), skipping");
+    return { success: false, downloaded: 0, uploaded: 0 };
+  }
+
+  const persistentLock = await getSyncLock();
+  if (persistentLock.inProgress) {
+    console.warn("Client sync already in progress (persistent lock), skipping");
+    return { success: false, downloaded: 0, uploaded: 0 };
+  }
+
+  // Set both locks
   syncInProgress = true;
+  await setSyncLock(true);
 
   try {
     const userId = await getCurrentUserId();
@@ -301,21 +390,24 @@ export async function syncClients(): Promise<{
     console.log(`📥 Fetched ${cloudClients.length} clients from cloud`);
 
     // Get local clients (dynamic import to avoid circular dependency)
-    const { getClients, saveClient } = await import("./clients");
+    // Use saveClientsBatch for efficient batch saving!
+    const { getClients, saveClientLocally, saveClientsBatch } = await import("./clients");
     const localClients = await getClients();
 
     // Build maps for efficient lookup
     const cloudMap = new Map(cloudClients.map((c) => [c.id, c]));
     const localMap = new Map(localClients.map((c) => [c.id, c]));
 
-    // Process cloud clients (download new or updated)
+    // Collect cloud clients to save locally (instead of saving one by one)
+    // This is MUCH more efficient - reads storage once, writes once
+    const clientsToSave: Client[] = [];
     for (const cloudClient of cloudClients) {
       try {
         const localClient = localMap.get(cloudClient.id);
 
         if (!localClient) {
-          // New client from cloud - save locally
-          await saveClient(cloudClient);
+          // New client from cloud - queue for batch save
+          clientsToSave.push(cloudClient);
           downloaded++;
         } else {
           // Client exists in both - check which is newer (use safe timestamp)
@@ -323,14 +415,32 @@ export async function syncClients(): Promise<{
           const localUpdated = safeGetTimestamp(localClient.updatedAt);
 
           if (cloudUpdated > localUpdated && cloudUpdated > 0) {
-            // Cloud is newer - update local
-            await saveClient(cloudClient);
+            // Cloud is newer - queue for batch save
+            clientsToSave.push(cloudClient);
             downloaded++;
           }
         }
       } catch (error) {
-        console.error(`Failed to sync cloud client ${cloudClient.id}:`, error);
+        console.error(`Failed to process cloud client ${cloudClient.id}:`, error);
         // Continue with next client
+      }
+    }
+
+    // Batch save all clients at once (1 read + 1 write instead of N reads + N writes)
+    if (clientsToSave.length > 0) {
+      try {
+        await saveClientsBatch(clientsToSave);
+        console.log(`✅ Batch saved ${clientsToSave.length} clients locally`);
+      } catch (error) {
+        console.error("Failed to batch save clients:", error);
+        // Fall back to individual saves on batch failure
+        for (const client of clientsToSave) {
+          try {
+            await saveClientLocally(client);
+          } catch (e) {
+            console.error(`Failed to save client ${client.id}:`, e);
+          }
+        }
       }
     }
 
@@ -387,8 +497,9 @@ export async function syncClients(): Promise<{
     console.error("Clients sync error:", error);
     return { success: false, downloaded: 0, uploaded: 0 };
   } finally {
-    // Always release the sync lock
+    // Always release both locks
     syncInProgress = false;
+    await setSyncLock(false);
   }
 }
 

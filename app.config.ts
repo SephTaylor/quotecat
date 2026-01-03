@@ -32,6 +32,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     "expo-font",
     "expo-web-browser",
+    "expo-sqlite",
   ],
 
   // ---- experiments ----

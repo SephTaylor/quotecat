@@ -2,7 +2,8 @@
 // Main entry point for quotes module
 // Re-exports storage operations and utilities
 
-// Storage operations (consolidated from old lib/quotes.ts and modules/quotes)
+// Storage operations - NOW USING SQLITE for memory efficiency
+// This fixes the OOM crashes when syncing/loading data
 export {
   listQuotes,
   getQuoteById,
@@ -17,7 +18,11 @@ export {
   unlinkQuote,
   getLinkedQuotes,
   createTierFromQuote,
-} from "./storage";
+  // Internal sync functions
+  saveQuoteLocally,
+  saveQuotesBatch,
+  updateQuoteLocally,
+} from "./storageSQLite";
 
 // Calculation utilities
 export { calculateMaterialSubtotal, calculateQuoteTotal, calculateQuoteTotals } from "@/lib/calculations";
