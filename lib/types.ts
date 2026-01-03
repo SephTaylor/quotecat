@@ -458,3 +458,22 @@ export type Client = {
   createdAt: string;
   updatedAt: string;
 };
+
+/**
+ * Price book item for Premium users
+ * Custom products with user-defined pricing
+ * Syncs with webapp's pricebook_items table
+ */
+export type PricebookItem = {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  unitPrice: number;
+  unitType?: string; // "each", "linear ft", "sq ft", etc.
+  sku?: string;
+  isActive?: boolean;
+  source?: string; // "custom" for user-created
+  createdAt: string;
+  updatedAt: string;
+};

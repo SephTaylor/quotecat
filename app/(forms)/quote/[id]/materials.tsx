@@ -12,11 +12,18 @@ import {
 import { mergeById } from "@/modules/quotes/merge";
 import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Text, View, StyleSheet, Pressable, Alert, RefreshControl, Modal, TouchableOpacity, TouchableWithoutFeedback, Keyboard } from "react-native";
+import { Text, View, StyleSheet, Pressable, Alert, RefreshControl, Modal, TouchableOpacity, TouchableWithoutFeedback, Keyboard, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { QuoteItem } from "@/lib/types";
+import type { QuoteItem, PricebookItem } from "@/lib/types";
 import { trackProductUsage } from "@/lib/analytics";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
+import { getPricebookItems, getPricebookCategories } from "@/lib/pricebook";
+import { listAssemblies } from "@/modules/assemblies/storage";
+import type { Assembly } from "@/modules/assemblies/types";
+import { getUserState } from "@/lib/user";
+import { canAccessPricebook, canAccessAssemblies } from "@/lib/features";
+
+export type SourceType = "catalog" | "pricebook" | "assemblies";
 
 export default function QuoteMaterials() {
   const { id, coMode } = useLocalSearchParams<{ id?: string; coMode?: string }>();
@@ -32,6 +39,20 @@ export default function QuoteMaterials() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [initialSelectionLoaded, setInitialSelectionLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Source toggle state
+  const [activeSource, setActiveSource] = useState<SourceType>("catalog");
+  const [hasPricebookAccess, setHasPricebookAccess] = useState(false);
+  const [hasAssembliesAccess, setHasAssembliesAccess] = useState(false);
+
+  // Pricebook data
+  const [pricebookItems, setPricebookItems] = useState<PricebookItem[]>([]);
+  const [pricebookCategories, setPricebookCategories] = useState<string[]>([]);
+  const [pricebookLoading, setPricebookLoading] = useState(false);
+
+  // Assemblies data
+  const [assemblies, setAssemblies] = useState<Assembly[]>([]);
+  const [assembliesLoading, setAssembliesLoading] = useState(false);
 
   // Create initial selection from quote items
   const initialSelection = useMemo(() => {
@@ -101,6 +122,56 @@ export default function QuoteMaterials() {
     loadQuote();
   }, [loadQuote]);
 
+  // Check user tier access on mount
+  useEffect(() => {
+    const checkAccess = async () => {
+      const user = await getUserState();
+      setHasPricebookAccess(canAccessPricebook(user));
+      setHasAssembliesAccess(canAccessAssemblies(user));
+    };
+    checkAccess();
+  }, []);
+
+  // Load pricebook items when switching to pricebook tab
+  useEffect(() => {
+    if (activeSource === "pricebook" && hasPricebookAccess) {
+      const loadPricebook = async () => {
+        setPricebookLoading(true);
+        try {
+          const [items, cats] = await Promise.all([
+            getPricebookItems(),
+            getPricebookCategories(),
+          ]);
+          setPricebookItems(items);
+          setPricebookCategories(cats);
+        } catch (error) {
+          console.error("Failed to load pricebook:", error);
+        } finally {
+          setPricebookLoading(false);
+        }
+      };
+      loadPricebook();
+    }
+  }, [activeSource, hasPricebookAccess]);
+
+  // Load assemblies when switching to assemblies tab
+  useEffect(() => {
+    if (activeSource === "assemblies" && hasAssembliesAccess) {
+      const loadAssembliesData = async () => {
+        setAssembliesLoading(true);
+        try {
+          const data = await listAssemblies();
+          setAssemblies(data);
+        } catch (error) {
+          console.error("Failed to load assemblies:", error);
+        } finally {
+          setAssembliesLoading(false);
+        }
+      };
+      loadAssembliesData();
+    }
+  }, [activeSource, hasAssembliesAccess]);
+
 
   // Reload when returning from edit-items screen
   useFocusEffect(
@@ -141,6 +212,92 @@ export default function QuoteMaterials() {
 
     return grouped;
   }, [products, selectedSuppliers]);
+
+  // Convert pricebook items to Product format for the picker
+  const pricebookAsProducts = useMemo((): Product[] => {
+    return pricebookItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      unit: item.unitType || "ea",
+      unitPrice: item.unitPrice,
+      categoryId: item.category || "custom",
+    }));
+  }, [pricebookItems]);
+
+  // Group pricebook products by category
+  const pricebookByCategory = useMemo(() => {
+    const grouped: Record<string, Product[]> = {};
+    pricebookAsProducts.forEach((product) => {
+      if (!grouped[product.categoryId]) {
+        grouped[product.categoryId] = [];
+      }
+      grouped[product.categoryId].push(product);
+    });
+    return grouped;
+  }, [pricebookAsProducts]);
+
+  // Get categories for pricebook
+  const pricebookCategoryObjects = useMemo(() => {
+    return pricebookCategories.map((cat) => ({ id: cat, name: cat }));
+  }, [pricebookCategories]);
+
+  // Selection summary calculation
+  const selectionSummary = useMemo(() => {
+    const selectedItems = Array.from(selection.values());
+    const totalItems = selectedItems.reduce((sum, item) => sum + item.qty, 0);
+    const totalValue = selectedItems.reduce(
+      (sum, item) => sum + item.product.unitPrice * item.qty,
+      0
+    );
+    return { count: totalItems, value: totalValue };
+  }, [selection]);
+
+  // Handle source toggle
+  const handleSourceChange = useCallback((source: SourceType) => {
+    if (source === "pricebook" && !hasPricebookAccess) {
+      Alert.alert(
+        "Premium Feature",
+        "Price Book is available for Premium subscribers. Upgrade to access your custom products.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Learn More", onPress: () => router.push("/(auth)/sign-in" as any) },
+        ]
+      );
+      return;
+    }
+    if (source === "assemblies" && !hasAssembliesAccess) {
+      Alert.alert(
+        "Pro Feature",
+        "Assemblies are available for Pro and Premium subscribers.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Learn More", onPress: () => router.push("/(auth)/sign-in" as any) },
+        ]
+      );
+      return;
+    }
+    setActiveSource(source);
+  }, [hasPricebookAccess, hasAssembliesAccess, router]);
+
+  // Get current items/categories based on active source
+  const currentItemsByCategory = useMemo(() => {
+    if (activeSource === "catalog") return productsByCategory;
+    if (activeSource === "pricebook") return pricebookByCategory;
+    return {};
+  }, [activeSource, productsByCategory, pricebookByCategory]);
+
+  const currentCategories = useMemo(() => {
+    if (activeSource === "catalog") return categories;
+    if (activeSource === "pricebook") return pricebookCategoryObjects;
+    return [];
+  }, [activeSource, categories, pricebookCategoryObjects]);
+
+  const isCurrentSourceLoading = useMemo(() => {
+    if (activeSource === "catalog") return loading;
+    if (activeSource === "pricebook") return pricebookLoading;
+    if (activeSource === "assemblies") return assembliesLoading;
+    return false;
+  }, [activeSource, loading, pricebookLoading, assembliesLoading]);
 
   const saveSelected = useCallback(
     async (goBack: boolean) => {
@@ -257,7 +414,110 @@ export default function QuoteMaterials() {
     setRefreshing(false);
   }, [refresh]);
 
-  if (loading) {
+  // Source toggle component
+  const SourceToggle = () => (
+    <View style={themedStyles.sourceToggle}>
+      <Pressable
+        style={[
+          themedStyles.sourceTab,
+          activeSource === "catalog" && themedStyles.sourceTabActive,
+        ]}
+        onPress={() => handleSourceChange("catalog")}
+      >
+        <Text
+          style={[
+            themedStyles.sourceTabText,
+            activeSource === "catalog" && themedStyles.sourceTabTextActive,
+          ]}
+        >
+          Catalog
+        </Text>
+      </Pressable>
+      <Pressable
+        style={[
+          themedStyles.sourceTab,
+          activeSource === "pricebook" && themedStyles.sourceTabActive,
+          !hasPricebookAccess && themedStyles.sourceTabLocked,
+        ]}
+        onPress={() => handleSourceChange("pricebook")}
+      >
+        <Text
+          style={[
+            themedStyles.sourceTabText,
+            activeSource === "pricebook" && themedStyles.sourceTabTextActive,
+          ]}
+        >
+          Pricebook
+        </Text>
+        {!hasPricebookAccess && (
+          <Ionicons name="lock-closed" size={12} color={theme.colors.muted} style={{ marginLeft: 4 }} />
+        )}
+      </Pressable>
+      <Pressable
+        style={[
+          themedStyles.sourceTab,
+          activeSource === "assemblies" && themedStyles.sourceTabActive,
+          !hasAssembliesAccess && themedStyles.sourceTabLocked,
+        ]}
+        onPress={() => handleSourceChange("assemblies")}
+      >
+        <Text
+          style={[
+            themedStyles.sourceTabText,
+            activeSource === "assemblies" && themedStyles.sourceTabTextActive,
+          ]}
+        >
+          Assemblies
+        </Text>
+        {!hasAssembliesAccess && (
+          <Ionicons name="lock-closed" size={12} color={theme.colors.muted} style={{ marginLeft: 4 }} />
+        )}
+      </Pressable>
+    </View>
+  );
+
+  // Assemblies list view
+  const AssembliesView = () => (
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={themedStyles.assembliesContainer}
+    >
+      {assembliesLoading ? (
+        <Text style={themedStyles.emptyText}>Loading assemblies...</Text>
+      ) : assemblies.length === 0 ? (
+        <View style={themedStyles.emptyState}>
+          <Text style={themedStyles.emptyTitle}>No Assemblies</Text>
+          <Text style={themedStyles.emptyText}>
+            Create assemblies in Pro Tools to use them here.
+          </Text>
+        </View>
+      ) : (
+        assemblies.map((assembly) => (
+          <Pressable
+            key={assembly.id}
+            style={themedStyles.assemblyCard}
+            onPress={() => {
+              // Navigate to assembly detail or expand it
+              router.push({
+                pathname: "/assemblies/[id]",
+                params: { id: assembly.id, quoteId: id },
+              } as any);
+            }}
+          >
+            <View style={themedStyles.assemblyInfo}>
+              <Text style={themedStyles.assemblyName}>{assembly.name}</Text>
+              <Text style={themedStyles.assemblyItems}>
+                {assembly.items.length} item{assembly.items.length !== 1 ? "s" : ""}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+          </Pressable>
+        ))
+      )}
+    </ScrollView>
+  );
+
+  if (isCurrentSourceLoading && activeSource === "catalog") {
     return (
       <>
         <Stack.Screen
@@ -280,8 +540,9 @@ export default function QuoteMaterials() {
           }}
         />
         <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+          <SourceToggle />
           <MaterialsPicker
-            categories={categories}
+            categories={currentCategories}
             itemsByCategory={{}}
             selection={selection}
             onInc={inc}
@@ -363,45 +624,59 @@ export default function QuoteMaterials() {
           </View>
         )}
 
-        <MaterialsPicker
-          categories={categories}
-          itemsByCategory={productsByCategory}
-          selection={selection}
-          onInc={inc}
-          onDec={dec}
-          onSetQty={setQty}
-          recentProductIds={[]}
-          onFilterPress={handleFilterPress}
-          activeFilterCount={activeFilterCount}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={theme.colors.accent}
-            />
-          }
-        />
+        {/* Source Toggle */}
+        <SourceToggle />
+
+        {/* Content based on active source */}
+        {activeSource === "assemblies" ? (
+          <AssembliesView />
+        ) : (
+          <MaterialsPicker
+            categories={currentCategories}
+            itemsByCategory={currentItemsByCategory}
+            selection={selection}
+            onInc={inc}
+            onDec={dec}
+            onSetQty={setQty}
+            recentProductIds={[]}
+            onFilterPress={activeSource === "catalog" ? handleFilterPress : undefined}
+            activeFilterCount={activeSource === "catalog" ? activeFilterCount : 0}
+            refreshControl={
+              activeSource === "catalog" ? (
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={theme.colors.accent}
+                />
+              ) : undefined
+            }
+          />
+        )}
       </View>
 
-      <BottomBar>
-        <Button
-          variant="secondary"
-          onPress={() => router.push(`/assemblies` as any)}
-        >
-          Assemblies
-        </Button>
+      {/* Updated Bottom Bar with selection summary */}
+      <View style={themedStyles.bottomBarWrapper}>
+        {selectionSummary.count > 0 && (
+          <View style={themedStyles.selectionSummary}>
+            <Text style={themedStyles.selectionSummaryText}>
+              + {selectionSummary.count} selected · ${selectionSummary.value.toFixed(2)}
+            </Text>
+          </View>
+        )}
+        <BottomBar>
+          <Button
+            variant="secondary"
+            onPress={() => saveSelected(false)}
+            disabled={selectionSummary.count === 0}
+          >
+            Add Items
+          </Button>
 
-        <Button
-          variant="secondary"
-          onPress={() => saveSelected(false)}
-        >
-          Add {units > 0 ? `${units} item${units > 1 ? "s" : ""}` : "items"}
-        </Button>
-
-        <Button variant="primary" onPress={() => saveSelected(true)}>
-          Done
-        </Button>
-      </BottomBar>
+          <Button variant="primary" onPress={() => saveSelected(true)}>
+            Done
+          </Button>
+        </BottomBar>
+      </View>
 
       {/* Filter Bottom Sheet Modal */}
       <Modal
@@ -479,13 +754,109 @@ export default function QuoteMaterials() {
 
 const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
   StyleSheet.create({
+    // Source toggle styles
+    sourceToggle: {
+      flexDirection: "row",
+      marginHorizontal: theme.spacing(1.5),
+      marginTop: theme.spacing(1),
+      marginBottom: theme.spacing(0.5),
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      padding: 3,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    sourceTab: {
+      flex: 1,
+      paddingVertical: theme.spacing(0.75),
+      paddingHorizontal: theme.spacing(1),
+      borderRadius: theme.radius.sm,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+    },
+    sourceTabActive: {
+      backgroundColor: theme.colors.accent,
+    },
+    sourceTabLocked: {
+      opacity: 0.6,
+    },
+    sourceTabText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    sourceTabTextActive: {
+      color: "#000",
+    },
+    // Assemblies view styles
+    assembliesContainer: {
+      padding: theme.spacing(2),
+      paddingBottom: theme.spacing(8),
+    },
+    assemblyCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(1.5),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    assemblyInfo: {
+      flex: 1,
+    },
+    assemblyName: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: 2,
+    },
+    assemblyItems: {
+      fontSize: 13,
+      color: theme.colors.muted,
+    },
+    emptyState: {
+      alignItems: "center",
+      paddingVertical: theme.spacing(6),
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+    },
+    emptyText: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      textAlign: "center",
+    },
+    // Bottom bar styles
+    bottomBarWrapper: {
+      backgroundColor: theme.colors.bg,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    selectionSummary: {
+      paddingHorizontal: theme.spacing(2),
+      paddingTop: theme.spacing(1.5),
+      paddingBottom: theme.spacing(0.5),
+    },
+    selectionSummaryText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.accent,
+      textAlign: "center",
+    },
     quoteItemsIndicator: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
       padding: theme.spacing(2),
       marginHorizontal: theme.spacing(2),
       marginTop: theme.spacing(2),
-      marginBottom: theme.spacing(2),
+      marginBottom: theme.spacing(1),
       borderWidth: 1,
       borderColor: theme.colors.border,
     },

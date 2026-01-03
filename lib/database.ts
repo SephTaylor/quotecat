@@ -3,13 +3,13 @@
 // This solves the OOM crashes by loading data row-by-row instead of all at once
 
 import * as SQLite from "expo-sqlite";
-import type { Quote, Invoice, Client, QuoteItem } from "./types";
+import type { Quote, Invoice, Client, QuoteItem, PricebookItem } from "./types";
 
 // Database instance (lazy initialized)
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 /**
  * Get or create the database instance
@@ -171,6 +171,39 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
         value TEXT,
         migrated_at TEXT
       );
+    `);
+  }
+
+  if (fromVersion < 2) {
+    // Add pricebook_items table for Premium users
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS pricebook_items (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        category TEXT,
+        unit_price REAL NOT NULL DEFAULT 0,
+        unit_type TEXT,
+        sku TEXT,
+        is_active INTEGER DEFAULT 1,
+        source TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        synced_at TEXT
+      );
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_pricebook_items_updated_at ON pricebook_items(updated_at);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_pricebook_items_name ON pricebook_items(name);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_pricebook_items_category ON pricebook_items(category);
     `);
   }
 
@@ -776,6 +809,215 @@ export function getClientsModifiedSinceDB(since: string): Client[] {
     return rows.map(rowToClient);
   } catch (error) {
     console.error("Failed to get modified clients from SQLite:", error);
+    return [];
+  }
+}
+
+// ============================================
+// PRICEBOOK ITEMS
+// ============================================
+
+/**
+ * Convert database row to PricebookItem object
+ */
+function rowToPricebookItem(row: any): PricebookItem {
+  return {
+    id: row.id,
+    name: row.name || "",
+    description: row.description || undefined,
+    category: row.category || undefined,
+    unitPrice: row.unit_price || 0,
+    unitType: row.unit_type || undefined,
+    sku: row.sku || undefined,
+    isActive: row.is_active === 1,
+    source: row.source || undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * List pricebook items with pagination
+ */
+export function listPricebookItemsDB(options?: {
+  limit?: number;
+  offset?: number;
+  category?: string;
+  search?: string;
+  includeDeleted?: boolean;
+  activeOnly?: boolean;
+}): PricebookItem[] {
+  try {
+    const database = getDatabase();
+    const { limit = 100, offset = 0, category, search, includeDeleted = false, activeOnly = true } = options || {};
+
+    let sql = "SELECT * FROM pricebook_items WHERE 1=1";
+    const params: any[] = [];
+
+    if (!includeDeleted) {
+      sql += " AND deleted_at IS NULL";
+    }
+
+    if (activeOnly) {
+      sql += " AND (is_active = 1 OR is_active IS NULL)";
+    }
+
+    if (category) {
+      sql += " AND category = ?";
+      params.push(category);
+    }
+
+    if (search) {
+      sql += " AND (name LIKE ? OR description LIKE ? OR sku LIKE ?)";
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    sql += " ORDER BY name ASC LIMIT ? OFFSET ?";
+    params.push(limit, offset);
+
+    const rows = database.getAllSync(sql, params);
+    return rows.map(rowToPricebookItem);
+  } catch (error) {
+    console.error("Failed to list pricebook items from SQLite:", error);
+    return [];
+  }
+}
+
+/**
+ * Get total count of pricebook items
+ */
+export function getPricebookItemCountDB(includeDeleted = false): number {
+  try {
+    const database = getDatabase();
+    let sql = "SELECT COUNT(*) as count FROM pricebook_items";
+    if (!includeDeleted) {
+      sql += " WHERE deleted_at IS NULL";
+    }
+    const result = database.getFirstSync<{ count: number }>(sql);
+    return result?.count || 0;
+  } catch (error) {
+    console.error("Failed to get pricebook item count from SQLite:", error);
+    return 0;
+  }
+}
+
+/**
+ * Get a single pricebook item by ID
+ */
+export function getPricebookItemByIdDB(id: string): PricebookItem | null {
+  try {
+    const database = getDatabase();
+    const row = database.getFirstSync(
+      "SELECT * FROM pricebook_items WHERE id = ?",
+      [id]
+    );
+    return row ? rowToPricebookItem(row) : null;
+  } catch (error) {
+    console.error(`Failed to get pricebook item ${id} from SQLite:`, error);
+    return null;
+  }
+}
+
+/**
+ * Save a pricebook item (insert or update)
+ */
+export function savePricebookItemDB(item: PricebookItem): void {
+  try {
+    const database = getDatabase();
+
+    database.runSync(
+      `INSERT OR REPLACE INTO pricebook_items (
+        id, name, description, category, unit_price, unit_type, sku,
+        is_active, source, created_at, updated_at, deleted_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        item.id,
+        item.name,
+        item.description || null,
+        item.category || null,
+        item.unitPrice || 0,
+        item.unitType || null,
+        item.sku || null,
+        item.isActive === false ? 0 : 1,
+        item.source || null,
+        item.createdAt,
+        item.updatedAt,
+        null, // deleted_at
+      ]
+    );
+  } catch (error) {
+    console.error(`Failed to save pricebook item ${item.id} to SQLite:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Save multiple pricebook items in a transaction
+ */
+export function savePricebookItemsBatchDB(items: PricebookItem[]): void {
+  if (items.length === 0) return;
+
+  try {
+    const database = getDatabase();
+
+    database.withTransactionSync(() => {
+      for (const item of items) {
+        savePricebookItemDB(item);
+      }
+    });
+  } catch (error) {
+    console.error(`Failed to batch save ${items.length} pricebook items to SQLite:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Soft delete a pricebook item
+ */
+export function deletePricebookItemDB(id: string): void {
+  try {
+    const database = getDatabase();
+    const now = new Date().toISOString();
+    database.runSync(
+      "UPDATE pricebook_items SET deleted_at = ?, updated_at = ? WHERE id = ?",
+      [now, now, id]
+    );
+  } catch (error) {
+    console.error(`Failed to delete pricebook item ${id} from SQLite:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get pricebook items modified since a timestamp (for sync)
+ */
+export function getPricebookItemsModifiedSinceDB(since: string): PricebookItem[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT * FROM pricebook_items WHERE updated_at > ? ORDER BY updated_at ASC",
+      [since]
+    );
+    return rows.map(rowToPricebookItem);
+  } catch (error) {
+    console.error("Failed to get modified pricebook items from SQLite:", error);
+    return [];
+  }
+}
+
+/**
+ * Get unique categories from pricebook items
+ */
+export function getPricebookCategoriesDB(): string[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync<{ category: string }>(
+      "SELECT DISTINCT category FROM pricebook_items WHERE category IS NOT NULL AND deleted_at IS NULL ORDER BY category ASC"
+    );
+    return rows.map(row => row.category);
+  } catch (error) {
+    console.error("Failed to get pricebook categories from SQLite:", error);
     return [];
   }
 }

@@ -51,6 +51,8 @@ export default function ProTools() {
         router.push("/(main)/client-manager" as any);
       } else if (featureName === "Contracts") {
         router.push("/(main)/(tabs)/contracts" as any);
+      } else if (featureName === "Price Book") {
+        router.push("/(main)/price-book" as any);
       } else if (featureName === "Wizard") {
         // Coming soon
         Alert.alert(
@@ -133,6 +135,18 @@ export default function ProTools() {
               description="Create legally-binding contracts with digital signatures"
               locked={!isPremium}
               onPress={() => handleFeatureTap("Contracts", true)}
+              details={[]}
+              theme={theme}
+              isPremium
+            />
+
+            {/* Price Book */}
+            <ProFeatureCard
+              icon=""
+              title="Price Book"
+              description="Create and manage your custom products and pricing"
+              locked={!isPremium}
+              onPress={() => handleFeatureTap("Price Book", true)}
               details={[]}
               theme={theme}
               isPremium

@@ -83,6 +83,13 @@ export function canAccessAssemblies(user: UserState): boolean {
 }
 
 /**
+ * Check if user can access pricebook (Premium only)
+ */
+export function canAccessPricebook(user: UserState): boolean {
+  return user.tier === "premium";
+}
+
+/**
  * Check if user can access cloud sync
  */
 export function canAccessCloudSync(user: UserState): boolean {

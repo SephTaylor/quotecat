@@ -6,6 +6,7 @@ import { activateProTier, activatePremiumTier, deactivateProTier, signOutUser } 
 import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync";
 import { syncClients, migrateLocalClientsToCloud } from "./clientsSync";
 import { syncInvoices, hasInvoicesMigrated, migrateLocalInvoicesToCloud } from "./invoicesSync";
+import { syncPricebook } from "./pricebookSync";
 import { markSyncComplete } from "./syncState";
 
 // Re-export auth utilities for backwards compatibility
@@ -186,6 +187,14 @@ async function runBackgroundSync(): Promise<void> {
     await syncClients();
   } catch (error) {
     console.error("❌ Clients sync failed:", error);
+  }
+
+  // Sync pricebook for Premium users
+  try {
+    await syncPricebook();
+    await gcBreak();
+  } catch (error) {
+    console.error("❌ Pricebook sync failed:", error);
   }
 
   // Mark sync as complete so UI components know to refresh
