@@ -13,6 +13,7 @@ import {
   ScrollView,
   Alert,
   Image,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -586,7 +587,7 @@ export default function WizardScreen() {
               <View style={styles.buttonRow}>
                 <Pressable
                   style={[styles.button, styles.primaryButton]}
-                  onPress={() => router.push('/(main)/(tabs)/pro-tools')}
+                  onPress={() => Linking.openURL('https://quotecat.ai/#pricing')}
                 >
                   <Text style={styles.primaryButtonText}>Learn More</Text>
                 </Pressable>
