@@ -8,7 +8,7 @@ import {
   updateQuote,
   deleteQuote,
   saveQuote,
-} from "./storage";
+} from "./storageSQLite";
 import type { Quote } from "@/lib/types";
 import { loadPreferences } from "@/lib/preferences";
 import { parseMoney } from "@/modules/settings/money";
@@ -16,6 +16,7 @@ import type { QuoteStatus, QuoteItem } from "@/lib/types";
 import { createSnapshot, calculateDiff, type QuoteSnapshot } from "@/modules/changeOrders";
 import { getUserState } from "@/lib/user";
 import { canAccessChangeOrders } from "@/lib/features";
+import { RefreshEvents, REFRESH_QUOTES_LIST } from "@/lib/refreshEvents";
 
 export type QuoteFormState = {
   name: string;
@@ -48,9 +49,12 @@ export type QuoteCalculations = {
 type UseQuoteFormOptions = {
   quoteId: string | undefined;
   onNavigateBack: () => void;
+  onNavigateToQuotes?: () => void;
 };
 
-export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
+export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: UseQuoteFormOptions) {
+  // Use onNavigateToQuotes if provided, otherwise fall back to onNavigateBack
+  const navigateToQuotes = onNavigateToQuotes || onNavigateBack;
   // Form state
   const [quote, setQuote] = useState<Quote | null>(null);
   const [name, setName] = useState("");
@@ -210,6 +214,7 @@ export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
   const handleSave = useCallback(async () => {
     if (!quoteId) return;
     await updateQuote(quoteId, getFormData());
+    RefreshEvents.emit(REFRESH_QUOTES_LIST);
     Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
   }, [quoteId, getFormData]);
 
@@ -219,28 +224,143 @@ export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
     await updateQuote(quoteId, getFormData());
   }, [quoteId, getFormData]);
 
-  // Handle navigation back (with auto-save or delete if empty)
+  // Handle navigation back (with auto-save or delete if required fields missing)
   const handleGoBack = useCallback(async () => {
-    const isNameEmpty = !name.trim() || name.trim() === "Untitled";
-    const isClientEmpty = !clientName.trim() || clientName.trim() === "Unnamed Client";
-
-    if (isNewQuote && isNameEmpty && isClientEmpty && !labor.trim() && items.length === 0) {
-      // Delete empty new quote
-      if (quoteId) {
-        await deleteQuote(quoteId);
-      }
-    } else if (quoteId) {
-      // Save changes before going back
-      await updateQuote(quoteId, getFormData());
+    if (!quoteId) {
+      onNavigateBack();
+      return;
     }
+
+    // Check current form state for required fields
+    const formNameEmpty = !name.trim() || name.trim() === "Untitled";
+    const formClientEmpty = !clientName.trim() || clientName.trim() === "Unnamed Client";
+    // Check if user has entered ANY data (for "lose data" warning)
+    const formHasData =
+      name.trim() ||
+      clientName.trim() ||
+      clientEmail.trim() ||
+      clientPhone.trim() ||
+      clientAddress.trim() ||
+      labor.trim() ||
+      materialEstimate.trim() ||
+      markupPercent.trim() ||
+      taxPercent.trim() ||
+      notes.trim() ||
+      followUpDate.trim() ||
+      tier.trim() ||
+      items.length > 0;
+
+    // If ID is "new", quote was never created in storage
+    if (quoteId === "new") {
+      // No data entered - just go back
+      if (!formHasData) {
+        onNavigateBack();
+        return;
+      }
+      // Has required fields - create and save the quote
+      if (!formNameEmpty && !formClientEmpty) {
+        const realId = `quote_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        const now = new Date().toISOString();
+        await saveQuote({
+          ...getFormData(),
+          id: realId,
+          currency: "USD",
+          createdAt: now,
+          updatedAt: now,
+        });
+        RefreshEvents.emit(REFRESH_QUOTES_LIST);
+        // Navigate to quotes list to show the new quote
+        navigateToQuotes();
+        return;
+      }
+      // Has some data but missing required fields - warn user
+      Alert.alert(
+        "Required Fields Missing",
+        "Job name and client name are required. Your changes will be lost if you go back.",
+        [
+          { text: "Stay", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => onNavigateBack(),
+          },
+        ]
+      );
+      return;
+    }
+
+    // For existing quotes (not "new"), fetch fresh data
+    const storedQuote = await getQuoteById(quoteId);
+
+    // Check if stored quote is essentially empty (new/untitled)
+    const storedNameEmpty = !storedQuote?.name || storedQuote.name === "Untitled";
+    const storedClientEmpty = !storedQuote?.clientName || storedQuote.clientName === "Unnamed Client";
+    const storedHasNoItems = !storedQuote?.items || storedQuote.items.length === 0;
+    const storedHasNoLabor = !storedQuote?.labor || storedQuote.labor === 0;
+    const storedIsNew = storedNameEmpty && storedClientEmpty && storedHasNoLabor && storedHasNoItems;
+
+    // Case 1: Stored is new, form is completely empty - silently delete
+    if (storedIsNew && !formHasData) {
+      try {
+        await deleteQuote(quoteId);
+      } catch {
+        // Quote may not exist yet (race condition) - that's fine
+      }
+      onNavigateBack();
+      return;
+    }
+
+    // Case 2: Required fields filled - save and go back
+    if (!formNameEmpty && !formClientEmpty) {
+      await updateQuote(quoteId, getFormData());
+      RefreshEvents.emit(REFRESH_QUOTES_LIST);
+      onNavigateBack();
+      return;
+    }
+
+    // Case 3: Has some data but missing required fields - warn user
+    if (storedIsNew && formHasData && (formNameEmpty || formClientEmpty)) {
+      Alert.alert(
+        "Required Fields Missing",
+        "Job name and client name are required. Your changes will be lost if you go back.",
+        [
+          { text: "Stay", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await deleteQuote(quoteId);
+              } catch {
+                // Quote may not exist - that's fine
+              }
+              onNavigateBack();
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // Case 4: Existing quote - save what we have
+    await updateQuote(quoteId, getFormData());
+    RefreshEvents.emit(REFRESH_QUOTES_LIST);
     onNavigateBack();
   }, [
     quoteId,
     name,
     clientName,
+    clientEmail,
+    clientPhone,
+    clientAddress,
     labor,
+    materialEstimate,
+    markupPercent,
+    taxPercent,
+    notes,
+    followUpDate,
+    tier,
     items,
-    isNewQuote,
     getFormData,
     onNavigateBack,
   ]);
@@ -270,14 +390,16 @@ export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
   );
 
   // Ensure quote exists in storage (for navigation to materials screen)
-  const ensureQuoteExists = useCallback(async () => {
-    if (!quoteId) return;
+  // Returns the actual quote ID (may differ from quoteId if it was "new")
+  const ensureQuoteExists = useCallback(async (): Promise<string | null> => {
+    if (!quoteId) return null;
 
     const existing = await getQuoteById(quoteId);
     const quoteData = getFormData();
 
     if (existing) {
       await updateQuote(quoteId, quoteData);
+      return quoteId;
     } else {
       // Generate a proper ID if quoteId is "new" or invalid
       const realId = quoteId === "new"
@@ -291,6 +413,7 @@ export function useQuoteForm({ quoteId, onNavigateBack }: UseQuoteFormOptions) {
         createdAt: now,
         updatedAt: now,
       });
+      return realId;
     }
   }, [quoteId, getFormData]);
 

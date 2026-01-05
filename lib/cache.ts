@@ -20,10 +20,11 @@ class CacheManager {
 
   /**
    * Get cached data if available and not expired
+   * Returns undefined if not in cache, allowing distinction from cached null values
    */
-  get<T>(key: string): T | null {
+  get<T>(key: string): T | undefined {
     const entry = this.cache.get(key);
-    if (!entry) return null;
+    if (!entry) return undefined;
 
     const now = Date.now();
     const age = now - entry.timestamp;
@@ -31,7 +32,7 @@ class CacheManager {
     // Check if expired
     if (age > this.defaultTTL) {
       this.cache.delete(key);
-      return null;
+      return undefined;
     }
 
     return entry.data as T;
@@ -122,7 +123,7 @@ export async function withCache<T>(
   // Return cached data if available
   const cached = cache.get<T>(key);
 
-  if (cached !== null) {
+  if (cached !== undefined) {
     // If stale, refetch in background but return stale data immediately
     if (cache.isStale(key)) {
       fetcher()

@@ -9,7 +9,6 @@ import {
   updateInvoiceSettings,
   updateContractSettings,
   updatePricingSettings,
-  updateNotificationPreferences,
   type UserPreferences,
 } from "@/lib/preferences";
 import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
@@ -24,7 +23,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -311,61 +309,6 @@ export default function BusinessSettings() {
           </View>
         </Pressable>
 
-        {/* Reminders Section */}
-        <Pressable style={styles.section} onPress={Keyboard.dismiss}>
-          <Text style={styles.sectionTitle}>Reminders</Text>
-          <View style={styles.card}>
-            <ToggleRow
-              label="Quote Follow-ups"
-              value={preferences.notifications?.autoFollowUpEnabled ?? true}
-              enabled={hasProAccess}
-              onToggle={async (v) => setPreferences(await updateNotificationPreferences({ autoFollowUpEnabled: v }))}
-              onLocked={handleLearnMore}
-              theme={theme}
-            />
-            {preferences.notifications?.autoFollowUpEnabled && hasProAccess && (
-              <View style={styles.segmentRow}>
-                <Text style={styles.segmentLabel}>After</Text>
-                <View style={styles.segments}>
-                  {([3, 5, 7, 14] as const).map((d) => (
-                    <Pressable
-                      key={d}
-                      style={[styles.segment, preferences.notifications?.autoFollowUpDays === d && styles.segmentActive]}
-                      onPress={async () => setPreferences(await updateNotificationPreferences({ autoFollowUpDays: d }))}
-                    >
-                      <Text style={[styles.segmentText, preferences.notifications?.autoFollowUpDays === d && styles.segmentTextActive]}>{d}d</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            )}
-            <View style={styles.divider} />
-            <ToggleRow
-              label="Invoice Due Today"
-              value={preferences.notifications?.invoiceDueToday ?? false}
-              enabled={hasProAccess}
-              onToggle={async (v) => setPreferences(await updateNotificationPreferences({ invoiceDueToday: v }))}
-              onLocked={handleLearnMore}
-              theme={theme}
-            />
-            <ToggleRow
-              label="Invoice Due Soon (3 days)"
-              value={preferences.notifications?.invoiceDueSoon ?? false}
-              enabled={hasProAccess}
-              onToggle={async (v) => setPreferences(await updateNotificationPreferences({ invoiceDueSoon: v }))}
-              onLocked={handleLearnMore}
-              theme={theme}
-            />
-            <ToggleRow
-              label="Invoice Overdue"
-              value={preferences.notifications?.invoiceOverdue ?? false}
-              enabled={hasProAccess}
-              onToggle={async (v) => setPreferences(await updateNotificationPreferences({ invoiceOverdue: v }))}
-              onLocked={handleLearnMore}
-              theme={theme}
-            />
-          </View>
-        </Pressable>
       </ScrollView>
     </>
   );
@@ -480,34 +423,6 @@ function InlineField({
   );
 }
 
-// Toggle Row Component
-function ToggleRow({
-  label, value, enabled, onToggle, onLocked, theme
-}: {
-  label: string;
-  value: boolean;
-  enabled: boolean;
-  onToggle: (v: boolean) => Promise<void>;
-  onLocked: () => void;
-  theme: ReturnType<typeof useTheme>["theme"];
-}) {
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-        <Text style={{ fontSize: 15, color: theme.colors.text }}>{label}</Text>
-        {!enabled && <Ionicons name="lock-closed" size={12} color={theme.colors.accent} />}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={(v) => enabled ? onToggle(v) : onLocked()}
-        disabled={!enabled}
-        trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
-        thumbColor="#FFF"
-      />
-    </View>
-  );
-}
-
 function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bottom: number }) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.bg },
@@ -528,12 +443,5 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     textButton: { paddingVertical: 4, paddingHorizontal: 8 },
     textButtonLabel: { fontSize: 15, color: theme.colors.accent, fontWeight: "600" },
     deleteButton: { padding: 4 },
-    segmentRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, paddingLeft: 16 },
-    segmentLabel: { fontSize: 14, color: theme.colors.muted },
-    segments: { flexDirection: "row", backgroundColor: theme.colors.bg, borderRadius: 8, padding: 2 },
-    segment: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-    segmentActive: { backgroundColor: theme.colors.accent },
-    segmentText: { fontSize: 13, fontWeight: "600", color: theme.colors.muted },
-    segmentTextActive: { color: "#000" },
   });
 }

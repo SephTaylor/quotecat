@@ -20,8 +20,8 @@ export type UserState = {
 
 export const FREE_LIMITS = {
   quotes: 10,
-  pdfsPerMonth: 3,
-  spreadsheetsPerMonth: 1,
+  pdfsPerMonth: 10,
+  spreadsheetsPerMonth: 5,
 } as const;
 
 const USER_STATE_KEY = "@quotecat/user_state";

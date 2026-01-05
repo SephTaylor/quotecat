@@ -17,9 +17,9 @@ export default function DrawerLayout() {
   const { theme } = useTheme();
   const router = useRouter();
 
-  const handleCreateNewQuote = React.useCallback(async () => {
-    const newQuote = await createNewQuote("", "");
-    router.push(`/quote/${newQuote.id}/edit`);
+  const handleCreateNewQuote = React.useCallback(() => {
+    // Navigate to "new" - quote will only be created when user fills required fields
+    router.push("/quote/new/edit");
   }, [router]);
 
   return (

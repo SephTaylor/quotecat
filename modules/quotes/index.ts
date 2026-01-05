@@ -48,4 +48,4 @@ export type { Quote, QuoteItem, QuoteUpdate, CurrencyCode } from "@/lib/types";
 export type { Quote as StoredQuote } from "@/lib/types";
 
 // For backwards compatibility with code that imported "createNewQuote"
-export { createQuote as createNewQuote } from "./storage";
+export { createQuote as createNewQuote } from "./storageSQLite";

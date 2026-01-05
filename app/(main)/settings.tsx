@@ -306,39 +306,27 @@ export default function Settings() {
               theme={theme}
             >
               <View style={styles.card}>
-                {/* Draft Quotes */}
-                <View style={styles.usageRow}>
-                  <View style={styles.usageHeader}>
+                <View style={styles.usageCompact}>
+                  <View style={styles.usageCompactRow}>
                     <Text style={styles.usageLabel}>Draft Quotes</Text>
-                    <Text style={styles.usageValue}>Unlimited ✨</Text>
+                    <Text style={styles.usageValue}>Unlimited</Text>
                   </View>
-                </View>
-
-                {/* PDF Exports */}
-                <View style={[styles.usageRow, styles.usageRowLast]}>
-                  <View style={styles.usageHeader}>
-                    <Text style={styles.usageLabel}>Client Exports</Text>
+                  <View style={styles.usageCompactRow}>
+                    <Text style={styles.usageLabel}>PDF Exports</Text>
                     <Text style={styles.usageValue}>
                       {isPro
                         ? `${userState.pdfsThisMonth} (Unlimited)`
                         : `${userState.pdfsThisMonth} / ${FREE_LIMITS.pdfsPerMonth}`}
                     </Text>
                   </View>
-                  {!isPro && (
-                    <View style={styles.progressBarContainer}>
-                      <View
-                        style={[
-                          styles.progressBar,
-                          {
-                            width: `${Math.min(
-                              100,
-                              (userState.pdfsThisMonth / FREE_LIMITS.pdfsPerMonth) * 100
-                            )}%`,
-                          },
-                        ]}
-                      />
-                    </View>
-                  )}
+                  <View style={styles.usageCompactRow}>
+                    <Text style={styles.usageLabel}>CSV Exports</Text>
+                    <Text style={styles.usageValue}>
+                      {isPro
+                        ? `${userState.spreadsheetsThisMonth} (Unlimited)`
+                        : `${userState.spreadsheetsThisMonth} / ${FREE_LIMITS.spreadsheetsPerMonth}`}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </CollapsibleSection>
@@ -498,88 +486,57 @@ export default function Settings() {
             onToggle={() => toggleSection('notifications')}
             theme={theme}
           >
+            {/* Quotes */}
+            <Text style={styles.notifSectionLabel}>Quotes</Text>
             <View style={styles.card}>
-              {/* Invoice Notifications */}
-              <View style={styles.notificationGroup}>
-                <View style={styles.notificationGroupHeader}>
-                  <Ionicons name="receipt-outline" size={18} color={theme.colors.accent} />
-                  <Text style={styles.notificationGroupTitle}>Invoice Notifications</Text>
-                </View>
-                <Text style={styles.notificationGroupDescription}>
-                  Get notified about invoice due dates and status changes
-                </Text>
+              <View style={styles.notifRow}>
+                <Text style={styles.notifRowLabel}>Follow-up reminders</Text>
+                <Switch
+                  value={preferences.notifications?.autoFollowUpEnabled ?? true}
+                  onValueChange={(value) => handleUpdateNotifications({ autoFollowUpEnabled: value })}
+                  trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
+                  thumbColor="#FFFFFF"
+                />
               </View>
-
-              <SettingRow
-                label="Overdue Invoices"
-                value={preferences.notifications?.invoiceOverdue || false}
-                onToggle={(value) => handleUpdateNotifications({ invoiceOverdue: value })}
-                theme={theme}
-                compact
-              />
-
-              <SettingRow
-                label="Due Soon (3 days)"
-                value={preferences.notifications?.invoiceDueSoon || false}
-                onToggle={(value) => handleUpdateNotifications({ invoiceDueSoon: value })}
-                theme={theme}
-                compact
-              />
-
-              <SettingRow
-                label="Due Today"
-                value={preferences.notifications?.invoiceDueToday || false}
-                onToggle={(value) => handleUpdateNotifications({ invoiceDueToday: value })}
-                theme={theme}
-                compact
-                isLast
-              />
-
-              {/* Quote Follow-up Reminders */}
-              <View style={[styles.notificationGroup, { marginTop: theme.spacing(2), borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing(2) }]}>
-                <View style={styles.notificationGroupHeader}>
-                  <Ionicons name="document-text-outline" size={18} color={theme.colors.accent} />
-                  <Text style={styles.notificationGroupTitle}>Quote Follow-ups</Text>
-                </View>
-                <Text style={styles.notificationGroupDescription}>
-                  Get reminded to follow up on sent quotes
-                </Text>
-              </View>
-
-              <SettingRow
-                label="Auto follow-up reminders"
-                value={preferences.notifications?.autoFollowUpEnabled ?? true}
-                onToggle={(value) => handleUpdateNotifications({ autoFollowUpEnabled: value })}
-                theme={theme}
-                compact
-              />
-
               {preferences.notifications?.autoFollowUpEnabled && (
-                <View style={styles.followUpDaysRow}>
-                  <Text style={styles.followUpDaysLabel}>Remind after</Text>
-                  <View style={styles.followUpDaysOptions}>
-                    {([3, 5, 7, 14] as const).map((days) => (
-                      <Pressable
-                        key={days}
-                        style={[
-                          styles.followUpDayOption,
-                          preferences.notifications?.autoFollowUpDays === days && styles.followUpDayOptionActive,
-                        ]}
-                        onPress={() => handleUpdateNotifications({ autoFollowUpDays: days })}
-                      >
-                        <Text
-                          style={[
-                            styles.followUpDayOptionText,
-                            preferences.notifications?.autoFollowUpDays === days && styles.followUpDayOptionTextActive,
-                          ]}
-                        >
-                          {days}d
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
+                <FollowUpDaysInput
+                  value={preferences.notifications?.autoFollowUpDays ?? 7}
+                  onSave={(days) => handleUpdateNotifications({ autoFollowUpDays: days })}
+                  theme={theme}
+                />
               )}
+            </View>
+
+            {/* Invoices */}
+            <Text style={[styles.notifSectionLabel, { marginTop: theme.spacing(2) }]}>Invoices</Text>
+            <View style={styles.card}>
+              <View style={styles.notifRow}>
+                <Text style={styles.notifRowLabel}>Due today</Text>
+                <Switch
+                  value={preferences.notifications?.invoiceDueToday || false}
+                  onValueChange={(value) => handleUpdateNotifications({ invoiceDueToday: value })}
+                  trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              <View style={styles.notifRow}>
+                <Text style={styles.notifRowLabel}>Due soon (3 days)</Text>
+                <Switch
+                  value={preferences.notifications?.invoiceDueSoon || false}
+                  onValueChange={(value) => handleUpdateNotifications({ invoiceDueSoon: value })}
+                  trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              <View style={[styles.notifRow, { borderBottomWidth: 0 }]}>
+                <Text style={styles.notifRowLabel}>Overdue</Text>
+                <Switch
+                  value={preferences.notifications?.invoiceOverdue || false}
+                  onValueChange={(value) => handleUpdateNotifications({ invoiceOverdue: value })}
+                  trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
             </View>
           </CollapsibleSection>
 
@@ -723,6 +680,68 @@ function CollapsibleSection({
         />
       </Pressable>
       {isExpanded && children}
+    </View>
+  );
+}
+
+function FollowUpDaysInput({
+  value,
+  onSave,
+  theme,
+}: {
+  value: number;
+  onSave: (days: number) => void;
+  theme: ReturnType<typeof useTheme>["theme"];
+}) {
+  const [localValue, setLocalValue] = React.useState("");
+  const [isFocused, setIsFocused] = React.useState(false);
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    setLocalValue(""); // Clear on focus so user can type fresh
+  };
+
+  const handleChangeText = (text: string) => {
+    // Only allow digits, no leading zeros
+    const filtered = text.replace(/[^1-9]/g, "").slice(0, 2);
+    // Allow second digit to be 0 (for 10, 20, etc.)
+    if (text.length === 2 && /^[1-9]0$/.test(text)) {
+      setLocalValue(text);
+    } else {
+      setLocalValue(filtered);
+    }
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    const days = parseInt(localValue, 10);
+    if (!isNaN(days) && days > 0 && days <= 90) {
+      onSave(days);
+    }
+    setLocalValue(""); // Reset local value
+  };
+
+  return (
+    <View style={[styles.notifRow, { borderBottomWidth: 0 }]}>
+      <Text style={styles.notifRowLabel}>Remind after</Text>
+      <View style={styles.notifDaysInput}>
+        <TextInput
+          style={[
+            styles.notifDaysField,
+            isFocused && { borderColor: theme.colors.accent },
+          ]}
+          value={isFocused ? localValue : String(value)}
+          onChangeText={handleChangeText}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          keyboardType="number-pad"
+          maxLength={2}
+          returnKeyType="done"
+          blurOnSubmit
+        />
+        <Text style={styles.notifDaysLabel}>days</Text>
+      </View>
     </View>
   );
 }
@@ -927,6 +946,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
+    usageCompact: {
+      padding: theme.spacing(2),
+      gap: theme.spacing(1),
+    },
+    usageCompactRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
     settingRow: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -1033,73 +1061,46 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       lineHeight: 18,
     },
     // Notification section styles
-    notificationGroup: {
-      paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(1),
-      paddingBottom: theme.spacing(0.5),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-    },
-    notificationGroupHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing(0.5),
-      marginBottom: 2,
-    },
-    notificationGroupTitle: {
-      fontSize: 13,
-      fontWeight: "700",
-      color: theme.colors.text,
-    },
-    notificationGroupDescription: {
-      fontSize: 11,
-      color: theme.colors.muted,
-      lineHeight: 14,
-    },
-    notificationNote: {
-      paddingHorizontal: theme.spacing(2),
-      paddingTop: theme.spacing(0.75),
-      paddingBottom: theme.spacing(1.5),
-    },
-    notificationNoteText: {
-      fontSize: 11,
-      color: theme.colors.muted,
-      textAlign: "center",
-    },
-    followUpDaysRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: theme.spacing(2),
-      paddingVertical: theme.spacing(1.5),
-    },
-    followUpDaysLabel: {
-      fontSize: 14,
-      color: theme.colors.text,
-    },
-    followUpDaysOptions: {
-      flexDirection: "row",
-      gap: theme.spacing(1),
-    },
-    followUpDayOption: {
-      paddingHorizontal: theme.spacing(1.5),
-      paddingVertical: theme.spacing(0.75),
-      borderRadius: theme.radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.bg,
-    },
-    followUpDayOptionActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accent,
-    },
-    followUpDayOptionText: {
+    notifSectionLabel: {
       fontSize: 13,
       fontWeight: "600",
       color: theme.colors.muted,
+      marginBottom: theme.spacing(1),
+      marginLeft: theme.spacing(0.5),
     },
-    followUpDayOptionTextActive: {
-      color: "#000",
+    notifRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    notifRowLabel: {
+      fontSize: 15,
+      color: theme.colors.text,
+    },
+    notifDaysInput: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(0.75),
+    },
+    notifDaysField: {
+      width: 44,
+      height: 32,
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      textAlign: "center",
+      fontSize: 15,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    notifDaysLabel: {
+      fontSize: 15,
+      color: theme.colors.muted,
     },
     // Cloud Sync section styles
     syncStatusRow: {

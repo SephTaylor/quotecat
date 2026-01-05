@@ -192,7 +192,7 @@ export async function getQuoteById(id: string): Promise<Quote | null> {
   // Check individual quote cache
   const cacheKey = CacheKeys.quotes.byId(id);
   const cached = cache.get<Quote | null>(cacheKey);
-  if (cached !== null) {
+  if (cached !== undefined) {
     return cached;
   }
 

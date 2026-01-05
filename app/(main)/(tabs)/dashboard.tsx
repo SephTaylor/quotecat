@@ -17,6 +17,7 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshEvents, REFRESH_QUOTES_LIST } from "@/lib/refreshEvents";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getLastSyncTime, isSyncAvailable } from "@/lib/quotesSync";
 import { getUserState } from "@/lib/user";
@@ -144,17 +145,9 @@ export default function Dashboard() {
 
   useFocusEffect(
     useCallback(() => {
-      // First load: always load data
-      if (!hasLoadedOnce.current) {
-        load();
-        return;
-      }
-
-      // Subsequent focus: only reload if background sync completed since last load
-      // This avoids unnecessary reloads while ensuring fresh data after sync
-      if (hasSyncCompletedSince(lastLoadedAt.current)) {
-        load();
-      }
+      // Always reload when screen gains focus
+      // This ensures fresh data after creating quotes, navigating back, etc.
+      load();
     }, [load]),
   );
 
@@ -164,6 +157,12 @@ export default function Dashboard() {
       // Sync just completed - refresh data from SQLite
       load();
     });
+    return unsubscribe;
+  }, [load]);
+
+  // Auto-refresh when quotes are created/updated (e.g., after creating a new quote)
+  useEffect(() => {
+    const unsubscribe = RefreshEvents.subscribe(REFRESH_QUOTES_LIST, load);
     return unsubscribe;
   }, [load]);
 

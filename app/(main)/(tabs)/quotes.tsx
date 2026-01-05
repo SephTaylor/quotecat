@@ -17,8 +17,9 @@ import { loadPreferences } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
 import { getCachedLogo } from "@/lib/logo";
 import { getActiveChangeOrderCount } from "@/modules/changeOrders";
-import { Stack, useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState, useRef } from "react";
+import { RefreshEvents, REFRESH_QUOTES_LIST } from "@/lib/refreshEvents";
 import type { QuoteStatus } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
 import {
@@ -65,7 +66,7 @@ export default function QuotesList() {
 
   const load = useCallback(async () => {
     try {
-      const data = await listQuotes();
+      const data = await listQuotes({ skipCache: true });
       setQuotes(data);
 
       // Load CO counts for quotes that might have them (approved/completed)
@@ -89,8 +90,29 @@ export default function QuotesList() {
     }
   }, []);
 
+  // Track if this is the first focus to avoid double-loading
+  const isFirstFocusRef = useRef(true);
+
+  // Load on mount
   useEffect(() => {
     load();
+  }, [load]);
+
+  // Reload when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocusRef.current) {
+        isFirstFocusRef.current = false;
+        return;
+      }
+      load();
+    }, [load])
+  );
+
+  // Subscribe to refresh events (triggered when quotes are created/updated elsewhere)
+  useEffect(() => {
+    const unsubscribe = RefreshEvents.subscribe(REFRESH_QUOTES_LIST, load);
+    return unsubscribe;
   }, [load]);
 
   // Scroll to the selected filter chip
@@ -136,21 +158,11 @@ export default function QuotesList() {
     }
   }, [params.filter, scrollToFilter]);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
 
   // Create new quote handler
-  const handleCreateNewQuote = useCallback(async () => {
-    try {
-      const q = await createNewQuote("", "");
-      router.push(`/quote/${q.id}/edit`);
-    } catch (error) {
-      console.error("Failed to create quote:", error);
-      Alert.alert("Error", "Failed to create new quote. Please try again.");
-    }
+  const handleCreateNewQuote = useCallback(() => {
+    // Navigate to "new" - quote will only be created when user fills required fields
+    router.push("/quote/new/edit");
   }, [router]);
 
   const onRefresh = useCallback(async () => {

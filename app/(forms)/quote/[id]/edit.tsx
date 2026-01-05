@@ -36,6 +36,7 @@ export default function EditQuote() {
   const form = useQuoteForm({
     quoteId: id,
     onNavigateBack: () => router.back(),
+    onNavigateToQuotes: () => router.replace("/(main)/(tabs)/quotes" as any),
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -214,6 +215,20 @@ export default function EditQuote() {
 
   // Change order handlers
   const handleSaveWithChangeDetection = useCallback(async () => {
+    // Validate required fields first
+    if (!validateRequiredFields()) return;
+
+    // If ID is "new", create the quote first
+    if (id === "new") {
+      const realId = await ensureQuoteExists();
+      if (realId) {
+        // Update the URL to use the real ID so future operations work correctly
+        router.replace(`/quote/${realId}/edit` as any);
+        Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
+      }
+      return;
+    }
+
     if (shouldTrackChanges) {
       const diff = checkForChanges();
       if (diff) {
@@ -225,7 +240,7 @@ export default function EditQuote() {
     }
     // No changes or not tracking - just save normally
     await handleSave();
-  }, [shouldTrackChanges, checkForChanges, handleSave]);
+  }, [id, shouldTrackChanges, checkForChanges, handleSave, validateRequiredFields, ensureQuoteExists]);
 
   const handleGoBackWithChangeDetection = useCallback(async () => {
     if (shouldTrackChanges) {
@@ -468,8 +483,13 @@ export default function EditQuote() {
               onPress={async () => {
                 if (!id) return;
                 if (!validateRequiredFields()) return;
-                await ensureQuoteExists();
-                router.push(`/quote/${id}/review`);
+                const realId = await ensureQuoteExists();
+                if (!realId) return;
+                // If we created a new quote, first update the URL to use the real ID
+                if (id === "new" && realId !== id) {
+                  router.replace(`/quote/${realId}/edit` as any);
+                }
+                router.push(`/quote/${realId}/review`);
               }}
             >
               <Ionicons name="document-text-outline" size={20} color="#000" />
@@ -667,11 +687,19 @@ export default function EditQuote() {
           <Pressable
             onPress={async () => {
               if (!id) return;
-              await ensureQuoteExists();
+              // Require job name and client name before allowing materials
+              if (!validateRequiredFields()) return;
+              const realId = await ensureQuoteExists();
+              if (!realId) return;
+              // If we created a new quote, first update the URL to use the real ID
+              // This prevents duplicate quote creation when navigating back
+              if (id === "new" && realId !== id) {
+                router.replace(`/quote/${realId}/edit` as any);
+              }
               // Pass coMode flag for approved/completed quotes
               const url = shouldTrackChanges
-                ? `/quote/${id}/materials?coMode=true`
-                : `/quote/${id}/materials`;
+                ? `/quote/${realId}/materials?coMode=true`
+                : `/quote/${realId}/materials`;
               router.push(url as any);
             }}
             style={({ pressed }) => ({
@@ -694,8 +722,15 @@ export default function EditQuote() {
           <Pressable
             onPress={async () => {
               if (!id) return;
-              await ensureQuoteExists();
-              router.push(`/(main)/assemblies-browse?quoteId=${id}` as any);
+              // Require job name and client name before allowing assemblies
+              if (!validateRequiredFields()) return;
+              const realId = await ensureQuoteExists();
+              if (!realId) return;
+              // If we created a new quote, first update the URL to use the real ID
+              if (id === "new" && realId !== id) {
+                router.replace(`/quote/${realId}/edit` as any);
+              }
+              router.push(`/(main)/assemblies-browse?quoteId=${realId}` as any);
             }}
             style={({ pressed }) => ({
               flex: 1,

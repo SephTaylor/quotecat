@@ -1,7 +1,7 @@
 // modules/quotes/useQuoteData.ts
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { getQuoteById } from "./storage";
+import { getQuoteById } from "./storageSQLite";
 import type { Quote } from "@/lib/types";
 
 /**

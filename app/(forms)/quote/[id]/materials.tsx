@@ -12,7 +12,7 @@ import {
 import { mergeById } from "@/modules/quotes/merge";
 import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Text, View, StyleSheet, Pressable, Alert, RefreshControl, Modal, TouchableOpacity, TouchableWithoutFeedback, Keyboard, ScrollView } from "react-native";
+import { Text, View, StyleSheet, Pressable, Alert, RefreshControl, Modal, TouchableOpacity, TouchableWithoutFeedback, Keyboard, ScrollView, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { QuoteItem, PricebookItem } from "@/lib/types";
 import { trackProductUsage } from "@/lib/analytics";
@@ -257,10 +257,10 @@ export default function QuoteMaterials() {
     if (source === "pricebook" && !hasPricebookAccess) {
       Alert.alert(
         "Premium Feature",
-        "Price Book is available for Premium subscribers. Upgrade to access your custom products.",
+        "Price Book lets you create and manage your own custom products with your pricing.",
         [
-          { text: "Cancel", style: "cancel" },
-          { text: "Learn More", onPress: () => router.push("/(auth)/sign-in" as any) },
+          { text: "OK", style: "cancel" },
+          { text: "Learn More", onPress: () => Linking.openURL("https://quotecat.ai/#pricing") },
         ]
       );
       return;
@@ -268,10 +268,10 @@ export default function QuoteMaterials() {
     if (source === "assemblies" && !hasAssembliesAccess) {
       Alert.alert(
         "Pro Feature",
-        "Assemblies are available for Pro and Premium subscribers.",
+        "Assemblies let you save groups of materials as reusable templates for faster quoting.",
         [
-          { text: "Cancel", style: "cancel" },
-          { text: "Learn More", onPress: () => router.push("/(auth)/sign-in" as any) },
+          { text: "OK", style: "cancel" },
+          { text: "Learn More", onPress: () => Linking.openURL("https://quotecat.ai/#pricing") },
         ]
       );
       return;
@@ -308,7 +308,6 @@ export default function QuoteMaterials() {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       if (!id) {
-        console.log("No quote ID");
         Alert.alert("Error", "No quote ID found. Please try again.");
         return;
       }
@@ -335,7 +334,6 @@ export default function QuoteMaterials() {
       try {
         const q = await getQuoteById(id);
         if (!q) {
-          console.log("Quote not found");
           Alert.alert("Error", "Quote not found. Please try again.");
           return;
         }
@@ -399,7 +397,21 @@ export default function QuoteMaterials() {
   }, [syncing, lastSync]);
 
   const showStatusInfo = () => {
-    Alert.alert("Product Catalog Status", statusMessage);
+    Alert.alert(
+      "Product Catalog Status",
+      statusMessage,
+      [
+        { text: "OK", style: "cancel" },
+        {
+          text: "Refresh Now",
+          onPress: async () => {
+            setRefreshing(true);
+            await refresh();
+            setRefreshing(false);
+          },
+        },
+      ]
+    );
   };
 
   // Filter button handler

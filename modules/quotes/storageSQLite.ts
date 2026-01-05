@@ -38,11 +38,13 @@ function getLatestTimestamp(quote: Quote): number {
  * Filters out soft-deleted quotes (where deletedAt is set)
  * Uses in-memory cache for fast repeated access
  */
-export async function listQuotes(): Promise<Quote[]> {
-  // Check cache first
-  const cached = cache.get<Quote[]>(CacheKeys.quotes.all());
-  if (cached) {
-    return cached;
+export async function listQuotes(options?: { skipCache?: boolean }): Promise<Quote[]> {
+  // Check cache first (unless skipCache is true)
+  if (!options?.skipCache) {
+    const cached = cache.get<Quote[]>(CacheKeys.quotes.all());
+    if (cached) {
+      return cached;
+    }
   }
 
   // Fetch from SQLite - this is FAST because it doesn't load all into memory

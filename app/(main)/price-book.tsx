@@ -17,6 +17,7 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -147,8 +148,11 @@ export default function PriceBookManager() {
     if (!isPremium) {
       Alert.alert(
         "Premium Feature",
-        "Price Book is a Premium feature. Upgrade to create custom products.",
-        [{ text: "OK" }]
+        "Price Book lets you create and manage your own custom products with your pricing.",
+        [
+          { text: "OK", style: "cancel" },
+          { text: "Learn More", onPress: () => Linking.openURL("https://quotecat.ai/#pricing") },
+        ]
       );
       return;
     }

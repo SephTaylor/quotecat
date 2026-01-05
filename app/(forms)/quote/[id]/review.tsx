@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
 import { useTheme } from "@/contexts/ThemeContext";
-import { getUserState } from "@/lib/user";
+import { getUserState, incrementPdfCount, incrementSpreadsheetCount } from "@/lib/user";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
 import type { UserState } from "@/lib/user";
 import { generateAndSharePDF } from "@/lib/pdf";
@@ -124,9 +124,15 @@ export default function QuoteReviewScreen() {
           logoBase64: rawBase64
         });
 
-        // TODO: expo-sharing doesn't provide a way to detect if user cancelled
-        // For now, we don't increment the counter to avoid consuming exports on cancel
-        // Consider migrating to React Native's Share API which supports dismissedAction
+        // Increment counter for free users
+        // Note: expo-sharing doesn't tell us if user cancelled, but the confirmation
+        // dialog before export means user has already committed to using an export
+        if (userState.tier === "free") {
+          await incrementPdfCount();
+          // Update local state to reflect new count
+          const updatedState = await getUserState();
+          setUserState(updatedState);
+        }
 
       } catch (error) {
         Alert.alert("Error", "Failed to generate PDF. Please try again.");
@@ -233,9 +239,13 @@ export default function QuoteReviewScreen() {
         // Generate CSV spreadsheet
         await generateAndShareSpreadsheet(quote);
 
-        // TODO: expo-sharing doesn't provide a way to detect if user cancelled
-        // For now, we don't increment the counter to avoid consuming exports on cancel
-        // Consider migrating to React Native's Share API which supports dismissedAction
+        // Increment counter for free users
+        if (userState.tier === "free") {
+          await incrementSpreadsheetCount();
+          // Update local state to reflect new count
+          const updatedState = await getUserState();
+          setUserState(updatedState);
+        }
 
       } catch (error) {
         Alert.alert("Error", "Failed to generate spreadsheet. Please try again.");
@@ -367,9 +377,13 @@ export default function QuoteReviewScreen() {
     const options = [
       "Export as PDF",
       "Export as CSV",
-      "Create Full Invoice",
-      "Create Down Payment Invoice",
     ];
+
+    // Add invoice options for Pro/Premium users
+    if (isPro || isPremium) {
+      options.push("Create Full Invoice");
+      options.push("Create Down Payment Invoice");
+    }
 
     // Add contract option for Premium users
     if (isPremium) {
@@ -416,7 +430,11 @@ export default function QuoteReviewScreen() {
       const androidButtons: { text: string; onPress?: () => void; style?: "cancel" | "default" | "destructive" }[] = [
         { text: "Export as PDF", onPress: () => handleExportPDF() },
         { text: "Export as CSV", onPress: () => handleExportSpreadsheet() },
-        {
+      ];
+
+      // Add invoice option for Pro/Premium users
+      if (isPro || isPremium) {
+        androidButtons.push({
           text: "Create Invoice...",
           onPress: () => {
             // Show invoice submenu
@@ -431,8 +449,8 @@ export default function QuoteReviewScreen() {
               { cancelable: true }
             );
           }
-        },
-      ];
+        });
+      }
 
       // Add contract option for Premium users
       if (isPremium) {
