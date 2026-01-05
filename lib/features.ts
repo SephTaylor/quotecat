@@ -104,6 +104,13 @@ export function canAccessChangeOrders(user: UserState): boolean {
 }
 
 /**
+ * Check if user can access Quote Wizard / Drew (Premium only)
+ */
+export function canAccessWizard(user: UserState): boolean {
+  return user.tier === "premium";
+}
+
+/**
  * Check if user can access dashboard value tracking
  */
 export function canAccessValueTracking(user: UserState): boolean {

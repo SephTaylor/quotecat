@@ -32,8 +32,10 @@ import {
 import { useProducts } from '@/modules/catalog/useProducts';
 import { createQuote, updateQuote, type QuoteItem } from '@/modules/quotes';
 import { loadPreferences } from '@/lib/preferences';
+import { getUserState } from '@/lib/user';
+import { canAccessWizard } from '@/lib/features';
 
-type ScreenState = 'intro' | 'chat';
+type ScreenState = 'intro' | 'chat' | 'upgrade';
 
 type Message = {
   id: string;
@@ -76,6 +78,15 @@ export default function WizardScreen() {
   });
   // User defaults loaded from preferences
   const [userDefaults, setUserDefaults] = useState<UserDefaults>({});
+
+  // Check tier access on mount
+  useEffect(() => {
+    getUserState().then(user => {
+      if (!canAccessWizard(user)) {
+        setScreenState('upgrade');
+      }
+    });
+  }, []);
 
   // Load user preferences on mount
   useEffect(() => {
@@ -556,7 +567,38 @@ export default function WizardScreen() {
       />
       <GradientBackground>
         <SafeAreaView style={styles.container}>
-          {screenState === 'intro' ? (
+          {screenState === 'upgrade' ? (
+            <View style={styles.introContainer}>
+              {/* Drew's avatar */}
+              <Image
+                source={require('@/assets/images/drew-avatar.png')}
+                style={styles.drewAvatar}
+              />
+
+              <Text style={styles.greeting}>Meet Drew!</Text>
+              <Text style={styles.subtitle}>
+                Drew is your AI-powered quote assistant. He can help you build quotes faster using voice or text.
+              </Text>
+              <Text style={[styles.subtitle, { marginTop: 16, color: theme.colors.accent }]}>
+                Drew is a Premium feature.
+              </Text>
+
+              <View style={styles.buttonRow}>
+                <Pressable
+                  style={[styles.button, styles.primaryButton]}
+                  onPress={() => router.push('/(main)/(tabs)/pro-tools')}
+                >
+                  <Text style={styles.primaryButtonText}>Learn More</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.button, styles.secondaryButton]}
+                  onPress={() => router.back()}
+                >
+                  <Text style={styles.secondaryButtonText}>Maybe later</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : screenState === 'intro' ? (
             <View style={styles.introContainer}>
               {/* Drew's avatar */}
               <Image
