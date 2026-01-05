@@ -57,7 +57,7 @@ export async function getProducts(): Promise<Product[]> {
 
       // Filter out invalid products
       inMemoryProductCache = cache.data.filter((p): p is Product =>
-        p && typeof p === 'object' && p.id && p.name
+        p != null && typeof p === 'object' && p.id != null && p.name != null
       );
       return inMemoryProductCache;
     }
@@ -252,7 +252,7 @@ export async function getCategories(): Promise<Category[]> {
 
       // Filter out invalid categories
       inMemoryCategoryCache = cache.data.filter((c): c is Category =>
-        c && typeof c === 'object' && c.id && c.name
+        c != null && typeof c === 'object' && c.id != null && c.name != null
       );
       return inMemoryCategoryCache;
     }
