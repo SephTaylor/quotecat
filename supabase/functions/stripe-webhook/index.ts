@@ -36,8 +36,8 @@ serve(async (req) => {
     const body = await req.text();
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 
-    // Verify the webhook signature
-    const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    // Verify the webhook signature (must use async version in Deno)
+    const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
 
     console.log(`Received Stripe event: ${event.type}`);
 
@@ -134,13 +134,50 @@ async function handleCheckoutCompleted(
       console.log(`Updated existing user ${customerEmail} to tier: ${tier}`);
     }
   } else {
-    // User doesn't exist yet - they'll need to sign up
-    // Store the subscription info so we can link it when they create an account
-    // For now, log this situation
-    console.log(`New customer ${customerEmail} - they need to create an account`);
+    // Create new user and send invite email
+    console.log(`Creating new user and sending invite to ${customerEmail}`);
 
-    // Optionally: Create a pending_subscriptions record or send welcome email
-    // This depends on your user onboarding flow
+    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
+      customerEmail,
+      {
+        data: {
+          stripe_customer_id: customerId,
+          tier,
+        },
+        redirectTo: 'https://quotecat.ai/callback.html',
+      }
+    );
+
+    if (inviteError) {
+      console.error("Error inviting user:", inviteError.message);
+      throw new Error(`Failed to invite user: ${inviteError.message}`);
+    }
+
+    if (!inviteData?.user) {
+      console.error("No user returned from invite");
+      throw new Error("No user returned from invite");
+    }
+
+    console.log(`Created and invited auth user: ${inviteData.user.id}`);
+
+    // Create their profile with the correct tier
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .insert({
+        id: inviteData.user.id,
+        email: customerEmail,
+        tier,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+    if (profileError) {
+      console.error("Error creating profile:", profileError.message);
+    } else {
+      console.log(`Created profile for ${customerEmail} with tier: ${tier}`);
+    }
   }
 }
 

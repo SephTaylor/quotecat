@@ -322,61 +322,87 @@
         var accessToken = '';
         var refreshToken = '';
 
+        function log(msg) {
+            console.log('[QuoteCat] ' + msg);
+        }
+
         // Initialize when page loads
         window.onload = function() {
+            log('Page loaded, initializing...');
+
             try {
                 // Check if Supabase loaded
                 if (typeof window.supabase === 'undefined') {
                     showError('Failed to load Supabase. Please refresh the page.');
                     return;
                 }
+                log('Supabase library loaded');
 
                 // Initialize Supabase
                 supabaseClient = window.supabase.createClient(
                     'https://eouikzjzsartaabvlbee.supabase.co',
                     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo'
                 );
+                log('Supabase client initialized');
 
                 // Get tokens from URL hash
                 var hash = window.location.hash;
+                log('URL hash: ' + (hash ? hash.substring(0, 50) + '...' : 'none'));
+
                 if (hash) {
                     var params = new URLSearchParams(hash.substring(1));
                     accessToken = params.get('access_token') || '';
                     refreshToken = params.get('refresh_token') || '';
                     var errorCode = params.get('error_code') || '';
+                    var errorDesc = params.get('error_description') || '';
+
+                    log('access_token: ' + (accessToken ? 'present (' + accessToken.length + ' chars)' : 'missing'));
+                    log('refresh_token: ' + (refreshToken ? 'present (' + refreshToken.length + ' chars)' : 'missing'));
 
                     if (errorCode) {
+                        log('Error in URL: ' + errorCode + ' - ' + errorDesc);
                         showExpired();
                         return;
                     }
                 }
 
                 if (!accessToken || !refreshToken) {
+                    log('Missing tokens, showing expired');
                     showExpired();
                     return;
                 }
 
-                // Ready to accept password
-                console.log('Ready for password input');
+                log('Ready for password input');
 
             } catch (err) {
+                log('Init error: ' + err.message);
                 showError('Error initializing: ' + err.message);
             }
         };
 
         function showError(msg) {
+            log('Showing error: ' + msg);
             var el = document.getElementById('errorMessage');
             el.textContent = msg;
             el.classList.add('show');
         }
 
         function showExpired() {
+            log('Showing expired/invalid state');
             document.getElementById('formContainer').style.display = 'none';
             document.getElementById('invalidToken').classList.add('show');
         }
 
+        function showSuccess() {
+            log('Showing success state');
+            document.getElementById('formContainer').style.display = 'none';
+            document.getElementById('successContainer').classList.add('show');
+        }
+
         // Handle form submission - called by button click
         async function handleSubmit() {
+            log('handleSubmit called');
+
             var password = document.getElementById('password').value;
             var confirmPassword = document.getElementById('confirmPassword').value;
             var errorMessage = document.getElementById('errorMessage');
@@ -386,6 +412,11 @@
             errorMessage.classList.remove('show');
 
             // Validate
+            if (!password || !confirmPassword) {
+                showError('Please enter a password');
+                return false;
+            }
+
             if (password !== confirmPassword) {
                 showError('Passwords do not match');
                 return false;
@@ -396,40 +427,54 @@
                 return false;
             }
 
+            log('Validation passed, setting password...');
+
             // Show loading
             submitButton.disabled = true;
             submitButton.innerHTML = '<span class="spinner"></span>Setting password...';
 
             try {
-                // Set session
+                // Step 1: Set session with tokens
+                log('Step 1: Setting session...');
                 var result = await supabaseClient.auth.setSession({
                     access_token: accessToken,
                     refresh_token: refreshToken
                 });
 
                 if (result.error) {
+                    log('setSession error: ' + result.error.message);
                     throw result.error;
                 }
+                log('Session set successfully, user: ' + (result.data?.user?.email || 'unknown'));
 
-                // Update password
+                // Step 2: Update password
+                log('Step 2: Updating password...');
                 var updateResult = await supabaseClient.auth.updateUser({
                     password: password
                 });
 
                 if (updateResult.error) {
+                    log('updateUser error: ' + updateResult.error.message);
                     throw updateResult.error;
                 }
+                log('Password updated successfully');
 
-                // Sign out
+                // Step 3: Sign out (so they login fresh in app)
+                log('Step 3: Signing out...');
                 await supabaseClient.auth.signOut();
+                log('Signed out');
 
-                // Show success
-                document.getElementById('formContainer').style.display = 'none';
-                document.getElementById('successContainer').classList.add('show');
+                // Step 4: Show success
+                log('Step 4: Showing success');
+                showSuccess();
 
             } catch (err) {
+                log('Error caught: ' + (err.message || String(err)));
                 var msg = err.message || String(err);
-                if (msg.includes('expired') || msg.includes('invalid')) {
+
+                if (msg.toLowerCase().includes('expired') ||
+                    msg.toLowerCase().includes('invalid') ||
+                    msg.toLowerCase().includes('not found')) {
                     showExpired();
                 } else {
                     showError(msg);
@@ -440,6 +485,13 @@
 
             return false;
         }
+
+        // Prevent any accidental form submissions
+        document.addEventListener('submit', function(e) {
+            log('Form submit prevented');
+            e.preventDefault();
+            return false;
+        });
     </script>
 </body>
 </html>
