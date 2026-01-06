@@ -272,19 +272,19 @@
             <div class="error-message" id="errorMessage"></div>
 
             <div class="form-group">
-                <label for="password">New Password</label>
-                <input type="password" id="password" autocomplete="new-password" placeholder="Enter your password">
+                <label for="pw1">New Password</label>
+                <input type="password" id="pw1" autocomplete="off" placeholder="Enter your password">
                 <p class="password-requirements">Must be at least 8 characters</p>
             </div>
 
             <div class="form-group">
-                <label for="confirmPassword">Confirm Password</label>
-                <input type="password" id="confirmPassword" autocomplete="new-password" placeholder="Confirm your password">
+                <label for="pw2">Confirm Password</label>
+                <input type="password" id="pw2" autocomplete="off" placeholder="Confirm your password">
             </div>
 
-            <button type="button" class="submit-button" id="submitButton" onclick="handleSubmit(); return false;">
+            <div id="submitBtn" class="submit-button">
                 Set Password
-            </button>
+            </div>
         </div>
 
         <!-- Success Container -->
@@ -374,6 +374,13 @@
 
                 log('Ready for password input');
 
+                // Attach click handler to submit button
+                document.getElementById('submitBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSubmit();
+                });
+
             } catch (err) {
                 log('Init error: ' + err.message);
                 showError('Error initializing: ' + err.message);
@@ -403,10 +410,10 @@
         async function handleSubmit() {
             log('handleSubmit called');
 
-            var password = document.getElementById('password').value;
-            var confirmPassword = document.getElementById('confirmPassword').value;
+            var password = document.getElementById('pw1').value;
+            var confirmPassword = document.getElementById('pw2').value;
             var errorMessage = document.getElementById('errorMessage');
-            var submitButton = document.getElementById('submitButton');
+            var submitButton = document.getElementById('submitBtn');
 
             // Reset error
             errorMessage.classList.remove('show');
