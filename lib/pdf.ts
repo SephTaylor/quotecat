@@ -55,35 +55,26 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
       `).join('')
     : '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #999;">No materials</td></tr>';
 
-  // QuoteCat branding for free tier - more prominent
+  // QuoteCat branding for free tier - at top
   const brandingHeader = includeBranding ? `
-    <div style="background: linear-gradient(135deg, #FF8C00 0%, #FF6B00 100%); color: white; padding: 12px 20px; text-align: center; margin-bottom: 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(255, 140, 0, 0.3);">
-      <div style="font-size: 18px; font-weight: 800; margin-bottom: 4px; letter-spacing: 1px;">
-        QuoteCat
-      </div>
-      <div style="font-size: 11px; font-weight: 500; opacity: 0.9;">
-        Professional Quote Generator
-      </div>
-    </div>
-  ` : '';
-
-  const brandingFooter = includeBranding ? `
-    <div style="margin-top: 32px; padding: 16px; border-top: 3px solid #FF8C00; text-align: center; background: #FFF9F0;">
-      <div style="font-size: 14px; color: #FF8C00; margin-bottom: 6px; font-weight: 800;">
+    <div style="margin-bottom: 20px; padding: 16px; border-bottom: 3px solid #333; text-align: center; background: #FFF9F0;">
+      <div style="font-size: 14px; color: #333; margin-bottom: 6px; font-weight: 800;">
         Powered by QuoteCat
       </div>
       <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
         Create professional quotes in seconds • https://www.quotecat.ai
       </div>
-      <div style="font-size: 10px; color: #999; font-style: italic;">
-        Upgrade to QuoteCat Pro to remove this branding and unlock unlimited exports
+      <div style="font-size: 10px; color: #666;">
+        Subscribe to personalize
       </div>
     </div>
   ` : '';
 
+  const brandingFooter = '';
+
   // Company header with logo on left, details on right
   const companyHeader = `
-    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
       ${logoBase64 ? `
         <div style="flex-shrink: 0;">
           <img src="data:image/png;base64,${logoBase64}" style="max-width: 80px; max-height: 60px; object-fit: contain;" />
@@ -116,7 +107,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         }
 
         @page {
-          margin: 50mm 15mm 20mm 15mm;
+          margin: 15mm 15mm 15mm 15mm;
         }
 
         body {
@@ -133,7 +124,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         .header {
           margin-bottom: 20px;
           padding-bottom: 16px;
-          border-bottom: 3px solid #FF8C00;
+          border-bottom: 3px solid #333;
         }
         .project-name {
           font-size: 28px;
@@ -211,12 +202,12 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         }
         .totals-table .total-row td {
           padding-top: 12px;
-          border-top: 3px solid #FF8C00;
+          border-top: 3px solid #333;
           font-weight: 800;
           font-size: 18px;
         }
         .totals-table .total-row .value {
-          color: #FF8C00;
+          color: #333;
           font-size: 22px;
         }
       </style>
@@ -465,35 +456,26 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
       `).join('')
     : '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #999;">No materials</td></tr>';
 
-  // QuoteCat branding for free tier
+  // QuoteCat branding for free tier - at top
   const brandingHeader = includeBranding ? `
-    <div style="background: linear-gradient(135deg, #FF8C00 0%, #FF6B00 100%); color: white; padding: 12px 20px; text-align: center; margin-bottom: 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(255, 140, 0, 0.3);">
-      <div style="font-size: 18px; font-weight: 800; margin-bottom: 4px; letter-spacing: 1px;">
-        QuoteCat
-      </div>
-      <div style="font-size: 11px; font-weight: 500; opacity: 0.9;">
-        Professional Invoice Generator
-      </div>
-    </div>
-  ` : '';
-
-  const brandingFooter = includeBranding ? `
-    <div style="margin-top: 32px; padding: 16px; border-top: 3px solid #FF8C00; text-align: center; background: #FFF9F0;">
-      <div style="font-size: 14px; color: #FF8C00; margin-bottom: 6px; font-weight: 800;">
+    <div style="margin-bottom: 20px; padding: 16px; border-bottom: 3px solid #333; text-align: center; background: #FFF9F0;">
+      <div style="font-size: 14px; color: #333; margin-bottom: 6px; font-weight: 800;">
         Powered by QuoteCat
       </div>
       <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
-        Create professional invoices in seconds • https://www.quotecat.ai
+        Create professional quotes in seconds • https://www.quotecat.ai
       </div>
-      <div style="font-size: 10px; color: #999; font-style: italic;">
-        Upgrade to QuoteCat Pro to remove this branding and unlock unlimited exports
+      <div style="font-size: 10px; color: #666;">
+        Subscribe to personalize
       </div>
     </div>
   ` : '';
 
+  const brandingFooter = '';
+
   // Company header with logo on left, details on right
   const companyHeader = `
-    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
       ${logoBase64 ? `
         <div style="flex-shrink: 0;">
           <img src="data:image/png;base64,${logoBase64}" style="max-width: 80px; max-height: 60px; object-fit: contain;" />
@@ -586,7 +568,7 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         }
 
         @page {
-          margin: 50mm 15mm 20mm 15mm;
+          margin: 15mm 15mm 15mm 15mm;
         }
 
         body {
@@ -603,13 +585,13 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         .header {
           margin-bottom: 20px;
           padding-bottom: 16px;
-          border-bottom: 3px solid #FF8C00;
+          border-bottom: 3px solid #333;
         }
         .invoice-number {
           font-size: 32px;
           font-weight: 800;
           margin-bottom: 8px;
-          color: #FF8C00;
+          color: #333;
         }
         .status-badge {
           display: inline-block;
@@ -711,12 +693,12 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         }
         .totals-table .total-row td {
           padding-top: 12px;
-          border-top: 3px solid #FF8C00;
+          border-top: 3px solid #333;
           font-weight: 800;
           font-size: 18px;
         }
         .totals-table .total-row .value {
-          color: #FF8C00;
+          color: #333;
           font-size: 22px;
         }
       </style>
@@ -1062,29 +1044,31 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; font-weight: 600;">${quote.tier || 'Base'}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${materialsFromItems.toFixed(2)}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${labor.toFixed(2)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 700; color: #FF8C00;">$${grandTotal.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 700; color: #333;">$${grandTotal.toFixed(2)}</td>
       </tr>
     `;
   }).join('');
 
-  // QuoteCat branding
+  // QuoteCat branding for free tier - at top
   const brandingHeader = includeBranding ? `
-    <div style="background: linear-gradient(135deg, #FF8C00 0%, #FF6B00 100%); color: white; padding: 12px 20px; text-align: center; margin-bottom: 20px; border-radius: 6px;">
-      <div style="font-size: 18px; font-weight: 800; letter-spacing: 1px;">QuoteCat</div>
-      <div style="font-size: 11px; opacity: 0.9;">Professional Quote Generator</div>
+    <div style="margin-bottom: 20px; padding: 16px; border-bottom: 3px solid #333; text-align: center; background: #FFF9F0;">
+      <div style="font-size: 14px; color: #333; margin-bottom: 6px; font-weight: 800;">
+        Powered by QuoteCat
+      </div>
+      <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+        Create professional quotes in seconds • https://www.quotecat.ai
+      </div>
+      <div style="font-size: 10px; color: #666;">
+        Subscribe to personalize
+      </div>
     </div>
   ` : '';
 
-  const brandingFooter = includeBranding ? `
-    <div style="margin-top: 32px; padding: 16px; border-top: 3px solid #FF8C00; text-align: center; background: #FFF9F0;">
-      <div style="font-size: 14px; color: #FF8C00; font-weight: 800;">Powered by QuoteCat</div>
-      <div style="font-size: 12px; color: #666;">https://www.quotecat.ai</div>
-    </div>
-  ` : '';
+  const brandingFooter = '';
 
   // Company header with logo on left, details on right
   const companyHeader = `
-    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
       ${logoBase64 ? `
         <div style="flex-shrink: 0;">
           <img src="data:image/png;base64,${logoBase64}" style="max-width: 80px; max-height: 60px; object-fit: contain;" />
@@ -1116,11 +1100,11 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
           font-size: 14px;
         }
         .page-content { padding: 20px; position: relative; }
-        .header { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 3px solid #FF8C00; }
+        .header { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 3px solid #333; }
         .project-name { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
         .client-name { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 4px; }
         .date { font-size: 13px; color: #666; }
-        .options-count { font-size: 14px; color: #FF8C00; font-weight: 700; margin-top: 8px; }
+        .options-count { font-size: 14px; color: #333; font-weight: 700; margin-top: 8px; }
         .section { margin-bottom: 16px; }
         .section-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #e5e5e5; border-radius: 6px; }
@@ -1129,8 +1113,8 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
         .totals-table td { padding: 6px 10px; border: none; border-bottom: 1px solid #f0f0f0; }
         .totals-table .label { color: #666; font-size: 13px; }
         .totals-table .value { text-align: right; font-weight: 600; font-size: 13px; }
-        .totals-table .total-row td { padding-top: 10px; border-top: 2px solid #FF8C00; font-weight: 800; }
-        .totals-table .total-row .value { color: #FF8C00; font-size: 18px; }
+        .totals-table .total-row td { padding-top: 10px; border-top: 2px solid #333; font-weight: 800; }
+        .totals-table .total-row .value { color: #333; font-size: 18px; }
         .option-page { margin-top: 24px; }
         .option-header {
           display: flex;
@@ -1140,12 +1124,12 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
           padding: 16px;
           background: linear-gradient(135deg, #f9f9f9 0%, #fff 100%);
           border-radius: 8px;
-          border: 2px solid #FF8C00;
+          border: 2px solid #333;
         }
         .option-tier-badge {
           font-size: 20px;
           font-weight: 800;
-          color: #FF8C00;
+          color: #333;
           text-transform: uppercase;
           letter-spacing: 1px;
         }
@@ -1344,7 +1328,7 @@ function generateChangeOrderHTML(
 
   // Company header
   const companyHeader = companyDetails ? `
-    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #FF8C00; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
+    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
       ${logoBase64 ? `
         <div style="flex-shrink: 0;">
           <img src="data:image/png;base64,${logoBase64}" style="max-width: 80px; max-height: 60px; object-fit: contain;" />
@@ -1360,8 +1344,8 @@ function generateChangeOrderHTML(
 
   // Branding for free tier
   const brandingFooter = includeBranding ? `
-    <div style="margin-top: 32px; padding: 16px; border-top: 3px solid #FF8C00; text-align: center; background: #FFF9F0;">
-      <div style="font-size: 14px; color: #FF8C00; margin-bottom: 6px; font-weight: 800;">
+    <div style="margin-top: 32px; padding: 16px; border-top: 3px solid #333; text-align: center; background: #FFF9F0;">
+      <div style="font-size: 14px; color: #333; margin-bottom: 6px; font-weight: 800;">
         Powered by QuoteCat
       </div>
       <div style="font-size: 12px; color: #666;">
@@ -1392,7 +1376,7 @@ function generateChangeOrderHTML(
       ${companyHeader}
 
       <!-- Header -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid #FF8C00;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid #333;">
         <div>
           <h1 style="margin: 0 0 8px 0; font-size: 28px; font-weight: 800; color: #000;">
             Change Order #${changeOrder.number}
@@ -1447,7 +1431,7 @@ function generateChangeOrderHTML(
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 18px; font-weight: 700;">New Quote Total</span>
-          <span style="font-size: 24px; font-weight: 800; color: #FF8C00;">
+          <span style="font-size: 24px; font-weight: 800; color: #333;">
             $${changeOrder.quoteTotalAfter.toFixed(2)}
           </span>
         </div>

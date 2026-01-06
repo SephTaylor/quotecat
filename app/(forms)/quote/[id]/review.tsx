@@ -146,7 +146,7 @@ export default function QuoteReviewScreen() {
     if (userState.tier === "free" && remaining !== undefined) {
       Alert.alert(
         "Export PDF",
-        `This will use 1 of your ${remaining} remaining PDF exports this month.`,
+        `This will use 1 of your ${remaining} remaining PDF exports.`,
         [
           { text: "Cancel", style: "cancel" },
           { text: "Export", onPress: exportPDF }
@@ -259,7 +259,7 @@ export default function QuoteReviewScreen() {
     if (userState.tier === "free" && remaining !== undefined) {
       Alert.alert(
         "Export Spreadsheet",
-        `This will use 1 of your ${remaining} remaining spreadsheet exports this month.`,
+        `This will use 1 of your ${remaining} remaining spreadsheet exports.`,
         [
           { text: "Cancel", style: "cancel" },
           { text: "Export", onPress: exportSheet }
@@ -626,16 +626,16 @@ export default function QuoteReviewScreen() {
         )}
 
         {/* Export Info for Free Users */}
-        {!isPro && (
+        {!isPro && !isPremium && (
           <View style={styles.promoCard}>
             <View style={styles.promoHeader}>
               <Text style={styles.promoTitle}>Free Tier</Text>
             </View>
             <Text style={styles.promoText}>
-              {pdfRemaining} PDF export{pdfRemaining !== 1 ? "s" : ""} remaining this month
+              {pdfRemaining} PDF export{pdfRemaining !== 1 ? "s" : ""} remaining
             </Text>
             <Text style={styles.promoText}>
-              {spreadsheetRemaining} spreadsheet export{spreadsheetRemaining !== 1 ? "s" : ""} remaining this month
+              {spreadsheetRemaining} spreadsheet export{spreadsheetRemaining !== 1 ? "s" : ""} remaining
             </Text>
           </View>
         )}

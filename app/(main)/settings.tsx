@@ -315,16 +315,16 @@ export default function Settings() {
                     <Text style={styles.usageLabel}>PDF Exports</Text>
                     <Text style={styles.usageValue}>
                       {isPro
-                        ? `${userState.pdfsThisMonth} (Unlimited)`
-                        : `${userState.pdfsThisMonth} / ${FREE_LIMITS.pdfsPerMonth}`}
+                        ? `${userState.pdfsUsed} (Unlimited)`
+                        : `${userState.pdfsUsed} / ${FREE_LIMITS.pdfs}`}
                     </Text>
                   </View>
                   <View style={styles.usageCompactRow}>
                     <Text style={styles.usageLabel}>CSV Exports</Text>
                     <Text style={styles.usageValue}>
                       {isPro
-                        ? `${userState.spreadsheetsThisMonth} (Unlimited)`
-                        : `${userState.spreadsheetsThisMonth} / ${FREE_LIMITS.spreadsheetsPerMonth}`}
+                        ? `${userState.spreadsheetsUsed} (Unlimited)`
+                        : `${userState.spreadsheetsUsed} / ${FREE_LIMITS.spreadsheets}`}
                     </Text>
                   </View>
                 </View>

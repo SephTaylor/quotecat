@@ -10,9 +10,8 @@ export type UserState = {
   email?: string;
   displayName?: string; // User's display name for contracts
   quotesUsed: number;
-  pdfsThisMonth: number;
-  spreadsheetsThisMonth: number;
-  lastPdfResetDate: string; // ISO date for monthly reset
+  pdfsUsed: number; // Lifetime total
+  spreadsheetsUsed: number; // Lifetime total
   // Pro user fields
   proActivatedAt?: string;
   proExpiresAt?: string; // For trial/subscription tracking
@@ -20,8 +19,8 @@ export type UserState = {
 
 export const FREE_LIMITS = {
   quotes: 10,
-  pdfsPerMonth: 10,
-  spreadsheetsPerMonth: 5,
+  pdfs: 10,
+  spreadsheets: 5,
 } as const;
 
 const USER_STATE_KEY = "@quotecat/user_state";
@@ -36,8 +35,8 @@ export async function getUserState(): Promise<UserState> {
       return getDefaultUserState();
     }
     const state = JSON.parse(json) as UserState;
-    // Reset PDF count if month has changed
-    return resetPdfCountIfNeeded(state);
+    // Migrate from old monthly fields to lifetime fields
+    return migrateUserState(state);
   } catch (error) {
     console.error("Failed to load user state:", error);
     return getDefaultUserState();
@@ -62,33 +61,32 @@ function getDefaultUserState(): UserState {
   return {
     tier: "free", // New users start on free tier until they subscribe
     quotesUsed: 0,
-    pdfsThisMonth: 0,
-    spreadsheetsThisMonth: 0,
-    lastPdfResetDate: new Date().toISOString(),
+    pdfsUsed: 0,
+    spreadsheetsUsed: 0,
   };
 }
 
 /**
- * Reset PDF and spreadsheet counts if we're in a new month
+ * Migrate old monthly fields to new lifetime fields
  */
-function resetPdfCountIfNeeded(state: UserState): UserState {
-  const lastReset = new Date(state.lastPdfResetDate);
-  const now = new Date();
-
-  // Check if month or year has changed
-  if (
-    lastReset.getMonth() !== now.getMonth() ||
-    lastReset.getFullYear() !== now.getFullYear()
-  ) {
-    return {
-      ...state,
-      pdfsThisMonth: 0,
-      spreadsheetsThisMonth: 0,
-      lastPdfResetDate: now.toISOString(),
-    };
+function migrateUserState(state: UserState): UserState {
+  // Handle migration from old monthly fields
+  const migrated = { ...state };
+  if ('pdfsThisMonth' in state) {
+    migrated.pdfsUsed = (state as any).pdfsThisMonth || 0;
+    delete (migrated as any).pdfsThisMonth;
   }
-
-  return state;
+  if ('spreadsheetsThisMonth' in state) {
+    migrated.spreadsheetsUsed = (state as any).spreadsheetsThisMonth || 0;
+    delete (migrated as any).spreadsheetsThisMonth;
+  }
+  if ('lastPdfResetDate' in state) {
+    delete (migrated as any).lastPdfResetDate;
+  }
+  // Ensure fields exist
+  if (migrated.pdfsUsed === undefined) migrated.pdfsUsed = 0;
+  if (migrated.spreadsheetsUsed === undefined) migrated.spreadsheetsUsed = 0;
+  return migrated;
 }
 
 /**
@@ -120,7 +118,7 @@ export async function incrementPdfCount(): Promise<void> {
   const state = await getUserState();
   await saveUserState({
     ...state,
-    pdfsThisMonth: state.pdfsThisMonth + 1,
+    pdfsUsed: state.pdfsUsed + 1,
   });
 }
 
@@ -131,7 +129,7 @@ export async function incrementSpreadsheetCount(): Promise<void> {
   const state = await getUserState();
   await saveUserState({
     ...state,
-    spreadsheetsThisMonth: state.spreadsheetsThisMonth + 1,
+    spreadsheetsUsed: state.spreadsheetsUsed + 1,
   });
 }
 

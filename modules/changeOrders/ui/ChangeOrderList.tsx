@@ -66,19 +66,9 @@ export function ChangeOrderList({ quoteId, theme, limit, onCreateNew }: Props) {
     );
   }
 
+  // Don't show anything if there are no change orders
   if (changeOrders.length === 0) {
-    return (
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Change Orders</Text>
-        <View style={styles.emptyCard}>
-          <Ionicons name="document-text-outline" size={32} color={theme.colors.muted} />
-          <Text style={styles.emptyText}>No change orders yet</Text>
-          <Text style={styles.emptySubtext}>
-            Edit this quote to create a change order
-          </Text>
-        </View>
-      </View>
-    );
+    return null;
   }
 
   return (

@@ -1,7 +1,7 @@
 // app/(forms)/quote/[id]/edit.tsx
 import { useTheme } from "@/contexts/ThemeContext";
 import { updateQuote } from "@/lib/quotes";
-import { getClients, getAndClearLastCreatedClientId, getClientById, type Client } from "@/lib/clients";
+import { getClients, getAndClearLastCreatedClientId, getClientById, createClient, type Client } from "@/lib/clients";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
 import { FormInput, FormScreen } from "@/modules/core/ui";
@@ -57,6 +57,9 @@ export default function EditQuote() {
 
   // Change order count for visibility banner
   const [coCount, setCoCount] = useState(0);
+
+  // Track if we've already prompted to save client this session
+  const hasPromptedSaveClient = React.useRef(false);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -213,10 +216,62 @@ export default function EditQuote() {
     setIsNewQuote(false);
   };
 
+  // Check if current client name is new (not in saved clients)
+  const isNewClientName = React.useMemo(() => {
+    if (!clientName.trim() || !isPro) return false;
+    const query = clientName.toLowerCase().trim();
+    return !savedClients.some(c => c.name.toLowerCase().trim() === query);
+  }, [clientName, isPro, savedClients]);
+
+  // Prompt to save client if it's a new one (called before save/review)
+  const maybePromptToSaveClient = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      // Skip if not Pro, no client name, already exists, or already prompted
+      if (!isPro || !isNewClientName || hasPromptedSaveClient.current) {
+        resolve();
+        return;
+      }
+
+      hasPromptedSaveClient.current = true;
+
+      Alert.alert(
+        "Save this client?",
+        `Would you like to save "${clientName.trim()}" to your client list for future quotes?`,
+        [
+          {
+            text: "Not Now",
+            style: "cancel",
+            onPress: () => resolve(),
+          },
+          {
+            text: "Save Client",
+            onPress: async () => {
+              try {
+                const newClient = await createClient({
+                  name: clientName.trim(),
+                  email: clientEmail.trim() || undefined,
+                  phone: clientPhone.trim() || undefined,
+                  address: clientAddress.trim() || undefined,
+                });
+                setSavedClients(prev => [newClient, ...prev]);
+              } catch (error) {
+                console.error("Failed to save client:", error);
+              }
+              resolve();
+            },
+          },
+        ]
+      );
+    });
+  }, [isPro, isNewClientName, clientName, clientEmail, clientPhone, clientAddress]);
+
   // Change order handlers
   const handleSaveWithChangeDetection = useCallback(async () => {
     // Validate required fields first
     if (!validateRequiredFields()) return;
+
+    // Prompt to save new client before proceeding
+    await maybePromptToSaveClient();
 
     // If ID is "new", create the quote first
     if (id === "new") {
@@ -240,7 +295,7 @@ export default function EditQuote() {
     }
     // No changes or not tracking - just save normally
     await handleSave();
-  }, [id, shouldTrackChanges, checkForChanges, handleSave, validateRequiredFields, ensureQuoteExists]);
+  }, [id, shouldTrackChanges, checkForChanges, handleSave, validateRequiredFields, ensureQuoteExists, maybePromptToSaveClient]);
 
   const handleGoBackWithChangeDetection = useCallback(async () => {
     if (shouldTrackChanges) {
@@ -483,6 +538,8 @@ export default function EditQuote() {
               onPress={async () => {
                 if (!id) return;
                 if (!validateRequiredFields()) return;
+                // Prompt to save new client before proceeding
+                await maybePromptToSaveClient();
                 const realId = await ensureQuoteExists();
                 if (!realId) return;
                 // If we created a new quote, first update the URL to use the real ID
@@ -502,7 +559,10 @@ export default function EditQuote() {
         {coCount > 0 && (
           <Pressable
             style={styles.coBanner}
-            onPress={() => router.push(`/quote/${id}/review`)}
+            onPress={async () => {
+              await maybePromptToSaveClient();
+              router.push(`/quote/${id}/review`);
+            }}
           >
             <View style={styles.coBannerContent}>
               <Ionicons name="document-text" size={20} color="#FFF" />

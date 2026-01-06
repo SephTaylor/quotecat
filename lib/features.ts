@@ -18,7 +18,7 @@ export function canCreateQuote(user: UserState): {
   if (user.quotesUsed >= FREE_LIMITS.quotes) {
     return {
       allowed: false,
-      reason: `You've reached the free limit of ${FREE_LIMITS.quotes} quotes. Upgrade to Pro for unlimited quotes.`,
+      reason: `You've reached the free limit of ${FREE_LIMITS.quotes} quotes this month.`,
     };
   }
 
@@ -37,12 +37,12 @@ export function canExportPDF(user: UserState): {
     return { allowed: true };
   }
 
-  const remaining = FREE_LIMITS.pdfsPerMonth - user.pdfsThisMonth;
+  const remaining = FREE_LIMITS.pdfs - user.pdfsUsed;
 
   if (remaining <= 0) {
     return {
       allowed: false,
-      reason: `You've used all ${FREE_LIMITS.pdfsPerMonth} free PDF exports this month. Upgrade to Pro for unlimited exports.`,
+      reason: `You've used all ${FREE_LIMITS.pdfs} free PDF exports.`,
       remaining: 0,
     };
   }
@@ -62,12 +62,12 @@ export function canExportSpreadsheet(user: UserState): {
     return { allowed: true };
   }
 
-  const remaining = FREE_LIMITS.spreadsheetsPerMonth - user.spreadsheetsThisMonth;
+  const remaining = FREE_LIMITS.spreadsheets - user.spreadsheetsUsed;
 
   if (remaining <= 0) {
     return {
       allowed: false,
-      reason: `You've used your ${FREE_LIMITS.spreadsheetsPerMonth} free spreadsheet export this month. Upgrade to Pro for unlimited exports.`,
+      reason: `You've used all ${FREE_LIMITS.spreadsheets} free spreadsheet exports.`,
       remaining: 0,
     };
   }
@@ -133,11 +133,11 @@ export function getQuotaRemaining(
   }
 
   if (resource === "pdfs") {
-    return Math.max(0, FREE_LIMITS.pdfsPerMonth - user.pdfsThisMonth);
+    return Math.max(0, FREE_LIMITS.pdfs - user.pdfsUsed);
   }
 
   if (resource === "spreadsheets") {
-    return Math.max(0, FREE_LIMITS.spreadsheetsPerMonth - user.spreadsheetsThisMonth);
+    return Math.max(0, FREE_LIMITS.spreadsheets - user.spreadsheetsUsed);
   }
 
   return 0;
