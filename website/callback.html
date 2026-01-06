@@ -315,35 +315,136 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.47.10/dist/umd/supabase.min.js"></script>
     <script>
-        // Global variables
-        var supabaseClient = null;
-        var accessToken = '';
-        var refreshToken = '';
+        (function() {
+            // All code in IIFE to avoid global conflicts
+            var sbClient = null;
+            var accessToken = '';
+            var refreshToken = '';
 
-        function log(msg) {
-            console.log('[QuoteCat] ' + msg);
-        }
+            function log(msg) {
+                console.log('[QuoteCat] ' + msg);
+            }
 
-        // Initialize when page loads
-        window.onload = function() {
-            log('Page loaded, initializing...');
+            // Make handleSubmit available globally
+            window.doSetPassword = async function() {
+                log('doSetPassword called');
 
-            try {
-                // Check if Supabase loaded
-                if (typeof window.supabase === 'undefined') {
-                    showError('Failed to load Supabase. Please refresh the page.');
+                var password = document.getElementById('pw1').value;
+                var confirmPassword = document.getElementById('pw2').value;
+                var errorMessage = document.getElementById('errorMessage');
+                var submitButton = document.getElementById('submitBtn');
+
+                // Reset error
+                errorMessage.classList.remove('show');
+
+                // Validate
+                if (!password || !confirmPassword) {
+                    showError('Please enter a password');
                     return;
                 }
-                log('Supabase library loaded');
 
-                // Initialize Supabase
-                supabaseClient = window.supabase.createClient(
-                    'https://eouikzjzsartaabvlbee.supabase.co',
-                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo'
-                );
-                log('Supabase client initialized');
+                if (password !== confirmPassword) {
+                    showError('Passwords do not match');
+                    return;
+                }
+
+                if (password.length < 8) {
+                    showError('Password must be at least 8 characters');
+                    return;
+                }
+
+                log('Validation passed, setting password...');
+
+                // Show loading
+                submitButton.style.opacity = '0.5';
+                submitButton.style.pointerEvents = 'none';
+                submitButton.innerHTML = 'Setting password...';
+
+                try {
+                    // Step 1: Set session with tokens
+                    log('Step 1: Setting session...');
+                    var result = await sbClient.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken
+                    });
+
+                    if (result.error) {
+                        log('setSession error: ' + result.error.message);
+                        throw result.error;
+                    }
+                    log('Session set successfully');
+
+                    // Step 2: Update password
+                    log('Step 2: Updating password...');
+                    var updateResult = await sbClient.auth.updateUser({
+                        password: password
+                    });
+
+                    if (updateResult.error) {
+                        log('updateUser error: ' + updateResult.error.message);
+                        throw updateResult.error;
+                    }
+                    log('Password updated successfully');
+
+                    // Step 3: Sign out
+                    log('Step 3: Signing out...');
+                    await sbClient.auth.signOut();
+                    log('Signed out');
+
+                    // Step 4: Show success
+                    log('Step 4: Showing success');
+                    document.getElementById('formContainer').style.display = 'none';
+                    document.getElementById('successContainer').classList.add('show');
+
+                } catch (err) {
+                    log('Error caught: ' + (err.message || String(err)));
+                    var msg = err.message || String(err);
+
+                    if (msg.toLowerCase().indexOf('expired') >= 0 ||
+                        msg.toLowerCase().indexOf('invalid') >= 0) {
+                        showExpired();
+                    } else {
+                        showError(msg);
+                        submitButton.style.opacity = '1';
+                        submitButton.style.pointerEvents = 'auto';
+                        submitButton.innerHTML = 'Set Password';
+                    }
+                }
+            };
+
+            function showError(msg) {
+                log('Showing error: ' + msg);
+                var el = document.getElementById('errorMessage');
+                el.textContent = msg;
+                el.classList.add('show');
+            }
+
+            function showExpired() {
+                log('Showing expired/invalid state');
+                document.getElementById('formContainer').style.display = 'none';
+                document.getElementById('invalidToken').classList.add('show');
+            }
+
+            // Initialize when page loads
+            window.onload = function() {
+                log('Page loaded, initializing...');
+
+                try {
+                    // Check if Supabase loaded
+                    if (typeof window.supabase === 'undefined') {
+                        showError('Failed to load Supabase. Please refresh the page.');
+                        return;
+                    }
+                    log('Supabase library loaded');
+
+                    // Initialize Supabase
+                    sbClient = window.supabase.createClient(
+                        'https://eouikzjzsartaabvlbee.supabase.co',
+                        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo'
+                    );
+                    log('Supabase client initialized');
 
                 // Get tokens from URL hash
                 var hash = window.location.hash;
@@ -378,7 +479,7 @@
                 document.getElementById('submitBtn').addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleSubmit();
+                    window.doSetPassword();
                 });
 
             } catch (err) {
@@ -386,119 +487,7 @@
                 showError('Error initializing: ' + err.message);
             }
         };
-
-        function showError(msg) {
-            log('Showing error: ' + msg);
-            var el = document.getElementById('errorMessage');
-            el.textContent = msg;
-            el.classList.add('show');
-        }
-
-        function showExpired() {
-            log('Showing expired/invalid state');
-            document.getElementById('formContainer').style.display = 'none';
-            document.getElementById('invalidToken').classList.add('show');
-        }
-
-        function showSuccess() {
-            log('Showing success state');
-            document.getElementById('formContainer').style.display = 'none';
-            document.getElementById('successContainer').classList.add('show');
-        }
-
-        // Handle form submission - called by button click
-        async function handleSubmit() {
-            log('handleSubmit called');
-
-            var password = document.getElementById('pw1').value;
-            var confirmPassword = document.getElementById('pw2').value;
-            var errorMessage = document.getElementById('errorMessage');
-            var submitButton = document.getElementById('submitBtn');
-
-            // Reset error
-            errorMessage.classList.remove('show');
-
-            // Validate
-            if (!password || !confirmPassword) {
-                showError('Please enter a password');
-                return false;
-            }
-
-            if (password !== confirmPassword) {
-                showError('Passwords do not match');
-                return false;
-            }
-
-            if (password.length < 8) {
-                showError('Password must be at least 8 characters');
-                return false;
-            }
-
-            log('Validation passed, setting password...');
-
-            // Show loading
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<span class="spinner"></span>Setting password...';
-
-            try {
-                // Step 1: Set session with tokens
-                log('Step 1: Setting session...');
-                var result = await supabaseClient.auth.setSession({
-                    access_token: accessToken,
-                    refresh_token: refreshToken
-                });
-
-                if (result.error) {
-                    log('setSession error: ' + result.error.message);
-                    throw result.error;
-                }
-                log('Session set successfully, user: ' + (result.data?.user?.email || 'unknown'));
-
-                // Step 2: Update password
-                log('Step 2: Updating password...');
-                var updateResult = await supabaseClient.auth.updateUser({
-                    password: password
-                });
-
-                if (updateResult.error) {
-                    log('updateUser error: ' + updateResult.error.message);
-                    throw updateResult.error;
-                }
-                log('Password updated successfully');
-
-                // Step 3: Sign out (so they login fresh in app)
-                log('Step 3: Signing out...');
-                await supabaseClient.auth.signOut();
-                log('Signed out');
-
-                // Step 4: Show success
-                log('Step 4: Showing success');
-                showSuccess();
-
-            } catch (err) {
-                log('Error caught: ' + (err.message || String(err)));
-                var msg = err.message || String(err);
-
-                if (msg.toLowerCase().includes('expired') ||
-                    msg.toLowerCase().includes('invalid') ||
-                    msg.toLowerCase().includes('not found')) {
-                    showExpired();
-                } else {
-                    showError(msg);
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Set Password';
-                }
-            }
-
-            return false;
-        }
-
-        // Prevent any accidental form submissions
-        document.addEventListener('submit', function(e) {
-            log('Form submit prevented');
-            e.preventDefault();
-            return false;
-        });
+        })();
     </script>
 </body>
 </html>
