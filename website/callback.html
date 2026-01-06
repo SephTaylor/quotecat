@@ -273,16 +273,16 @@
 
             <div class="form-group">
                 <label for="password">New Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password">
+                <input type="password" id="password" autocomplete="new-password" placeholder="Enter your password">
                 <p class="password-requirements">Must be at least 8 characters</p>
             </div>
 
             <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password">
+                <input type="password" id="confirmPassword" autocomplete="new-password" placeholder="Confirm your password">
             </div>
 
-            <button type="button" class="submit-button" id="submitButton">
+            <button type="button" class="submit-button" id="submitButton" onclick="handleSubmit(); return false;">
                 Set Password
             </button>
         </div>
@@ -317,167 +317,129 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        (async function() {
-            // Wait for DOM
-            if (document.readyState === 'loading') {
-                await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
-            }
+        // Global variables
+        var supabaseClient = null;
+        var accessToken = '';
+        var refreshToken = '';
 
-            // Check if Supabase loaded
-            if (typeof window.supabase === 'undefined') {
-                console.error('Supabase library failed to load');
-                document.getElementById('errorMessage').textContent = 'Failed to load. Please refresh the page.';
-                document.getElementById('errorMessage').classList.add('show');
-                return;
-            }
-
-            // Initialize Supabase
-            const supabaseUrl = 'https://eouikzjzsartaabvlbee.supabase.co';
-            const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo';
-
-            let supabaseClient;
+        // Initialize when page loads
+        window.onload = function() {
             try {
-                supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-                console.log('Supabase client initialized');
+                // Check if Supabase loaded
+                if (typeof window.supabase === 'undefined') {
+                    showError('Failed to load Supabase. Please refresh the page.');
+                    return;
+                }
+
+                // Initialize Supabase
+                supabaseClient = window.supabase.createClient(
+                    'https://eouikzjzsartaabvlbee.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo'
+                );
+
+                // Get tokens from URL hash
+                var hash = window.location.hash;
+                if (hash) {
+                    var params = new URLSearchParams(hash.substring(1));
+                    accessToken = params.get('access_token') || '';
+                    refreshToken = params.get('refresh_token') || '';
+                    var errorCode = params.get('error_code') || '';
+
+                    if (errorCode) {
+                        showExpired();
+                        return;
+                    }
+                }
+
+                if (!accessToken || !refreshToken) {
+                    showExpired();
+                    return;
+                }
+
+                // Ready to accept password
+                console.log('Ready for password input');
+
             } catch (err) {
-                console.error('Failed to create Supabase client:', err);
-                document.getElementById('errorMessage').textContent = 'Failed to initialize. Please refresh the page.';
-                document.getElementById('errorMessage').classList.add('show');
-                return;
+                showError('Error initializing: ' + err.message);
+            }
+        };
+
+        function showError(msg) {
+            var el = document.getElementById('errorMessage');
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+
+        function showExpired() {
+            document.getElementById('formContainer').style.display = 'none';
+            document.getElementById('invalidToken').classList.add('show');
+        }
+
+        // Handle form submission - called by button click
+        async function handleSubmit() {
+            var password = document.getElementById('password').value;
+            var confirmPassword = document.getElementById('confirmPassword').value;
+            var errorMessage = document.getElementById('errorMessage');
+            var submitButton = document.getElementById('submitButton');
+
+            // Reset error
+            errorMessage.classList.remove('show');
+
+            // Validate
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return false;
             }
 
-            // Get tokens from URL hash
-            const hash = window.location.hash;
-            let accessToken = '';
-            let refreshToken = '';
-            let tokenType = '';
-            let errorCode = '';
-            let errorDesc = '';
-
-            console.log('URL hash:', hash);
-
-            if (hash) {
-                const hashParams = new URLSearchParams(hash.substring(1));
-                accessToken = hashParams.get('access_token') || '';
-                refreshToken = hashParams.get('refresh_token') || '';
-                tokenType = hashParams.get('type') || '';
-                errorCode = hashParams.get('error_code') || '';
-                errorDesc = hashParams.get('error_description') || '';
-
-                console.log('Token type:', tokenType);
-                console.log('Has access token:', !!accessToken);
-                console.log('Has refresh token:', !!refreshToken);
-                console.log('Error code:', errorCode);
+            if (password.length < 8) {
+                showError('Password must be at least 8 characters');
+                return false;
             }
 
-            // Check for errors in URL (expired/invalid link)
-            if (errorCode) {
-                console.log('Error in URL:', errorCode, errorDesc);
+            // Show loading
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner"></span>Setting password...';
+
+            try {
+                // Set session
+                var result = await supabaseClient.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                });
+
+                if (result.error) {
+                    throw result.error;
+                }
+
+                // Update password
+                var updateResult = await supabaseClient.auth.updateUser({
+                    password: password
+                });
+
+                if (updateResult.error) {
+                    throw updateResult.error;
+                }
+
+                // Sign out
+                await supabaseClient.auth.signOut();
+
+                // Show success
                 document.getElementById('formContainer').style.display = 'none';
-                document.getElementById('invalidToken').classList.add('show');
-                return;
+                document.getElementById('successContainer').classList.add('show');
+
+            } catch (err) {
+                var msg = err.message || String(err);
+                if (msg.includes('expired') || msg.includes('invalid')) {
+                    showExpired();
+                } else {
+                    showError(msg);
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Set Password';
+                }
             }
 
-            // Check if we have valid tokens
-            if (!accessToken || !refreshToken) {
-                console.log('No valid tokens found');
-                document.getElementById('formContainer').style.display = 'none';
-                document.getElementById('invalidToken').classList.add('show');
-                return;
-            }
-
-            // Get DOM elements
-            const passwordInput = document.getElementById('password');
-            const confirmPasswordInput = document.getElementById('confirmPassword');
-            const errorMessage = document.getElementById('errorMessage');
-            const submitButton = document.getElementById('submitButton');
-            const formContainer = document.getElementById('formContainer');
-            const successContainer = document.getElementById('successContainer');
-
-            // Handle button click
-            submitButton.addEventListener('click', async function() {
-                console.log('Submit button clicked');
-
-                const password = passwordInput.value;
-                const confirmPassword = confirmPasswordInput.value;
-
-                // Reset error
-                errorMessage.classList.remove('show');
-
-                // Validate passwords match
-                if (password !== confirmPassword) {
-                    errorMessage.textContent = 'Passwords do not match';
-                    errorMessage.classList.add('show');
-                    return;
-                }
-
-                // Validate password length
-                if (password.length < 8) {
-                    errorMessage.textContent = 'Password must be at least 8 characters';
-                    errorMessage.classList.add('show');
-                    return;
-                }
-
-                // Show loading state
-                submitButton.disabled = true;
-                submitButton.innerHTML = '<span class="spinner"></span>Setting password...';
-
-                try {
-                    console.log('Setting session...');
-
-                    // Set session with the tokens
-                    const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
-                        access_token: accessToken,
-                        refresh_token: refreshToken
-                    });
-
-                    if (sessionError) {
-                        console.error('Session error:', sessionError);
-                        throw sessionError;
-                    }
-
-                    console.log('Session set successfully:', sessionData?.user?.email);
-
-                    // Update the password
-                    console.log('Updating password...');
-                    const { data: updateData, error: updateError } = await supabaseClient.auth.updateUser({
-                        password: password
-                    });
-
-                    if (updateError) {
-                        console.error('Update error:', updateError);
-                        throw updateError;
-                    }
-
-                    console.log('Password updated successfully!');
-
-                    // Sign out to clear the session (user will sign in fresh in the app)
-                    await supabaseClient.auth.signOut();
-                    console.log('Signed out');
-
-                    // Show success
-                    formContainer.classList.add('hide');
-                    successContainer.classList.add('show');
-
-                } catch (error) {
-                    console.error('Error setting password:', error);
-
-                    const msg = error?.message || String(error);
-
-                    if (msg.includes('expired') || msg.includes('invalid') || msg.includes('Invalid Refresh Token')) {
-                        formContainer.style.display = 'none';
-                        document.getElementById('invalidToken').classList.add('show');
-                    } else {
-                        errorMessage.textContent = msg || 'Failed to set password. Please try again.';
-                        errorMessage.classList.add('show');
-                        submitButton.disabled = false;
-                        submitButton.textContent = 'Set Password';
-                    }
-                }
-            });
-
-            console.log('Callback page ready');
-        })();
+            return false;
+        }
     </script>
 </body>
 </html>
