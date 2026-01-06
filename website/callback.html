@@ -271,22 +271,20 @@
 
             <div class="error-message" id="errorMessage"></div>
 
-            <form id="passwordForm">
-                <div class="form-group">
-                    <label for="password">New Password</label>
-                    <input type="password" id="password" name="password" required minlength="8" placeholder="Enter your password">
-                    <p class="password-requirements">Must be at least 8 characters</p>
-                </div>
+            <div class="form-group">
+                <label for="password">New Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password">
+                <p class="password-requirements">Must be at least 8 characters</p>
+            </div>
 
-                <div class="form-group">
-                    <label for="confirmPassword">Confirm Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" required minlength="8" placeholder="Confirm your password">
-                </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password">
+            </div>
 
-                <button type="submit" class="submit-button" id="submitButton">
-                    Set Password
-                </button>
-            </form>
+            <button type="button" class="submit-button" id="submitButton">
+                Set Password
+            </button>
         </div>
 
         <!-- Success Container -->
@@ -299,11 +297,8 @@
             </p>
 
             <div class="download-links">
-                <a href="https://apps.apple.com/app/quotecat" class="download-button">
-                    Download for iOS
-                </a>
-                <a href="https://play.google.com/store/apps/details?id=ai.quotecat.app" class="download-button secondary">
-                    Download for Android
+                <a href="https://apps.apple.com/app/quotecat/id6754611668" class="download-button">
+                    Open QuoteCat App
                 </a>
             </div>
         </div>
@@ -313,7 +308,7 @@
             <h1>Link Expired</h1>
             <p>This password setup link has expired or is invalid. Please request a new one from the sign-in screen in the app.</p>
             <div class="download-links">
-                <a href="https://apps.apple.com/app/quotecat" class="download-button">
+                <a href="https://apps.apple.com/app/quotecat/id6754611668" class="download-button">
                     Download QuoteCat
                 </a>
             </div>
@@ -322,108 +317,153 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Initialize Supabase
-        const supabaseUrl = 'https://eouikzjzsartaabvlbee.supabase.co';
-        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        (async function() {
+            // Wait for DOM
+            if (document.readyState === 'loading') {
+                await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
+            }
 
-        // Get tokens from URL hash
-        const hash = window.location.hash;
-        let accessToken = '';
-        let refreshToken = '';
-        let tokenType = '';
+            // Check if Supabase loaded
+            if (typeof window.supabase === 'undefined') {
+                console.error('Supabase library failed to load');
+                document.getElementById('errorMessage').textContent = 'Failed to load. Please refresh the page.';
+                document.getElementById('errorMessage').classList.add('show');
+                return;
+            }
 
-        if (hash) {
-            const hashParams = new URLSearchParams(hash.substring(1));
-            accessToken = hashParams.get('access_token') || '';
-            refreshToken = hashParams.get('refresh_token') || '';
-            tokenType = hashParams.get('type') || '';
-            console.log('Token type:', tokenType);
-        }
+            // Initialize Supabase
+            const supabaseUrl = 'https://eouikzjzsartaabvlbee.supabase.co';
+            const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo';
 
-        // Check if we have valid tokens
-        if (!accessToken || !refreshToken) {
-            document.getElementById('formContainer').style.display = 'none';
-            document.getElementById('invalidToken').classList.add('show');
-        }
+            let supabaseClient;
+            try {
+                supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+                console.log('Supabase client initialized');
+            } catch (err) {
+                console.error('Failed to create Supabase client:', err);
+                document.getElementById('errorMessage').textContent = 'Failed to initialize. Please refresh the page.';
+                document.getElementById('errorMessage').classList.add('show');
+                return;
+            }
 
-        // Handle form submission
-        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+            // Get tokens from URL hash
+            const hash = window.location.hash;
+            let accessToken = '';
+            let refreshToken = '';
+            let tokenType = '';
 
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
+            console.log('URL hash:', hash);
+
+            if (hash) {
+                const hashParams = new URLSearchParams(hash.substring(1));
+                accessToken = hashParams.get('access_token') || '';
+                refreshToken = hashParams.get('refresh_token') || '';
+                tokenType = hashParams.get('type') || '';
+                console.log('Token type:', tokenType);
+                console.log('Has access token:', !!accessToken);
+                console.log('Has refresh token:', !!refreshToken);
+            }
+
+            // Check if we have valid tokens
+            if (!accessToken || !refreshToken) {
+                console.log('No valid tokens found');
+                document.getElementById('formContainer').style.display = 'none';
+                document.getElementById('invalidToken').classList.add('show');
+                return;
+            }
+
+            // Get DOM elements
+            const passwordInput = document.getElementById('password');
+            const confirmPasswordInput = document.getElementById('confirmPassword');
             const errorMessage = document.getElementById('errorMessage');
             const submitButton = document.getElementById('submitButton');
+            const formContainer = document.getElementById('formContainer');
+            const successContainer = document.getElementById('successContainer');
 
-            // Reset error
-            errorMessage.classList.remove('show');
+            // Handle button click
+            submitButton.addEventListener('click', async function() {
+                console.log('Submit button clicked');
 
-            // Validate passwords match
-            if (password !== confirmPassword) {
-                errorMessage.textContent = 'Passwords do not match';
-                errorMessage.classList.add('show');
-                return;
-            }
+                const password = passwordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
 
-            // Validate password length
-            if (password.length < 8) {
-                errorMessage.textContent = 'Password must be at least 8 characters';
-                errorMessage.classList.add('show');
-                return;
-            }
+                // Reset error
+                errorMessage.classList.remove('show');
 
-            // Show loading state
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<span class="spinner"></span>Setting password...';
-
-            try {
-                // Set session with the tokens
-                const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-                    access_token: accessToken,
-                    refresh_token: refreshToken
-                });
-
-                if (sessionError) {
-                    console.error('Session error:', sessionError);
-                    throw sessionError;
-                }
-
-                console.log('Session set successfully:', sessionData?.user?.email);
-
-                // Update the password
-                const { data: updateData, error: updateError } = await supabase.auth.updateUser({
-                    password: password
-                });
-
-                if (updateError) {
-                    console.error('Update error:', updateError);
-                    throw updateError;
-                }
-
-                console.log('Password updated successfully');
-
-                // Sign out to clear the session (user will sign in fresh in the app)
-                await supabase.auth.signOut();
-
-                // Show success
-                document.getElementById('formContainer').classList.add('hide');
-                document.getElementById('successContainer').classList.add('show');
-
-            } catch (error) {
-                console.error('Error setting password:', error);
-
-                if (error.message && (error.message.includes('expired') || error.message.includes('invalid'))) {
-                    document.getElementById('formContainer').style.display = 'none';
-                    document.getElementById('invalidToken').classList.add('show');
-                } else {
-                    errorMessage.textContent = error.message || 'Failed to set password. Please try again.';
+                // Validate passwords match
+                if (password !== confirmPassword) {
+                    errorMessage.textContent = 'Passwords do not match';
                     errorMessage.classList.add('show');
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Set Password';
+                    return;
                 }
-            }
-        });
+
+                // Validate password length
+                if (password.length < 8) {
+                    errorMessage.textContent = 'Password must be at least 8 characters';
+                    errorMessage.classList.add('show');
+                    return;
+                }
+
+                // Show loading state
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner"></span>Setting password...';
+
+                try {
+                    console.log('Setting session...');
+
+                    // Set session with the tokens
+                    const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken
+                    });
+
+                    if (sessionError) {
+                        console.error('Session error:', sessionError);
+                        throw sessionError;
+                    }
+
+                    console.log('Session set successfully:', sessionData?.user?.email);
+
+                    // Update the password
+                    console.log('Updating password...');
+                    const { data: updateData, error: updateError } = await supabaseClient.auth.updateUser({
+                        password: password
+                    });
+
+                    if (updateError) {
+                        console.error('Update error:', updateError);
+                        throw updateError;
+                    }
+
+                    console.log('Password updated successfully!');
+
+                    // Sign out to clear the session (user will sign in fresh in the app)
+                    await supabaseClient.auth.signOut();
+                    console.log('Signed out');
+
+                    // Show success
+                    formContainer.classList.add('hide');
+                    successContainer.classList.add('show');
+
+                } catch (error) {
+                    console.error('Error setting password:', error);
+
+                    const msg = error?.message || String(error);
+
+                    if (msg.includes('expired') || msg.includes('invalid') || msg.includes('Invalid Refresh Token')) {
+                        formContainer.style.display = 'none';
+                        document.getElementById('invalidToken').classList.add('show');
+                    } else {
+                        errorMessage.textContent = msg || 'Failed to set password. Please try again.';
+                        errorMessage.classList.add('show');
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Set Password';
+                    }
+                }
+            });
+
+            console.log('Callback page ready');
+        })();
     </script>
 </body>
 </html>
