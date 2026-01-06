@@ -351,6 +351,8 @@
             let accessToken = '';
             let refreshToken = '';
             let tokenType = '';
+            let errorCode = '';
+            let errorDesc = '';
 
             console.log('URL hash:', hash);
 
@@ -359,9 +361,21 @@
                 accessToken = hashParams.get('access_token') || '';
                 refreshToken = hashParams.get('refresh_token') || '';
                 tokenType = hashParams.get('type') || '';
+                errorCode = hashParams.get('error_code') || '';
+                errorDesc = hashParams.get('error_description') || '';
+
                 console.log('Token type:', tokenType);
                 console.log('Has access token:', !!accessToken);
                 console.log('Has refresh token:', !!refreshToken);
+                console.log('Error code:', errorCode);
+            }
+
+            // Check for errors in URL (expired/invalid link)
+            if (errorCode) {
+                console.log('Error in URL:', errorCode, errorDesc);
+                document.getElementById('formContainer').style.display = 'none';
+                document.getElementById('invalidToken').classList.add('show');
+                return;
             }
 
             // Check if we have valid tokens
