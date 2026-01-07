@@ -6,7 +6,7 @@ import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { getItemId } from "@/lib/validation";
-import type { QuoteStatus, QuoteItem, ChangeOrder } from "@/lib/types";
+import type { QuoteStatus, QuoteItem } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
 import { useQuoteForm } from "@/modules/quotes";
 import {
@@ -23,18 +23,21 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { Ionicons } from "@expo/vector-icons";
-import { ChangeOrderModal } from "@/modules/changeOrders/ui";
-import { createChangeOrder, getActiveChangeOrderCount } from "@/modules/changeOrders";
 import { mergeById } from "@/modules/quotes/merge";
+import { formatNetChange } from "@/modules/changeOrders/diff";
 
 export default function EditQuote() {
   const { theme } = useTheme();
   const { id, newItems: newItemsParam } = useLocalSearchParams<{ id?: string; newItems?: string }>();
   const router = useRouter();
 
-  // Use the extracted form hook
+  // Track the real quote ID after first save (avoids router.replace flash)
+  const [realQuoteId, setRealQuoteId] = useState<string | null>(null);
+  const effectiveId = realQuoteId || id;
+
+  // Use the extracted form hook - pass effectiveId so it uses the real ID after first save
   const form = useQuoteForm({
-    quoteId: id,
+    quoteId: effectiveId,
     onNavigateBack: () => router.back(),
     onNavigateToQuotes: () => router.replace("/(main)/(tabs)/quotes" as any),
   });
@@ -54,9 +57,6 @@ export default function EditQuote() {
   const [showUndoSnackbar, setShowUndoSnackbar] = useState(false);
   const [deletedItem, setDeletedItem] = useState<QuoteItem | null>(null);
   const [deletedItemIndex, setDeletedItemIndex] = useState<number>(-1);
-
-  // Change order count for visibility banner
-  const [coCount, setCoCount] = useState(0);
 
   // Track if we've already prompted to save client this session
   const hasPromptedSaveClient = React.useRef(false);
@@ -79,6 +79,7 @@ export default function EditQuote() {
     markupPercent, setMarkupPercent,
     taxPercent, setTaxPercent,
     notes, setNotes,
+    changeHistory, setChangeHistory,
     followUpDate, setFollowUpDate,
     tier,
     setIsNewQuote,
@@ -95,13 +96,9 @@ export default function EditQuote() {
     shouldTrackChanges,
     checkForChanges,
     resetSnapshot,
+    getNewItemIds,
     getFormData,
   } = form;
-
-  // Change order modal state
-  const [showCOModal, setShowCOModal] = useState(false);
-  const [pendingDiff, setPendingDiff] = useState<ReturnType<typeof checkForChanges>>(null);
-  const [pendingSaveAction, setPendingSaveAction] = useState<"save" | "goback" | null>(null);
 
   // Load Pro status and saved clients
   useEffect(() => {
@@ -137,9 +134,9 @@ export default function EditQuote() {
           try {
             const newItems = JSON.parse(newItemsParam) as QuoteItem[];
             console.log("CO mode (in focus): received", newItems.length, "items to merge");
-            if (newItems.length > 0 && id) {
+            if (newItems.length > 0 && effectiveId) {
               // Fetch current quote from storage to get existing items
-              const currentQuote = await getQuoteById(id);
+              const currentQuote = await getQuoteById(effectiveId);
               const existingItems = currentQuote?.items ?? [];
               console.log("CO mode (in focus): existing items:", existingItems.length);
 
@@ -180,20 +177,7 @@ export default function EditQuote() {
         }
       };
       checkNewClient();
-
-      // Load change order count for visibility banner
-      const loadCoCount = async () => {
-        try {
-          if (id) {
-            const count = await getActiveChangeOrderCount(id);
-            setCoCount(count);
-          }
-        } catch (error) {
-          console.error("Failed to load change order count:", error);
-        }
-      };
-      loadCoCount();
-    }, [load, setClientName, setClientEmail, setClientPhone, setClientAddress, setIsNewQuote, id, newItemsParam, setItems]),
+    }, [load, setClientName, setClientEmail, setClientPhone, setClientAddress, setIsNewQuote, effectiveId, newItemsParam, setItems]),
   );
 
   // Filter saved clients based on current input (for autocomplete)
@@ -280,7 +264,52 @@ export default function EditQuote() {
     });
   }, [isPro, isNewClientName, clientName, clientEmail, clientPhone, clientAddress]);
 
-  // Change order handlers
+  // Helper to format change history entry for notes
+  const formatChangeHistory = useCallback((diff: NonNullable<ReturnType<typeof checkForChanges>>) => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const timeStr = now.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const lines: string[] = [];
+    lines.push("---");
+    lines.push("Change History");
+    lines.push("");
+    lines.push(`[${dateStr} - ${timeStr}]`);
+
+    // List added/changed items
+    diff.items.forEach((item) => {
+      if (item.qtyBefore === 0) {
+        // Newly added
+        lines.push(`Added: ${item.name} (${item.qtyAfter}) ${formatNetChange(item.lineDelta)}`);
+      } else if (item.qtyAfter === 0) {
+        // Removed
+        lines.push(`Removed: ${item.name} (${item.qtyBefore}) ${formatNetChange(item.lineDelta)}`);
+      } else {
+        // Quantity changed
+        lines.push(`Changed: ${item.name} (${item.qtyBefore} → ${item.qtyAfter}) ${formatNetChange(item.lineDelta)}`);
+      }
+    });
+
+    // Labor change
+    if (diff.laborDelta !== 0) {
+      lines.push(`Labor: ${formatNetChange(diff.laborDelta)}`);
+    }
+
+    lines.push(`Net change: ${formatNetChange(diff.netChange)}`);
+    lines.push("---");
+
+    return lines.join("\n");
+  }, []);
+
+  // Simplified save handler - saves directly, auto-logs changes
   const handleSaveWithChangeDetection = useCallback(async () => {
     // Validate required fields first
     if (!validateRequiredFields()) return;
@@ -288,117 +317,236 @@ export default function EditQuote() {
     // Prompt to save new client before proceeding
     await maybePromptToSaveClient();
 
-    // If ID is "new", create the quote first
-    if (id === "new") {
-      const realId = await ensureQuoteExists();
-      if (realId) {
-        // Update the URL to use the real ID so future operations work correctly
-        router.replace(`/quote/${realId}/edit` as any);
-        Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
+    // If this is a new quote (no real ID yet), create it first
+    if (id === "new" && !realQuoteId) {
+      const newId = await ensureQuoteExists();
+      if (newId) {
+        // Store the real ID in state (no router.replace to avoid screen flash)
+        setRealQuoteId(newId);
+
+        // Check if new quote is being created with approved status - need to create snapshot
+        const isApprovedOnCreate = status === "approved" || status === "completed";
+        if (isPro && isApprovedOnCreate) {
+          // Fetch the just-created quote to get its items
+          const newQuote = await getQuoteById(newId);
+          const itemsToSnapshot = newQuote?.items?.length ? newQuote.items : items;
+
+          if (itemsToSnapshot.length > 0) {
+            const snapshot = JSON.stringify(itemsToSnapshot.map((item) => ({
+              productId: item.productId,
+              name: item.name,
+              qty: item.qty,
+              unitPrice: item.unitPrice,
+            })));
+            await updateQuote(newId, { approvedSnapshot: snapshot });
+            Alert.alert("Saved", "Quote saved and approved. Future changes will be tracked.", [{ text: "OK" }]);
+          } else {
+            Alert.alert("Saved", "Quote saved and approved. Add items to enable change tracking.", [{ text: "OK" }]);
+          }
+        } else {
+          Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
+        }
       }
       return;
     }
 
-    if (shouldTrackChanges) {
-      const diff = checkForChanges();
-      if (diff) {
-        setPendingDiff(diff);
-        setPendingSaveAction("save");
-        setShowCOModal(true);
+    // Get current quote to check for approved snapshot
+    const currentQuote = await getQuoteById(effectiveId!);
+    const formData = getFormData();
+
+    console.log("=== SAVE DEBUG ===");
+    console.log("Quote ID:", effectiveId);
+    console.log("Current quote status:", currentQuote?.status);
+    console.log("Form status:", status);
+    console.log("Has approvedSnapshot:", !!currentQuote?.approvedSnapshot);
+    console.log("Current items count:", items.length);
+    console.log("isPro (change tracking enabled):", isPro);
+
+    // Check if quote is currently approved/completed AND has a snapshot to compare against
+    // Only Pro/Premium users get change tracking
+    // Only track when status is approved/completed (not while editing drafts)
+    const isCurrentlyApproved = currentQuote?.status === "approved" || currentQuote?.status === "completed";
+    if (isPro && isCurrentlyApproved && currentQuote?.approvedSnapshot) {
+      console.log("Found approvedSnapshot, comparing...");
+      try {
+        const snapshotItems = JSON.parse(currentQuote.approvedSnapshot) as Array<{
+          productId?: string;
+          name: string;
+          qty: number;
+          unitPrice: number;
+        }>;
+
+        // Build maps for comparison
+        const snapshotMap = new Map<string, typeof snapshotItems[0]>();
+        snapshotItems.forEach((item) => {
+          const key = item.productId || `manual:${item.name}`;
+          snapshotMap.set(key, item);
+        });
+
+        // Use items from storage (currentQuote.items) to catch changes from assembly/pricebook
+        // that save directly to storage without going through form state
+        const currentItems = currentQuote.items || [];
+        const currentMap = new Map<string, QuoteItem>();
+        currentItems.forEach((item) => {
+          const key = item.productId || `manual:${item.name}`;
+          currentMap.set(key, item);
+        });
+
+        // Check for changes
+        const changes: Array<{ type: string; name: string; detail: string; delta: number }> = [];
+
+        // Find added and modified items
+        currentMap.forEach((currentItem, key) => {
+          const snapshotItem = snapshotMap.get(key);
+          if (!snapshotItem) {
+            // New item
+            const delta = currentItem.unitPrice * currentItem.qty;
+            changes.push({
+              type: "Added",
+              name: currentItem.name,
+              detail: `(${currentItem.qty})`,
+              delta,
+            });
+          } else if (snapshotItem.qty !== currentItem.qty) {
+            // Quantity changed
+            const qtyDelta = currentItem.qty - snapshotItem.qty;
+            const delta = currentItem.unitPrice * qtyDelta;
+            changes.push({
+              type: "Changed",
+              name: currentItem.name,
+              detail: `(${snapshotItem.qty} → ${currentItem.qty})`,
+              delta,
+            });
+          }
+        });
+
+        // Find removed items
+        snapshotMap.forEach((snapshotItem, key) => {
+          if (!currentMap.has(key)) {
+            const delta = -(snapshotItem.unitPrice * snapshotItem.qty);
+            changes.push({
+              type: "Removed",
+              name: snapshotItem.name,
+              detail: `(${snapshotItem.qty})`,
+              delta,
+            });
+          }
+        });
+
+        console.log("Changes detected:", changes.length);
+        console.log("Changes:", JSON.stringify(changes, null, 2));
+
+        // If there are changes, log them
+        if (changes.length > 0) {
+          const now = new Date();
+          const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+          const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+
+          const lines = [
+            "---",
+            `[${dateStr} - ${timeStr}]`,
+          ];
+
+          let netChange = 0;
+          changes.forEach((change) => {
+            const sign = change.delta >= 0 ? "+" : "";
+            lines.push(`${change.type}: ${change.name} ${change.detail} ${sign}$${Math.abs(change.delta).toFixed(2)}`);
+            netChange += change.delta;
+          });
+
+          const netSign = netChange >= 0 ? "+" : "";
+          lines.push(`Net change: ${netSign}$${Math.abs(netChange).toFixed(2)}`);
+          lines.push("---");
+
+          const changeEntry = lines.join("\n");
+          const updatedHistory = changeHistory.trim()
+            ? `${changeHistory.trim()}\n\n${changeEntry}`
+            : changeEntry;
+          setChangeHistory(updatedHistory);
+
+          // Revert status to draft so user must re-approve after changes
+          setStatus("draft");
+
+          // Save with updated change history, draft status, and NEW snapshot
+          // Use currentItems (from storage) to include assembly/pricebook items
+          const newSnapshot = JSON.stringify(currentItems.map((item) => ({
+            productId: item.productId,
+            name: item.name,
+            qty: item.qty,
+            unitPrice: item.unitPrice,
+          })));
+
+          await updateQuote(effectiveId!, {
+            ...formData,
+            items: currentItems, // Use storage items to preserve assembly/pricebook additions
+            changeHistory: updatedHistory,
+            status: "draft",
+            approvedSnapshot: newSnapshot, // Update snapshot to current state
+          });
+
+          Alert.alert(
+            "Changes Saved",
+            "Your changes have been saved and logged. The quote status has been set back to Draft for your review.",
+            [{ text: "OK" }]
+          );
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to parse approved snapshot:", e);
+      }
+    }
+
+    // Check if we're setting status to approved/completed - need to create snapshot
+    const wasApproved = currentQuote?.status === "approved" || currentQuote?.status === "completed";
+    const isNowApproved = status === "approved" || status === "completed";
+
+    // Handle case: quote is already approved but has no snapshot (was created empty, now has items)
+    // This creates the initial baseline snapshot for change tracking
+    if (isPro && isCurrentlyApproved && !currentQuote?.approvedSnapshot) {
+      const currentItems = currentQuote?.items || [];
+      if (currentItems.length > 0) {
+        console.log("Creating initial snapshot for approved quote that had no snapshot");
+        console.log("Items to snapshot:", currentItems.length);
+        const snapshot = JSON.stringify(currentItems.map((item) => ({
+          productId: item.productId,
+          name: item.name,
+          qty: item.qty,
+          unitPrice: item.unitPrice,
+        })));
+        await updateQuote(effectiveId!, { ...formData, items: currentItems, approvedSnapshot: snapshot });
+        Alert.alert("Saved", "Baseline snapshot created. Future changes will now be tracked.", [{ text: "OK" }]);
         return;
       }
     }
+
+    // Only create snapshot for Pro/Premium users (they get change tracking)
+    if (isPro && !wasApproved && isNowApproved) {
+      // Creating snapshot when quote becomes approved
+      // Use storage items to include assembly/pricebook additions
+      const itemsToSnapshot = currentQuote?.items?.length ? currentQuote.items : items;
+      console.log("Creating approvedSnapshot for newly approved quote");
+      console.log("Items to snapshot count:", itemsToSnapshot.length);
+      const snapshot = JSON.stringify(itemsToSnapshot.map((item) => ({
+        productId: item.productId,
+        name: item.name,
+        qty: item.qty,
+        unitPrice: item.unitPrice,
+      })));
+      console.log("Snapshot:", snapshot);
+
+      await updateQuote(effectiveId!, { ...formData, items: itemsToSnapshot, approvedSnapshot: snapshot });
+      console.log("Saved with approvedSnapshot");
+      Alert.alert("Saved", "Quote saved and approved. Future changes will be tracked.", [{ text: "OK" }]);
+      return;
+    }
+
     // No changes or not tracking - just save normally
+    console.log("Falling through to regular handleSave()");
     await handleSave();
-  }, [id, shouldTrackChanges, checkForChanges, handleSave, validateRequiredFields, ensureQuoteExists, maybePromptToSaveClient]);
-
-  const handleGoBackWithChangeDetection = useCallback(async () => {
-    if (shouldTrackChanges) {
-      const diff = checkForChanges();
-      if (diff) {
-        setPendingDiff(diff);
-        setPendingSaveAction("goback");
-        setShowCOModal(true);
-        return;
-      }
-    }
-    // No changes or not tracking - just go back
-    await handleGoBack();
-  }, [shouldTrackChanges, checkForChanges, handleGoBack]);
-
-  const handleCreateChangeOrder = useCallback(async (reason: string) => {
-    if (!id || !quote || !pendingDiff) return;
-
-    const now = new Date().toISOString();
-    const co: ChangeOrder = {
-      id: `co_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      quoteId: id,
-      quoteNumber: quote.quoteNumber, // Include quote number for display
-      number: 0, // Will be set by createChangeOrder
-      note: reason || undefined,
-      items: pendingDiff.items,
-      laborBefore: pendingDiff.laborBefore,
-      laborAfter: pendingDiff.laborAfter,
-      laborDelta: pendingDiff.laborDelta,
-      netChange: pendingDiff.netChange,
-      quoteTotalBefore: pendingDiff.quoteTotalBefore,
-      quoteTotalAfter: pendingDiff.quoteTotalAfter,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await createChangeOrder(co as ChangeOrder);
-
-    // DO NOT save the quote changes - they stay in the pending CO
-    // The quote will only be modified when the CO is approved
-
-    // Reload the form to restore original values
-    await load();
-
-    // Update CO count for banner
-    const newCount = await getActiveChangeOrderCount(id);
-    setCoCount(newCount);
-
-    setShowCOModal(false);
-    setPendingDiff(null);
-
-    Alert.alert(
-      "Change Order Created",
-      "A change order has been created. The quote will be updated when the CO is approved.",
-      [{ text: "OK" }]
-    );
-
-    if (pendingSaveAction === "goback") {
-      router.back();
-    }
-    setPendingSaveAction(null);
-  }, [id, quote, pendingDiff, load, pendingSaveAction, router]);
-
-  const handleSaveWithoutCO = useCallback(async () => {
-    if (!id) return;
-
-    await updateQuote(id, getFormData());
-    resetSnapshot();
-    setShowCOModal(false);
-    setPendingDiff(null);
-
-    Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
-
-    if (pendingSaveAction === "goback") {
-      router.back();
-    }
-    setPendingSaveAction(null);
-  }, [id, getFormData, resetSnapshot, pendingSaveAction, router]);
-
-  const handleCancelCOModal = useCallback(() => {
-    setShowCOModal(false);
-    setPendingDiff(null);
-    setPendingSaveAction(null);
-  }, []);
+  }, [id, realQuoteId, effectiveId, items, status, isPro, handleSave, validateRequiredFields, ensureQuoteExists, maybePromptToSaveClient, changeHistory, setChangeHistory, setStatus, getFormData]);
 
   const handleUpdateItemQty = async (itemId: string, delta: number) => {
-    if (!id) return;
+    if (!effectiveId) return;
 
     const updatedItems = items.map((item) => {
       const currentId = getItemId(item);
@@ -414,7 +562,7 @@ export default function EditQuote() {
     // Only auto-save if NOT tracking changes (i.e., not approved/completed quote)
     // For approved/completed quotes, changes are saved via CO flow
     if (!shouldTrackChanges) {
-      await updateQuote(id, { items: updatedItems });
+      await updateQuote(effectiveId, { items: updatedItems });
     }
   };
 
@@ -430,7 +578,7 @@ export default function EditQuote() {
   };
 
   const handleFinishEditingQty = async (itemId: string) => {
-    if (!id) return;
+    if (!effectiveId) return;
 
     const newQty = parseInt(editingQty, 10);
 
@@ -446,7 +594,7 @@ export default function EditQuote() {
       setItems(updatedItems);
       // Only auto-save if NOT tracking changes
       if (!shouldTrackChanges) {
-        await updateQuote(id, { items: updatedItems });
+        await updateQuote(effectiveId, { items: updatedItems });
       }
     } else if (!isNaN(newQty) && newQty === 0) {
       // Only delete if explicitly set to 0
@@ -457,7 +605,7 @@ export default function EditQuote() {
       setItems(updatedItems);
       // Only auto-save if NOT tracking changes
       if (!shouldTrackChanges) {
-        await updateQuote(id, { items: updatedItems });
+        await updateQuote(effectiveId, { items: updatedItems });
       }
     }
     // If invalid/empty (isNaN), do nothing - keep original value
@@ -468,7 +616,7 @@ export default function EditQuote() {
 
   // Handle material deletion with undo functionality
   const handleDeleteItem = async (itemId: string) => {
-    if (!id) return;
+    if (!effectiveId) return;
 
     const itemIndex = items.findIndex((item) => getItemId(item) === itemId);
     if (itemIndex === -1) return;
@@ -481,7 +629,7 @@ export default function EditQuote() {
     setItems(updatedItems);
     // Only auto-save if NOT tracking changes
     if (!shouldTrackChanges) {
-      await updateQuote(id, { items: updatedItems });
+      await updateQuote(effectiveId, { items: updatedItems });
     }
 
     setShowUndoSnackbar(true);
@@ -489,14 +637,14 @@ export default function EditQuote() {
 
   // Handle undo of material deletion
   const handleUndoDelete = async () => {
-    if (!id || !deletedItem || deletedItemIndex === -1) return;
+    if (!effectiveId || !deletedItem || deletedItemIndex === -1) return;
 
     const restoredItems = [...items];
     restoredItems.splice(deletedItemIndex, 0, deletedItem);
     setItems(restoredItems);
     // Only auto-save if NOT tracking changes
     if (!shouldTrackChanges) {
-      await updateQuote(id, { items: restoredItems });
+      await updateQuote(effectiveId, { items: restoredItems });
     }
 
     setDeletedItem(null);
@@ -518,7 +666,7 @@ export default function EditQuote() {
           headerShown: true,
           headerTitleAlign: 'center',
           headerTintColor: theme.colors.accent,
-          headerLeft: () => <HeaderBackButton onPress={handleGoBackWithChangeDetection} />,
+          headerLeft: () => <HeaderBackButton onPress={handleGoBack} />,
           headerTitle: () => (
             <View style={{ alignItems: 'center' }}>
               <Text style={{ fontSize: 17, fontWeight: "700", color: theme.colors.text }}>
@@ -551,17 +699,17 @@ export default function EditQuote() {
             <Pressable
               style={styles.reviewBtn}
               onPress={async () => {
-                if (!id) return;
+                if (!effectiveId) return;
                 if (!validateRequiredFields()) return;
                 // Prompt to save new client before proceeding
                 await maybePromptToSaveClient();
-                const realId = await ensureQuoteExists();
-                if (!realId) return;
-                // If we created a new quote, first update the URL to use the real ID
-                if (id === "new" && realId !== id) {
-                  router.replace(`/quote/${realId}/edit` as any);
+                const newId = await ensureQuoteExists();
+                if (!newId) return;
+                // Store real ID in state if this was a new quote
+                if (id === "new" && !realQuoteId) {
+                  setRealQuoteId(newId);
                 }
-                router.push(`/quote/${realId}/review`);
+                router.push(`/quote/${newId}/review`);
               }}
             >
               <Ionicons name="document-text-outline" size={20} color="#000" />
@@ -570,51 +718,31 @@ export default function EditQuote() {
           </View>
         }
       >
-        {/* Change Order Banner */}
-        {coCount > 0 && (
-          <Pressable
-            style={styles.coBanner}
-            onPress={async () => {
-              await maybePromptToSaveClient();
-              router.push(`/quote/${id}/review`);
-            }}
-          >
-            <View style={styles.coBannerContent}>
-              <Ionicons name="document-text" size={20} color="#FFF" />
-              <View style={styles.coBannerText}>
-                <Text style={styles.coBannerTitle}>
-                  {coCount} Change Order{coCount !== 1 ? "s" : ""}
-                </Text>
-                <Text style={styles.coBannerSubtitle}>
-                  Tap to view in Review & Export
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#FFF" />
-          </Pressable>
-        )}
-
         <Text style={styles.label}>Status</Text>
         <View style={styles.statusChips}>
-          {(Object.keys(QuoteStatusMeta) as QuoteStatus[]).map((s) => (
+          {(Object.keys(QuoteStatusMeta) as QuoteStatus[]).map((s) => {
+            const statusColor = QuoteStatusMeta[s].color;
+            const isActive = status === s;
+            return (
             <Pressable
               key={s}
               style={[
                 styles.statusChip,
-                status === s && styles.statusChipActive,
+                isActive && { backgroundColor: statusColor, borderColor: statusColor },
               ]}
               onPress={() => setStatus(s)}
             >
               <Text
                 style={[
                   styles.statusChipText,
-                  status === s && styles.statusChipTextActive,
+                  isActive && styles.statusChipTextActive,
                 ]}
               >
                 {QuoteStatusMeta[s].label}
               </Text>
             </Pressable>
-          ))}
+            );
+          })}
         </View>
 
         <View style={{ height: theme.spacing(2) }} />
@@ -643,7 +771,7 @@ export default function EditQuote() {
           )}
           {isPro && savedClients.length === 0 && (
             <Pressable
-              onPress={() => router.push(`/(main)/client-manager?returnTo=${id}` as any)}
+              onPress={() => router.push(`/(main)/client-manager?returnTo=${effectiveId}` as any)}
               hitSlop={8}
             >
               <Text style={styles.browseTag}>+ Add clients</Text>
@@ -734,96 +862,61 @@ export default function EditQuote() {
         {items.length > 0 && (
           <>
             <GestureHandlerRootView style={styles.itemsList}>
-              {items.map((item, index) => (
-                <SwipeableMaterialItem
-                  key={item.id || `item-${index}`}
-                  item={{
-                    id: getItemId(item),
-                    name: item.name,
-                    unitPrice: item.unitPrice,
-                    qty: item.qty,
-                  }}
-                  onDelete={() => handleDeleteItem(getItemId(item))}
-                  isLastItem={index === items.length - 1}
-                  editingItemId={editingItemId}
-                  editingQty={editingQty}
-                  onStartEditingQty={handleStartEditingQty}
-                  onFinishEditingQty={handleFinishEditingQty}
-                  onQtyChange={handleQtyChange}
-                  onUpdateQty={handleUpdateItemQty}
-                />
-              ))}
+              {items.map((item, index) => {
+                const itemId = getItemId(item);
+                return (
+                  <SwipeableMaterialItem
+                    key={item.id || `item-${index}`}
+                    item={{
+                      id: itemId,
+                      name: item.name,
+                      unitPrice: item.unitPrice,
+                      qty: item.qty,
+                    }}
+                    onDelete={() => handleDeleteItem(itemId)}
+                    isLastItem={index === items.length - 1}
+                    editingItemId={editingItemId}
+                    editingQty={editingQty}
+                    onStartEditingQty={handleStartEditingQty}
+                    onFinishEditingQty={handleFinishEditingQty}
+                    onQtyChange={handleQtyChange}
+                    onUpdateQty={handleUpdateItemQty}
+                  />
+                );
+              })}
             </GestureHandlerRootView>
             <View style={{ height: theme.spacing(2) }} />
           </>
         )}
 
-        <View style={{ flexDirection: 'row', gap: theme.spacing(2) }}>
-          <Pressable
-            onPress={async () => {
-              if (!id) return;
-              // Require job name and client name before allowing materials
-              if (!validateRequiredFields()) return;
-              const realId = await ensureQuoteExists();
-              if (!realId) return;
-              // If we created a new quote, first update the URL to use the real ID
-              // This prevents duplicate quote creation when navigating back
-              if (id === "new" && realId !== id) {
-                router.replace(`/quote/${realId}/edit` as any);
-              }
-              // Pass coMode flag for approved/completed quotes
-              const url = shouldTrackChanges
-                ? `/quote/${realId}/materials?coMode=true`
-                : `/quote/${realId}/materials`;
-              router.push(url as any);
-            }}
-            style={({ pressed }) => ({
-              flex: 1,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: theme.colors.card,
-              borderRadius: theme.radius.lg,
-              height: 48,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <Text style={{ fontWeight: "800", color: theme.colors.text }}>
-              Add materials
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={async () => {
-              if (!id) return;
-              // Require job name and client name before allowing assemblies
-              if (!validateRequiredFields()) return;
-              const realId = await ensureQuoteExists();
-              if (!realId) return;
-              // If we created a new quote, first update the URL to use the real ID
-              if (id === "new" && realId !== id) {
-                router.replace(`/quote/${realId}/edit` as any);
-              }
-              router.push(`/(main)/assemblies-browse?quoteId=${realId}` as any);
-            }}
-            style={({ pressed }) => ({
-              flex: 1,
-              borderWidth: 1,
-              borderColor: theme.colors.accent,
-              backgroundColor: theme.colors.card,
-              borderRadius: theme.radius.lg,
-              height: 48,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <Text style={{ fontWeight: "800", color: theme.colors.accent }}>
-              Add from Assembly
-            </Text>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={async () => {
+            if (!effectiveId) return;
+            // Require job name and client name before allowing materials
+            if (!validateRequiredFields()) return;
+            const newId = await ensureQuoteExists();
+            if (!newId) return;
+            // Store real ID in state if this was a new quote
+            if (id === "new" && !realQuoteId) {
+              setRealQuoteId(newId);
+            }
+            router.push(`/quote/${newId}/materials` as any);
+          }}
+          style={({ pressed }) => ({
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.card,
+            borderRadius: theme.radius.lg,
+            height: 48,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ fontWeight: "800", color: theme.colors.text }}>
+            Add materials
+          </Text>
+        </Pressable>
 
         <View style={{ height: theme.spacing(3) }} />
 
@@ -839,18 +932,6 @@ export default function EditQuote() {
         <View style={{ height: theme.spacing(3) }} />
 
         <Text style={styles.h2}>Notes & Adjustments</Text>
-
-        <View style={{ height: theme.spacing(2) }} />
-
-        <Text style={styles.label}>Notes</Text>
-        <FormInput
-          placeholder="Special instructions, conditions, etc..."
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-          numberOfLines={3}
-          style={{ height: 80, textAlignVertical: "top" }}
-        />
 
         <View style={{ height: theme.spacing(2) }} />
 
@@ -985,6 +1066,18 @@ export default function EditQuote() {
           <Text style={styles.inputSuffix}>%</Text>
         </View>
 
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Notes</Text>
+        <FormInput
+          placeholder="Special instructions, conditions, etc..."
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          numberOfLines={3}
+          style={{ height: 80, textAlignVertical: "top" }}
+        />
+
         <View style={{ height: theme.spacing(3) }} />
 
         <View style={styles.totalsCard}>
@@ -1056,6 +1149,18 @@ export default function EditQuote() {
             </Text>
           </View>
         </View>
+
+        {/* Change History Section - only show for Pro/Premium users with history */}
+        {isPro && changeHistory.trim() && (
+          <>
+            <View style={{ height: theme.spacing(3) }} />
+            <Text style={styles.h2}>Change History</Text>
+            <View style={{ height: theme.spacing(2) }} />
+            <View style={styles.changeHistoryCard}>
+              <Text style={styles.changeHistoryText}>{changeHistory}</Text>
+            </View>
+          </>
+        )}
       </FormScreen>
 
       <UndoSnackbar
@@ -1090,7 +1195,7 @@ export default function EditQuote() {
                 onPress={() => {
                   setShowClientPicker(false);
                   setClientPickerSearch("");
-                  router.push(`/(main)/client-manager?returnTo=${id}&createNew=true` as any);
+                  router.push(`/(main)/client-manager?returnTo=${effectiveId}&createNew=true` as any);
                 }}
               >
                 <Text style={styles.pickerNewBtnText}>+</Text>
@@ -1153,18 +1258,6 @@ export default function EditQuote() {
         </Pressable>
       </Modal>
 
-      {/* Change Order Modal */}
-      {quote && pendingDiff && (
-        <ChangeOrderModal
-          visible={showCOModal}
-          quote={quote}
-          diff={pendingDiff}
-          theme={theme}
-          onConfirm={handleCreateChangeOrder}
-          onCancel={handleCancelCOModal}
-          onSaveWithoutCO={handleSaveWithoutCO}
-        />
-      )}
     </>
   );
 }
@@ -1172,33 +1265,6 @@ export default function EditQuote() {
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     label: { fontSize: 12, color: theme.colors.text, marginBottom: 6, fontWeight: "600" },
-    // Change Order Banner
-    coBanner: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      backgroundColor: "#8B5CF6", // Purple to match CO badge
-      borderRadius: theme.radius.md,
-      padding: theme.spacing(1.5),
-      marginBottom: theme.spacing(2),
-    },
-    coBannerContent: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing(1.5),
-    },
-    coBannerText: {
-      gap: 2,
-    },
-    coBannerTitle: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: "#FFF",
-    },
-    coBannerSubtitle: {
-      fontSize: 12,
-      color: "rgba(255, 255, 255, 0.8)",
-    },
     labelRow: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -1294,8 +1360,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
     },
     statusChipTextActive: {
-      color: "#000", // Black on orange accent (good contrast)
-      fontWeight: "700",
+      color: "#FFFFFF", // White text on colored backgrounds
     },
     bottomBarRow: {
       flexDirection: "row",
@@ -1478,6 +1543,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 24,
       fontWeight: "800",
       color: theme.colors.accent,
+    },
+    // Change History styles
+    changeHistoryCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(2),
+    },
+    changeHistoryText: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      fontFamily: "monospace",
+      lineHeight: 20,
     },
     // Client Picker Modal styles
     pickerOverlay: {

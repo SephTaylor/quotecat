@@ -70,6 +70,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
   const [markupPercent, setMarkupPercent] = useState("");
   const [taxPercent, setTaxPercent] = useState("");
   const [notes, setNotes] = useState("");
+  const [changeHistory, setChangeHistory] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [tier, setTier] = useState("");
   const [isNewQuote, setIsNewQuote] = useState(false);
@@ -128,6 +129,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       setPinned(q.pinned || false);
       setItems(q.items ?? []);
       setNotes(q.notes || "");
+      setChangeHistory(q.changeHistory || "");
       setFollowUpDate(q.followUpDate || "");
       setTier(q.tier || "");
 
@@ -155,12 +157,16 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       }
 
       // For approved/completed quotes, take a snapshot for change order detection (Premium only)
+      // Only create snapshot on FIRST load - don't overwrite when returning from materials screen
       const isAccepted = q.status === "approved" || q.status === "completed";
       const userState = await getUserState();
       const hasCOAccess = canAccessChangeOrders(userState);
 
       if (isAccepted && !isNew && hasCOAccess) {
-        originalSnapshotRef.current = createSnapshot(q);
+        // Only create snapshot if we don't have one yet
+        if (!originalSnapshotRef.current) {
+          originalSnapshotRef.current = createSnapshot(q);
+        }
         setShouldTrackChanges(true);
       } else {
         originalSnapshotRef.current = null;
@@ -188,6 +194,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       markupPercent: parseFloat(markupPercent) || undefined,
       taxPercent: parseFloat(taxPercent) || undefined,
       notes: notes.trim() || undefined,
+      changeHistory: changeHistory.trim() || undefined,
       followUpDate: followUpDate || undefined,
       status,
       pinned,
@@ -202,6 +209,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     labor,
     materialEstimate,
     markupPercent,
+    changeHistory,
     taxPercent,
     notes,
     followUpDate,
@@ -443,6 +451,31 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     }
   }, [quote, getFormData]);
 
+  // Get IDs of items that are new (not in original snapshot)
+  const getNewItemIds = useCallback((): Set<string> => {
+    if (!shouldTrackChanges || !originalSnapshotRef.current) {
+      return new Set();
+    }
+
+    // Build set of original item IDs
+    const originalIds = new Set<string>();
+    originalSnapshotRef.current.items.forEach((item) => {
+      const key = item.productId || `manual:${item.name}`;
+      originalIds.add(key);
+    });
+
+    // Find items not in original
+    const newIds = new Set<string>();
+    items.forEach((item) => {
+      const key = item.productId || `manual:${item.name}`;
+      if (!originalIds.has(key)) {
+        newIds.add(item.id || key);
+      }
+    });
+
+    return newIds;
+  }, [shouldTrackChanges, items]);
+
   // Input formatters
   const formatLaborInput = (text: string): string => {
     const cleaned = text.replace(/[^0-9.]/g, "");
@@ -516,6 +549,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     setTaxPercent,
     notes,
     setNotes,
+    changeHistory,
+    setChangeHistory,
     followUpDate,
     setFollowUpDate,
     tier,
@@ -538,6 +573,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     shouldTrackChanges,
     checkForChanges,
     resetSnapshot,
+    getNewItemIds,
 
     // Formatters
     formatLaborInput,

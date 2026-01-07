@@ -9,7 +9,7 @@ import type { Quote, Invoice, Client, QuoteItem, PricebookItem } from "./types";
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 /**
  * Get or create the database instance
@@ -207,6 +207,23 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     `);
   }
 
+  if (fromVersion < 3) {
+    // Add change_history and approved_snapshot columns to quotes table
+    // These support the simplified change order flow
+    // Check if columns exist first to handle partial migrations safely
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(quotes)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("change_history")) {
+      database.execSync(`ALTER TABLE quotes ADD COLUMN change_history TEXT;`);
+    }
+    if (!columnNames.has("approved_snapshot")) {
+      database.execSync(`ALTER TABLE quotes ADD COLUMN approved_snapshot TEXT;`);
+    }
+  }
+
   // Update version
   database.runSync(
     "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
@@ -239,6 +256,8 @@ function rowToQuote(row: any): Quote {
     markupPercent: row.markup_percent || undefined,
     taxPercent: row.tax_percent || undefined,
     notes: row.notes || undefined,
+    changeHistory: row.change_history || undefined,
+    approvedSnapshot: row.approved_snapshot || undefined,
     followUpDate: row.follow_up_date || undefined,
     currency: row.currency || "USD",
     status: row.status || "draft",
@@ -334,9 +353,9 @@ export function saveQuoteDB(quote: Quote): void {
       `INSERT OR REPLACE INTO quotes (
         id, quote_number, name, client_name, client_email, client_phone, client_address,
         items, labor, material_estimate, overhead, markup_percent, tax_percent,
-        notes, follow_up_date, currency, status, pinned, tier, linked_quote_ids,
+        notes, change_history, approved_snapshot, follow_up_date, currency, status, pinned, tier, linked_quote_ids,
         created_at, updated_at, deleted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         quote.id,
         quote.quoteNumber || null,
@@ -352,6 +371,8 @@ export function saveQuoteDB(quote: Quote): void {
         quote.markupPercent || null,
         quote.taxPercent || null,
         quote.notes || null,
+        quote.changeHistory || null,
+        quote.approvedSnapshot || null,
         quote.followUpDate || null,
         quote.currency || "USD",
         quote.status || "draft",

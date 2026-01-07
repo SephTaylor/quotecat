@@ -719,6 +719,10 @@ Cloud Sync downloads 10 quotes
 
 Features to consider for future releases (not blockers for launch):
 
+### 🚀 Post-Launch Priority (First Week After App Store)
+
+- **Change Order Management (Portal, Premium)** - Full change order system in the web portal for Premium users. Mobile app creates CO records when approved quotes are modified, syncs to cloud. Portal shows CO detail page under quotes with what changed, client can approve/reject, PDF generation, email notifications. Mobile keeps simple "change tracking" for Pro, Premium gets formal management. (Discussed Jan 7, 2026)
+
 ### Contracts
 - **Decline/Request Changes** - Allow clients to decline a contract or request changes via the web portal instead of just signing or doing nothing. Would add "declined" and "needs revision" statuses, plus a notes field for client feedback. (Discussed Jan 7, 2026)
 
@@ -729,7 +733,7 @@ Features to consider for future releases (not blockers for launch):
 - *(Add ideas here)*
 
 ### General
-- *(Add ideas here)*
+- **Drew Visibility Toggle** - Add a button in the header to show/hide Drew (WizardFAB). Useful for users who want a cleaner screen sometimes or prefer to "summon" Drew only when needed. Could be a small icon that toggles Drew's visibility. (Discussed Jan 7, 2026)
 
 ---
 

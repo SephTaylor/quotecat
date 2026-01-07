@@ -104,6 +104,8 @@ export type Quote = {
   markupPercent?: number; // Markup percentage applied to subtotal
   taxPercent?: number; // Tax percentage (e.g., 8.25 for 8.25%)
   notes?: string; // Internal notes or special instructions
+  changeHistory?: string; // Auto-generated log of changes to approved quotes
+  approvedSnapshot?: string; // JSON snapshot of items when quote was approved (for change tracking)
   followUpDate?: string; // ISO 8601 date for follow-up reminder
   currency: CurrencyCode;
   status: QuoteStatus;

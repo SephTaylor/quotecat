@@ -26,8 +26,7 @@ import { canAccessPricebook, canAccessAssemblies } from "@/lib/features";
 export type SourceType = "catalog" | "pricebook" | "assemblies";
 
 export default function QuoteMaterials() {
-  const { id, coMode } = useLocalSearchParams<{ id?: string; coMode?: string }>();
-  const isCoMode = coMode === "true";
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
   const { theme } = useTheme();
 
@@ -314,28 +313,12 @@ export default function QuoteMaterials() {
 
       // Convert current selection to items (use getSelection for latest state)
       const currentSelection = getSelection();
-      console.log("saveSelected: selection size =", currentSelection.size, "isCoMode =", isCoMode);
-      console.log("saveSelected: selection entries =", Array.from(currentSelection.entries()));
       const newlySelectedItems = transformSelectionToItems(currentSelection);
-      console.log("saveSelected: transformed items =", newlySelectedItems);
 
       // Track usage for analytics (privacy-friendly)
       newlySelectedItems.forEach((item) => {
         trackProductUsage(item.productId || item.id || "", item.qty);
       });
-
-      // In CO mode, pass items back to edit screen without saving
-      if (isCoMode) {
-        const jsonItems = JSON.stringify(newlySelectedItems);
-        console.log("CO mode: returning", newlySelectedItems.length, "items to edit screen");
-        console.log("CO mode: JSON payload length =", jsonItems.length);
-        // Navigate back with the new items encoded in params
-        router.replace({
-          pathname: `/quote/${id}/edit` as any,
-          params: { newItems: jsonItems },
-        });
-        return;
-      }
 
       try {
         const q = await getQuoteById(id);
@@ -346,16 +329,12 @@ export default function QuoteMaterials() {
 
         // Get current quote items
         const existingItems = q.items ?? [];
-        console.log("Newly selected items:", newlySelectedItems);
-        console.log("Existing quote items:", existingItems);
 
         // Merge existing items with newly selected items (accumulate mode)
         const mergedItems = mergeById(existingItems, newlySelectedItems);
-        console.log("Merged items:", mergedItems);
 
         // Save the merged items list
         await saveQuote({ ...q, id, items: mergedItems });
-        console.log("Items saved successfully");
 
         if (goBack) {
           router.back();
@@ -365,7 +344,6 @@ export default function QuoteMaterials() {
 
           // Clear the selection UI so user can select new items
           clear();
-          console.log("Selection cleared. Quote now has", mergedItems.length, "product types");
 
           // Show success message
           setShowSuccessMessage(true);
@@ -376,7 +354,7 @@ export default function QuoteMaterials() {
         Alert.alert("Error", "Failed to add materials. Please try again.");
       }
     },
-    [id, getSelection, router, clear, isCoMode],
+    [id, getSelection, router, clear],
   );
 
   // Calculate status text for header
@@ -515,11 +493,8 @@ export default function QuoteMaterials() {
             key={assembly.id}
             style={themedStyles.assemblyCard}
             onPress={() => {
-              // Navigate to assembly detail or expand it
-              router.push({
-                pathname: "/assemblies/[id]",
-                params: { id: assembly.id, quoteId: id },
-              } as any);
+              // Navigate to assembly calculator
+              router.push(`/(main)/assembly/${assembly.id}?quoteId=${id}` as any);
             }}
           >
             <View style={themedStyles.assemblyInfo}>

@@ -229,27 +229,8 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         <div class="date">${dateString}</div>
       </div>
 
-      ${quote.items && quote.items.length > 0 ? `
-        <div class="section">
-          <div class="section-title">Materials</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th style="text-align: center; width: 80px;">Qty</th>
-                <th style="text-align: right; width: 120px;">Unit Price</th>
-                <th style="text-align: right; width: 120px;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${lineItemsHTML}
-            </tbody>
-          </table>
-        </div>
-      ` : ''}
-
       <div class="section">
-        <div class="section-title">Cost Breakdown</div>
+        <div class="section-title">Cost Summary</div>
         <table class="totals-table">
           <tbody>
             ${materialsFromItems > 0 ? `
@@ -296,6 +277,25 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
           <div style="padding: 16px; background: #f9f9f9; border-radius: 6px; color: #333; line-height: 1.6;">
             ${quote.notes.replace(/\n/g, '<br>')}
           </div>
+        </div>
+      ` : ''}
+
+      ${quote.items && quote.items.length > 0 ? `
+        <div class="section" style="page-break-before: auto;">
+          <div class="section-title">Materials Detail</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th style="text-align: center; width: 80px;">Qty</th>
+                <th style="text-align: right; width: 120px;">Unit Price</th>
+                <th style="text-align: right; width: 120px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItemsHTML}
+            </tbody>
+          </table>
         </div>
       ` : ''}
 
