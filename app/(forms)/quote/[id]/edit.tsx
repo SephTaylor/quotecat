@@ -1,6 +1,6 @@
 // app/(forms)/quote/[id]/edit.tsx
 import { useTheme } from "@/contexts/ThemeContext";
-import { updateQuote } from "@/lib/quotes";
+import { updateQuote, getQuoteById } from "@/lib/quotes";
 import { getClients, getAndClearLastCreatedClientId, getClientById, createClient, type Client } from "@/lib/clients";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
@@ -122,9 +122,41 @@ export default function EditQuote() {
     loadProAndClients();
   }, []);
 
+  // Track if we've processed the newItemsParam to avoid re-processing
+  const processedNewItemsRef = React.useRef<string | null>(null);
+
   useFocusEffect(
     React.useCallback(() => {
-      load();
+      const loadAndMerge = async () => {
+        // First, always load the base quote data
+        await load();
+
+        // Then, if we have new items from materials, merge them
+        if (newItemsParam && newItemsParam !== processedNewItemsRef.current) {
+          processedNewItemsRef.current = newItemsParam;
+          try {
+            const newItems = JSON.parse(newItemsParam) as QuoteItem[];
+            console.log("CO mode (in focus): received", newItems.length, "items to merge");
+            if (newItems.length > 0 && id) {
+              // Fetch current quote from storage to get existing items
+              const currentQuote = await getQuoteById(id);
+              const existingItems = currentQuote?.items ?? [];
+              console.log("CO mode (in focus): existing items:", existingItems.length);
+
+              // Merge existing items with new items
+              const merged = mergeById(existingItems, newItems);
+              console.log("CO mode (in focus): merged result:", merged.length, "items");
+
+              // Update form state with merged items
+              setItems(merged);
+            }
+          } catch (e) {
+            console.error("Failed to merge new items:", e);
+          }
+        }
+      };
+
+      loadAndMerge();
 
       // Check if a new client was just created and auto-select it
       const checkNewClient = async () => {
@@ -161,25 +193,8 @@ export default function EditQuote() {
         }
       };
       loadCoCount();
-    }, [load, setClientName, setClientEmail, setClientPhone, setClientAddress, setIsNewQuote, id]),
+    }, [load, setClientName, setClientEmail, setClientPhone, setClientAddress, setIsNewQuote, id, newItemsParam, setItems]),
   );
-
-  // Handle new items from materials screen (CO mode)
-  useEffect(() => {
-    if (!newItemsParam) return;
-
-    try {
-      const newItems = JSON.parse(newItemsParam) as QuoteItem[];
-      if (newItems.length > 0) {
-        // Merge new items into current items
-        const merged = mergeById(items, newItems);
-        setItems(merged);
-        console.log("CO mode: merged", newItems.length, "new items into form state");
-      }
-    } catch (e) {
-      console.error("Failed to parse newItems from materials screen:", e);
-    }
-  }, [newItemsParam]); // Only run when newItemsParam changes
 
   // Filter saved clients based on current input (for autocomplete)
   const filteredClients = React.useMemo(() => {

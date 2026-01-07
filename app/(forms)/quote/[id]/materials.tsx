@@ -313,7 +313,11 @@ export default function QuoteMaterials() {
       }
 
       // Convert current selection to items (use getSelection for latest state)
-      const newlySelectedItems = transformSelectionToItems(getSelection());
+      const currentSelection = getSelection();
+      console.log("saveSelected: selection size =", currentSelection.size, "isCoMode =", isCoMode);
+      console.log("saveSelected: selection entries =", Array.from(currentSelection.entries()));
+      const newlySelectedItems = transformSelectionToItems(currentSelection);
+      console.log("saveSelected: transformed items =", newlySelectedItems);
 
       // Track usage for analytics (privacy-friendly)
       newlySelectedItems.forEach((item) => {
@@ -322,11 +326,13 @@ export default function QuoteMaterials() {
 
       // In CO mode, pass items back to edit screen without saving
       if (isCoMode) {
-        console.log("CO mode: returning items to edit screen", newlySelectedItems);
+        const jsonItems = JSON.stringify(newlySelectedItems);
+        console.log("CO mode: returning", newlySelectedItems.length, "items to edit screen");
+        console.log("CO mode: JSON payload length =", jsonItems.length);
         // Navigate back with the new items encoded in params
         router.replace({
           pathname: `/quote/${id}/edit` as any,
-          params: { newItems: JSON.stringify(newlySelectedItems) },
+          params: { newItems: jsonItems },
         });
         return;
       }

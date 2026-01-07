@@ -640,9 +640,11 @@ export async function deleteQuoteFromCloud(quoteId: string): Promise<boolean> {
       return false;
     }
 
+    // Use hard DELETE instead of soft delete (UPDATE)
+    // The DELETE RLS policy works, and local soft delete handles resurrection prevention
     const { error } = await supabase
       .from("quotes")
-      .update({ deleted_at: new Date().toISOString() })
+      .delete()
       .eq("id", quoteId)
       .eq("user_id", userId);
 

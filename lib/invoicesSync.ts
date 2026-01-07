@@ -388,9 +388,11 @@ export async function deleteInvoiceFromCloud(
       return false;
     }
 
+    // Use hard DELETE instead of soft delete (UPDATE)
+    // The DELETE RLS policy works, and local soft delete handles resurrection prevention
     const { error } = await supabase
       .from("invoices")
-      .update({ deleted_at: new Date().toISOString() })
+      .delete()
       .eq("id", invoiceId)
       .eq("user_id", userId);
 

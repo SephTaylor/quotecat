@@ -97,10 +97,10 @@ export function canAccessCloudSync(user: UserState): boolean {
 }
 
 /**
- * Check if user can access change orders (Premium only)
+ * Check if user can access change orders (Pro and Premium)
  */
 export function canAccessChangeOrders(user: UserState): boolean {
-  return user.tier === "premium";
+  return user.tier === "pro" || user.tier === "premium";
 }
 
 /**
