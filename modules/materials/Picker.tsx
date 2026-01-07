@@ -132,6 +132,13 @@ function MaterialsPicker({
   // Selected category state
   const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
 
+  // Scroll to top when category changes
+  const handleCategorySelect = useCallback((categoryId: string | "all") => {
+    setSelectedCategory(categoryId);
+    // Scroll list to top
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, []);
+
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -315,7 +322,7 @@ function MaterialsPicker({
   }, [editingProductId, handleFinishEditingQty]);
 
   return (
-    <Pressable style={styles.container} onPress={handleContainerPress}>
+    <View style={styles.container}>
       {/* Sticky Header: Category Filter Chips */}
       <View style={styles.stickyHeader}>
         <ScrollView
@@ -323,25 +330,28 @@ function MaterialsPicker({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterContainer}
           style={styles.filterScrollView}
+          keyboardShouldPersistTaps="handled"
         >
-          <Pressable
+          <TouchableOpacity
             style={[styles.filterChip, selectedCategory === "all" && styles.filterChipActive]}
-            onPress={() => setSelectedCategory("all")}
+            onPress={() => handleCategorySelect("all")}
+            activeOpacity={0.7}
           >
             <Text style={[styles.filterChipText, selectedCategory === "all" && styles.filterChipTextActive]}>
               All
             </Text>
-          </Pressable>
+          </TouchableOpacity>
           {sortedCategories.map((cat) => (
-            <Pressable
+            <TouchableOpacity
               key={cat.id}
               style={[styles.filterChip, selectedCategory === cat.id && styles.filterChipActive]}
-              onPress={() => setSelectedCategory(cat.id)}
+              onPress={() => handleCategorySelect(cat.id)}
+              activeOpacity={0.7}
             >
               <Text style={[styles.filterChipText, selectedCategory === cat.id && styles.filterChipTextActive]}>
                 {cat.name}
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           ))}
         </ScrollView>
 
@@ -373,21 +383,25 @@ function MaterialsPicker({
         </View>
       </View>
 
-      {/* Virtualized Product List */}
-      <FlashList
-        ref={listRef}
-        data={listData}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        getItemType={getItemType}
-        ListHeaderComponent={renderRecentProducts}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={handleScrollBeginDrag}
-        refreshControl={refreshControl}
-        drawDistance={250}
-      />
-    </Pressable>
+      {/* Virtualized Product List - wrapped in View for proper FlashList layout */}
+      <View style={styles.listWrapper}>
+        <FlashList
+          ref={listRef}
+          data={listData}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          getItemType={getItemType}
+          estimatedItemSize={56}
+          ListHeaderComponent={renderRecentProducts}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={handleScrollBeginDrag}
+          onTouchStart={handleContainerPress}
+          refreshControl={refreshControl}
+          drawDistance={250}
+        />
+      </View>
+    </View>
   );
 }
 
@@ -401,6 +415,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingTop: 0,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+    },
+    listWrapper: {
+      flex: 1,
     },
     listContent: {
       paddingBottom: theme.spacing(8),

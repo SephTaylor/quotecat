@@ -6,6 +6,7 @@ import { supabase } from "./supabase";
 import type { Client } from "./types";
 import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getLocallyDeletedClientIdsDB } from "./database";
 
 const SYNC_METADATA_KEY = "@quotecat/clients_sync_metadata";
 const SYNC_LOCK_KEY = "@quotecat/clients_sync_lock";
@@ -398,11 +399,23 @@ export async function syncClients(): Promise<{
     const cloudMap = new Map(cloudClients.map((c) => [c.id, c]));
     const localMap = new Map(localClients.map((c) => [c.id, c]));
 
+    // Get locally deleted client IDs to avoid re-downloading them
+    const locallyDeletedIds = new Set(getLocallyDeletedClientIdsDB());
+    if (locallyDeletedIds.size > 0) {
+      console.log(`🗑️ Found ${locallyDeletedIds.size} locally deleted clients to skip`);
+    }
+
     // Collect cloud clients to save locally (instead of saving one by one)
     // This is MUCH more efficient - reads storage once, writes once
     const clientsToSave: Client[] = [];
     for (const cloudClient of cloudClients) {
       try {
+        // Skip clients that were deleted locally (prevents resurrection)
+        if (locallyDeletedIds.has(cloudClient.id)) {
+          console.log(`⏭️ Skipping locally deleted client: ${cloudClient.id}`);
+          continue;
+        }
+
         const localClient = localMap.get(cloudClient.id);
 
         if (!localClient) {

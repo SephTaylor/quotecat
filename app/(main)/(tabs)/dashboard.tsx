@@ -6,12 +6,14 @@ import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, t
 import { calculateQuoteTotal, calculateInvoiceTotal } from "@/lib/calculations";
 import { loadPreferences, type DashboardPreferences } from "@/lib/preferences";
 import { deleteQuote, saveQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
-import { listInvoices, getToInvoiceStats } from "@/lib/invoices";
-import { listContracts } from "@/lib/contracts";
+import { listInvoices, getToInvoiceStats, deleteInvoice } from "@/lib/invoices";
+import { listContracts, deleteContract } from "@/lib/contracts";
 import { generateAndShareMultiTierPDF } from "@/lib/pdf";
 import { getCachedLogo } from "@/lib/logo";
 import { canAccessAssemblies } from "@/lib/features";
 import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
+import { SwipeableInvoiceItem } from "@/components/SwipeableInvoiceItem";
+import { SwipeableContractItem } from "@/components/SwipeableContractItem";
 import { QuoteGroup } from "@/components/QuoteGroup";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
@@ -435,6 +437,59 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Invoice handlers
+  const handleDeleteInvoice = useCallback(async (invoice: Invoice) => {
+    Alert.alert(
+      "Delete Invoice",
+      `Are you sure you want to delete "${invoice.name || invoice.invoiceNumber}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteInvoice(invoice.id);
+            setInvoices((prev) => prev.filter((i) => i.id !== invoice.id));
+          },
+        },
+      ]
+    );
+  }, []);
+
+  const handleExportInvoice = useCallback(async (invoice: Invoice) => {
+    // Navigate to invoice detail which has export functionality
+    router.push(`/invoice/${invoice.id}`);
+  }, [router]);
+
+  const handleUpdateInvoiceStatus = useCallback((invoice: Invoice) => {
+    // Navigate to invoice detail to update status
+    router.push(`/invoice/${invoice.id}`);
+  }, [router]);
+
+  const handleCopyInvoice = useCallback((invoice: Invoice) => {
+    // Navigate to invoice detail (copy functionality is there)
+    router.push(`/invoice/${invoice.id}`);
+  }, [router]);
+
+  // Contract handlers
+  const handleDeleteContract = useCallback(async (contract: Contract) => {
+    Alert.alert(
+      "Delete Contract",
+      `Are you sure you want to delete "${contract.projectName || contract.contractNumber}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteContract(contract.id);
+            setContracts((prev) => prev.filter((c) => c.id !== contract.id));
+          },
+        },
+      ]
+    );
+  }, []);
+
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   if (loading) {
@@ -594,43 +649,17 @@ export default function Dashboard() {
           {isPro && preferences.showRecentInvoices && recentInvoices.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Invoices</Text>
-              {recentInvoices.map((invoice) => {
-                const statusMeta = InvoiceStatusMeta[invoice.status];
-                const total = calculateInvoiceTotal(invoice);
-                const remaining = invoice.paidAmount ? total - invoice.paidAmount : total;
-
-                return (
-                  <Pressable
-                    key={invoice.id}
-                    style={styles.invoiceCard}
-                    onPress={() => router.push(`/invoice/${invoice.id}`)}
-                  >
-                    <View style={styles.invoiceHeader}>
-                      <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: statusMeta.color }]}>
-                        <Text style={styles.statusBadgeText}>{statusMeta.label}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.invoiceName} numberOfLines={1}>
-                      {invoice.name || "Untitled"}
-                    </Text>
-                    <Text style={styles.invoiceClient} numberOfLines={1}>
-                      {invoice.clientName || "No client"}
-                    </Text>
-                    <View style={styles.invoiceFooter}>
-                      <Text style={styles.invoiceDue}>
-                        Due: {new Date(invoice.dueDate).toLocaleDateString()}
-                      </Text>
-                      <Text style={[
-                        styles.invoiceAmount,
-                        invoice.status === "overdue" && { color: "#FF3B30" }
-                      ]}>
-                        ${remaining.toFixed(2)}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
+              {recentInvoices.map((invoice) => (
+                <SwipeableInvoiceItem
+                  key={invoice.id}
+                  item={invoice}
+                  onPress={() => router.push(`/invoice/${invoice.id}`)}
+                  onDelete={() => handleDeleteInvoice(invoice)}
+                  onExport={() => handleExportInvoice(invoice)}
+                  onUpdateStatus={() => handleUpdateInvoiceStatus(invoice)}
+                  onCopy={() => handleCopyInvoice(invoice)}
+                />
+              ))}
             </View>
           )}
 
@@ -638,41 +667,14 @@ export default function Dashboard() {
           {isPremium && preferences.showRecentContracts && recentContracts.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Contracts</Text>
-              {recentContracts.map((contract) => {
-                const statusMeta = ContractStatusMeta[contract.status];
-
-                return (
-                  <Pressable
-                    key={contract.id}
-                    style={styles.contractCard}
-                    onPress={() => router.push(`/(forms)/contract/${contract.id}/edit`)}
-                  >
-                    <View style={styles.contractHeader}>
-                      <Text style={styles.contractNumber}>{contract.contractNumber}</Text>
-                      <View style={[styles.contractStatusBadge, { backgroundColor: statusMeta.color + "20" }]}>
-                        <View style={[styles.contractStatusDot, { backgroundColor: statusMeta.color }]} />
-                        <Text style={[styles.contractStatusText, { color: statusMeta.color }]}>
-                          {statusMeta.label}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.contractName} numberOfLines={1}>
-                      {contract.projectName || "Untitled"}
-                    </Text>
-                    <Text style={styles.contractClient} numberOfLines={1}>
-                      {contract.clientName || "No client"}
-                    </Text>
-                    <View style={styles.contractFooter}>
-                      <Text style={styles.contractDate}>
-                        {new Date(contract.createdAt).toLocaleDateString()}
-                      </Text>
-                      <Text style={styles.contractAmount}>
-                        ${contract.total.toFixed(2)}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
+              {recentContracts.map((contract) => (
+                <SwipeableContractItem
+                  key={contract.id}
+                  item={contract}
+                  onPress={() => router.push(`/(forms)/contract/${contract.id}/edit`)}
+                  onDelete={() => handleDeleteContract(contract)}
+                />
+              ))}
             </View>
           )}
 
@@ -869,8 +871,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     fab: {
       position: "absolute",
-      bottom: theme.spacing(3),
-      right: theme.spacing(3),
+      top: theme.spacing(2),
+      right: theme.spacing(2),
       backgroundColor: theme.colors.accent,
       flexDirection: "row",
       alignItems: "center",

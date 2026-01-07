@@ -7,6 +7,7 @@ import type { Quote } from "./types";
 import { normalizeQuote } from "./validation";
 import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getLocallyDeletedQuoteIdsDB } from "./database";
 
 const SYNC_METADATA_KEY = "@quotecat/sync_metadata";
 const SYNC_LOCK_KEY = "@quotecat/quotes_sync_lock";
@@ -487,11 +488,23 @@ export async function syncQuotes(): Promise<{
     const cloudMap = new Map(cloudQuotes.map((q) => [q.id, q]));
     const localMap = new Map(localQuotes.map((q) => [q.id, q]));
 
-    // Step 4: Collect cloud quotes to save locally (instead of saving one by one)
+    // Step 4: Get locally deleted quote IDs to avoid re-downloading them
+    const locallyDeletedIds = new Set(getLocallyDeletedQuoteIdsDB());
+    if (locallyDeletedIds.size > 0) {
+      console.log(`🗑️ Found ${locallyDeletedIds.size} locally deleted quotes to skip`);
+    }
+
+    // Step 5: Collect cloud quotes to save locally (instead of saving one by one)
     // This is MUCH more efficient - reads storage once, writes once
     const quotesToSave: Quote[] = [];
     for (const cloudQuote of cloudQuotes) {
       try {
+        // Skip quotes that were deleted locally (prevents resurrection)
+        if (locallyDeletedIds.has(cloudQuote.id)) {
+          console.log(`⏭️ Skipping locally deleted quote: ${cloudQuote.id}`);
+          continue;
+        }
+
         const localQuote = localMap.get(cloudQuote.id);
 
         if (!localQuote) {

@@ -2,9 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+---
 
-QuoteCat is a React Native Expo app for creating and managing construction quotes. It allows users to build quotes from a product catalog, manage materials, calculate labor costs, and generate PDFs. The app uses local AsyncStorage for persistence with plans to migrate to Supabase.
+## QuoteCat Ecosystem
+
+QuoteCat is a construction quoting platform with three main components:
+
+| Component | Location | Tech Stack | Purpose |
+|-----------|----------|------------|---------|
+| **Mobile App** | `/Users/sephtaylor/Projects/quotecat` | React Native, Expo, TypeScript, SQLite, Supabase | iOS app for creating quotes, invoices, managing clients |
+| **Web Portal** | `/Users/sephtaylor/Projects/quotecat-portal` | Next.js 16, React 19, Tailwind, Supabase | Client-facing quote/contract viewing, e-signatures, payments |
+| **Marketing Site** | `/Users/sephtaylor/Projects/quotecat/website` | Static HTML/CSS/JS, Netlify Functions | Landing page at quotecat.ai, Stripe checkout |
+
+### Shared Backend
+- **Supabase**: PostgreSQL database, Auth, Edge Functions (Deno)
+- **Edge Functions**: `wizard-chat` (AI), `create-checkout`, `stripe-webhook`, `cleanup-deleted`
+- **Stripe**: Payment processing for subscriptions
+
+### Launch Target
+- **Public Launch**: January 31, 2025
+- **Current Status**: TestFlight beta (Build #116)
+
+---
+
+## Project Overview (Mobile App)
+
+QuoteCat is a React Native Expo app for creating and managing construction quotes. It allows users to build quotes from a product catalog, manage materials, calculate labor costs, and generate PDFs. The app uses local SQLite for persistence with Supabase cloud sync for Pro/Premium users.
 
 ## Commands
 
@@ -623,6 +646,24 @@ When launched, track:
 
 ---
 
+## 📧 TODO: Email Setup (Jan 6, 2026)
+
+Stripe webhook is working - creates auth user + profile with correct tier. But emails come from Supabase's default servers instead of quotecat.ai.
+
+**Steps to complete:**
+1. Create `noreply@quotecat.ai` in GoDaddy (Email & Office → Create Email Address)
+2. Configure SMTP in Supabase (Authentication → Email → Set up SMTP):
+   - Host: `smtpout.secureserver.net`
+   - Port: `465` (SSL)
+   - Username: `noreply@quotecat.ai`
+   - Password: (set in GoDaddy)
+   - Sender email: `noreply@quotecat.ai`
+   - Sender name: `QuoteCat`
+3. Customize "Invite User" email template with QuoteCat branding
+4. Test full checkout → email → password setup → app login flow
+
+---
+
 ## 🐛 Known Issues / To Investigate
 
 ### ✅ FIXED: Sync Crash with Dual Webapp/Mobile Access (Jan 2, 2026)
@@ -674,6 +715,24 @@ Cloud Sync downloads 10 quotes
 
 ---
 
+## 💡 Future Feature Ideas
+
+Features to consider for future releases (not blockers for launch):
+
+### Contracts
+- **Decline/Request Changes** - Allow clients to decline a contract or request changes via the web portal instead of just signing or doing nothing. Would add "declined" and "needs revision" statuses, plus a notes field for client feedback. (Discussed Jan 7, 2026)
+
+### Quotes
+- *(Add ideas here)*
+
+### Invoices
+- *(Add ideas here)*
+
+### General
+- *(Add ideas here)*
+
+---
+
 ## 🎬 Vision
 
 QuoteCat aims to be the **fastest, simplest construction quoting app** for contractors and builders:
@@ -686,3 +745,16 @@ QuoteCat aims to be the **fastest, simplest construction quoting app** for contr
 - **Pro-focused:** Premium tier for serious contractors doing high volume
 
 **Long-term:** Build a sustainable, profitable business helping contractors run better businesses.
+
+---
+
+## 🎁 VIP Testers (Lifetime Premium)
+
+When going live, create these users with `tier: "premium"` directly in the database (no Stripe subscription needed):
+
+| Name | Email |
+|------|-------|
+| Drew | foxrider12@icloud.com |
+| Wyatt | wyattstephan@stephanelectric.com |
+
+These are early beta testers who get lifetime premium access as thanks for their help.

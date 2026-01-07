@@ -11,6 +11,7 @@ import {
   saveInvoiceDB,
   saveInvoicesBatchDB,
   deleteInvoiceDB,
+  getLocallyDeletedInvoiceIdsDB,
 } from "./database";
 const SYNC_METADATA_KEY = "@quotecat/invoices_sync_metadata";
 const SYNC_LOCK_KEY = "@quotecat/invoices_sync_lock";
@@ -573,11 +574,23 @@ export async function syncInvoices(): Promise<{
     const cloudMap = new Map(cloudInvoices.map((inv) => [inv.id, inv]));
     const localMap = new Map(localInvoices.map((inv) => [inv.id, inv]));
 
-    // Step 4: Collect cloud invoices to save locally (instead of saving one by one)
+    // Step 4: Get locally deleted invoice IDs to avoid re-downloading them
+    const locallyDeletedIds = new Set(getLocallyDeletedInvoiceIdsDB());
+    if (locallyDeletedIds.size > 0) {
+      console.log(`🗑️ Found ${locallyDeletedIds.size} locally deleted invoices to skip`);
+    }
+
+    // Step 5: Collect cloud invoices to save locally (instead of saving one by one)
     // This is MUCH more efficient - reads storage once, writes once
     const invoicesToSave: Invoice[] = [];
     for (const cloudInvoice of cloudInvoices) {
       try {
+        // Skip invoices that were deleted locally (prevents resurrection)
+        if (locallyDeletedIds.has(cloudInvoice.id)) {
+          console.log(`⏭️ Skipping locally deleted invoice: ${cloudInvoice.id}`);
+          continue;
+        }
+
         const localInvoice = localMap.get(cloudInvoice.id);
 
         if (!localInvoice) {

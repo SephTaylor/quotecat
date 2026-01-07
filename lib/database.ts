@@ -407,6 +407,22 @@ export function deleteQuoteDB(id: string): void {
 }
 
 /**
+ * Get IDs of locally deleted quotes (for sync to skip re-downloading)
+ */
+export function getLocallyDeletedQuoteIdsDB(): string[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT id FROM quotes WHERE deleted_at IS NOT NULL"
+    );
+    return rows.map((row: any) => row.id);
+  } catch (error) {
+    console.error("Failed to get deleted quote IDs from SQLite:", error);
+    return [];
+  }
+}
+
+/**
  * Get quotes modified since a timestamp (for sync)
  */
 export function getQuotesModifiedSinceDB(since: string): Quote[] {
@@ -622,6 +638,22 @@ export function deleteInvoiceDB(id: string): void {
 }
 
 /**
+ * Get IDs of locally deleted invoices (for sync to skip re-downloading)
+ */
+export function getLocallyDeletedInvoiceIdsDB(): string[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT id FROM invoices WHERE deleted_at IS NOT NULL"
+    );
+    return rows.map((row: any) => row.id);
+  } catch (error) {
+    console.error("Failed to get deleted invoice IDs from SQLite:", error);
+    return [];
+  }
+}
+
+/**
  * Get invoices modified since a timestamp (for sync)
  */
 export function getInvoicesModifiedSinceDB(since: string): Invoice[] {
@@ -793,6 +825,22 @@ export function deleteClientDB(id: string): void {
   } catch (error) {
     console.error(`Failed to delete client ${id} from SQLite:`, error);
     throw error;
+  }
+}
+
+/**
+ * Get IDs of locally deleted clients (for sync to skip re-downloading)
+ */
+export function getLocallyDeletedClientIdsDB(): string[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT id FROM clients WHERE deleted_at IS NOT NULL"
+    );
+    return rows.map((row: any) => row.id);
+  } catch (error) {
+    console.error("Failed to get deleted client IDs from SQLite:", error);
+    return [];
   }
 }
 
