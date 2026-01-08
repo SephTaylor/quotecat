@@ -1,9 +1,10 @@
 // lib/logo.ts
-// Company logo management - fully local (AsyncStorage only)
+// Company logo management - local storage with cloud sync for Pro+ users
 
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getUserState } from './user';
 
 const LOGO_STORAGE_KEY = '@quotecat/company-logo';
 const MAX_LOGO_WIDTH = 800;
@@ -66,12 +67,35 @@ async function convertToBase64(uri: string): Promise<string> {
 }
 
 /**
- * Upload company logo (pick, process, save locally)
+ * Trigger cloud sync for logo (non-blocking, for Pro+ users)
  */
-export async function uploadCompanyLogo(): Promise<CompanyLogo> {
+async function triggerCloudSync(): Promise<void> {
+  try {
+    const userState = await getUserState();
+    const isPaidTier = userState.tier === 'pro' || userState.tier === 'premium';
+
+    if (isPaidTier) {
+      // Dynamic import to avoid circular dependency
+      const { forceSyncBusinessSettings } = await import('./businessSettingsSync');
+      // Fire and forget - don't wait for cloud sync
+      forceSyncBusinessSettings().catch(error => {
+        console.error('Logo cloud sync failed:', error);
+      });
+    }
+  } catch (error) {
+    // Silent fail - local save already succeeded
+    console.error('Failed to trigger logo cloud sync:', error);
+  }
+}
+
+/**
+ * Upload company logo (pick, process, save locally, sync to cloud for Pro+ users)
+ */
+export async function uploadCompanyLogo(): Promise<CompanyLogo | null> {
   const imageUri = await pickImage();
   if (!imageUri) {
-    throw new Error('No image selected');
+    // User cancelled - return null instead of throwing
+    return null;
   }
 
   const processedUri = await processImage(imageUri);
@@ -83,6 +107,10 @@ export async function uploadCompanyLogo(): Promise<CompanyLogo> {
   };
 
   await AsyncStorage.setItem(LOGO_STORAGE_KEY, JSON.stringify(logo));
+
+  // Trigger cloud sync for Pro+ users (non-blocking)
+  triggerCloudSync();
+
   return logo;
 }
 
@@ -103,8 +131,24 @@ export async function getCompanyLogo(): Promise<CompanyLogo | null> {
 export const getCachedLogo = getCompanyLogo;
 
 /**
- * Delete company logo
+ * Delete company logo (local and cloud)
  */
 export async function deleteLogo(): Promise<void> {
   await AsyncStorage.removeItem(LOGO_STORAGE_KEY);
+
+  // Also delete from cloud storage for Pro+ users
+  try {
+    const userState = await getUserState();
+    const isPaidTier = userState.tier === 'pro' || userState.tier === 'premium';
+
+    if (isPaidTier) {
+      const { deleteLogoFromStorage } = await import('./businessSettingsSync');
+      // Fire and forget - local delete already succeeded
+      deleteLogoFromStorage().catch(error => {
+        console.error('Cloud logo delete failed:', error);
+      });
+    }
+  } catch (error) {
+    console.error('Failed to delete logo from cloud:', error);
+  }
 }

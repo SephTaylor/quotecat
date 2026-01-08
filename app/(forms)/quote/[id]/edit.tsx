@@ -794,7 +794,21 @@ export default function EditQuote() {
             }}
             onBlur={() => {
               // Delay hiding to allow tap on suggestion
-              setTimeout(() => setShowClientSuggestions(false), 200);
+              setTimeout(() => {
+                setShowClientSuggestions(false);
+                // Auto-fill contact info if name exactly matches a saved client
+                if (isPro && clientName.trim()) {
+                  const exactMatch = savedClients.find(
+                    (c) => c.name.toLowerCase() === clientName.trim().toLowerCase()
+                  );
+                  if (exactMatch && !clientEmail && !clientPhone && !clientAddress) {
+                    // Only auto-fill if contact fields are empty (don't overwrite user input)
+                    setClientEmail(exactMatch.email || "");
+                    setClientPhone(exactMatch.phone || "");
+                    setClientAddress(exactMatch.address || "");
+                  }
+                }
+              }, 200);
             }}
             autoCapitalize="words"
           />

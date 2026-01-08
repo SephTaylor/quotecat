@@ -246,6 +246,16 @@ export default function Settings() {
                     <Text style={styles.syncCountValue}>{localCounts.clients}</Text>
                     <Text style={styles.syncCountValue}>{cloudCounts.clients}</Text>
                   </View>
+                  <View style={styles.syncCountsRow}>
+                    <Text style={styles.syncCountLabel}>Assemblies</Text>
+                    <Text style={styles.syncCountValue}>{localCounts.assemblies}</Text>
+                    <Text style={styles.syncCountValue}>{cloudCounts.assemblies}</Text>
+                  </View>
+                  <View style={styles.syncCountsRow}>
+                    <Text style={styles.syncCountLabel}>Business Settings</Text>
+                    <Text style={[styles.syncCountValue, { color: '#34C759' }]}>✓</Text>
+                    <Text style={[styles.syncCountValue, { color: '#34C759' }]}>✓</Text>
+                  </View>
                 </View>
 
                 {/* Sync Actions */}

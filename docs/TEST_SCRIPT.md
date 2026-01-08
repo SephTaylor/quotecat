@@ -19,8 +19,8 @@ Do this after every build:
 - [ x] Create quote with name, client info
 - [ x] Add materials from catalog (+/- buttons work)
 - [ x] Labor, markup, tax calculate correctly
-- [ xx] Save, edit, duplicate, delete quotes
-- [ ???] Long-press for multi-select mode
+- [ x] Save, edit, duplicate, delete quotes
+- [ x] Long-press for multi-select mode
 
 **Exports:**
 - [x ] PDF export works (check limit counter)
@@ -35,17 +35,29 @@ Do this after every build:
 ## Pro Tier (logged in as Pro)
 
 **Cloud sync:**
-- [ ] Quotes sync to Supabase after save
+- [ x] Quotes sync to Supabase after save
 
 **Client Manager (Pro Tools tab):**
-- [ ] Add, edit, delete clients
-- [ ] Client suggestions appear when typing in quotes
-- [ ] Selecting client auto-fills all fields
-- [ ] "Save this client?" prompt appears for new clients
+- [x ] Add, edit, delete clients
+- [ x] Client suggestions appear when typing in quotes
+- [ x] Selecting client auto-fills all fields
+- [ x] "Save this client?" prompt appears for new clients
 
 **Assemblies:**
-- [ ] Create assembly with multiple items
-- [ ] Add assembly to quote
+- [x ] Create assembly with multiple items
+- [x ] Add assembly to quote
+
+
+⏺ Pro Features to Test:
+
+ x - Cloud sync - Quotes, invoices, clients syncing to Supabase
+ x - Client manager - Save clients, auto-populate on quotes
+ x - Custom assemblies - Create, edit, use on quotes
+ x - Company branding - Logo and company info on PDF exports
+  x - PDF/CSV exports - Unlimited exports working
+  x - Change order tracking - The flow we just built (modify approved quote → changes logged)
+  x- Invoices - Create from quotes, track payment status
+  - Multi-device - Sign in on another device, data appears
 
 ---
 
@@ -56,7 +68,7 @@ Do this after every build:
 - [ ] Price Book items appear in Materials picker
 - [ ] Add Price Book items to quotes
 
-**Change Orders:**
+**Change Orders: PORTAL ONLY**
 - [ ] Edit a "Sent" quote → prompted for reason
 - [ ] Change order shows in Review screen
 

@@ -43,6 +43,8 @@ export default function InvoicesList() {
     showSourcePicker,
     availableQuotes,
     availableContracts,
+    selectMode,
+    selectedIds,
 
     // Setters
     setSearchQuery,
@@ -66,6 +68,12 @@ export default function InvoicesList() {
     handleCloseQuotePicker,
     handleCloseContractPicker,
     handleCloseSourcePicker,
+    handleCreateInvoice,
+    toggleSelectMode,
+    toggleSelectInvoice,
+    enterSelectMode,
+    handleBulkDelete,
+    handleBulkUpdateStatus,
   } = useInvoiceList();
 
   // If not Pro, show locked state
@@ -91,7 +99,24 @@ export default function InvoicesList() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: "Invoices", headerTitleAlign: "center" }} />
+      <Stack.Screen
+        options={{
+          title: selectMode ? `${selectedIds.size} Selected` : "Invoices",
+          headerTitleAlign: "center",
+          headerRight: () =>
+            selectMode ? (
+              <Pressable onPress={toggleSelectMode} style={{ paddingHorizontal: 16 }}>
+                <Text style={{ color: theme.colors.accent, fontSize: 16, fontWeight: "600" }}>
+                  Done
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={handleCreateInvoice} style={{ paddingHorizontal: 16 }}>
+                <Ionicons name="add" size={28} color={theme.colors.accent} />
+              </Pressable>
+            ),
+        }}
+      />
       <GradientBackground>
         {/* Status Filters */}
         <ScrollView
@@ -157,16 +182,44 @@ export default function InvoicesList() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-          renderItem={({ item }) => (
-            <SwipeableInvoiceItem
-              item={item}
-              onPress={() => handleViewInvoice(item)}
-              onDelete={() => handleDeleteInvoice(item)}
-              onExport={() => handleExportInvoice(item)}
-              onUpdateStatus={() => handleUpdateStatus(item)}
-              onCopy={() => handleCopyInvoice(item)}
-            />
-          )}
+          renderItem={({ item }) =>
+            selectMode ? (
+              <Pressable
+                style={styles.selectableItem}
+                onPress={() => toggleSelectInvoice(item.id)}
+              >
+                <View style={[
+                  styles.checkbox,
+                  selectedIds.has(item.id) && styles.checkboxSelected
+                ]}>
+                  {selectedIds.has(item.id) && (
+                    <Ionicons name="checkmark" size={16} color="#fff" />
+                  )}
+                </View>
+                <View style={styles.selectableItemContent}>
+                  <SwipeableInvoiceItem
+                    item={item}
+                    onPress={() => toggleSelectInvoice(item.id)}
+                    onDelete={() => {}}
+                    onExport={() => {}}
+                    onUpdateStatus={() => {}}
+                    onCopy={() => {}}
+                    disabled
+                  />
+                </View>
+              </Pressable>
+            ) : (
+              <SwipeableInvoiceItem
+                item={item}
+                onPress={() => handleViewInvoice(item)}
+                onDelete={() => handleDeleteInvoice(item)}
+                onExport={() => handleExportInvoice(item)}
+                onUpdateStatus={() => handleUpdateStatus(item)}
+                onCopy={() => handleCopyInvoice(item)}
+                onLongPress={() => enterSelectMode(item.id)}
+              />
+            )
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>
@@ -192,6 +245,28 @@ export default function InvoicesList() {
           onUndo={handleUndoDelete}
           onDismiss={handleDismissUndo}
         />
+
+        {/* Bulk Action Bar */}
+        {selectMode && (
+          <View style={styles.bulkActionBar}>
+            <Pressable
+              style={[styles.bulkActionButton, selectedIds.size === 0 && styles.bulkActionDisabled]}
+              onPress={handleBulkUpdateStatus}
+              disabled={selectedIds.size === 0}
+            >
+              <Ionicons name="flag-outline" size={20} color={selectedIds.size === 0 ? theme.colors.muted : theme.colors.text} />
+              <Text style={[styles.bulkActionText, selectedIds.size === 0 && styles.bulkActionTextDisabled]}>Status</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.bulkActionButton, selectedIds.size === 0 && styles.bulkActionDisabled]}
+              onPress={handleBulkDelete}
+              disabled={selectedIds.size === 0}
+            >
+              <Ionicons name="trash-outline" size={20} color={selectedIds.size === 0 ? theme.colors.muted : "#FF3B30"} />
+              <Text style={[styles.bulkActionText, selectedIds.size === 0 && styles.bulkActionTextDisabled, selectedIds.size > 0 && { color: "#FF3B30" }]}>Delete</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Status Selector Modal */}
         <Modal
@@ -252,9 +327,12 @@ export default function InvoicesList() {
             <View style={styles.modalContainer}>
               <View style={styles.quotePickerModal}>
                 <Text style={styles.modalTitle}>Select Quote to Invoice</Text>
-                <Text style={styles.modalSubtitle}>
-                  Choose an approved or completed quote
-                </Text>
+                <View style={styles.modalInfoBox}>
+                  <Ionicons name="information-circle" size={18} color={theme.colors.accent} />
+                  <Text style={styles.modalInfoText}>
+                    Only <Text style={{ fontWeight: "700" }}>Approved</Text> or <Text style={{ fontWeight: "700" }}>Completed</Text> quotes can be invoiced
+                  </Text>
+                </View>
 
                 <ScrollView style={styles.quoteList} nestedScrollEnabled>
                   {availableQuotes.map((quote) => (
@@ -568,6 +646,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginBottom: theme.spacing(2),
       textAlign: "center",
     },
+    modalInfoBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+      backgroundColor: theme.colors.accent + "15",
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      borderRadius: theme.radius.md,
+      marginBottom: theme.spacing(2),
+    },
+    modalInfoText: {
+      flex: 1,
+      fontSize: 13,
+      color: theme.colors.text,
+      lineHeight: 18,
+    },
     statusOption: {
       backgroundColor: theme.colors.bg,
       borderRadius: theme.radius.md,
@@ -682,6 +776,62 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     sourceOptionSubtitle: {
       fontSize: 13,
+      color: theme.colors.muted,
+    },
+    // Selection mode styles
+    selectableItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1.5),
+    },
+    selectableItemContent: {
+      flex: 1,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    checkboxSelected: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    bulkActionBar: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      flexDirection: "row",
+      justifyContent: "space-around",
+      alignItems: "center",
+      paddingVertical: theme.spacing(2),
+      paddingHorizontal: theme.spacing(3),
+      paddingBottom: theme.spacing(4),
+      backgroundColor: theme.colors.card,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    bulkActionButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(2),
+    },
+    bulkActionDisabled: {
+      opacity: 0.5,
+    },
+    bulkActionText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    bulkActionTextDisabled: {
       color: theme.colors.muted,
     },
   });

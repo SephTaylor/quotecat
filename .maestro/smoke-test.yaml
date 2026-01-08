@@ -1,0 +1,49 @@
+# QuoteCat Smoke Test
+# Run: maestro test .maestro/smoke-test.yaml
+
+appId: ai.quotecat.app
+
+---
+
+# Launch the app fresh
+- launchApp:
+    clearState: true
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 10000
+
+# 2. Tap the + button in header to create quote
+- tapOn:
+    point: "95%,6%"
+
+# Wait for edit screen
+- extendedWaitUntil:
+    visible: "Edit Quote"
+    timeout: 5000
+
+# 3. Enter project name (tap on the input field - ~50% x, ~22% y)
+- tapOn:
+    point: "50%,22%"
+- inputText: "Smoke Test Quote"
+- hideKeyboard
+
+# 4. Enter client name (tap below project name - ~50% x, ~30% y)
+- tapOn:
+    point: "50%,30%"
+- inputText: "Test Client"
+- hideKeyboard
+
+# 5. Scroll down to make Save visible and tap it
+- scroll:
+    direction: DOWN
+
+# Tap Save button (bottom left area)
+- tapOn:
+    point: "25%,95%"
+
+# 6. Verify saved - look for the quote name in the list or success
+- extendedWaitUntil:
+    visible: "Smoke Test Quote"
+    timeout: 10000

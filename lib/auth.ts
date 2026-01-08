@@ -7,6 +7,8 @@ import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync
 import { syncClients, migrateLocalClientsToCloud } from "./clientsSync";
 import { syncInvoices, hasInvoicesMigrated, migrateLocalInvoicesToCloud } from "./invoicesSync";
 import { syncPricebook } from "./pricebookSync";
+import { syncAssemblies, hasAssembliesMigrated, migrateLocalAssembliesToCloud } from "./assembliesSync";
+import { syncBusinessSettings } from "./businessSettingsSync";
 import { markSyncComplete } from "./syncState";
 
 // Re-export auth utilities for backwards compatibility
@@ -168,6 +170,18 @@ async function runBackgroundSync(): Promise<void> {
     console.error("❌ Clients migration failed:", error);
   }
 
+  // Migrate assemblies if needed
+  const assembliesMigrated = await hasAssembliesMigrated();
+  if (!assembliesMigrated) {
+    try {
+      console.log("🔄 Auto-migrating assemblies to cloud...");
+      await migrateLocalAssembliesToCloud();
+      await gcBreak();
+    } catch (error) {
+      console.error("❌ Assemblies migration failed:", error);
+    }
+  }
+
   // Sync all data - each sync is isolated with GC breaks
   try {
     await syncQuotes();
@@ -185,8 +199,17 @@ async function runBackgroundSync(): Promise<void> {
 
   try {
     await syncClients();
+    await gcBreak();
   } catch (error) {
     console.error("❌ Clients sync failed:", error);
+  }
+
+  // Sync assemblies for Pro/Premium users
+  try {
+    await syncAssemblies();
+    await gcBreak();
+  } catch (error) {
+    console.error("❌ Assemblies sync failed:", error);
   }
 
   // Sync pricebook for Premium users
@@ -195,6 +218,13 @@ async function runBackgroundSync(): Promise<void> {
     await gcBreak();
   } catch (error) {
     console.error("❌ Pricebook sync failed:", error);
+  }
+
+  // Sync business settings (company info, logo, preferences) for Pro+ users
+  try {
+    await syncBusinessSettings();
+  } catch (error) {
+    console.error("❌ Business settings sync failed:", error);
   }
 
   // Mark sync as complete so UI components know to refresh

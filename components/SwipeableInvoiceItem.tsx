@@ -14,10 +14,12 @@ type SwipeableInvoiceItemProps = {
   onExport: () => void;
   onUpdateStatus: () => void;
   onCopy: () => void;
+  onLongPress?: () => void;
+  disabled?: boolean;
 };
 
 export const SwipeableInvoiceItem = React.memo(
-  ({ item, onPress, onDelete, onExport, onUpdateStatus, onCopy }: SwipeableInvoiceItemProps) => {
+  ({ item, onPress, onDelete, onExport, onUpdateStatus, onCopy, onLongPress, disabled }: SwipeableInvoiceItemProps) => {
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     const [isExporting, setIsExporting] = useState(false);
@@ -132,15 +134,17 @@ export const SwipeableInvoiceItem = React.memo(
     return (
       <Swipeable
         ref={swipeableRef}
-        renderRightActions={renderRightActions}
-        renderLeftActions={renderLeftActions}
+        renderRightActions={disabled ? undefined : renderRightActions}
+        renderLeftActions={disabled ? undefined : renderLeftActions}
         friction={2}
         overshootRight={false}
         overshootLeft={false}
+        enabled={!disabled}
       >
         <Pressable
           style={styles.card}
           onPress={onPress}
+          onLongPress={onLongPress}
           accessibilityLabel={`Invoice: ${item.invoiceNumber}`}
           accessibilityRole="button"
           accessibilityHint="Double tap to view. Swipe left for export and copy. Swipe right to delete."

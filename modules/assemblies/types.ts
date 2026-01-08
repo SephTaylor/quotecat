@@ -9,10 +9,15 @@ export type AssemblyItem =
 export type Assembly = {
   id: string;
   name: string;
+  description?: string;
+  category?: string;
   // flat list; grouping is a UI concern
   items: AssemblyItem[];
   // optional default variables (e.g., roomLengthFt)
   defaults?: AssemblyVarBag;
+  // timestamps for cloud sync
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type PricedLine = {

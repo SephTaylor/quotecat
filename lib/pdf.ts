@@ -22,6 +22,14 @@ export type PDFOptions = {
 function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
   const { includeBranding, companyDetails, logoBase64 } = options;
 
+  console.log("=== PDF DEBUG ===");
+  console.log("Quote ID:", quote.id);
+  console.log("Has changeHistory:", !!quote.changeHistory);
+  console.log("changeHistory length:", quote.changeHistory?.length || 0);
+  if (quote.changeHistory) {
+    console.log("changeHistory preview:", quote.changeHistory.substring(0, 100));
+  }
+
   // Calculate totals
   const materialsFromItems = quote.items?.reduce(
     (sum, item) => sum + item.unitPrice * item.qty,
@@ -296,6 +304,15 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
               ${lineItemsHTML}
             </tbody>
           </table>
+        </div>
+      ` : ''}
+
+      ${quote.changeHistory ? `
+        <div class="section" style="page-break-before: auto;">
+          <div class="section-title">Change History</div>
+          <div style="padding: 16px; background: #FFF9F0; border: 1px solid #F59E0B; border-radius: 6px; color: #333; font-size: 13px; line-height: 1.6; font-family: monospace; white-space: pre-wrap;">
+${quote.changeHistory}
+          </div>
         </div>
       ` : ''}
 
@@ -736,25 +753,6 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         </div>
       </div>
 
-      ${invoice.items && invoice.items.length > 0 ? `
-        <div class="section">
-          <div class="section-title">Line Items</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th style="text-align: center; width: 80px;">Qty</th>
-                <th style="text-align: right; width: 120px;">Unit Price</th>
-                <th style="text-align: right; width: 120px;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${lineItemsHTML}
-            </tbody>
-          </table>
-        </div>
-      ` : ''}
-
       <div class="section">
         <div class="section-title">Amount Due</div>
         <table class="totals-table">
@@ -798,6 +796,25 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
       </div>
 
       ${notesSection}
+
+      ${invoice.items && invoice.items.length > 0 ? `
+        <div class="section">
+          <div class="section-title">Line Items</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th style="text-align: center; width: 80px;">Qty</th>
+                <th style="text-align: right; width: 120px;">Unit Price</th>
+                <th style="text-align: right; width: 120px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItemsHTML}
+            </tbody>
+          </table>
+        </div>
+      ` : ''}
 
       ${paymentMethodsSection}
 

@@ -1,0 +1,98 @@
+# QuoteCat - Create Quote Flow
+# Run: maestro test .maestro/create-quote.yaml
+
+appId: ai.quotecat.app
+
+---
+
+# Test 1.3: Create a Quote - Start
+- assertVisible: "Quotes"
+- tapOn:
+    text: "add"
+    optional: true
+
+# Wait for edit screen to load
+- extendedWaitUntil:
+    visible: "Quote name"
+    timeout: 5000
+
+# Test 1.4: Enter Basic Info
+- tapOn: "Quote name"
+- eraseText: 20
+- inputText: "Test Kitchen Remodel"
+
+- tapOn: "Client name"
+- eraseText: 20
+- inputText: "John Smith"
+
+- scrollUntilVisible:
+    element: "Client email"
+    direction: DOWN
+
+- tapOn: "Client email"
+- inputText: "john@example.com"
+
+- tapOn: "Client phone"
+- inputText: "5551234567"
+
+# Scroll to find Materials button
+- scrollUntilVisible:
+    element: "Materials"
+    direction: DOWN
+
+# Test 1.5: Add Materials
+- tapOn: "Materials"
+
+# Wait for materials picker
+- extendedWaitUntil:
+    visible: "Framing"
+    timeout: 5000
+
+# Tap a category
+- tapOn: "Framing"
+
+# Look for a product and add it
+- scrollUntilVisible:
+    element: "Stud"
+    direction: DOWN
+
+# Tap + to add item (looking for any add button)
+- tapOn:
+    text: "+"
+    index: 0
+
+# Tap + again to increase qty
+- tapOn:
+    text: "+"
+    index: 0
+
+# Go back to quote
+- tapOn: "Done"
+  optional: true
+- tapOn: "Save"
+  optional: true
+
+# Test 1.6: Enter Labor and Markup
+- scrollUntilVisible:
+    element: "Labor"
+    direction: DOWN
+
+- tapOn: "Labor"
+- inputText: "500"
+
+- scrollUntilVisible:
+    element: "Markup"
+    direction: DOWN
+
+- tapOn: "Markup"
+- inputText: "20"
+
+# Test 1.7: Save Quote
+- tapOn: "Save"
+
+# Verify we're back at list or saved
+- assertVisible: "Test Kitchen Remodel"
+
+- runScript:
+    script: |
+      console.log("✅ Create quote flow passed!")

@@ -23,6 +23,7 @@
     "@shopify/flash-list": "^2.2.0",
     "@supabase/supabase-js": "^2.75.0",
     "babel-preset-expo": "~54.0.0",
+    "base64-arraybuffer": "^1.0.2",
     "expo": "54.0.19",
     "expo-application": "^7.0.7",
     "expo-constants": "~18.0.10",

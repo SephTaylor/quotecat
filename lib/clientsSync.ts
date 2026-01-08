@@ -403,6 +403,15 @@ export async function syncClients(): Promise<{
     const locallyDeletedIds = new Set(getLocallyDeletedClientIdsDB());
     if (locallyDeletedIds.size > 0) {
       console.log(`🗑️ Found ${locallyDeletedIds.size} locally deleted clients to skip`);
+
+      // Clean up orphans: delete from cloud any clients that were deleted locally
+      for (const deletedId of locallyDeletedIds) {
+        try {
+          await deleteClientFromCloud(deletedId);
+        } catch (error) {
+          // Silently continue - might already be deleted or not exist
+        }
+      }
     }
 
     // Collect cloud clients to save locally (instead of saving one by one)
@@ -460,25 +469,26 @@ export async function syncClients(): Promise<{
     // Process local clients (upload new or updated since last sync)
     for (const localClient of localClients) {
       try {
-        // For incremental sync, only upload clients modified since last sync
-        if (lastSyncAt) {
-          const localUpdated = safeGetTimestamp(localClient.updatedAt);
-          const lastSync = safeGetTimestamp(lastSyncAt);
-
-          // Skip clients that haven't changed since last sync
-          if (localUpdated <= lastSync) {
-            continue;
-          }
-        }
-
         const cloudClient = cloudMap.get(localClient.id);
 
         if (!cloudClient) {
-          // New local client - upload to cloud
+          // New local client that doesn't exist in cloud - always upload
           const success = await uploadClient(localClient);
           if (success) uploaded++;
         } else {
-          // Client exists in both - check which is newer (use safe timestamp)
+          // Client exists in both - only upload if local is newer
+          // For incremental sync, skip if local hasn't changed since last sync
+          if (lastSyncAt) {
+            const localUpdated = safeGetTimestamp(localClient.updatedAt);
+            const lastSync = safeGetTimestamp(lastSyncAt);
+
+            // Skip clients that haven't changed since last sync
+            if (localUpdated <= lastSync) {
+              continue;
+            }
+          }
+
+          // Check which is newer (use safe timestamp)
           const cloudUpdated = safeGetTimestamp(cloudClient.updatedAt);
           const localUpdated = safeGetTimestamp(localClient.updatedAt);
 

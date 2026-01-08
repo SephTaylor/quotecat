@@ -202,14 +202,19 @@ export async function uploadInvoice(invoice: Invoice): Promise<boolean> {
       id: invoice.id,
       user_id: userId,
       quote_id: invoice.quoteId || null,
+      contract_id: invoice.contractId || null,
       invoice_number: invoice.invoiceNumber,
       name: invoice.name,
       client_name: invoice.clientName || null,
+      client_email: invoice.clientEmail || null,
+      client_phone: invoice.clientPhone || null,
+      client_address: invoice.clientAddress || null,
       items: invoice.items,
       labor: invoice.labor,
       material_estimate: invoice.materialEstimate || null,
       overhead: invoice.overhead || null,
       markup_percent: invoice.markupPercent || null,
+      tax_percent: invoice.taxPercent || null,
       notes: invoice.notes || null,
       invoice_date: invoice.invoiceDate,
       due_date: invoice.dueDate,
@@ -334,9 +339,13 @@ export async function downloadInvoices(since?: string, isInitialSync = false): P
         const invoice: Invoice = {
           id: row.id,
           quoteId: row.quote_id || undefined,
+          contractId: row.contract_id || undefined,
           invoiceNumber: row.invoice_number || "",
           name: row.name || "",
           clientName: row.client_name || undefined,
+          clientEmail: row.client_email || undefined,
+          clientPhone: row.client_phone || undefined,
+          clientAddress: row.client_address || undefined,
           items: Array.isArray(row.items) ? row.items : [],
           labor: parseFloat(row.labor) || 0,
           materialEstimate: row.material_estimate
@@ -345,6 +354,9 @@ export async function downloadInvoices(since?: string, isInitialSync = false): P
           overhead: row.overhead ? parseFloat(row.overhead) : undefined,
           markupPercent: row.markup_percent
             ? parseFloat(row.markup_percent)
+            : undefined,
+          taxPercent: row.tax_percent
+            ? parseFloat(row.tax_percent)
             : undefined,
           notes: row.notes || undefined,
           invoiceDate: row.invoice_date,
@@ -580,6 +592,15 @@ export async function syncInvoices(): Promise<{
     const locallyDeletedIds = new Set(getLocallyDeletedInvoiceIdsDB());
     if (locallyDeletedIds.size > 0) {
       console.log(`🗑️ Found ${locallyDeletedIds.size} locally deleted invoices to skip`);
+
+      // Clean up orphans: delete from cloud any invoices that were deleted locally
+      for (const deletedId of locallyDeletedIds) {
+        try {
+          await deleteInvoiceFromCloud(deletedId);
+        } catch (error) {
+          // Silently continue - might already be deleted or not exist
+        }
+      }
     }
 
     // Step 5: Collect cloud invoices to save locally (instead of saving one by one)
@@ -633,25 +654,26 @@ export async function syncInvoices(): Promise<{
     // Step 5: Process local invoices (upload new or updated since last sync)
     for (const localInvoice of localInvoices) {
       try {
-        // For incremental sync, only upload invoices modified since last sync
-        if (lastSyncAt) {
-          const localUpdated = safeGetTimestamp(localInvoice.updatedAt);
-          const lastSync = safeGetTimestamp(lastSyncAt);
-
-          // Skip invoices that haven't changed since last sync
-          if (localUpdated <= lastSync) {
-            continue;
-          }
-        }
-
         const cloudInvoice = cloudMap.get(localInvoice.id);
 
         if (!cloudInvoice) {
-          // New local invoice - upload to cloud
+          // New local invoice that doesn't exist in cloud - always upload
           const success = await uploadInvoice(localInvoice);
           if (success) uploaded++;
         } else {
-          // Invoice exists in both - check which is newer (use safe timestamp)
+          // Invoice exists in both - only upload if local is newer
+          // For incremental sync, skip if local hasn't changed since last sync
+          if (lastSyncAt) {
+            const localUpdated = safeGetTimestamp(localInvoice.updatedAt);
+            const lastSync = safeGetTimestamp(lastSyncAt);
+
+            // Skip invoices that haven't changed since last sync
+            if (localUpdated <= lastSync) {
+              continue;
+            }
+          }
+
+          // Check which is newer (use safe timestamp)
           const cloudUpdated = safeGetTimestamp(cloudInvoice.updatedAt);
           const localUpdated = safeGetTimestamp(localInvoice.updatedAt);
 

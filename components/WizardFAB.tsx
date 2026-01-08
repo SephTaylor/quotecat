@@ -16,6 +16,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = '@quotecat/wizard_fab_position';
 const FAB_SIZE = 56;
+const PADDING_TOP = 10; // Minimal top padding - allows Drew in header area
+const PADDING_BOTTOM = 140; // Safe area for tab bar + home indicator
+const PADDING_HORIZONTAL = 16; // Side padding
+
+// Helper to clamp position within bounds (outside component for stable reference)
+const clampPosition = (x: number, y: number) => {
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const minX = PADDING_HORIZONTAL;
+  const maxX = screenWidth - FAB_SIZE - PADDING_HORIZONTAL;
+  const minY = PADDING_TOP;
+  const maxY = screenHeight - FAB_SIZE - PADDING_BOTTOM;
+  return {
+    x: Math.min(Math.max(minX, x), maxX),
+    y: Math.min(Math.max(minY, y), maxY),
+  };
+};
 
 export function WizardFAB() {
   const router = useRouter();
@@ -24,9 +40,9 @@ export function WizardFAB() {
   // Get screen dimensions
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-  // Default position (bottom-right)
-  const defaultX = screenWidth - FAB_SIZE - 24;
-  const defaultY = screenHeight - FAB_SIZE - 120; // Account for tab bar
+  // Default position (bottom-right, using same padding as clamp bounds)
+  const defaultX = screenWidth - FAB_SIZE - PADDING_HORIZONTAL;
+  const defaultY = screenHeight - FAB_SIZE - PADDING_BOTTOM;
 
   // Animated position
   const pan = useRef(new Animated.ValueXY({ x: defaultX, y: defaultY })).current;
@@ -46,9 +62,8 @@ export function WizardFAB() {
       if (saved) {
         const { x, y } = JSON.parse(saved);
         // Validate position is still on screen
-        const validX = Math.min(Math.max(0, x), screenWidth - FAB_SIZE);
-        const validY = Math.min(Math.max(0, y), screenHeight - FAB_SIZE);
-        pan.setValue({ x: validX, y: validY });
+        const clamped = clampPosition(x, y);
+        pan.setValue(clamped);
       }
     } catch (error) {
       console.error('Failed to load FAB position:', error);
@@ -89,9 +104,15 @@ export function WizardFAB() {
         if (Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10) {
           isDragging.current = true;
         }
-        Animated.event([null, { dx: pan.x, dy: pan.y }], {
-          useNativeDriver: false,
-        })(_, gestureState);
+
+        // Calculate proposed position and clamp to bounds in real-time
+        const proposedX = startPosition.current.x + gestureState.dx;
+        const proposedY = startPosition.current.y + gestureState.dy;
+        const clamped = clampPosition(proposedX, proposedY);
+
+        // Set clamped position (offset is already applied, so we set absolute position)
+        pan.setOffset({ x: 0, y: 0 });
+        pan.setValue(clamped);
       },
       onPanResponderRelease: (_, gestureState) => {
         pan.flattenOffset();
@@ -102,23 +123,21 @@ export function WizardFAB() {
           return;
         }
 
-        // Get final position
-        let finalX = startPosition.current.x + gestureState.dx;
-        let finalY = startPosition.current.y + gestureState.dy;
+        // Get final position and clamp to bounds
+        const finalX = startPosition.current.x + gestureState.dx;
+        const finalY = startPosition.current.y + gestureState.dy;
+        const clamped = clampPosition(finalX, finalY);
 
-        // Clamp to screen bounds
-        finalX = Math.min(Math.max(0, finalX), screenWidth - FAB_SIZE);
-        finalY = Math.min(Math.max(0, finalY), screenHeight - FAB_SIZE - 80); // Account for tab bar
-
-        // Animate to clamped position
+        // Animate to clamped position with bounce effect
         Animated.spring(pan, {
-          toValue: { x: finalX, y: finalY },
+          toValue: clamped,
           useNativeDriver: false,
-          friction: 5,
+          friction: 6,
+          tension: 40,
         }).start();
 
         // Save position
-        savePosition(finalX, finalY);
+        savePosition(clamped.x, clamped.y);
       },
     })
   ).current;

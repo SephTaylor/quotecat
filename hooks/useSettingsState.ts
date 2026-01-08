@@ -50,8 +50,8 @@ export function useSettingsState() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncAvailable, setSyncAvailable] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [localCounts, setLocalCounts] = useState({ quotes: 0, invoices: 0, clients: 0 });
-  const [cloudCounts, setCloudCounts] = useState({ quotes: 0, invoices: 0, clients: 0 });
+  const [localCounts, setLocalCounts] = useState({ quotes: 0, invoices: 0, clients: 0, assemblies: 0 });
+  const [cloudCounts, setCloudCounts] = useState({ quotes: 0, invoices: 0, clients: 0, assemblies: 0 });
 
   // Email capture state
   const [subscribeEmail, setSubscribeEmail] = useState("");
@@ -108,11 +108,18 @@ export function useSettingsState() {
 
     const localClients = await getClients();
     const clientsCount = localClients.length;
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Load assemblies count
+    const { listAssemblies } = await import("@/modules/assemblies/storage");
+    const localAssemblies = await listAssemblies();
+    const assembliesCount = localAssemblies.length;
 
     const counts = {
       quotes: quotesCount,
       invoices: invoicesCount,
       clients: clientsCount,
+      assemblies: assembliesCount,
     };
     setLocalCounts(counts);
 
@@ -319,11 +326,17 @@ export function useSettingsState() {
 
         const localClients = await getClients();
         const clientsCount = localClients.length;
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const { listAssemblies } = await import("@/modules/assemblies/storage");
+        const localAssemblies = await listAssemblies();
+        const assembliesCount = localAssemblies.length;
 
         const counts = {
           quotes: quotesCount,
           invoices: invoicesCount,
           clients: clientsCount,
+          assemblies: assembliesCount,
         };
         setLocalCounts(counts);
         setCloudCounts(counts);
@@ -398,11 +411,17 @@ export function useSettingsState() {
 
                 const localClients = await getClients();
                 const clientsCount = localClients.length;
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const { listAssemblies } = await import("@/modules/assemblies/storage");
+                const localAssemblies = await listAssemblies();
+                const assembliesCount = localAssemblies.length;
 
                 const counts = {
                   quotes: quotesCount,
                   invoices: invoicesCount,
                   clients: clientsCount,
+                  assemblies: assembliesCount,
                 };
                 setLocalCounts(counts);
                 setCloudCounts(counts);

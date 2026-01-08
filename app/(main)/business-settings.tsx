@@ -63,7 +63,10 @@ export default function BusinessSettings() {
     try {
       setUploadingLogo(true);
       const uploadedLogo = await uploadCompanyLogo();
-      setLogo(uploadedLogo);
+      if (uploadedLogo) {
+        setLogo(uploadedLogo);
+      }
+      // If null, user cancelled - do nothing
     } catch (error) {
       console.error("Failed to upload logo:", error);
       Alert.alert("Error", error instanceof Error ? error.message : "Failed to upload logo");
@@ -397,8 +400,8 @@ function InlineField({
             placeholder={placeholder || "—"}
             placeholderTextColor={theme.colors.muted}
             keyboardType={keyboardType}
-            returnKeyType="done"
-            blurOnSubmit={true}
+            selectTextOnFocus={true}
+            inputAccessoryViewID={null as any}
           />
           {suffix && <Text style={{ fontSize: 15, color: theme.colors.muted, marginLeft: 4 }}>{suffix}</Text>}
         </View>

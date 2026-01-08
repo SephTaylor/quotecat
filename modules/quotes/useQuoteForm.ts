@@ -111,6 +111,19 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
   // Load quote data
   const load = useCallback(async () => {
     if (!quoteId) return;
+
+    // For brand new quotes (ID = "new"), just load defaults
+    if (quoteId === "new") {
+      const prefs = await loadPreferences();
+      const defaultTax = prefs.pricing?.defaultTaxPercent || 0;
+      const defaultMarkup = prefs.pricing?.defaultMarkupPercent || 0;
+      setTaxPercent(defaultTax > 0 ? defaultTax.toString() : "");
+      setMarkupPercent(defaultMarkup > 0 ? defaultMarkup.toString() : "");
+      setIsNewQuote(true);
+      setIsLoaded(true);
+      return;
+    }
+
     const q = await getQuoteById(quoteId);
     if (q) {
       setQuote(q);

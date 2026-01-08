@@ -37,38 +37,34 @@ Net change: +$475.00
 ```
 
 ### What to Remove
-- [ ] The `ChangeOrderModal` component and its usage in edit.tsx
-- [ ] The CO mode flag (`coMode`) in materials navigation
-- [ ] The purple change order button on edit screen
-- [ ] The `/change-orders/[quoteId]` route and screens
-- [ ] The `shouldTrackChanges` logic in useQuoteForm
-- [ ] The `originalSnapshotRef` and diffing logic
-- [ ] The change order database/storage functions (or keep for historical data)
+- [x] The `ChangeOrderModal` component and its usage in edit.tsx
+- [x] The CO mode flag (`coMode`) in materials navigation
+- [x] The purple change order banner on edit screen
+- [ ] ~~The `/change-orders/[quoteId]` route and screens~~ (kept for historical data viewing)
+- [ ] ~~The `shouldTrackChanges` logic in useQuoteForm~~ (kept - used for auto-logging)
+- [ ] ~~The `originalSnapshotRef` and diffing logic~~ (kept - used for auto-logging)
+- [ ] ~~The change order database/storage functions~~ (kept for historical data)
 
 ### What to Add
-- [ ] `isNewItem` flag on QuoteItem type (or track by timestamp)
-- [ ] Background tint style for new items in SwipeableMaterialItem
-- [ ] Auto-append change history to notes in saveQuote flow
-- [ ] Toast notification after saving approved quote with changes
+- [ ] `isNewItem` flag on QuoteItem type (future polish)
+- [ ] Background tint style for new items in SwipeableMaterialItem (future polish)
+- [x] Auto-append change history to notes in saveQuote flow
+- [x] Toast notification after saving approved quote with changes
 
-### Files to Modify
-- `app/(forms)/quote/[id]/edit.tsx` - Remove CO modal, simplify save flow
-- `app/(forms)/quote/[id]/materials.tsx` - Remove coMode, always save directly
-- `modules/quotes/useQuoteForm.ts` - Remove snapshot/diff logic
-- `components/SwipeableMaterialItem.tsx` - Add new item background tint
-- `lib/quotes.ts` or `modules/quotes/storage.ts` - Add notes auto-append logic
-- `lib/types.ts` - Maybe add `addedAt` timestamp to QuoteItem
+### Files Modified
+- `app/(forms)/quote/[id]/edit.tsx` - Removed CO modal, simplified save flow, added notes auto-append
+- `app/(forms)/quote/[id]/materials.tsx` - Removed coMode, always saves directly
 
 ### Implementation Order
-1. Remove CO modal and coMode flow
-2. Make materials always save directly (like non-approved quotes)
-3. Add notes auto-append on save for approved quotes
-4. Add subtle background tint for new items
-5. Add toast confirmation
-6. Remove unused CO screens/routes
-7. Clean up unused code
+1. ~~Remove CO modal and coMode flow~~ ✅
+2. ~~Make materials always save directly (like non-approved quotes)~~ ✅
+3. ~~Add notes auto-append on save for approved quotes~~ ✅
+4. Add subtle background tint for new items (future polish)
+5. ~~Add toast confirmation~~ ✅
+6. ~~Remove unused CO screens/routes~~ (kept for historical data)
+7. ~~Clean up unused code~~ ✅
 
 ---
 
 *Created: Jan 7, 2026*
-*Status: Planned - implement after current TestFlight release*
+*Status: IMPLEMENTED - Core simplification complete*

@@ -620,6 +620,16 @@ export default function QuoteReviewScreen() {
           </View>
         </View>
 
+        {/* Change History Section - shows tracked changes */}
+        {quote.changeHistory && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Change History</Text>
+            <View style={styles.changeHistoryCard}>
+              <Text style={styles.changeHistoryText}>{quote.changeHistory}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Change Orders Section - Pro/Premium only */}
         {(isPro || isPremium) && qid && (
           <ChangeOrderList quoteId={qid} theme={theme} limit={3} />
@@ -1141,6 +1151,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       fontSize: 16,
       color: theme.colors.accent,
       fontWeight: "700",
+    },
+    changeHistoryCard: {
+      backgroundColor: "#FFF9F0",
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: "#F59E0B",
+      padding: theme.spacing(2),
+    },
+    changeHistoryText: {
+      fontSize: 13,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      color: "#333",
+      lineHeight: 20,
     },
   });
 }

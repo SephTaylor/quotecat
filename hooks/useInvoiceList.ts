@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
+import * as Haptics from "expo-haptics";
 import {
   deleteInvoice,
   listInvoices,
@@ -41,6 +42,10 @@ export function useInvoiceList() {
   const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [availableQuotes, setAvailableQuotes] = useState<Quote[]>([]);
   const [availableContracts, setAvailableContracts] = useState<Contract[]>([]);
+
+  // Multi-select mode
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Load data
   const load = useCallback(async () => {
@@ -277,6 +282,105 @@ export function useInvoiceList() {
     setShowSourcePicker(false);
   }, []);
 
+  // Create new invoice handler
+  const handleCreateInvoice = useCallback(() => {
+    // For Premium users with contracts available, show source picker
+    if (isPremium && availableContracts.length > 0) {
+      setShowSourcePicker(true);
+    } else if (availableQuotes.length > 0) {
+      // Pro users or Premium without contracts go straight to quote picker
+      setShowQuotePicker(true);
+    } else {
+      Alert.alert(
+        "No Quotes Available",
+        "You need approved or completed quotes to create invoices. Go to the Quotes screen to create quotes first.",
+        [{ text: "OK" }]
+      );
+    }
+  }, [isPremium, availableContracts.length, availableQuotes.length]);
+
+  // Multi-select handlers
+  const toggleSelectMode = useCallback(() => {
+    setSelectMode((prev) => !prev);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelectInvoice = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const enterSelectMode = useCallback((id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectMode(true);
+    setSelectedIds(new Set([id]));
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    Alert.alert(
+      "Delete Invoices",
+      `Are you sure you want to delete ${selectedIds.size} invoice${selectedIds.size === 1 ? "" : "s"}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            for (const id of selectedIds) {
+              await deleteInvoice(id);
+            }
+            setSelectedIds(new Set());
+            setSelectMode(false);
+            await load();
+          },
+        },
+      ]
+    );
+  }, [selectedIds, load]);
+
+  const handleBulkUpdateStatus = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    Alert.alert(
+      `Set Status`,
+      `Set status for ${selectedIds.size} invoice${selectedIds.size === 1 ? "" : "s"}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Unpaid",
+          onPress: async () => {
+            for (const id of selectedIds) {
+              await updateInvoice(id, { status: "unpaid" });
+            }
+            setSelectedIds(new Set());
+            setSelectMode(false);
+            await load();
+          },
+        },
+        {
+          text: "Paid",
+          onPress: async () => {
+            for (const id of selectedIds) {
+              await updateInvoice(id, { status: "paid" });
+            }
+            setSelectedIds(new Set());
+            setSelectMode(false);
+            await load();
+          },
+        },
+      ]
+    );
+  }, [selectedIds, load]);
+
   // Filtered invoices
   const filteredInvoices = (() => {
     let filtered = invoices;
@@ -315,6 +419,8 @@ export function useInvoiceList() {
     showSourcePicker,
     availableQuotes,
     availableContracts,
+    selectMode,
+    selectedIds,
 
     // Setters
     setSearchQuery,
@@ -338,5 +444,11 @@ export function useInvoiceList() {
     handleCloseQuotePicker,
     handleCloseContractPicker,
     handleCloseSourcePicker,
+    handleCreateInvoice,
+    toggleSelectMode,
+    toggleSelectInvoice,
+    enterSelectMode,
+    handleBulkDelete,
+    handleBulkUpdateStatus,
   };
 }

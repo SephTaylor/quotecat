@@ -20,6 +20,7 @@ type SwipeableMaterialItemProps = {
   onFinishEditingQty: (itemId: string) => void;
   onQtyChange: (text: string) => void;
   onUpdateQty: (itemId: string, delta: number) => void;
+  isNew?: boolean;
 };
 
 export const SwipeableMaterialItem = React.memo(
@@ -33,6 +34,7 @@ export const SwipeableMaterialItem = React.memo(
     onFinishEditingQty,
     onQtyChange,
     onUpdateQty,
+    isNew = false,
   }: SwipeableMaterialItemProps) => {
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
