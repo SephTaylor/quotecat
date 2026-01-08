@@ -44,6 +44,15 @@ function getLatestTimestamp(quote: Quote): number {
 }
 
 /**
+ * Stable sort comparator - sorts by timestamp descending, then by id for determinism
+ */
+function stableSort(a: Quote, b: Quote): number {
+  const timeDiff = getLatestTimestamp(b) - getLatestTimestamp(a);
+  if (timeDiff !== 0) return timeDiff;
+  return a.id.localeCompare(b.id);
+}
+
+/**
  * Read quotes from all storage keys (primary + legacy)
  * De-duplicates by ID, keeping the most recently updated version
  * Uses safe reads to detect and recover from corruption
@@ -155,9 +164,7 @@ export async function listQuotes(): Promise<Quote[]> {
       withErrorHandling(async () => {
         const quotes = await readAllQuotes();
         const active = quotes.filter((q) => !q.deletedAt);
-        const sorted = active.sort(
-          (a, b) => getLatestTimestamp(b) - getLatestTimestamp(a),
-        );
+        const sorted = active.sort(stableSort);
         cache.set(CacheKeys.quotes.all(), sorted);
         return sorted;
       }, ErrorType.STORAGE).catch((error) => {
@@ -171,7 +178,7 @@ export async function listQuotes(): Promise<Quote[]> {
   const result = await withErrorHandling(async () => {
     const quotes = await readAllQuotes();
     const active = quotes.filter((q) => !q.deletedAt);
-    return active.sort((a, b) => getLatestTimestamp(b) - getLatestTimestamp(a));
+    return active.sort(stableSort);
   }, ErrorType.STORAGE);
 
   if (result.success) {

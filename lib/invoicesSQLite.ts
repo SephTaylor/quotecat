@@ -26,6 +26,15 @@ async function generateInvoiceNumber(): Promise<string> {
 }
 
 /**
+ * Stable sort comparator - sorts by createdAt descending, then by id for determinism
+ */
+function stableSort(a: Invoice, b: Invoice): number {
+  const timeDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  if (timeDiff !== 0) return timeDiff;
+  return a.id.localeCompare(b.id);
+}
+
+/**
  * Check if an invoice is overdue and update its status if needed
  */
 function checkOverdueStatus(invoice: Invoice): Invoice {
@@ -62,9 +71,7 @@ export async function listInvoices(): Promise<Invoice[]> {
     return updated;
   });
 
-  return checked.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  return checked.sort(stableSort);
 }
 
 /**

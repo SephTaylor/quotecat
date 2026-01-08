@@ -8,7 +8,7 @@ import { syncClients, migrateLocalClientsToCloud } from "./clientsSync";
 import { syncInvoices, hasInvoicesMigrated, migrateLocalInvoicesToCloud } from "./invoicesSync";
 import { syncPricebook } from "./pricebookSync";
 import { syncAssemblies, hasAssembliesMigrated, migrateLocalAssembliesToCloud } from "./assembliesSync";
-import { syncBusinessSettings } from "./businessSettingsSync";
+import { syncBusinessSettings, downloadBusinessSettings } from "./businessSettingsSync";
 import { markSyncComplete } from "./syncState";
 
 // Re-export auth utilities for backwards compatibility
@@ -221,6 +221,13 @@ async function runBackgroundSync(): Promise<void> {
   }
 
   // Sync business settings (company info, logo, preferences) for Pro+ users
+  // Download first (to get settings from other devices), then upload local changes
+  try {
+    await downloadBusinessSettings();
+  } catch (error) {
+    console.error("❌ Business settings download failed:", error);
+  }
+
   try {
     await syncBusinessSettings();
   } catch (error) {

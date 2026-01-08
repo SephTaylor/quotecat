@@ -6,12 +6,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { HeaderBackButton } from "@/components/HeaderBackButton";
 import type { Assembly, PricedLine, ProductIndex } from "@/modules/assemblies";
 import {
   saveQuote,
@@ -24,13 +26,15 @@ import { BottomBar, Button } from "@/modules/core/ui";
 
 /**
  * Convert PricedLine array to QuoteItem array
+ * @param lines - The priced lines from the assembly calculator
+ * @param multiplier - Quantity multiplier (e.g., 4 for "4 walls")
  */
-function pricedLinesToQuoteItems(lines: PricedLine[]): any[] {
+function pricedLinesToQuoteItems(lines: PricedLine[], multiplier: number = 1): any[] {
   return lines.map((line) => ({
     id: line.id, // Use product id as item id
     productId: line.id,
     name: line.name,
-    qty: line.qty,
+    qty: line.qty * multiplier,
     unitPrice: line.unitPrice,
   }));
 }
@@ -44,6 +48,7 @@ export default function AssemblyCalculatorScreen() {
   const [loading, setLoading] = useState(true);
   const [assembly, setAssembly] = useState<Assembly | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [assemblyQty, setAssemblyQty] = useState(1);
 
   // Load products from Supabase/cache
   const { products: productsList, loading: productsLoading } = useProducts();
@@ -105,7 +110,8 @@ export default function AssemblyCalculatorScreen() {
     }
 
     try {
-      const newItems = pricedLinesToQuoteItems(calculator.lines);
+      // Apply the assembly quantity multiplier to all items
+      const newItems = pricedLinesToQuoteItems(calculator.lines, assemblyQty);
 
       if (quoteId) {
         // ADD TO EXISTING QUOTE
@@ -125,25 +131,25 @@ export default function AssemblyCalculatorScreen() {
         };
         await saveQuote(updatedQuote);
 
+        const qtyText = assemblyQty > 1 ? ` (×${assemblyQty})` : "";
         Alert.alert(
           "Items Added!",
-          `Added ${calculator.lines.length} items from "${assembly.name}" to your quote.`,
+          `Added ${calculator.lines.length} items from "${assembly.name}"${qtyText} to your quote.`,
           [
             {
               text: "Back to Quote",
               onPress: () => {
                 router.back();
-                router.back(); // Go back twice (assembly list -> quote edit)
               },
             },
           ],
         );
       } else {
         // CREATE NEW QUOTE
-        const newQuote = await createQuote(
-          `${assembly.name}`,
-          "",
-        );
+        const quoteName = assemblyQty > 1
+          ? `${assembly.name} (×${assemblyQty})`
+          : assembly.name;
+        const newQuote = await createQuote(quoteName, "");
         const withItems = {
           ...newQuote,
           items: newItems,
@@ -168,15 +174,16 @@ export default function AssemblyCalculatorScreen() {
           options={{
             title: "Assembly Calculator",
             headerShown: true,
-            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
+            headerTitleAlign: 'center',
             headerBackTitle: "Assemblies",
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
-            headerTintColor: theme.colors.accent,
+            headerTintColor: theme.colors.text,
             headerTitleStyle: {
               color: theme.colors.text,
             },
+            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           }}
         />
         <View style={styles.center}>
@@ -193,15 +200,16 @@ export default function AssemblyCalculatorScreen() {
           options={{
             title: "Assembly Calculator",
             headerShown: true,
-            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
+            headerTitleAlign: 'center',
             headerBackTitle: "Assemblies",
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
-            headerTintColor: theme.colors.accent,
+            headerTintColor: theme.colors.text,
             headerTitleStyle: {
               color: theme.colors.text,
             },
+            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           }}
         />
         <View style={styles.container}>
@@ -221,15 +229,16 @@ export default function AssemblyCalculatorScreen() {
           options={{
             title: "Assembly Calculator",
             headerShown: true,
-            headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
+            headerTitleAlign: 'center',
             headerBackTitle: "Assemblies",
             headerStyle: {
               backgroundColor: theme.colors.bg,
             },
-            headerTintColor: theme.colors.accent,
+            headerTintColor: theme.colors.text,
             headerTitleStyle: {
               color: theme.colors.text,
             },
+            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           }}
         />
         <View style={styles.container}>
@@ -256,10 +265,11 @@ export default function AssemblyCalculatorScreen() {
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
-          headerTintColor: theme.colors.accent,
+          headerTintColor: theme.colors.text,
           headerTitleStyle: {
             color: theme.colors.text,
           },
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
         }}
       />
       <View style={styles.container}>
@@ -283,6 +293,29 @@ export default function AssemblyCalculatorScreen() {
               </Text>
             </View>
           )}
+
+          {/* Assembly Quantity Section */}
+          <View style={styles.qtySection}>
+            <Text style={styles.qtyLabel}>How many?</Text>
+            <View style={styles.qtyStepper}>
+              <Pressable
+                style={[styles.qtyButton, assemblyQty <= 1 && styles.qtyButtonDisabled]}
+                onPress={() => setAssemblyQty(Math.max(1, assemblyQty - 1))}
+                disabled={assemblyQty <= 1}
+              >
+                <Text style={[styles.qtyButtonText, assemblyQty <= 1 && styles.qtyButtonTextDisabled]}>−</Text>
+              </Pressable>
+              <Text style={styles.qtyValue}>{assemblyQty}</Text>
+              <Pressable
+                style={styles.qtyButton}
+                onPress={() => setAssemblyQty(assemblyQty + 1)}
+              >
+                <Text style={styles.qtyButtonText}>+</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
 
           {/* Variables Section */}
           {Object.keys(vars).length > 0 && (
@@ -337,8 +370,10 @@ export default function AssemblyCalculatorScreen() {
 
           {/* Total Section */}
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Material Total</Text>
-            <Text style={styles.totalValue}>{formatMoney(materialTotal)}</Text>
+            <Text style={styles.totalLabel}>
+              Material Total{assemblyQty > 1 ? ` (×${assemblyQty})` : ""}
+            </Text>
+            <Text style={styles.totalValue}>{formatMoney(materialTotal * assemblyQty)}</Text>
           </View>
         </ScrollView>
 
@@ -475,6 +510,52 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#856404",
       marginTop: 8,
       fontStyle: "italic",
+    },
+
+    // Quantity stepper styles
+    qtySection: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 12,
+      marginBottom: 4,
+    },
+    qtyLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    qtyStepper: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    qtyButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: theme.colors.accent,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    qtyButtonDisabled: {
+      backgroundColor: theme.colors.border,
+    },
+    qtyButtonText: {
+      fontSize: 24,
+      fontWeight: "600",
+      color: "#FFFFFF",
+      lineHeight: 26,
+    },
+    qtyButtonTextDisabled: {
+      color: theme.colors.muted,
+    },
+    qtyValue: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.colors.text,
+      minWidth: 40,
+      textAlign: "center",
     },
 
   });

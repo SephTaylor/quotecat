@@ -4,11 +4,13 @@
 
 import { supabase } from "./supabase";
 import { getCurrentUserId } from "./authUtils";
-import { loadPreferences, type UserPreferences } from "./preferences";
+import { loadPreferences, savePreferences, type UserPreferences } from "./preferences";
 import { getCompanyLogo, type CompanyLogo } from "./logo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import { decode } from "base64-arraybuffer";
+
+const LOGO_STORAGE_KEY = "@quotecat/company-logo";
 
 const SETTINGS_SYNC_KEY = "@quotecat/business_settings_sync";
 const SYNC_COOLDOWN_MS = 30000; // 30 seconds between syncs (settings don't change often)
@@ -127,6 +129,134 @@ export async function deleteLogoFromStorage(): Promise<boolean> {
   } catch (error) {
     console.error("❌ Logo delete error:", error);
     return false;
+  }
+}
+
+/**
+ * Download business settings from cloud to local storage
+ * Called on login to sync settings from another device
+ */
+export async function downloadBusinessSettings(): Promise<{ success: boolean; error?: string }> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    console.log("⏭️ Business settings download skipped - no user ID");
+    return { success: true };
+  }
+
+  try {
+    console.log("🔄 Downloading business settings from cloud...");
+
+    // Fetch profile from Supabase
+    const { data: profile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("company_name, company_email, company_phone, company_website, company_address, company_logo_url, zip_code, preferences")
+      .eq("id", userId)
+      .single();
+
+    if (fetchError) {
+      console.error("❌ Failed to fetch profile:", fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    if (!profile) {
+      console.log("⏭️ No profile found in cloud");
+      return { success: true };
+    }
+
+    // Load current local preferences to merge with cloud data
+    const localPrefs = await loadPreferences();
+
+    // Check if cloud has any data worth downloading
+    const hasCloudData = profile.company_name || profile.company_email ||
+                         profile.company_phone || profile.preferences;
+
+    if (!hasCloudData) {
+      console.log("⏭️ Cloud profile has no business settings to download");
+      return { success: true };
+    }
+
+    // Merge cloud data into local preferences
+    const updatedPrefs: UserPreferences = {
+      ...localPrefs,
+      company: {
+        ...localPrefs.company,
+        companyName: profile.company_name || localPrefs.company?.companyName || "",
+        email: profile.company_email || localPrefs.company?.email || "",
+        phone: profile.company_phone || localPrefs.company?.phone || "",
+        website: profile.company_website || localPrefs.company?.website || "",
+        address: profile.company_address || localPrefs.company?.address || "",
+      },
+      pricing: {
+        ...localPrefs.pricing,
+        zipCode: profile.zip_code || localPrefs.pricing?.zipCode || "",
+      },
+    };
+
+    // Merge cloud preferences if they exist
+    if (profile.preferences) {
+      const cloudPrefs = profile.preferences as any;
+      if (cloudPrefs.invoice) {
+        updatedPrefs.invoice = { ...localPrefs.invoice, ...cloudPrefs.invoice };
+      }
+      if (cloudPrefs.contract) {
+        updatedPrefs.contract = { ...localPrefs.contract, ...cloudPrefs.contract };
+      }
+      if (cloudPrefs.quote) {
+        updatedPrefs.quote = { ...localPrefs.quote, ...cloudPrefs.quote };
+      }
+      if (cloudPrefs.pricing) {
+        updatedPrefs.pricing = { ...updatedPrefs.pricing, ...cloudPrefs.pricing };
+      }
+      if (cloudPrefs.paymentMethods) {
+        updatedPrefs.paymentMethods = cloudPrefs.paymentMethods;
+      }
+    }
+
+    // Save merged preferences locally
+    await savePreferences(updatedPrefs);
+    console.log("✅ Business settings downloaded from cloud");
+
+    // Download logo if cloud has one and we don't have it locally
+    if (profile.company_logo_url) {
+      const localLogo = await getCompanyLogo();
+      if (!localLogo) {
+        console.log("🔄 Downloading logo from cloud...");
+        try {
+          // Fetch the logo image
+          const response = await fetch(profile.company_logo_url);
+          if (response.ok) {
+            const blob = await response.blob();
+            // Convert blob to base64
+            const reader = new FileReader();
+            const base64Promise = new Promise<string>((resolve, reject) => {
+              reader.onloadend = () => {
+                const result = reader.result as string;
+                resolve(result);
+              };
+              reader.onerror = reject;
+            });
+            reader.readAsDataURL(blob);
+            const base64 = await base64Promise;
+
+            // Save logo locally
+            const logo: CompanyLogo = {
+              base64,
+              uploadedAt: new Date().toISOString(),
+            };
+            await AsyncStorage.setItem(LOGO_STORAGE_KEY, JSON.stringify(logo));
+            console.log("✅ Logo downloaded from cloud");
+          }
+        } catch (logoError) {
+          console.error("⚠️ Failed to download logo:", logoError);
+          // Non-fatal - continue without logo
+        }
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Business settings download error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
 

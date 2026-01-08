@@ -177,6 +177,63 @@ Assemblies can have fixed or computed quantities:
 
 Quote UI components accept optional `onPress`/`onLongPress` handlers. When omitted, they default to navigating to edit screen. See `modules/quotes/ui/index.ts:8`.
 
+## UI Design Guidelines
+
+### Component Reuse (Critical)
+
+**ALWAYS reuse existing components instead of building new ones.** Before creating any UI element:
+
+1. **Search the codebase** for existing components in `components/` and `modules/*/ui/`
+2. **Check for similar patterns** in other screens - if another screen does something similar, use the same approach
+3. **Only create new components** if nothing suitable exists
+
+This ensures:
+- Consistent styling across the app
+- Less code to maintain
+- Faster development
+- Fewer bugs
+
+**Common reusable components:**
+- `HeaderBackButton` - Back buttons in headers
+- `BottomBar` / `Button` - Bottom action bars
+- `SwipeableQuoteItem` / `SwipeableInvoiceItem` - List items with swipe actions
+- `Stepper` - Quantity +/- controls
+- `MoneyInput` - Currency input fields
+
+### Back Button Convention
+
+**This is a strict design rule:**
+
+| Button Type | Color | When to Use |
+|-------------|-------|-------------|
+| **System Back Button** | Black (`theme.colors.text`) | When iOS handles navigation automatically (same route group) |
+| **Custom Back Button** | Orange (`theme.colors.accent`) | When we must handle navigation explicitly (cross-group navigation, custom behavior) |
+
+**How to identify:**
+- If you don't need to set `headerLeft` and the back button appears automatically → **Black (system)**
+- If you must set `headerLeft` because the back button doesn't appear or needs custom behavior → **Orange (custom)**
+
+**Reusable Component:**
+Use `<HeaderBackButton onPress={() => router.back()} />` from `@/components/HeaderBackButton` for custom back buttons. This component:
+- Shows chevron + "Back" text on iOS
+- Shows just chevron on Android
+- Uses `theme.colors.accent` (orange)
+- Has consistent sizing and spacing
+
+**Example - Custom back button needed (cross-group navigation):**
+```tsx
+headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
+```
+
+### Route Groups
+
+The app has multiple route groups that affect navigation:
+- `(main)` - Main app screens (settings, pro tools, etc.)
+- `(forms)` - Form screens (quote edit, materials picker, etc.)
+- `(tabs)` - Tab bar screens
+
+Navigating between groups (e.g., `(forms)` → `(main)`) requires explicit back buttons since they're separate navigation stacks.
+
 ## Code Style
 
 ### ESLint

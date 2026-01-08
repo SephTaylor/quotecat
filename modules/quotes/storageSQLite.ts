@@ -34,6 +34,15 @@ function getLatestTimestamp(quote: Quote): number {
 }
 
 /**
+ * Stable sort comparator - sorts by timestamp descending, then by id for determinism
+ */
+function stableSort(a: Quote, b: Quote): number {
+  const timeDiff = getLatestTimestamp(b) - getLatestTimestamp(a);
+  if (timeDiff !== 0) return timeDiff;
+  return a.id.localeCompare(b.id);
+}
+
+/**
  * List all quotes, sorted by most recently updated
  * Filters out soft-deleted quotes (where deletedAt is set)
  * Uses in-memory cache for fast repeated access
@@ -57,10 +66,8 @@ export async function listQuotes(options?: { skipCache?: boolean }): Promise<Quo
     total: calculateMaterialSubtotal(quote.items) + (quote.labor || 0),
   }));
 
-  // Sort by most recent
-  const sorted = processed.sort(
-    (a, b) => getLatestTimestamp(b) - getLatestTimestamp(a)
-  );
+  // Sort by most recent (stable sort using id as tiebreaker)
+  const sorted = processed.sort(stableSort);
 
   cache.set(CacheKeys.quotes.all(), sorted);
   return sorted;
