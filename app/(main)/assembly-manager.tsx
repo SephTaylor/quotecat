@@ -173,7 +173,7 @@ export default function AssemblyManager() {
           title: "Assembly Manager",
           headerShown: true,
           headerTitleAlign: 'center', // Center title on all platforms (Android defaults to left)
-          headerBackTitle: "Pro Tools",
+          headerBackTitle: "Back",
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -290,9 +290,6 @@ export default function AssemblyManager() {
                             Needs review - some products unavailable
                           </Text>
                         )}
-                        <Text style={styles.assemblyHint}>
-                          Tap to edit • Swipe left to duplicate • Swipe right to delete
-                        </Text>
                       </Pressable>
                     </Swipeable>
                   );
@@ -472,12 +469,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     assemblyMeta: {
       fontSize: 13,
       color: theme.colors.muted,
-    },
-    assemblyHint: {
-      fontSize: 11,
-      color: theme.colors.muted,
-      fontStyle: "italic",
-      marginTop: theme.spacing(0.5),
     },
     warningText: {
       fontSize: 12,

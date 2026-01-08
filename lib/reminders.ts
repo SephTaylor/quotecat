@@ -17,13 +17,14 @@ export type ReminderType =
   | "premium_welcome"     // Welcome notification for new Premium users
   | "contract_signed"     // Client signed a contract
   | "contract_viewed"     // Client viewed a contract
-  | "contract_declined";  // Client declined a contract
+  | "contract_declined"   // Client declined a contract
+  | "assembly_unhealthy"; // Assembly has unavailable products
 
 export type Reminder = {
   id: string;
   type: ReminderType;
-  entityId: string;       // Quote, Invoice, or Contract ID (or "system" for system notifications)
-  entityType: "quote" | "invoice" | "contract" | "system";
+  entityId: string;       // Quote, Invoice, Contract, or Assembly ID (or "system" for system notifications)
+  entityType: "quote" | "invoice" | "contract" | "assembly" | "system";
   title: string;
   subtitle: string;
   dueDate: string;        // ISO 8601 date when reminder became active
@@ -488,5 +489,55 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
     }
   } catch (error) {
     console.error("Error marking notification as read:", error);
+  }
+}
+
+// ============================================
+// Assembly Health Notifications
+// ============================================
+
+/**
+ * Get reminders for assemblies that have unavailable products
+ */
+export async function getAssemblyHealthReminders(): Promise<Reminder[]> {
+  try {
+    // Dynamic import to avoid circular dependency
+    const { listAssemblies, validateAssembly } = await import("@/modules/assemblies");
+    const { getProducts } = await import("@/modules/catalog");
+
+    const assemblies = await listAssemblies();
+    const products = await getProducts();
+    const dismissed = await loadDismissedReminders();
+    const now = new Date().toISOString();
+
+    const reminders: Reminder[] = [];
+
+    for (const assembly of assemblies) {
+      const validation = validateAssembly(assembly, products);
+
+      if (!validation.isValid) {
+        const reminderId = `assembly_unhealthy_${assembly.id}`;
+
+        // Skip if dismissed
+        if (isReminderDismissed(reminderId, dismissed)) continue;
+
+        const errorCount = validation.errors.length;
+        reminders.push({
+          id: reminderId,
+          type: "assembly_unhealthy",
+          entityId: assembly.id,
+          entityType: "assembly",
+          title: assembly.name,
+          subtitle: `${errorCount} product${errorCount === 1 ? "" : "s"} unavailable`,
+          dueDate: now,
+          createdAt: now,
+        });
+      }
+    }
+
+    return reminders;
+  } catch (error) {
+    console.error("Error checking assembly health:", error);
+    return [];
   }
 }

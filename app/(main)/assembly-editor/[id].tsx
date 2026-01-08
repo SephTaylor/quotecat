@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -109,11 +110,16 @@ export default function AssemblyEditorScreen() {
       const existingItems = assembly.items || [];
 
       // Convert newly selected products to assembly items (all have fixed qty)
+      // Store product name for display when product becomes unavailable
       const newlySelectedItems = Array.from(currentSelection.entries()).map(
-        ([productId, { qty }]) => ({
-          productId,
-          qty,
-        })
+        ([productId, { qty }]) => {
+          const product = products.find((p) => p.id === productId);
+          return {
+            productId,
+            qty,
+            name: product?.name,
+          };
+        }
       );
 
       // Merge existing items with newly selected items
@@ -132,9 +138,15 @@ export default function AssemblyEditorScreen() {
         mergedMap.set(item.productId, current + item.qty);
       });
 
-      // Convert back to array
+      // Convert back to array, preserving names from existing or new items
       const mergedItems: AssemblyItem[] = Array.from(mergedMap.entries()).map(
-        ([productId, qty]) => ({ productId, qty })
+        ([productId, qty]) => {
+          // Try to find name from existing items first, then new items
+          const existingItem = existingItems.find((i) => i.productId === productId);
+          const newItem = newlySelectedItems.find((i) => i.productId === productId);
+          const name = existingItem?.name || newItem?.name;
+          return { productId, qty, ...(name && { name }) };
+        }
       );
 
       const updatedAssembly: Assembly = {
@@ -285,15 +297,40 @@ export default function AssemblyEditorScreen() {
           </Pressable>
         )}
 
-        {/* Existing Items (collapsible) */}
+        {/* Existing Items (collapsible, scrollable) */}
         {showExistingItems && assembly.items.length > 0 && (
-          <View style={styles.existingItemsContainer}>
+          <ScrollView
+            style={styles.existingItemsScrollContainer}
+            contentContainerStyle={styles.existingItemsContent}
+            nestedScrollEnabled
+          >
             {assembly.items.map((item, index) => {
               const product = products.find((p) => p.id === item.productId);
-              if (!product) return null;
-
               const qty = "qty" in item ? item.qty : 0;
               const isLast = index === assembly.items.length - 1;
+
+              // Show missing products with warning
+              if (!product) {
+                // Use stored name if available, otherwise show generic message
+                const displayName = item.name || "Unknown product";
+                return (
+                  <View key={item.productId} style={[styles.existingItemRow, styles.missingItemRow, isLast && styles.existingItemRowLast]}>
+                    <View style={styles.productInfo}>
+                      <Text style={styles.missingProductName}>⚠️ {displayName}</Text>
+                      <Text style={styles.missingProductMeta}>Unavailable · qty: {qty}</Text>
+                    </View>
+                    <Pressable
+                      style={styles.removeButton}
+                      onPress={() => {
+                        const updatedItems = assembly.items.filter((i) => i.productId !== item.productId);
+                        setAssembly({ ...assembly, items: updatedItems });
+                      }}
+                    >
+                      <Text style={styles.removeButtonText}>Remove</Text>
+                    </Pressable>
+                  </View>
+                );
+              }
 
               return (
                 <View key={item.productId} style={[styles.existingItemRow, isLast && styles.existingItemRowLast]}>
@@ -337,7 +374,7 @@ export default function AssemblyEditorScreen() {
                 </View>
               );
             })}
-          </View>
+          </ScrollView>
         )}
 
         {showSuccessMessage && (
@@ -457,14 +494,17 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "700",
       color: "#000",
     },
-    // Existing items section
-    existingItemsContainer: {
+    // Existing items section (scrollable)
+    existingItemsScrollContainer: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
       marginHorizontal: theme.spacing(2),
       marginBottom: theme.spacing(2),
+      maxHeight: 250,
+    },
+    existingItemsContent: {
       paddingVertical: theme.spacing(1),
       paddingHorizontal: theme.spacing(2),
     },
@@ -538,6 +578,33 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     errorText: {
       fontSize: 16,
       color: theme.colors.muted,
+    },
+    // Missing product styles
+    missingItemRow: {
+      backgroundColor: "#FFF3CD",
+      marginHorizontal: -theme.spacing(2),
+      paddingHorizontal: theme.spacing(2),
+    },
+    missingProductName: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#856404",
+    },
+    missingProductMeta: {
+      fontSize: 12,
+      color: "#856404",
+      marginTop: 2,
+    },
+    removeButton: {
+      backgroundColor: "#DC3545",
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      borderRadius: theme.radius.md,
+    },
+    removeButtonText: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: "#FFF",
     },
   });
 }

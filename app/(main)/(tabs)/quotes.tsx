@@ -25,12 +25,14 @@ import { QuoteStatusMeta } from "@/lib/types";
 import {
   Alert,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -56,6 +58,7 @@ export default function QuotesList() {
   );
   const [sortBy, setSortBy] = useState<"date" | "amount" | "name" | "client" | "followUp">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [showSortModal, setShowSortModal] = useState(false);
 
   // Multi-select mode
   const [selectMode, setSelectMode] = useState(false);
@@ -632,74 +635,61 @@ export default function QuotesList() {
           />
           <Pressable
             style={styles.sortButton}
-            onPress={() => {
-              Alert.alert(
-                "Sort By",
-                undefined,
-                [
-                  {
-                    text: `Date ${sortBy === "date" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
-                    onPress: () => {
-                      if (sortBy === "date") {
-                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
-                      } else {
-                        setSortBy("date");
-                        setSortOrder("desc");
-                      }
-                    },
-                  },
-                  {
-                    text: `Amount ${sortBy === "amount" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
-                    onPress: () => {
-                      if (sortBy === "amount") {
-                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
-                      } else {
-                        setSortBy("amount");
-                        setSortOrder("desc");
-                      }
-                    },
-                  },
-                  {
-                    text: `Name ${sortBy === "name" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
-                    onPress: () => {
-                      if (sortBy === "name") {
-                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
-                      } else {
-                        setSortBy("name");
-                        setSortOrder("asc");
-                      }
-                    },
-                  },
-                  {
-                    text: `Client ${sortBy === "client" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
-                    onPress: () => {
-                      if (sortBy === "client") {
-                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
-                      } else {
-                        setSortBy("client");
-                        setSortOrder("asc");
-                      }
-                    },
-                  },
-                  {
-                    text: `Follow-up ${sortBy === "followUp" ? (sortOrder === "desc" ? "↓" : "↑") : ""}`,
-                    onPress: () => {
-                      if (sortBy === "followUp") {
-                        setSortOrder(sortOrder === "desc" ? "asc" : "desc");
-                      } else {
-                        setSortBy("followUp");
-                        setSortOrder("desc");
-                      }
-                    },
-                  },
-                  { text: "Cancel", style: "cancel" },
-                ]
-              );
-            }}
+            onPress={() => setShowSortModal(true)}
           >
             <Ionicons name="swap-vertical-outline" size={22} color={theme.colors.text} />
           </Pressable>
         </View>
+
+        {/* Sort Modal */}
+        <Modal
+          visible={showSortModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowSortModal(false)}
+        >
+          <Pressable
+            style={styles.sortModalOverlay}
+            onPress={() => setShowSortModal(false)}
+          >
+            <View style={styles.sortModalContent}>
+              <Text style={styles.sortModalTitle}>Sort By</Text>
+              {[
+                { key: "date" as const, label: "Date", defaultOrder: "desc" as const },
+                { key: "amount" as const, label: "Amount", defaultOrder: "desc" as const },
+                { key: "name" as const, label: "Name", defaultOrder: "asc" as const },
+                { key: "client" as const, label: "Client", defaultOrder: "asc" as const },
+                { key: "followUp" as const, label: "Follow-up", defaultOrder: "desc" as const },
+              ].map((option) => (
+                <Pressable
+                  key={option.key}
+                  style={styles.sortModalOption}
+                  onPress={() => {
+                    if (sortBy === option.key) {
+                      setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+                    } else {
+                      setSortBy(option.key);
+                      setSortOrder(option.defaultOrder);
+                    }
+                    setShowSortModal(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.sortModalOptionText,
+                    sortBy === option.key && styles.sortModalOptionTextActive
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {sortBy === option.key && (
+                    <Text style={styles.sortModalOptionArrow}>
+                      {sortOrder === "desc" ? "↓" : "↑"}
+                    </Text>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+          </Pressable>
+        </Modal>
 
         {/* Quote List */}
         {selectMode ? (
@@ -1051,6 +1041,56 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     bulkActionTextDisabled: {
       color: theme.colors.muted,
+    },
+    // Sort modal styles
+    sortModalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    sortModalContent: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      minWidth: 200,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    sortModalTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
+      textAlign: "center",
+      marginBottom: theme.spacing(2),
+      paddingBottom: theme.spacing(1.5),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    sortModalOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      borderRadius: theme.radius.sm,
+    },
+    sortModalOptionText: {
+      fontSize: 16,
+      color: theme.colors.text,
+    },
+    sortModalOptionTextActive: {
+      color: theme.colors.accent,
+      fontWeight: "600",
+    },
+    sortModalOptionArrow: {
+      fontSize: 16,
+      color: theme.colors.accent,
+      fontWeight: "600",
+      marginLeft: theme.spacing(1),
     },
   });
 }

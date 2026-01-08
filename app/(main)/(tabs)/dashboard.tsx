@@ -578,7 +578,7 @@ export default function Dashboard() {
               <Text style={styles.valueSectionTitle}>Business Value</Text>
               <View style={styles.valueGrid}>
                 <View style={styles.valueRow}>
-                  <Text style={styles.valueLabel}>Pending</Text>
+                  <Text style={styles.valueLabel}>Sent</Text>
                   <Text style={styles.valueAmount}>
                     ${stats.pendingValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>

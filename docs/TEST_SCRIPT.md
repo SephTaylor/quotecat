@@ -57,7 +57,33 @@ Do this after every build:
   x - PDF/CSV exports - Unlimited exports working
   x - Change order tracking - The flow we just built (modify approved quote → changes logged)
   x- Invoices - Create from quotes, track payment status
-  - Multi-device - Sign in on another device, data appears
+  x - Multi-device - Sign in on another device, data appears
+  
+  Free Tier - Add:
+  x- Dashboard - Business value shows (Sent/Approved/To Invoice)
+  x- Sort/filter/search quotes works
+  x- Settings - theme toggle, preferences save
+  x- Verify: assemblies locked (shows Pro badge)
+  x- Verify: export limits enforced (counter decrements)
+
+  Pro Tier - Add:
+  x- Business settings sync - Log in on new device, company name/logo/address downloads from cloud (we just built this!)
+  This is a premuim feature - Contracts - Create from approved quote, send, track status
+  x- Multi-tier quotes - Create linked quotes (Standard/Premium/Deluxe tiers)
+  x - Follow-up reminders - Set follow-up date, shows in dashboard
+  x- Invoice from quote - Convert approved quote to invoice
+  x- Quote statuses flow: Draft → Sent → Approved → Invoiced
+  
+  
+  Free Tier - Missing:
+ not missing. works - Undo delete (swipe delete → undo snackbar appears)
+  we removed this functionality - Pin quotes to top of list
+  yes - Duplicate quote works
+
+  Pro Tier - Missing:
+  works - Assembly quantity multiplier - "How many?" stepper we just built today
+  we don't have this - Reminders - Set reminder on quote, get notification (if implemented)
+ seems to be working - Assembly validation - Invalid assemblies show warning (missing products)
 
 ---
 

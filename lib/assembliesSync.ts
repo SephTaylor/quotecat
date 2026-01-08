@@ -116,11 +116,13 @@ export async function uploadAssembly(assembly: Assembly): Promise<boolean> {
     }
 
     // Only sync items with fixed qty (filter out qtyFn items which can't be serialized)
+    // Preserve name for unavailable product display
     const syncableItems = assembly.items
       .filter(item => 'qty' in item)
       .map(item => ({
         productId: item.productId,
         qty: 'qty' in item ? item.qty : 0,
+        ...(item.name && { name: item.name }),
       }));
 
     const supabaseAssembly = {
@@ -193,11 +195,12 @@ export async function downloadAssemblies(since?: string): Promise<Assembly[]> {
       try {
         if (!row || !row.id) continue;
 
-        // Parse items from JSONB
+        // Parse items from JSONB (preserve name for unavailable product display)
         const items = Array.isArray(row.items)
           ? row.items.map((item: any) => ({
               productId: item.productId,
               qty: item.qty || 0,
+              ...(item.name && { name: item.name }),
             }))
           : [];
 

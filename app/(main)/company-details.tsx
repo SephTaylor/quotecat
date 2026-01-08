@@ -6,6 +6,8 @@ import { FormInput, BottomBar, Button } from "@/modules/core/ui";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
 import React, { useState, useCallback } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -120,7 +122,16 @@ export default function CompanyDetailsScreen() {
         }}
       />
       <GradientBackground>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={100}
+        >
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.description}>
             These details will appear on your quotes and PDFs
           </Text>
@@ -200,6 +211,7 @@ export default function CompanyDetailsScreen() {
 
           <View style={{ height: 100 }} />
         </ScrollView>
+        </KeyboardAvoidingView>
 
         <BottomBar>
           <Button

@@ -103,6 +103,8 @@ export function NotificationPanel({
       router.push(`/(main)/invoice/${reminder.entityId}` as any);
     } else if (reminder.entityType === "contract") {
       router.push(`/(forms)/contract/${reminder.entityId}/edit` as any);
+    } else if (reminder.entityType === "assembly") {
+      router.push(`/(main)/assembly-editor/${reminder.entityId}` as any);
     }
   }, [onClose, router]);
 
@@ -389,6 +391,8 @@ function getReminderTypeInfo(reminder: Reminder): {
       return { label: "VIEWED", icon: "eye-outline", color: "#007AFF" };
     case "contract_declined":
       return { label: "DECLINED", icon: "close-circle-outline", color: "#FF3B30" };
+    case "assembly_unhealthy":
+      return { label: "NEEDS REVIEW", icon: "warning-outline", color: "#FF9500" };
     default:
       return { label: "NOTIFICATION", icon: "notifications-outline", color: "#8E8E93" };
   }

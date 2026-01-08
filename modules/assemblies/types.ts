@@ -3,8 +3,8 @@ import type { Product } from "@/modules/catalog/seed";
 export type AssemblyVarBag = Record<string, number | string | boolean>;
 
 export type AssemblyItem =
-  | { productId: string; qty: number } // fixed qty
-  | { productId: string; qtyFn: (vars: AssemblyVarBag) => number }; // computed
+  | { productId: string; qty: number; name?: string } // fixed qty
+  | { productId: string; qtyFn: (vars: AssemblyVarBag) => number; name?: string }; // computed
 
 export type Assembly = {
   id: string;

@@ -307,8 +307,8 @@ export default function Settings() {
           {/* Free User Prompt */}
           {/* Cloud Sync section only shown for Pro users */}
 
-          {/* Usage & Limits Section */}
-          {userState && (
+          {/* Usage & Limits Section - Only show for free users */}
+          {userState && !isPro && (
             <CollapsibleSection
               title="Usage & Limits"
               isExpanded={expandedSections.usage}
