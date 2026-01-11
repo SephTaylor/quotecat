@@ -565,35 +565,102 @@ After all groups pass local testing:
 
 ---
 
-## 🚧 Current Work: Drew State Machine (Dec 26, 2025)
+## 🚧 Current Work: Drew Quote Wizard (Updated Jan 11, 2026)
 
-### Problem
+### Architecture Overview
 
-Drew (the Quote Wizard AI) keeps asking repeated questions and loses track of where he is in the conversation. This happens because Claude is managing conversation flow directly, and LLMs aren't great at state management.
+Drew is a Premium-only AI assistant that helps contractors build quotes. It runs as a Supabase Edge Function (`drew-agent`) that calls the Anthropic Claude API.
 
-### Solution: Server-Side State Machine
+**Current Stack:**
+- **Edge Function:** `supabase/functions/drew-agent/index.ts`
+- **AI Model:** Claude Sonnet 4 (`claude-sonnet-4-20250514`)
+- **Embeddings:** OpenAI `text-embedding-3-small` (for tradecraft vector search)
+- **Prompt Caching:** ✅ Enabled (Jan 11, 2026)
 
-The fix is to have the **server control the flow** while **Claude just adds personality**. State machine code has been drafted and saved.
+### API Cost Structure
+
+Drew uses two APIs:
+
+| API | Purpose | Cost |
+|-----|---------|------|
+| **Anthropic Claude** | Conversations, tool use, responses | ~95% of cost |
+| **OpenAI Embeddings** | Tradecraft vector search | ~$0.0001/search (negligible) |
+
+**Per-session cost (10-turn conversation):**
+- Without caching: ~$0.35
+- With caching (current): ~$0.18
+- With hybrid state machine (planned): ~$0.05
+
+### Cost Optimization Strategy
+
+#### Phase 1: Prompt Caching ✅ DONE (Jan 11, 2026)
+
+Added `cache_control: { type: 'ephemeral' }` to system prompt. Caching happens on Anthropic's servers - no storage on user devices or Supabase.
+
+```typescript
+system: [
+  {
+    type: 'text',
+    text: systemPrompt + settingsContext,
+    cache_control: { type: 'ephemeral' }  // 50% savings
+  }
+],
+```
+
+**Result:** ~50% cost reduction on system prompt tokens.
+
+#### Phase 2: Hybrid State Machine (PLANNED)
+
+**Problem:** Drew loses context mid-conversation because LLMs aren't great at state management.
+
+**Solution:** Server-side state machine controls flow, Claude only adds personality.
+
+**What doesn't need Claude (handle with state machine):**
+- Job type selection → direct database lookup
+- Checklist confirmation → UI interaction
+- Product selection → database queries
+- Labor/markup entry → form input
+
+**What needs Claude:**
+- Understanding natural language job descriptions
+- Asking clarifying questions
+- Handling unexpected responses
+
+**Expected savings:** Additional 60-70% reduction (total ~85% savings)
 
 **Draft code location:** `docs/state-machine-draft.ts`
 
-### State Machine Phases
-
+**State Machine Phases:**
 ```
 setup (4 questions) → generating_checklist → building (walk through items) → wrapup (labor, markup, name, client) → done
 ```
 
-### What Happened Dec 26
+#### Phase 3: Model Optimization (FUTURE)
 
-1. Implemented full state machine in edge function ✅
-2. Updated client to pass state back and forth ✅
-3. **BUT** rewrote too much of wizard.tsx and broke the UI ❌
-4. Had to revert all changes to get back to working state
-5. Saved state machine code to `docs/state-machine-draft.ts` for next session
+If more savings needed, can switch models:
 
-### Next Steps (Implementation Plan)
+| Model | Cost/Session | Quality |
+|-------|--------------|---------|
+| Claude Sonnet 4 (current) | ~$0.18 | Best |
+| Claude Haiku 3.5 | ~$0.02 | Good, may drift more |
+| GPT-4o-mini | ~$0.01 | Requires API rewrite |
 
-1. **Edge function only first** - Update `supabase/functions/wizard-chat/index.ts` with state machine logic
+**Recommendation:** Implement hybrid state machine first. If Haiku works well enough for the remaining LLM calls, switch later. One-line change:
+```typescript
+model: 'claude-haiku-3-5-20241022'
+```
+
+### Cost Projections at Scale
+
+| Scenario | Sessions/Mo | Current | With Hybrid |
+|----------|-------------|---------|-------------|
+| 100 Premium users | 500 | $90 | $25 |
+| 500 Premium users | 2,500 | $450 | $125 |
+| 1,000 Premium users | 5,000 | $900 | $250 |
+
+### Implementation Plan (State Machine)
+
+1. **Edge function only first** - Update `supabase/functions/drew-agent/index.ts` with state machine logic
 2. **Minimal client changes** - Only add state passing to `lib/wizardApi.ts`:
    - Add `WizardState` type
    - Update `sendWizardMessage(message, state)` to accept and return state
@@ -605,11 +672,12 @@ setup (4 questions) → generating_checklist → building (walk through items) �
 
 ### Key Files
 
-| File | Change Needed |
-|------|--------------|
-| `supabase/functions/wizard-chat/index.ts` | Replace with state machine logic from draft |
-| `lib/wizardApi.ts` | Add state parameter, keep everything else |
-| `app/(main)/wizard.tsx` | Add state tracking, DO NOT touch UI/styling |
+| File | Purpose |
+|------|---------|
+| `supabase/functions/drew-agent/index.ts` | Edge function with Claude API calls |
+| `lib/wizardApi.ts` | Client API wrapper |
+| `app/(main)/wizard.tsx` | UI (DO NOT touch styling) |
+| `docs/state-machine-draft.ts` | Draft state machine code |
 
 ### What NOT to Do
 
@@ -617,7 +685,8 @@ setup (4 questions) → generating_checklist → building (walk through items) �
 - Don't change quick reply button styling
 - Don't change message bubble styling
 - Don't remove any existing functionality
-- Don't rewrite the whole file
+- Don't rewrite the whole wizard.tsx file
+- Don't switch to cheaper model before fixing state machine (makes forgetting worse)
 
 ---
 
@@ -775,6 +844,10 @@ Cloud Sync downloads 10 quotes
 ## 💡 Future Feature Ideas
 
 Features to consider for future releases (not blockers for launch):
+
+### ⚡ Performance
+
+- **Sync Optimization** - Current sync is sequential (quotes → invoices → clients → assemblies → pricebook → business settings). Consider parallelizing critical data (quotes + invoices) and background syncing the rest. Would improve perceived performance on login and manual sync. (Discussed Jan 8, 2026)
 
 ### 🚀 Post-Launch Priority (First Week After App Store)
 

@@ -1,14 +1,81 @@
 // lib/wizardApi.ts
 // API client for the Quote Wizard (Drew) - calls Supabase Edge Function
-// Now supports server-side state machine for reliable conversation flow
+// Supports both drew-agent (intelligent RAG agent) and wizard-chat (state machine)
 
 import { supabase } from './supabase';
 
 // =============================================================================
-// STATE MACHINE TYPES (must match edge function)
+// FEATURE FLAG - Toggle between drew-agent and wizard-chat
 // =============================================================================
 
-export interface WizardState {
+// Set to true to use the new intelligent agent with tradecraft
+// Set to false to use the legacy state machine
+export const USE_DREW_AGENT = true;
+
+// =============================================================================
+// DREW-AGENT TYPES (intelligent agent with tradecraft)
+// =============================================================================
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string | unknown[];
+}
+
+interface QuoteItem {
+  productId: string;
+  name: string;
+  unitPrice: number;
+  qty: number;
+  unit?: string;
+}
+
+// Checklist item for material category selection
+export interface ChecklistItem {
+  category: string;      // e.g., "main_panel", "wire", "grounding"
+  name: string;          // Human-readable: "Main breaker panel"
+  searchTerms: string[]; // Keywords for product search
+  defaultQty: number;    // Suggested quantity
+  unit: string;          // ea, ft, etc.
+  required: boolean;     // Pre-checked if true
+  notes?: string;        // Helper text
+}
+
+// Product group for grouped display
+export interface ProductGroup {
+  category: string;
+  categoryName: string;
+  products: WizardProduct[];
+}
+
+export interface DrewAgentState {
+  messages: Message[];
+  quoteItems: QuoteItem[];
+  quoteName?: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  laborHours?: number;
+  laborRate?: number;
+  markupPercent?: number;
+  tradecraftContext?: string;
+  tradecraftJobType?: string;  // For checklist lookup
+  pendingChecklist?: ChecklistItem[];  // Material checklist awaiting confirmation
+  pendingProducts?: WizardProduct[];
+  isComplete?: boolean;
+}
+
+export function createDrewAgentInitialState(): DrewAgentState {
+  return {
+    messages: [],
+    quoteItems: [],
+  };
+}
+
+// =============================================================================
+// WIZARD-CHAT TYPES (legacy state machine - kept for fallback)
+// =============================================================================
+
+export interface WizardChatState {
   phase: 'setup' | 'generating_checklist' | 'building' | 'review' | 'wrapup' | 'done';
   setupStep: number;
   projectType?: string;
@@ -29,7 +96,7 @@ export interface WizardState {
   clientName?: string;
 }
 
-export function createInitialState(): WizardState {
+export function createWizardChatInitialState(): WizardChatState {
   return {
     phase: 'setup',
     setupStep: 0,
@@ -39,6 +106,16 @@ export function createInitialState(): WizardState {
     itemsAdded: [],
     wrapupStep: 0,
   };
+}
+
+// =============================================================================
+// UNIFIED STATE TYPE - works with both backends
+// =============================================================================
+
+export type WizardState = DrewAgentState | WizardChatState;
+
+export function createInitialState(): WizardState {
+  return USE_DREW_AGENT ? createDrewAgentInitialState() : createWizardChatInitialState();
 }
 
 // =============================================================================
@@ -65,13 +142,17 @@ export interface WizardProduct {
   name: string;
   price: number;
   unit: string;
+  retailer?: string;     // Lowe's, Home Depot, Menards, etc.
+  source?: 'pricebook' | 'catalog';  // Where this product came from
   suggestedQty: number;  // Per-product qty based on sqft and product type
 }
 
 // Structured display data from wizard - UI renders this consistently
 export interface WizardDisplay {
-  type: 'products' | 'added' | 'review';
+  type: 'products' | 'added' | 'review' | 'summary' | 'checklist';
   products?: WizardProduct[];          // Products to show for selection (each with suggestedQty)
+  productGroups?: ProductGroup[];      // Products grouped by category
+  checklist?: ChecklistItem[];         // Material checklist for user confirmation
   addedItems?: Array<{ name: string; qty: number }>;  // Items just added
   reviewNotes?: string;                // Review phase findings
   relatedItems?: string[];             // Related items they might need
@@ -103,7 +184,7 @@ export interface UserDefaults {
 
 /**
  * Send a message to Drew (the Quote Wizard) and get a response.
- * Uses server-side state machine for reliable conversation flow.
+ * Uses either drew-agent (intelligent RAG) or wizard-chat (state machine) based on USE_DREW_AGENT flag.
  *
  * @param userMessage - The user's message text
  * @param state - Current wizard state (use createInitialState() for first message)
@@ -114,7 +195,64 @@ export async function sendWizardMessage(
   state: WizardState,
   userDefaults?: UserDefaults,
 ): Promise<WizardResponse> {
-  console.log('[wizardApi] Sending message:', userMessage.substring(0, 30), 'Phase:', state.phase);
+  if (USE_DREW_AGENT) {
+    return sendDrewAgentMessage(userMessage, state as DrewAgentState, userDefaults);
+  } else {
+    return sendWizardChatMessage(userMessage, state as WizardChatState, userDefaults);
+  }
+}
+
+/**
+ * Send message to drew-agent (intelligent RAG agent with tradecraft)
+ */
+async function sendDrewAgentMessage(
+  userMessage: string,
+  state: DrewAgentState,
+  userDefaults?: UserDefaults,
+): Promise<WizardResponse> {
+  console.log('[wizardApi] drew-agent: Sending message:', userMessage.substring(0, 30));
+
+  const { data, error } = await supabase.functions.invoke('drew-agent', {
+    body: {
+      userMessage,
+      state,
+      userSettings: {
+        defaultLaborRate: userDefaults?.defaultLaborRate,
+        defaultMarkupPercent: userDefaults?.defaultMarkupPercent,
+      },
+    },
+  });
+
+  if (error) {
+    console.error('[wizardApi] drew-agent error:', error);
+    throw new Error(error.message || 'Failed to get response from Drew');
+  }
+
+  if (data?.error) {
+    console.error('[wizardApi] drew-agent function error:', data.error);
+    throw new Error(data.error);
+  }
+
+  console.log('[wizardApi] drew-agent response - Message:', data.message?.substring(0, 30), 'Display:', data.display?.type);
+
+  return {
+    message: data.message || '',
+    display: data.display,
+    quickReplies: data.quickReplies,
+    toolCalls: data.toolCalls,
+    state: data.state,
+  };
+}
+
+/**
+ * Send message to wizard-chat (legacy state machine)
+ */
+async function sendWizardChatMessage(
+  userMessage: string,
+  state: WizardChatState,
+  userDefaults?: UserDefaults,
+): Promise<WizardResponse> {
+  console.log('[wizardApi] wizard-chat: Sending message:', userMessage.substring(0, 30), 'Phase:', state.phase);
 
   const { data, error } = await supabase.functions.invoke('wizard-chat', {
     body: {
@@ -125,18 +263,16 @@ export async function sendWizardMessage(
   });
 
   if (error) {
-    console.error('[wizardApi] Error:', error);
-    console.error('[wizardApi] Error context:', JSON.stringify(error.context || {}));
+    console.error('[wizardApi] wizard-chat error:', error);
     throw new Error(error.message || 'Failed to get response from Drew');
   }
 
   if (data?.error) {
-    console.error('[wizardApi] Edge function error:', data.error);
-    console.error('[wizardApi] Stack:', data.stack);
+    console.error('[wizardApi] wizard-chat function error:', data.error);
     throw new Error(data.error);
   }
 
-  console.log('[wizardApi] Response - Phase:', data.state?.phase, 'Message:', data.message?.substring(0, 30), 'Display:', data.display?.type);
+  console.log('[wizardApi] wizard-chat response - Phase:', data.state?.phase, 'Message:', data.message?.substring(0, 30));
 
   return {
     message: data.message || '',

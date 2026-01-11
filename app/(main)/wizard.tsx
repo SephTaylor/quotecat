@@ -25,10 +25,13 @@ import {
   sendWizardMessage,
   searchCatalog,
   createInitialState,
+  USE_DREW_AGENT,
   type WizardState as ServerWizardState,
+  type DrewAgentState,
   type WizardTool,
   type WizardDisplay,
   type UserDefaults,
+  type ChecklistItem,
 } from '@/lib/wizardApi';
 import { useProducts } from '@/modules/catalog/useProducts';
 import { createQuote, updateQuote, type QuoteItem } from '@/modules/quotes';
@@ -70,6 +73,8 @@ export default function WizardScreen() {
   const [editMode, setEditMode] = useState<'none' | 'remove' | 'quantity'>('none');
   // Track product selections: { productId: quantity }
   const [selections, setSelections] = useState<Record<string, number>>({});
+  // Track checklist selections: { category: isSelected }
+  const [checklistSelections, setChecklistSelections] = useState<Record<string, boolean>>({});
   const [draftQuote, setDraftQuote] = useState<DraftQuote>({
     name: '',
     clientName: '',
@@ -98,6 +103,31 @@ export default function WizardScreen() {
       });
     });
   }, []);
+
+  // Sync draftQuote from wizardState when using drew-agent
+  // Drew-agent updates state directly instead of sending toolCalls
+  useEffect(() => {
+    if (!USE_DREW_AGENT) return;
+
+    const drewState = wizardState as DrewAgentState;
+
+    // Only sync if we have relevant data
+    if (!drewState.quoteItems && !drewState.quoteName && !drewState.laborHours) return;
+
+    setDraftQuote({
+      name: drewState.quoteName || '',
+      clientName: drewState.clientName || '',
+      items: (drewState.quoteItems || []).map(q => ({
+        id: q.productId, // Use productId as id for consistency
+        productId: q.productId,
+        name: q.name,
+        qty: q.qty,
+        unitPrice: q.unitPrice,
+      })),
+      labor: (drewState.laborHours || 0) * (drewState.laborRate || 0),
+      markupPercent: drewState.markupPercent || 0,
+    });
+  }, [wizardState]);
 
   // Speech recognition - only initialize when user is in chat mode
   const [speechAvailable, setSpeechAvailable] = useState(false);
@@ -259,14 +289,73 @@ export default function WizardScreen() {
 
   // Send batch selections to server
   const submitSelections = () => {
-    const selectionArray = Object.entries(selections).map(([id, qty]) => ({ id, qty }));
-    if (selectionArray.length === 0) return;
+    if (Object.keys(selections).length === 0) return;
 
-    // Machine-readable message for API
-    const apiMessage = `ADD_SELECTED:${JSON.stringify(selectionArray)}`;
+    let apiMessage: string;
+
+    if (USE_DREW_AGENT) {
+      // Drew-agent expects full product data: {id, name, price, unit, qty}
+      const drewState = wizardState as DrewAgentState;
+      const pendingProducts = drewState.pendingProducts || [];
+
+      const selectionArray = Object.entries(selections).map(([id, qty]) => {
+        const product = pendingProducts.find(p => p.id === id);
+        return {
+          id,
+          qty,
+          name: product?.name || 'Unknown',
+          price: product?.price || 0,
+          unit: product?.unit || 'EA',
+        };
+      });
+
+      apiMessage = `ADD_SELECTED:${JSON.stringify(selectionArray)}`;
+    } else {
+      // wizard-chat format: just {id, qty}
+      const selectionArray = Object.entries(selections).map(([id, qty]) => ({ id, qty }));
+      apiMessage = `ADD_SELECTED:${JSON.stringify(selectionArray)}`;
+    }
 
     setSelections({}); // Clear selections
     handleSendWithMessage(apiMessage, "Added");
+  };
+
+  // Initialize checklist selections when a checklist is shown
+  const initializeChecklistSelections = (checklist: ChecklistItem[]) => {
+    const initial: Record<string, boolean> = {};
+    checklist.forEach(item => {
+      initial[item.category] = item.required; // Pre-select required items
+    });
+    setChecklistSelections(initial);
+  };
+
+  // Toggle checklist item selection
+  const toggleChecklistItem = (category: string) => {
+    setChecklistSelections(prev => ({
+      ...prev,
+      [category]: !prev[category],
+    }));
+  };
+
+  // Submit confirmed checklist categories
+  const submitChecklist = () => {
+    const selectedCategories = Object.entries(checklistSelections)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([category]) => category);
+
+    if (selectedCategories.length === 0) {
+      // Skip checklist
+      handleSendWithMessage('skip checklist', 'Skipped materials');
+    } else {
+      handleSendWithMessage(`CONFIRM_CHECKLIST:${JSON.stringify(selectedCategories)}`, 'Confirmed materials');
+    }
+    setChecklistSelections({}); // Clear selections
+  };
+
+  // Skip checklist entirely
+  const skipChecklist = () => {
+    handleSendWithMessage('skip checklist', 'Skipped materials');
+    setChecklistSelections({});
   };
 
   const handleQuickReply = (reply: string) => {
@@ -485,6 +574,11 @@ export default function WizardScreen() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
+      // Initialize checklist selections when a checklist is displayed
+      if (response.display?.type === 'checklist' && response.display.checklist) {
+        initializeChecklistSelections(response.display.checklist);
+      }
+
       // Auto-apply tool calls (addItem, setLabor, etc.) silently
       if (response.toolCalls && response.toolCalls.length > 0) {
         applyToolsSilently(response.toolCalls);
@@ -543,8 +637,8 @@ export default function WizardScreen() {
 
       Alert.alert(
         'Quote Created!',
-        `"${newQuote.name}" has been saved.`,
-        [{ text: 'View Quote', onPress: () => router.push(`/(forms)/quote/${newQuote.id}/edit` as any) },
+        `"${newQuote.name}" has been saved. You can edit quantities, add items, or make other changes in the quote editor.`,
+        [{ text: 'Edit Quote', onPress: () => router.push(`/(forms)/quote/${newQuote.id}/edit` as any) },
          { text: 'Done', onPress: () => router.back() }]
       );
     } catch (error) {
@@ -670,6 +764,50 @@ export default function WizardScreen() {
                       </View>
                     </View>
 
+                    {/* Structured display data - materials checklist */}
+                    {msg.display?.type === 'checklist' && msg.display.checklist && (
+                      <View style={styles.displayCard}>
+                        <Text style={styles.displayCardHeader}>What materials do you need?</Text>
+                        <Text style={styles.checklistSubheader}>Uncheck items you already have</Text>
+                        {msg.display.checklist.map((item) => {
+                          const isSelected = checklistSelections[item.category] ?? item.required;
+                          return (
+                            <Pressable
+                              key={item.category}
+                              style={styles.checklistRow}
+                              onPress={() => toggleChecklistItem(item.category)}
+                            >
+                              {/* Checkbox */}
+                              <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                                {isSelected && <Ionicons name="checkmark" size={16} color="#000" />}
+                              </View>
+
+                              {/* Item info */}
+                              <View style={styles.checklistInfo}>
+                                <Text style={styles.checklistName}>{item.name}</Text>
+                                <Text style={styles.checklistMeta}>
+                                  {item.defaultQty} {item.unit}
+                                  {item.notes ? ` · ${item.notes}` : ''}
+                                </Text>
+                              </View>
+                            </Pressable>
+                          );
+                        })}
+
+                        {/* Confirm/Skip buttons */}
+                        <View style={styles.checklistButtons}>
+                          <Pressable style={styles.checklistSkipButton} onPress={skipChecklist}>
+                            <Text style={styles.checklistSkipText}>Skip</Text>
+                          </Pressable>
+                          <Pressable style={styles.checklistConfirmButton} onPress={submitChecklist}>
+                            <Text style={styles.checklistConfirmText}>
+                              Confirm ({Object.values(checklistSelections).filter(Boolean).length} items)
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    )}
+
                     {/* Structured display data - products with multi-select */}
                     {msg.display?.type === 'products' && msg.display.products && (
                       <View style={styles.displayCard}>
@@ -765,7 +903,10 @@ export default function WizardScreen() {
                 )}
 
                 {/* Quote Summary - shown when done */}
-                {wizardState.phase === 'done' && (
+                {(USE_DREW_AGENT
+                  ? (wizardState as DrewAgentState).isComplete
+                  : (wizardState as any).phase === 'done'
+                ) && (
                   <View style={styles.summaryCard}>
                     <Text style={styles.summaryTitle}>Quote Summary</Text>
 
@@ -1076,7 +1217,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderRadius: theme.radius.md,
       marginLeft: 48, // Align with message bubble (avatar width + gap)
       marginTop: 8,
-      overflow: 'hidden',
+      // Note: removed overflow: 'hidden' - was clipping checklist confirm buttons
     },
     displayCardHeader: {
       fontSize: 13,
@@ -1154,6 +1295,66 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
     },
     addSelectedText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#000',
+    },
+    // Checklist styles
+    checklistSubheader: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      paddingHorizontal: 12,
+      paddingBottom: 8,
+      fontStyle: 'italic',
+    },
+    checklistRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    checklistInfo: {
+      flex: 1,
+    },
+    checklistName: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.colors.text,
+      marginBottom: 2,
+    },
+    checklistMeta: {
+      fontSize: 12,
+      color: theme.colors.muted,
+    },
+    checklistButtons: {
+      flexDirection: 'row',
+      gap: 8,
+      padding: 12,
+    },
+    checklistSkipButton: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingVertical: 12,
+      borderRadius: theme.radius.md,
+      alignItems: 'center',
+    },
+    checklistSkipText: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.colors.muted,
+    },
+    checklistConfirmButton: {
+      flex: 2,
+      backgroundColor: theme.colors.accent,
+      paddingVertical: 12,
+      borderRadius: theme.radius.md,
+      alignItems: 'center',
+    },
+    checklistConfirmText: {
       fontSize: 15,
       fontWeight: '600',
       color: '#000',

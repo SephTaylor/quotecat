@@ -47,6 +47,12 @@ Do this after every build:
 - [x ] Create assembly with multiple items
 - [x ] Add assembly to quote
 
+**Company Branding (Business Settings):**
+- [ ] Upload company logo
+- [ ] Logo appears on PDF exports
+- [ ] Company details (name, email, phone, address) on PDFs
+- [ ] Branding syncs across devices
+
 
 ⏺ Pro Features to Test:
 
@@ -89,14 +95,36 @@ Do this after every build:
 
 ## Premium Tier (logged in as Premium)
 
-**Price Book (Pro Tools tab):**
-- [ ] Add custom items with price/unit
-- [ ] Price Book items appear in Materials picker
-- [ ] Add Price Book items to quotes
+*Note: Pro features already tested above. Only test Premium-exclusive features.*
 
-**Change Orders: PORTAL ONLY**
-- [ ] Edit a "Sent" quote → prompted for reason
-- [ ] Change order shows in Review screen
+**Price Book:**
+- [ ] Add item (name, price, unit)
+- [ ] Edit item
+- [ ] Delete item (swipe)
+- [ ] Items appear in Materials picker
+
+**Quote Wizard (Drew):**
+- [ ] Launch from FAB
+- [ ] Complete conversation → generates quote
+- [ ] Quote saves correctly
+
+**Contracts (Mobile):**
+- [ ] Create contract from approved quote
+- [ ] Send contract → generates link
+- [ ] Status: Draft → Sent
+
+---
+
+## Web Portal (portal.quotecat.ai)
+
+*Test after Premium mobile features work*
+
+**Contract Flow:**
+- [ ] Open contract link (no login required)
+- [ ] Contract displays correctly
+- [ ] E-signature works
+- [ ] Sign → status syncs to mobile
+- [ ] Notification appears in mobile bell
 
 ---
 
