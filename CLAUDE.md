@@ -21,7 +21,7 @@ QuoteCat is a construction quoting platform with three main components:
 
 ### Launch Target
 - **Public Launch**: January 31, 2025
-- **Current Status**: TestFlight beta (Build #116)
+- **Current Status**: TestFlight beta (Build #123)
 
 ---
 
@@ -678,6 +678,21 @@ model: 'claude-haiku-3-5-20241022'
 | `lib/wizardApi.ts` | Client API wrapper |
 | `app/(main)/wizard.tsx` | UI (DO NOT touch styling) |
 | `docs/state-machine-draft.ts` | Draft state machine code |
+| `docs/DREW_ARCHITECTURE.md` | Full architecture docs with testing notes |
+
+### Current Status (Build #123 - Jan 11, 2026)
+
+**What shipped:**
+- Material checklist flow with tradecraft-based product selection
+- Category filtering (electrical jobs only show electrical products)
+- Natural language checklist confirmation ("Looks good", "Just the panel")
+- Product limit (2 per category) to avoid overwhelming results
+- `remove_quote_items` tool for cleanup
+- Fixed quick reply button matching
+- Prompt caching enabled (~50% cost savings)
+
+**Known issue to investigate:**
+- $0 draft quotes appearing on dashboard after Drew sessions - likely quotes being created during session that don't get cleaned up. Needs investigation to find when/where `save_quote` is being called prematurely.
 
 ### What NOT to Do
 
