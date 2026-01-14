@@ -5,6 +5,7 @@ import { supabase } from "./supabase";
 import type { Contract, ContractUpdate, Signature, Quote, QuoteItem } from "./types";
 import { getCurrentUserId } from "./authUtils";
 import { loadPreferences, updateContractSettings } from "./preferences";
+import { calculateQuoteTotal } from "./calculations";
 
 /**
  * Generate next contract number using user preferences
@@ -51,16 +52,8 @@ export async function createContractFromQuote(
 
   const contractNumber = await generateContractNumber();
 
-  // Calculate total
-  const materialsTotal = quote.items.reduce(
-    (sum, item) => sum + item.unitPrice * item.qty,
-    0
-  );
-  const subtotal = materialsTotal + (quote.materialEstimate || 0) + (quote.labor || 0);
-  const markupAmount = quote.markupPercent ? subtotal * (quote.markupPercent / 100) : 0;
-  const subtotalWithMarkup = subtotal + markupAmount;
-  const taxAmount = quote.taxPercent ? subtotalWithMarkup * (quote.taxPercent / 100) : 0;
-  const total = subtotalWithMarkup + taxAmount;
+  // Use centralized calculation (markup on line items only, not material estimate)
+  const total = calculateQuoteTotal(quote);
 
   const now = new Date().toISOString();
 

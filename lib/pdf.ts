@@ -38,10 +38,13 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
 
   const materialEstimate = quote.materialEstimate ?? 0;
   const labor = quote.labor ?? 0;
-  const overhead = quote.overhead ?? 0;
+  const markupPercent = quote.markupPercent ?? 0;
   const taxPercent = quote.taxPercent ?? 0;
 
-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+  // Apply markup to line items ONLY (not material estimate or labor)
+  // Material estimate is a contractor's guess with margin already baked in
+  const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
+  const subtotal = materialsWithMarkup + materialEstimate + labor;
   const taxAmount = (subtotal * taxPercent) / 100;
   const grandTotal = subtotal + taxAmount;
 
@@ -51,17 +54,15 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
     day: 'numeric'
   });
 
-  // Generate line items HTML
+  // Generate line items HTML (names and quantities only - no prices for client view)
   const lineItemsHTML = quote.items && quote.items.length > 0
     ? quote.items.map(item => `
         <tr>
           <td style="padding: 12px; border-bottom: 1px solid #e5e5e5;">${item.name}</td>
           <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: center;">${item.qty}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${item.unitPrice.toFixed(2)}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600;">$${(item.unitPrice * item.qty).toFixed(2)}</td>
         </tr>
       `).join('')
-    : '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #999;">No materials</td></tr>';
+    : '<tr><td colspan="2" style="padding: 24px; text-align: center; color: #999;">No materials</td></tr>';
 
   // QuoteCat branding for free tier - at top
   const brandingHeader = includeBranding ? `
@@ -241,28 +242,16 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         <div class="section-title">Cost Summary</div>
         <table class="totals-table">
           <tbody>
-            ${materialsFromItems > 0 ? `
+            ${materialsWithMarkup > 0 ? `
               <tr>
                 <td class="label">Materials</td>
-                <td class="value">$${materialsFromItems.toFixed(2)}</td>
-              </tr>
-            ` : ''}
-            ${materialEstimate > 0 ? `
-              <tr>
-                <td class="label">Materials (Estimate)</td>
-                <td class="value">$${materialEstimate.toFixed(2)}</td>
+                <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
               </tr>
             ` : ''}
             ${labor > 0 ? `
               <tr>
                 <td class="label">Labor</td>
                 <td class="value">$${labor.toFixed(2)}</td>
-              </tr>
-            ` : ''}
-            ${overhead > 0 ? `
-              <tr>
-                <td class="label">Overhead</td>
-                <td class="value">$${overhead.toFixed(2)}</td>
               </tr>
             ` : ''}
             ${taxPercent > 0 ? `
@@ -290,14 +279,12 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
 
       ${quote.items && quote.items.length > 0 ? `
         <div class="section" style="page-break-before: auto;">
-          <div class="section-title">Materials Detail</div>
+          <div class="section-title">Materials Included</div>
           <table>
             <thead>
               <tr>
                 <th>Item</th>
-                <th style="text-align: center; width: 80px;">Qty</th>
-                <th style="text-align: right; width: 120px;">Unit Price</th>
-                <th style="text-align: right; width: 120px;">Total</th>
+                <th style="text-align: center; width: 100px;">Qty</th>
               </tr>
             </thead>
             <tbody>
@@ -425,20 +412,28 @@ export async function generateAndSharePDF(
 function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
   const { includeBranding, companyDetails, logoBase64, paymentMethods } = options;
 
-  // Calculate totals
+  // Calculate totals - markup applies to line items only (not material estimate or labor)
   const materialsFromItems = invoice.items?.reduce(
     (sum, item) => sum + item.unitPrice * item.qty,
     0
   ) ?? 0;
 
+  // Apply markup to line items ONLY
+  const markupPercent = invoice.markupPercent ?? 0;
+  const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
+
   const materialEstimate = invoice.materialEstimate ?? 0;
   const labor = invoice.labor ?? 0;
-  const overhead = invoice.overhead ?? 0;
   const taxPercent = invoice.taxPercent ?? 0;
 
-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+  const subtotal = materialsWithMarkup + materialEstimate + labor;
   const taxAmount = (subtotal * taxPercent) / 100;
-  const grandTotal = subtotal + taxAmount;
+  let grandTotal = subtotal + taxAmount;
+
+  // Apply percentage for partial invoices
+  if (invoice.percentage && invoice.percentage < 100) {
+    grandTotal = grandTotal * (invoice.percentage / 100);
+  }
 
   const invoiceDateString = new Date(invoice.invoiceDate).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -757,10 +752,10 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         <div class="section-title">Amount Due</div>
         <table class="totals-table">
           <tbody>
-            ${materialsFromItems > 0 ? `
+            ${materialsWithMarkup > 0 ? `
               <tr>
                 <td class="label">Materials</td>
-                <td class="value">$${materialsFromItems.toFixed(2)}</td>
+                <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
               </tr>
             ` : ''}
             ${materialEstimate > 0 ? `
@@ -773,12 +768,6 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
               <tr>
                 <td class="label">Labor</td>
                 <td class="value">$${labor.toFixed(2)}</td>
-              </tr>
-            ` : ''}
-            ${overhead > 0 ? `
-              <tr>
-                <td class="label">Overhead</td>
-                <td class="value">$${overhead.toFixed(2)}</td>
               </tr>
             ` : ''}
             ${taxPercent > 0 ? `
@@ -944,19 +933,21 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
     ) ?? 0;
     const materialEstimate = quote.materialEstimate ?? 0;
     const labor = quote.labor ?? 0;
-    const overhead = quote.overhead ?? 0;
+    const markupPercent = quote.markupPercent ?? 0;
     const taxPercent = quote.taxPercent ?? 0;
-    const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+
+    // Apply markup to line items ONLY (not material estimate or labor)
+    const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
+    const subtotal = materialsWithMarkup + materialEstimate + labor;
     const taxAmount = (subtotal * taxPercent) / 100;
     const grandTotal = subtotal + taxAmount;
 
+    // Line items show names and quantities only (no prices for client view)
     const lineItemsHTML = quote.items && quote.items.length > 0
       ? quote.items.map(item => `
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid #e5e5e5;">${item.name}</td>
             <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: center;">${item.qty}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${item.unitPrice.toFixed(2)}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600;">$${(item.unitPrice * item.qty).toFixed(2)}</td>
           </tr>
         `).join('')
       : '';
@@ -972,14 +963,12 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
 
         ${quote.items && quote.items.length > 0 ? `
           <div class="section">
-            <div class="section-title">Materials</div>
+            <div class="section-title">Materials Included</div>
             <table>
               <thead>
                 <tr>
                   <th>Item</th>
-                  <th style="text-align: center; width: 70px;">Qty</th>
-                  <th style="text-align: right; width: 100px;">Unit</th>
-                  <th style="text-align: right; width: 100px;">Total</th>
+                  <th style="text-align: center; width: 100px;">Qty</th>
                 </tr>
               </thead>
               <tbody>
@@ -992,28 +981,16 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
         <div class="section">
           <table class="totals-table">
             <tbody>
-              ${materialsFromItems > 0 ? `
+              ${materialsWithMarkup > 0 ? `
                 <tr>
                   <td class="label">Materials</td>
-                  <td class="value">$${materialsFromItems.toFixed(2)}</td>
-                </tr>
-              ` : ''}
-              ${materialEstimate > 0 ? `
-                <tr>
-                  <td class="label">Materials (Est.)</td>
-                  <td class="value">$${materialEstimate.toFixed(2)}</td>
+                  <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
                 </tr>
               ` : ''}
               ${labor > 0 ? `
                 <tr>
                   <td class="label">Labor</td>
                   <td class="value">$${labor.toFixed(2)}</td>
-                </tr>
-              ` : ''}
-              ${overhead > 0 ? `
-                <tr>
-                  <td class="label">Overhead</td>
-                  <td class="value">$${overhead.toFixed(2)}</td>
                 </tr>
               ` : ''}
               ${taxPercent > 0 ? `
@@ -1050,16 +1027,20 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
     ) ?? 0;
     const materialEstimate = quote.materialEstimate ?? 0;
     const labor = quote.labor ?? 0;
-    const overhead = quote.overhead ?? 0;
+    const markupPercent = quote.markupPercent ?? 0;
     const taxPercent = quote.taxPercent ?? 0;
-    const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+
+    // Apply markup to line items ONLY (not material estimate or labor)
+    const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
+    const totalMaterials = materialsWithMarkup + materialEstimate;
+    const subtotal = totalMaterials + labor;
     const taxAmount = (subtotal * taxPercent) / 100;
     const grandTotal = subtotal + taxAmount;
 
     return `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; font-weight: 600;">${quote.tier || 'Base'}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${materialsFromItems.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${totalMaterials.toFixed(2)}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${labor.toFixed(2)}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 700; color: #333;">$${grandTotal.toFixed(2)}</td>
       </tr>

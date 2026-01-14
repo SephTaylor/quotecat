@@ -5,6 +5,7 @@ import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import type { Invoice } from "@/lib/types";
 import { InvoiceStatusMeta } from "@/lib/types";
+import { calculateInvoiceTotal } from "@/lib/calculations";
 import { useTheme } from "@/contexts/ThemeContext";
 
 type SwipeableInvoiceItemProps = {
@@ -26,16 +27,8 @@ export const SwipeableInvoiceItem = React.memo(
     const styles = React.useMemo(() => createStyles(theme), [theme]);
     const statusMeta = InvoiceStatusMeta[item.status];
 
-    // Calculate total (memoized to prevent recalculation on every render)
-    const total = React.useMemo(() => {
-      const itemsTotal = item.items.reduce(
-        (sum, lineItem) => sum + lineItem.unitPrice * lineItem.qty,
-        0,
-      );
-      const subtotal = itemsTotal + item.labor + (item.materialEstimate || 0) + (item.overhead || 0);
-      const markup = item.markupPercent ? subtotal * (item.markupPercent / 100) : 0;
-      return subtotal + markup;
-    }, [item.items, item.labor, item.materialEstimate, item.overhead, item.markupPercent]);
+    // Use centralized calculation (includes markup, tax, and percentage)
+    const total = React.useMemo(() => calculateInvoiceTotal(item), [item]);
 
     // Format due date
     const dueDate = new Date(item.dueDate);

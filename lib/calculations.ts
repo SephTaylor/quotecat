@@ -14,12 +14,17 @@ export function calculateMaterialSubtotal(items: QuoteItem[] | undefined): numbe
 
 /**
  * Calculate all quote totals with breakdown
+ *
+ * Calculation order:
+ * 1. Materials = line items total (from catalog)
+ * 2. Markup applied to line items ONLY (not material estimate or labor)
+ * 3. Subtotal = materials with markup + material estimate + labor
+ * 4. Tax applied to subtotal
  */
 export function calculateQuoteTotals(quote: Quote): {
   materialsFromItems: number;
   materialEstimate: number;
   labor: number;
-  overhead: number;
   subtotal: number;
   markupPercent: number;
   markupAmount: number;
@@ -30,21 +35,21 @@ export function calculateQuoteTotals(quote: Quote): {
   const materialsFromItems = calculateMaterialSubtotal(quote.items);
   const materialEstimate = quote.materialEstimate ?? 0;
   const labor = quote.labor ?? 0;
-  const overhead = quote.overhead ?? 0;
   const markupPercent = quote.markupPercent ?? 0;
   const taxPercent = quote.taxPercent ?? 0;
 
-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
-  const markupAmount = (subtotal * markupPercent) / 100;
-  const afterMarkup = subtotal + markupAmount;
-  const taxAmount = (afterMarkup * taxPercent) / 100;
-  const total = afterMarkup + taxAmount;
+  // Apply markup to line items ONLY (not material estimate or labor)
+  // Material estimate is a contractor's guess with margin already baked in
+  const markupAmount = (materialsFromItems * markupPercent) / 100;
+  const materialsWithMarkup = materialsFromItems + markupAmount;
+  const subtotal = materialsWithMarkup + materialEstimate + labor;
+  const taxAmount = (subtotal * taxPercent) / 100;
+  const total = subtotal + taxAmount;
 
   return {
     materialsFromItems,
     materialEstimate,
     labor,
-    overhead,
     subtotal,
     markupPercent,
     markupAmount,
@@ -63,12 +68,18 @@ export function calculateQuoteTotal(quote: Quote): number {
 
 /**
  * Calculate all invoice totals with breakdown
+ *
+ * Calculation order:
+ * 1. Materials = line items total (from catalog)
+ * 2. Markup applied to line items ONLY (not material estimate or labor)
+ * 3. Subtotal = materials with markup + material estimate + labor
+ * 4. Tax applied to subtotal
+ * 5. Percentage applied at end (for partial invoices)
  */
 export function calculateInvoiceTotals(invoice: Invoice): {
   materialsFromItems: number;
   materialEstimate: number;
   labor: number;
-  overhead: number;
   subtotal: number;
   markupPercent: number;
   markupAmount: number;
@@ -83,16 +94,17 @@ export function calculateInvoiceTotals(invoice: Invoice): {
   ) ?? 0;
   const materialEstimate = invoice.materialEstimate ?? 0;
   const labor = invoice.labor ?? 0;
-  const overhead = invoice.overhead ?? 0;
   const markupPercent = invoice.markupPercent ?? 0;
   const taxPercent = invoice.taxPercent ?? 0;
   const percentage = invoice.percentage ?? 100;
 
-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
-  const markupAmount = (subtotal * markupPercent) / 100;
-  const afterMarkup = subtotal + markupAmount;
-  const taxAmount = (afterMarkup * taxPercent) / 100;
-  let total = afterMarkup + taxAmount;
+  // Apply markup to line items ONLY (not material estimate or labor)
+  // Material estimate is a contractor's guess with margin already baked in
+  const markupAmount = (materialsFromItems * markupPercent) / 100;
+  const materialsWithMarkup = materialsFromItems + markupAmount;
+  const subtotal = materialsWithMarkup + materialEstimate + labor;
+  const taxAmount = (subtotal * taxPercent) / 100;
+  let total = subtotal + taxAmount;
 
   // Apply percentage if this is a partial invoice
   if (percentage < 100) {
@@ -103,7 +115,6 @@ export function calculateInvoiceTotals(invoice: Invoice): {
     materialsFromItems,
     materialEstimate,
     labor,
-    overhead,
     subtotal,
     markupPercent,
     markupAmount,

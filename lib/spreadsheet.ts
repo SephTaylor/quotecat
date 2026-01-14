@@ -56,11 +56,13 @@ function generateQuoteCSV(quote: Quote): string {
   ) ?? 0;
   const materialEstimate = quote.materialEstimate ?? 0;
   const labor = quote.labor ?? 0;
-  const overhead = quote.overhead ?? 0;
   const markupPercent = quote.markupPercent ?? 0;
-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
-  const markupAmount = (subtotal * markupPercent) / 100;
-  const grandTotal = subtotal + markupAmount;
+  // Apply markup to materials only (not labor)
+  const totalMaterials = materialsFromItems + materialEstimate;
+  const markupAmount = (totalMaterials * markupPercent) / 100;
+  const materialsWithMarkup = totalMaterials + markupAmount;
+  const subtotal = materialsWithMarkup + labor;
+  const grandTotal = subtotal;
 
   // Cost Breakdown
   lines.push('COST BREAKDOWN');
@@ -74,9 +76,6 @@ function generateQuoteCSV(quote: Quote): string {
   }
   if (labor > 0) {
     lines.push(`Labor,${labor.toFixed(2)}`);
-  }
-  if (overhead > 0) {
-    lines.push(`Overhead,${overhead.toFixed(2)}`);
   }
 
   lines.push(`Subtotal,${subtotal.toFixed(2)}`);

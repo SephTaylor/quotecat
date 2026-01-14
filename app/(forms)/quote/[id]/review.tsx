@@ -20,6 +20,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
+import { calculateQuoteTotals } from "@/lib/calculations";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getUserState, incrementPdfCount, incrementSpreadsheetCount } from "@/lib/user";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
@@ -80,20 +81,16 @@ export default function QuoteReviewScreen() {
 
   const styles = React.useMemo(() => createStyles(theme, insets), [theme, insets]);
 
-  // Calculate totals
-  const materialsFromItems = quote?.items?.reduce(
-    (sum, item) => sum + item.unitPrice * item.qty,
-    0
-  ) ?? 0;
-
-  const materialEstimate = quote?.materialEstimate ?? 0;
-  const labor = quote?.labor ?? 0;
-  const overhead = quote?.overhead ?? 0;
-  const markupPercent = quote?.markupPercent ?? 0;
-
-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
-  const markupAmount = (subtotal * markupPercent) / 100;
-  const grandTotal = subtotal + markupAmount;
+  // Use centralized calculation (markup on line items only, includes tax)
+  const totals = quote ? calculateQuoteTotals(quote) : null;
+  const materialsFromItems = totals?.materialsFromItems ?? 0;
+  const materialEstimate = totals?.materialEstimate ?? 0;
+  const labor = totals?.labor ?? 0;
+  const markupPercent = totals?.markupPercent ?? 0;
+  const markupAmount = totals?.markupAmount ?? 0;
+  const subtotal = totals?.subtotal ?? 0;
+  const taxAmount = totals?.taxAmount ?? 0;
+  const grandTotal = totals?.total ?? 0;
 
   const handleExportPDF = async () => {
     if (!userState || !quote) return;
@@ -563,7 +560,7 @@ export default function QuoteReviewScreen() {
         {/* Totals Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cost Breakdown</Text>
-          {(overhead > 0 || markupAmount > 0) && (
+          {markupAmount > 0 && (
             <Text style={styles.exportNote}>
               Note: Detailed breakdown shown here. PDF export shows simplified total only.
             </Text>
@@ -587,13 +584,6 @@ export default function QuoteReviewScreen() {
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Labor</Text>
                 <Text style={styles.totalValue}>${labor.toFixed(2)}</Text>
-              </View>
-            )}
-
-            {overhead > 0 && (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Overhead</Text>
-                <Text style={styles.totalValue}>${overhead.toFixed(2)}</Text>
               </View>
             )}
 
