@@ -17,6 +17,7 @@ import { createSnapshot, calculateDiff, type QuoteSnapshot } from "@/modules/cha
 import { getUserState } from "@/lib/user";
 import { canAccessChangeOrders } from "@/lib/features";
 import { RefreshEvents, REFRESH_QUOTES_LIST } from "@/lib/refreshEvents";
+import { calculateQuoteTotals } from "@/lib/calculations";
 
 export type QuoteFormState = {
   name: string;
@@ -80,31 +81,28 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
   const originalSnapshotRef = useRef<QuoteSnapshot | null>(null);
   const [shouldTrackChanges, setShouldTrackChanges] = useState(false);
 
-  // Calculate totals
+  // Calculate totals using centralized calculation function (single source of truth)
   const calculations = useMemo<QuoteCalculations>(() => {
-    const materialsFromItems = items.reduce(
-      (sum, item) => sum + item.unitPrice * item.qty,
-      0
-    );
-    const materialsEstimateValue = parseMoney(materialEstimate);
-    const laborValue = parseMoney(labor);
-    const markupPercentValue = parseFloat(markupPercent) || 0;
-    const taxPercentValue = parseFloat(taxPercent) || 0;
+    // Build a Quote-like object for the calculation function
+    const quoteData = {
+      items,
+      materialEstimate: parseMoney(materialEstimate),
+      labor: parseMoney(labor),
+      markupPercent: parseFloat(markupPercent) || 0,
+      taxPercent: parseFloat(taxPercent) || 0,
+    };
 
-    const subtotal = materialsFromItems + materialsEstimateValue + laborValue;
-    const markupAmount = (subtotal * markupPercentValue) / 100;
-    const subtotalWithMarkup = subtotal + markupAmount;
-    const taxAmount = (subtotalWithMarkup * taxPercentValue) / 100;
-    const total = subtotalWithMarkup + taxAmount;
+    // Use centralized calculation - same formula as portal and storage
+    const calc = calculateQuoteTotals(quoteData as any);
 
     return {
-      materialsFromItems,
-      materialsEstimateValue,
-      laborValue,
-      subtotal,
-      markupAmount,
-      taxAmount,
-      total,
+      materialsFromItems: calc.materialsFromItems,
+      materialsEstimateValue: calc.materialEstimate,
+      laborValue: calc.labor,
+      subtotal: calc.subtotal,
+      markupAmount: calc.markupAmount,
+      taxAmount: calc.taxAmount,
+      total: calc.total,
     };
   }, [items, materialEstimate, labor, markupPercent, taxPercent]);
 

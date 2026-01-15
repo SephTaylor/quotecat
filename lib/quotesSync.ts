@@ -164,11 +164,15 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
       user_id: userId,
       name: quote.name,
       client_name: quote.clientName || null,
+      client_email: quote.clientEmail || null,
+      client_phone: quote.clientPhone || null,
+      client_address: quote.clientAddress || null,
       items: quote.items,
       labor: quote.labor,
       material_estimate: quote.materialEstimate || null,
       overhead: quote.overhead || null,
       markup_percent: quote.markupPercent || null,
+      tax_percent: quote.taxPercent || null,
       currency: quote.currency,
       status: quote.status,
       pinned: quote.pinned || false,
@@ -178,6 +182,7 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
       notes: quote.notes || null,
       change_history: quote.changeHistory || null,
       approved_snapshot: quote.approvedSnapshot || null,
+      total: quote.total || 0, // Store calculated total for single source of truth
       created_at: quote.createdAt,
       updated_at: quote.updatedAt,
       synced_at: new Date().toISOString(),
@@ -295,6 +300,9 @@ export async function downloadQuotes(since?: string, isInitialSync = false): Pro
           id: row.id,
           name: row.name || "",
           clientName: row.client_name || undefined,
+          clientEmail: row.client_email || undefined,
+          clientPhone: row.client_phone || undefined,
+          clientAddress: row.client_address || undefined,
           items: Array.isArray(row.items) ? row.items : [],
           labor: parseFloat(row.labor) || 0,
           materialEstimate: row.material_estimate
@@ -303,6 +311,9 @@ export async function downloadQuotes(since?: string, isInitialSync = false): Pro
           overhead: row.overhead ? parseFloat(row.overhead) : undefined,
           markupPercent: row.markup_percent
             ? parseFloat(row.markup_percent)
+            : undefined,
+          taxPercent: row.tax_percent
+            ? parseFloat(row.tax_percent)
             : undefined,
           currency: row.currency || "USD",
           status: row.status || "draft",
@@ -313,6 +324,7 @@ export async function downloadQuotes(since?: string, isInitialSync = false): Pro
           notes: row.notes || undefined,
           changeHistory: row.change_history || undefined,
           approvedSnapshot: row.approved_snapshot || undefined,
+          total: row.total ? parseFloat(row.total) : undefined,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           deletedAt: row.deleted_at || undefined,

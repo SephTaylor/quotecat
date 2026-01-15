@@ -24,13 +24,20 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
 
   console.log("=== PDF DEBUG ===");
   console.log("Quote ID:", quote.id);
+  console.log("Quote name:", quote.name);
+  console.log("Quote total (stored):", quote.total);
+  console.log("Quote markupPercent:", quote.markupPercent);
+  console.log("Quote taxPercent:", quote.taxPercent);
+  console.log("Quote materialEstimate:", quote.materialEstimate);
+  console.log("Quote labor:", quote.labor);
+  console.log("Quote items count:", quote.items?.length);
   console.log("Has changeHistory:", !!quote.changeHistory);
   console.log("changeHistory length:", quote.changeHistory?.length || 0);
   if (quote.changeHistory) {
     console.log("changeHistory preview:", quote.changeHistory.substring(0, 100));
   }
 
-  // Calculate totals
+  // Calculate breakdown for display
   const materialsFromItems = quote.items?.reduce(
     (sum, item) => sum + item.unitPrice * item.qty,
     0
@@ -46,7 +53,20 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
   const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
   const subtotal = materialsWithMarkup + materialEstimate + labor;
   const taxAmount = (subtotal * taxPercent) / 100;
+
+  // Always calculate the total fresh to ensure correct math
+  // (stored total may be stale from before formula fixes)
   const grandTotal = subtotal + taxAmount;
+
+  console.log("PDF calculated values:", {
+    materialsFromItems,
+    materialsWithMarkup,
+    materialEstimate,
+    labor,
+    subtotal,
+    taxAmount,
+    grandTotal,
+  });
 
   const dateString = new Date(quote.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -246,6 +266,12 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
               <tr>
                 <td class="label">Materials</td>
                 <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
+              </tr>
+            ` : ''}
+            ${materialEstimate > 0 ? `
+              <tr>
+                <td class="label">Materials (Estimate)</td>
+                <td class="value">$${materialEstimate.toFixed(2)}</td>
               </tr>
             ` : ''}
             ${labor > 0 ? `
@@ -940,7 +966,9 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
     const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
     const subtotal = materialsWithMarkup + materialEstimate + labor;
     const taxAmount = (subtotal * taxPercent) / 100;
-    const grandTotal = subtotal + taxAmount;
+
+    // Use stored total if available (single source of truth), otherwise calculate
+    const grandTotal = quote.total ?? (subtotal + taxAmount);
 
     // Line items show names and quantities only (no prices for client view)
     const lineItemsHTML = quote.items && quote.items.length > 0
@@ -985,6 +1013,12 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
                 <tr>
                   <td class="label">Materials</td>
                   <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
+                </tr>
+              ` : ''}
+              ${materialEstimate > 0 ? `
+                <tr>
+                  <td class="label">Materials (Estimate)</td>
+                  <td class="value">$${materialEstimate.toFixed(2)}</td>
                 </tr>
               ` : ''}
               ${labor > 0 ? `
@@ -1035,7 +1069,9 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
     const totalMaterials = materialsWithMarkup + materialEstimate;
     const subtotal = totalMaterials + labor;
     const taxAmount = (subtotal * taxPercent) / 100;
-    const grandTotal = subtotal + taxAmount;
+
+    // Use stored total if available (single source of truth), otherwise calculate
+    const grandTotal = quote.total ?? (subtotal + taxAmount);
 
     return `
       <tr>

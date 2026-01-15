@@ -573,6 +573,13 @@ export default function QuoteReviewScreen() {
               </View>
             )}
 
+            {markupAmount > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Markup ({markupPercent}%)</Text>
+                <Text style={styles.totalValue}>${markupAmount.toFixed(2)}</Text>
+              </View>
+            )}
+
             {materialEstimate > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Materials (Estimate)</Text>
@@ -594,10 +601,10 @@ export default function QuoteReviewScreen() {
               <Text style={styles.subtotalValue}>${subtotal.toFixed(2)}</Text>
             </View>
 
-            {markupAmount > 0 && (
+            {taxAmount > 0 && (
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Markup ({markupPercent}%)</Text>
-                <Text style={styles.totalValue}>${markupAmount.toFixed(2)}</Text>
+                <Text style={styles.totalLabel}>Tax ({totals?.taxPercent ?? 0}%)</Text>
+                <Text style={styles.totalValue}>${taxAmount.toFixed(2)}</Text>
               </View>
             )}
 

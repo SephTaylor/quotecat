@@ -4,6 +4,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Quote } from "@/lib/types";
 import { normalizeQuote, calculateMaterialSubtotal } from "@/lib/validation";
+import { calculateQuoteTotal } from "@/lib/calculations";
 import { QUOTE_KEYS } from "@/lib/storageKeys";
 import {
   withErrorHandling,
@@ -290,7 +291,7 @@ export async function saveQuoteLocally(quote: Quote): Promise<Quote> {
 
     // Recalculate derived fields
     updated.materialSubtotal = calculateMaterialSubtotal(updated.items);
-    updated.total = updated.materialSubtotal + (updated.labor || 0);
+    updated.total = calculateQuoteTotal(updated);
 
     if (index === -1) {
       allQuotes.push(updated);
@@ -376,7 +377,7 @@ export async function saveQuote(quote: Quote): Promise<Quote> {
 
     // Recalculate derived fields
     updated.materialSubtotal = calculateMaterialSubtotal(updated.items);
-    updated.total = updated.materialSubtotal + (updated.labor || 0);
+    updated.total = calculateQuoteTotal(updated);
 
     const isNew = index === -1;
 

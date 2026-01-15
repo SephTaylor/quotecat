@@ -1036,7 +1036,7 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.label}>Markup Percentage</Text>
+        <Text style={styles.label}>Markup %</Text>
         <View style={styles.inputWithSuffix}>
           <FormInput
             placeholder="0"
@@ -1056,10 +1056,11 @@ export default function EditQuote() {
           />
           <Text style={styles.inputSuffix}>%</Text>
         </View>
+        <Text style={styles.helper}>Applied to line items only</Text>
 
         <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.label}>Tax Percentage</Text>
+        <Text style={styles.label}>Tax %</Text>
         <View style={styles.inputWithSuffix}>
           <FormInput
             placeholder="0"
@@ -1104,6 +1105,17 @@ export default function EditQuote() {
             </Text>
           </View>
 
+          {calculations.markupAmount > 0 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>
+                Markup ({markupPercent}%)
+              </Text>
+              <Text style={styles.totalsValue}>
+                ${calculations.markupAmount.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
           {calculations.materialsEstimateValue > 0 && (
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Materials (Estimate)</Text>
@@ -1122,7 +1134,6 @@ export default function EditQuote() {
             </View>
           )}
 
-
           <View style={styles.totalsDivider} />
 
           <View style={styles.totalsRow}>
@@ -1131,17 +1142,6 @@ export default function EditQuote() {
               ${calculations.subtotal.toFixed(2)}
             </Text>
           </View>
-
-          {calculations.markupAmount > 0 && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>
-                Markup ({markupPercent}%)
-              </Text>
-              <Text style={styles.totalsValue}>
-                ${calculations.markupAmount.toFixed(2)}
-              </Text>
-            </View>
-          )}
 
           {calculations.taxAmount > 0 && (
             <View style={styles.totalsRow}>
