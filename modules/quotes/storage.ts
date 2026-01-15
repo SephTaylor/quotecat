@@ -625,7 +625,7 @@ export async function linkQuotes(quoteIds: string[]): Promise<void> {
 
 /**
  * Unlink a quote from its linked group
- * Removes this quote's reference from all linked quotes and clears its linkedQuoteIds
+ * Uses STAR TOPOLOGY: Base has links to children, children only link to base
  */
 export async function unlinkQuote(quoteId: string): Promise<void> {
   const result = await withErrorHandling(async () => {
@@ -637,26 +637,54 @@ export async function unlinkQuote(quoteId: string): Promise<void> {
     }
 
     const linkedIds = quote.linkedQuoteIds || [];
+    const now = new Date().toISOString();
+    const affectedIds: string[] = [];
 
-    // Remove this quote's ID from all linked quotes
-    for (const linkedId of linkedIds) {
-      const linkedQuote = allQuotes.find((q) => q.id === linkedId);
-      if (linkedQuote && linkedQuote.linkedQuoteIds) {
-        linkedQuote.linkedQuoteIds = linkedQuote.linkedQuoteIds.filter((id) => id !== quoteId);
-        // If only one quote remains linked, clear its links too (can't have a group of 1)
-        if (linkedQuote.linkedQuoteIds.length === 0) {
-          delete linkedQuote.linkedQuoteIds;
+    // STAR TOPOLOGY: Determine if this is the base or a child
+    const isBase = quote.tier === "Base";
+
+    if (isBase) {
+      // Unlinking the base: all children become standalone quotes
+      for (const childId of linkedIds) {
+        const childQuote = allQuotes.find((q) => q.id === childId);
+        if (childQuote) {
+          delete childQuote.linkedQuoteIds;
+          delete childQuote.tier;
+          childQuote.updatedAt = now;
+          affectedIds.push(childId);
         }
-        linkedQuote.updatedAt = new Date().toISOString();
       }
+
+      // Clear the base's links and tier
+      delete quote.linkedQuoteIds;
+      delete quote.tier;
+      quote.updatedAt = now;
+    } else {
+      // Unlinking a child: remove from base's linkedQuoteIds
+      // In star topology, a child's linkedQuoteIds[0] is the base
+      const baseId = linkedIds[0];
+      const baseQuote = allQuotes.find((q) => q.id === baseId);
+
+      if (baseQuote && baseQuote.linkedQuoteIds) {
+        baseQuote.linkedQuoteIds = baseQuote.linkedQuoteIds.filter((id) => id !== quoteId);
+
+        // If no children remain, clear base's tier info too
+        if (baseQuote.linkedQuoteIds.length === 0) {
+          delete baseQuote.linkedQuoteIds;
+          delete baseQuote.tier;
+        }
+        baseQuote.updatedAt = now;
+        affectedIds.push(baseId);
+      }
+
+      // Clear this child's links and tier
+      delete quote.linkedQuoteIds;
+      delete quote.tier;
+      quote.updatedAt = now;
     }
 
-    // Clear this quote's links
-    delete quote.linkedQuoteIds;
-    quote.updatedAt = new Date().toISOString();
-
     await writeQuotes(allQuotes);
-    return linkedIds;
+    return affectedIds;
   }, ErrorType.STORAGE);
 
   if (!result.success) {
@@ -712,6 +740,7 @@ export async function getLinkedQuotes(quoteId: string): Promise<Quote[]> {
 
 /**
  * Create a new tier by duplicating an existing quote and linking them
+ * Uses STAR TOPOLOGY: Base quote links to all children, children only link to base
  * @param sourceQuoteId - The quote to duplicate
  * @param tierName - Name for the new tier (e.g., "Better", "Best", "With Generator")
  * @returns The newly created quote
@@ -721,76 +750,71 @@ export async function createTierFromQuote(
   tierName: string
 ): Promise<Quote | null> {
   const result = await withErrorHandling(async () => {
-    const original = await getQuoteById(sourceQuoteId);
-    if (!original) {
+    const source = await getQuoteById(sourceQuoteId);
+    if (!source) {
       throw new Error(`Quote ${sourceQuoteId} not found`);
     }
 
-    // Create a copy with new ID
     const now = new Date().toISOString();
     const quoteNumber = await generateQuoteNumber();
+    const allQuotes = await readAllQuotes();
+
+    // STAR TOPOLOGY: Find the base quote
+    // If source has no links or is the base, it becomes/stays the base
+    // If source is a child, find the actual base
+    let baseQuote = source;
+    let baseQuoteId = source.id;
+
+    if (source.linkedQuoteIds && source.linkedQuoteIds.length > 0 && source.tier !== "Base") {
+      // Source is a child - find the base (first entry in linkedQuoteIds for star topology)
+      const potentialBaseId = source.linkedQuoteIds[0];
+      const potentialBase = allQuotes.find((q) => q.id === potentialBaseId && !q.deletedAt);
+      if (potentialBase) {
+        baseQuote = potentialBase;
+        baseQuoteId = potentialBase.id;
+      }
+    }
+
+    // Create a copy with new ID - copy items from source (what user clicked on)
     const newQuote: Quote = {
-      ...original,
+      ...source,
       id: `quote-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-      quoteNumber, // New quote number
-      name: original.name, // Keep same job name
-      tier: tierName, // Set the tier name
-      status: "draft", // Reset to draft
+      quoteNumber,
+      name: baseQuote.name, // Use base's project name
+      tier: tierName,
+      status: "draft",
       createdAt: now,
       updatedAt: now,
       pinned: false,
-      // Start with link to original
-      linkedQuoteIds: [sourceQuoteId],
+      linkedQuoteIds: [baseQuoteId], // Star topology: only link to base
     };
 
-    // If original doesn't have a tier name, set a default
-    if (!original.tier) {
-      original.tier = "Base";
-      original.updatedAt = now;
+    // Set base's tier if not already set
+    if (!baseQuote.tier) {
+      baseQuote.tier = "Base";
     }
 
-    // Add new quote ID to original's links
-    const originalLinks = original.linkedQuoteIds || [];
-    original.linkedQuoteIds = [...originalLinks, newQuote.id];
+    // Add new quote ID to base's links only
+    const baseLinks = baseQuote.linkedQuoteIds || [];
+    baseQuote.linkedQuoteIds = [...baseLinks, newQuote.id];
+    baseQuote.updatedAt = now;
 
-    // Also link new quote to all of original's existing linked quotes
-    if (originalLinks.length > 0) {
-      newQuote.linkedQuoteIds = [sourceQuoteId, ...originalLinks];
+    // In star topology, we don't update other children - they only link to base
 
-      // And add new quote to each of those linked quotes
-      const allQuotes = await readAllQuotes();
-      for (const linkedId of originalLinks) {
-        const linkedQuote = allQuotes.find((q) => q.id === linkedId);
-        if (linkedQuote) {
-          linkedQuote.linkedQuoteIds = [...(linkedQuote.linkedQuoteIds || []), newQuote.id];
-          linkedQuote.updatedAt = now;
-        }
-      }
-
-      // Find and update original in allQuotes
-      const origIndex = allQuotes.findIndex((q) => q.id === sourceQuoteId);
-      if (origIndex !== -1) {
-        allQuotes[origIndex] = original;
-      }
-
-      // Add new quote
-      allQuotes.push(newQuote);
-      await writeQuotes(allQuotes);
-    } else {
-      // Simple case: just original and new quote
-      const allQuotes = await readAllQuotes();
-      const origIndex = allQuotes.findIndex((q) => q.id === sourceQuoteId);
-      if (origIndex !== -1) {
-        allQuotes[origIndex] = original;
-      }
-      allQuotes.push(newQuote);
-      await writeQuotes(allQuotes);
+    // Update base in allQuotes
+    const baseIndex = allQuotes.findIndex((q) => q.id === baseQuoteId);
+    if (baseIndex !== -1) {
+      allQuotes[baseIndex] = baseQuote;
     }
+
+    // Add new quote
+    allQuotes.push(newQuote);
+    await writeQuotes(allQuotes);
 
     // Track analytics
     trackEvent(AnalyticsEvents.QUOTE_DUPLICATED, {
-      originalItemCount: original.items.length,
-      originalTotal: original.total,
+      originalItemCount: source.items.length,
+      originalTotal: source.total,
       tierName,
     });
 

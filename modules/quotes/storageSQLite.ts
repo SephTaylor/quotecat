@@ -379,6 +379,7 @@ export async function linkQuotes(quoteIds: string[]): Promise<void> {
 
 /**
  * Unlink a quote from its linked group
+ * Uses STAR TOPOLOGY: Base has links to children, children only link to base
  */
 export async function unlinkQuote(quoteId: string): Promise<void> {
   const quote = getQuoteByIdDB(quoteId);
@@ -389,31 +390,69 @@ export async function unlinkQuote(quoteId: string): Promise<void> {
   const linkedIds = quote.linkedQuoteIds || [];
   const now = new Date().toISOString();
 
-  // Remove this quote's ID from all linked quotes
-  for (const linkedId of linkedIds) {
-    const linkedQuote = getQuoteByIdDB(linkedId);
-    if (linkedQuote && linkedQuote.linkedQuoteIds) {
-      const newLinks = linkedQuote.linkedQuoteIds.filter((id) => id !== quoteId);
-      saveQuoteDB({
-        ...linkedQuote,
-        linkedQuoteIds: newLinks.length > 0 ? newLinks : undefined,
-        updatedAt: now,
-      });
-    }
-  }
+  // STAR TOPOLOGY: Determine if this is the base or a child
+  const isBase = quote.tier === "Base";
 
-  // Clear this quote's links
-  saveQuoteDB({
-    ...quote,
-    linkedQuoteIds: undefined,
-    updatedAt: now,
-  });
+  if (isBase) {
+    // Unlinking the base: all children become standalone quotes
+    for (const childId of linkedIds) {
+      const childQuote = getQuoteByIdDB(childId);
+      if (childQuote) {
+        saveQuoteDB({
+          ...childQuote,
+          linkedQuoteIds: undefined,
+          tier: undefined,
+          updatedAt: now,
+        });
+        cache.invalidate(CacheKeys.quotes.byId(childId));
+      }
+    }
+
+    // Clear the base's links and tier
+    saveQuoteDB({
+      ...quote,
+      linkedQuoteIds: undefined,
+      tier: undefined,
+      updatedAt: now,
+    });
+  } else {
+    // Unlinking a child: remove from base's linkedQuoteIds
+    // In star topology, a child's linkedQuoteIds[0] is the base
+    const baseId = linkedIds[0];
+    const baseQuote = getQuoteByIdDB(baseId);
+
+    if (baseQuote && baseQuote.linkedQuoteIds) {
+      const updatedBaseLinks = baseQuote.linkedQuoteIds.filter((id) => id !== quoteId);
+
+      // If no children remain, clear base's tier info too
+      if (updatedBaseLinks.length === 0) {
+        saveQuoteDB({
+          ...baseQuote,
+          linkedQuoteIds: undefined,
+          tier: undefined,
+          updatedAt: now,
+        });
+      } else {
+        saveQuoteDB({
+          ...baseQuote,
+          linkedQuoteIds: updatedBaseLinks,
+          updatedAt: now,
+        });
+      }
+      cache.invalidate(CacheKeys.quotes.byId(baseId));
+    }
+
+    // Clear this child's links and tier
+    saveQuoteDB({
+      ...quote,
+      linkedQuoteIds: undefined,
+      tier: undefined,
+      updatedAt: now,
+    });
+  }
 
   cache.invalidate(CacheKeys.quotes.all());
   cache.invalidate(CacheKeys.quotes.byId(quoteId));
-  for (const id of linkedIds) {
-    cache.invalidate(CacheKeys.quotes.byId(id));
-  }
 }
 
 /**
@@ -441,62 +480,67 @@ export async function getLinkedQuotes(quoteId: string): Promise<Quote[]> {
 
 /**
  * Create a new tier by duplicating an existing quote and linking them
+ * Uses STAR TOPOLOGY: Base quote links to all children, children only link to base
  */
 export async function createTierFromQuote(
   sourceQuoteId: string,
   tierName: string
 ): Promise<Quote | null> {
-  const original = getQuoteByIdDB(sourceQuoteId);
-  if (!original) {
+  const source = getQuoteByIdDB(sourceQuoteId);
+  if (!source) {
     throw new Error(`Quote ${sourceQuoteId} not found`);
   }
 
   const now = new Date().toISOString();
   const quoteNumber = await generateQuoteNumber();
 
+  // STAR TOPOLOGY: Find the base quote
+  // If source has no links or is the base, it becomes/stays the base
+  // If source is a child, find the actual base
+  let baseQuote = source;
+  let baseQuoteId = source.id;
+
+  if (source.linkedQuoteIds && source.linkedQuoteIds.length > 0 && source.tier !== "Base") {
+    // Source is a child - find the base (first entry in linkedQuoteIds for star topology)
+    const potentialBaseId = source.linkedQuoteIds[0];
+    const potentialBase = getQuoteByIdDB(potentialBaseId);
+    if (potentialBase) {
+      baseQuote = potentialBase;
+      baseQuoteId = potentialBase.id;
+    }
+  }
+
   const newQuote: Quote = {
-    ...original,
+    ...source, // Copy from source (what user clicked on) for items/pricing
     id: `quote-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
     quoteNumber,
-    name: original.name,
+    name: baseQuote.name, // Use base's project name
     tier: tierName,
     status: "draft",
     createdAt: now,
     updatedAt: now,
     pinned: false,
-    linkedQuoteIds: [sourceQuoteId],
+    linkedQuoteIds: [baseQuoteId], // Star topology: only link to base
   };
 
-  // Set original's tier if not already set
-  if (!original.tier) {
-    original.tier = "Base";
-    original.updatedAt = now;
+  // Set base's tier if not already set
+  if (!baseQuote.tier) {
+    baseQuote.tier = "Base";
   }
 
-  // Add new quote ID to original's links
-  const originalLinks = original.linkedQuoteIds || [];
-  original.linkedQuoteIds = [...originalLinks, newQuote.id];
+  // Add new quote ID to base's links only
+  const baseLinks = baseQuote.linkedQuoteIds || [];
+  baseQuote.linkedQuoteIds = [...baseLinks, newQuote.id];
+  baseQuote.updatedAt = now;
 
-  // Link to all existing linked quotes
-  if (originalLinks.length > 0) {
-    newQuote.linkedQuoteIds = [sourceQuoteId, ...originalLinks];
+  // In star topology, we don't update other children - they only link to base
 
-    for (const linkedId of originalLinks) {
-      const linkedQuote = getQuoteByIdDB(linkedId);
-      if (linkedQuote) {
-        linkedQuote.linkedQuoteIds = [...(linkedQuote.linkedQuoteIds || []), newQuote.id];
-        linkedQuote.updatedAt = now;
-        saveQuoteDB(linkedQuote);
-      }
-    }
-  }
-
-  saveQuoteDB(original);
+  saveQuoteDB(baseQuote);
   saveQuoteDB(newQuote);
 
   trackEvent(AnalyticsEvents.QUOTE_DUPLICATED, {
-    originalItemCount: original.items.length,
-    originalTotal: original.total,
+    originalItemCount: source.items.length,
+    originalTotal: source.total,
     tierName,
   });
 
@@ -504,6 +548,7 @@ export async function createTierFromQuote(
 
   cache.invalidate(CacheKeys.quotes.all());
   cache.invalidate(CacheKeys.quotes.byId(sourceQuoteId));
+  cache.invalidate(CacheKeys.quotes.byId(baseQuoteId));
 
   return newQuote;
 }
