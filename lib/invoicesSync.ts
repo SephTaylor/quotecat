@@ -2,7 +2,7 @@
 // Cloud sync service for invoices (Pro/Premium feature)
 
 import { supabase } from "./supabase";
-import type { Invoice } from "./types";
+import type { Invoice, InvoicePayment } from "./types";
 import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -12,6 +12,8 @@ import {
   saveInvoicesBatchDB,
   deleteInvoiceDB,
   getLocallyDeletedInvoiceIdsDB,
+  listInvoicePaymentsDB,
+  saveInvoicePaymentDB,
 } from "./database";
 const SYNC_METADATA_KEY = "@quotecat/invoices_sync_metadata";
 const SYNC_LOCK_KEY = "@quotecat/invoices_sync_lock";
@@ -245,6 +247,121 @@ export async function uploadInvoice(invoice: Invoice): Promise<boolean> {
   } catch (error) {
     console.error("Upload invoice error:", error);
     return false;
+  }
+}
+
+/**
+ * Upload a single payment record to Supabase
+ */
+export async function uploadPayment(payment: InvoicePayment): Promise<boolean> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.warn("Cannot upload payment: user not authenticated");
+      return false;
+    }
+
+    // Map local InvoicePayment to Supabase schema
+    const supabasePayment = {
+      id: payment.id,
+      invoice_id: payment.invoiceId,
+      user_id: userId,
+      amount: payment.amount,
+      payment_method: payment.paymentMethod || null,
+      payment_date: payment.paymentDate,
+      notes: payment.notes || null,
+      created_at: payment.createdAt,
+      updated_at: payment.updatedAt,
+    };
+
+    // Upsert (insert or update)
+    const { error } = await supabase
+      .from("invoice_payments")
+      .upsert(supabasePayment, { onConflict: "id" });
+
+    if (error) {
+      console.error("Failed to upload payment:", error);
+      return false;
+    }
+
+    console.log(`✅ Uploaded payment: ${payment.id} for invoice ${payment.invoiceId}`);
+    return true;
+  } catch (error) {
+    console.error("Upload payment error:", error);
+    return false;
+  }
+}
+
+/**
+ * Download payments from Supabase for an invoice
+ */
+export async function downloadPaymentsForInvoice(invoiceId: string): Promise<InvoicePayment[]> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("invoice_payments")
+      .select("*")
+      .eq("invoice_id", invoiceId)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Failed to download payments:", error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Map Supabase data to local InvoicePayment type
+    return data.map((row) => ({
+      id: row.id,
+      invoiceId: row.invoice_id,
+      userId: row.user_id,
+      amount: parseFloat(row.amount) || 0,
+      paymentMethod: row.payment_method || undefined,
+      paymentDate: row.payment_date,
+      notes: row.notes || undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  } catch (error) {
+    console.error("Download payments error:", error);
+    return [];
+  }
+}
+
+/**
+ * Sync payments for a specific invoice (download from cloud, merge with local)
+ */
+export async function syncPaymentsForInvoice(invoiceId: string): Promise<number> {
+  try {
+    const cloudPayments = await downloadPaymentsForInvoice(invoiceId);
+    if (cloudPayments.length === 0) {
+      return 0;
+    }
+
+    // Get existing local payments
+    const localPayments = listInvoicePaymentsDB(invoiceId);
+    const localPaymentIds = new Set(localPayments.map(p => p.id));
+
+    let synced = 0;
+    for (const cloudPayment of cloudPayments) {
+      if (!localPaymentIds.has(cloudPayment.id)) {
+        // New payment from cloud - save locally
+        saveInvoicePaymentDB(cloudPayment);
+        synced++;
+      }
+    }
+
+    return synced;
+  } catch (error) {
+    console.error("Sync payments error:", error);
+    return 0;
   }
 }
 
@@ -651,7 +768,49 @@ export async function syncInvoices(): Promise<{
       }
     }
 
-    // Step 5: Process local invoices (upload new or updated since last sync)
+    // Step 5b: Sync payments for all invoices (bi-directional)
+    // Downloads payments from cloud AND uploads local payments that may not have synced
+    const allInvoiceIds = new Set([
+      ...localInvoices.map(inv => inv.id),
+      ...cloudInvoices.map(inv => inv.id),
+    ]);
+    let paymentsDownloaded = 0;
+    let paymentsUploaded = 0;
+    for (const invoiceId of allInvoiceIds) {
+      if (locallyDeletedIds.has(invoiceId)) continue;
+      try {
+        // Download payments from cloud
+        const cloudPayments = await downloadPaymentsForInvoice(invoiceId);
+        const localPayments = listInvoicePaymentsDB(invoiceId);
+
+        // Build lookup sets
+        const cloudPaymentIds = new Set(cloudPayments.map(p => p.id));
+        const localPaymentIds = new Set(localPayments.map(p => p.id));
+
+        // Download cloud payments not in local
+        for (const cloudPayment of cloudPayments) {
+          if (!localPaymentIds.has(cloudPayment.id)) {
+            saveInvoicePaymentDB(cloudPayment);
+            paymentsDownloaded++;
+          }
+        }
+
+        // Upload local payments not in cloud
+        for (const localPayment of localPayments) {
+          if (!cloudPaymentIds.has(localPayment.id)) {
+            const success = await uploadPayment(localPayment);
+            if (success) paymentsUploaded++;
+          }
+        }
+      } catch (error) {
+        // Silently continue - payment sync failures shouldn't block invoice sync
+      }
+    }
+    if (paymentsDownloaded > 0 || paymentsUploaded > 0) {
+      console.log(`✅ Payments synced: ${paymentsDownloaded} downloaded, ${paymentsUploaded} uploaded`);
+    }
+
+    // Step 6: Process local invoices (upload new or updated since last sync)
     for (const localInvoice of localInvoices) {
       try {
         const cloudInvoice = cloudMap.get(localInvoice.id);

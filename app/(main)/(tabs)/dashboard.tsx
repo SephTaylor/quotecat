@@ -301,34 +301,18 @@ export default function Dashboard() {
   }, [recentQuotes]);
 
 
-  // Get recent invoices (max 5, prioritize unpaid/overdue)
+  // Get recent invoices (max 5, most recently updated first)
   const recentInvoices = React.useMemo(() => {
-    // Sort: overdue first, then unpaid, then by date
     const sorted = [...invoices].sort((a, b) => {
-      // Overdue comes first
-      if (a.status === "overdue" && b.status !== "overdue") return -1;
-      if (b.status === "overdue" && a.status !== "overdue") return 1;
-      // Then unpaid
-      if (a.status === "unpaid" && b.status !== "unpaid") return -1;
-      if (b.status === "unpaid" && a.status !== "unpaid") return 1;
-      // Then by date
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
     return sorted.slice(0, 5);
   }, [invoices]);
 
-  // Get recent contracts (max 5, prioritize sent/awaiting signature)
+  // Get recent contracts (max 5, most recently updated first)
   const recentContracts = React.useMemo(() => {
-    // Sort: sent (awaiting signature) first, then viewed, then by date
     const sorted = [...contracts].sort((a, b) => {
-      // Sent (awaiting signature) comes first
-      if (a.status === "sent" && b.status !== "sent") return -1;
-      if (b.status === "sent" && a.status !== "sent") return 1;
-      // Then viewed
-      if (a.status === "viewed" && b.status !== "viewed") return -1;
-      if (b.status === "viewed" && a.status !== "viewed") return 1;
-      // Then by date
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
     return sorted.slice(0, 5);
   }, [contracts]);

@@ -242,6 +242,22 @@ export type Invoice = {
 export type InvoiceUpdate = Partial<Invoice> & { id: ID };
 
 /**
+ * Individual payment record for an invoice
+ * Supports multiple payments per invoice with full history
+ */
+export type InvoicePayment = {
+  id: ID;
+  invoiceId: ID;
+  userId?: string; // For cloud sync
+  amount: number;
+  paymentMethod?: string; // cash, check, card, bank_transfer, zelle, venmo, cashapp, other
+  paymentDate: string; // ISO 8601 date
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
  * Change Order status for tracking approval
  */
 export type ChangeOrderStatus = "pending" | "approved" | "cancelled";

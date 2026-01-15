@@ -57,11 +57,10 @@ function generateQuoteCSV(quote: Quote): string {
   const materialEstimate = quote.materialEstimate ?? 0;
   const labor = quote.labor ?? 0;
   const markupPercent = quote.markupPercent ?? 0;
-  // Apply markup to materials only (not labor)
-  const totalMaterials = materialsFromItems + materialEstimate;
-  const markupAmount = (totalMaterials * markupPercent) / 100;
-  const materialsWithMarkup = totalMaterials + markupAmount;
-  const subtotal = materialsWithMarkup + labor;
+  // Apply markup to line items only (not material estimate or labor)
+  const markupAmount = (materialsFromItems * markupPercent) / 100;
+  const materialsWithMarkup = materialsFromItems + markupAmount;
+  const subtotal = materialsWithMarkup + materialEstimate + labor;
   const grandTotal = subtotal;
 
   // Cost Breakdown

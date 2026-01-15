@@ -3,13 +3,13 @@
 // This solves the OOM crashes by loading data row-by-row instead of all at once
 
 import * as SQLite from "expo-sqlite";
-import type { Quote, Invoice, Client, QuoteItem, PricebookItem } from "./types";
+import type { Quote, Invoice, Client, QuoteItem, PricebookItem, InvoicePayment } from "./types";
 
 // Database instance (lazy initialized)
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 /**
  * Get or create the database instance
@@ -222,6 +222,33 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     if (!columnNames.has("approved_snapshot")) {
       database.execSync(`ALTER TABLE quotes ADD COLUMN approved_snapshot TEXT;`);
     }
+  }
+
+  if (fromVersion < 4) {
+    // Add invoice_payments table for payment history tracking
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS invoice_payments (
+        id TEXT PRIMARY KEY,
+        invoice_id TEXT NOT NULL,
+        user_id TEXT,
+        amount REAL NOT NULL,
+        payment_method TEXT,
+        payment_date TEXT NOT NULL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        synced_at TEXT,
+        FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+      );
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_invoice_payments_invoice_id ON invoice_payments(invoice_id);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_invoice_payments_payment_date ON invoice_payments(payment_date);
+    `);
   }
 
   // Update version
@@ -1128,6 +1155,120 @@ export function setMigratedFromAsyncStorage(): void {
 }
 
 // ============================================
+// INVOICE PAYMENTS
+// ============================================
+
+/**
+ * Convert database row to InvoicePayment object
+ */
+function rowToInvoicePayment(row: any): InvoicePayment {
+  return {
+    id: row.id,
+    invoiceId: row.invoice_id,
+    userId: row.user_id || undefined,
+    amount: row.amount || 0,
+    paymentMethod: row.payment_method || undefined,
+    paymentDate: row.payment_date,
+    notes: row.notes || undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * List all payments for an invoice
+ */
+export function listInvoicePaymentsDB(invoiceId: string): InvoicePayment[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT * FROM invoice_payments WHERE invoice_id = ? ORDER BY payment_date DESC",
+      [invoiceId]
+    );
+    return rows.map(rowToInvoicePayment);
+  } catch (error) {
+    console.error(`Failed to list payments for invoice ${invoiceId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Get a single payment by ID
+ */
+export function getInvoicePaymentByIdDB(id: string): InvoicePayment | null {
+  try {
+    const database = getDatabase();
+    const row = database.getFirstSync(
+      "SELECT * FROM invoice_payments WHERE id = ?",
+      [id]
+    );
+    return row ? rowToInvoicePayment(row) : null;
+  } catch (error) {
+    console.error(`Failed to get payment ${id}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Save a payment (insert or update)
+ */
+export function saveInvoicePaymentDB(payment: InvoicePayment): void {
+  try {
+    const database = getDatabase();
+    database.runSync(
+      `INSERT OR REPLACE INTO invoice_payments (
+        id, invoice_id, user_id, amount, payment_method, payment_date,
+        notes, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        payment.id,
+        payment.invoiceId,
+        payment.userId || null,
+        payment.amount,
+        payment.paymentMethod || null,
+        payment.paymentDate,
+        payment.notes || null,
+        payment.createdAt,
+        payment.updatedAt,
+      ]
+    );
+  } catch (error) {
+    console.error(`Failed to save payment ${payment.id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a payment by ID
+ */
+export function deleteInvoicePaymentDB(id: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM invoice_payments WHERE id = ?", [id]);
+  } catch (error) {
+    console.error(`Failed to delete payment ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get total paid amount for an invoice
+ */
+export function getInvoicePaidTotalDB(invoiceId: string): number {
+  try {
+    const database = getDatabase();
+    const result = database.getFirstSync<{ total: number }>(
+      "SELECT COALESCE(SUM(amount), 0) as total FROM invoice_payments WHERE invoice_id = ?",
+      [invoiceId]
+    );
+    return result?.total || 0;
+  } catch (error) {
+    console.error(`Failed to get paid total for invoice ${invoiceId}:`, error);
+    return 0;
+  }
+}
+
+// ============================================
 // UTILITY
 // ============================================
 
@@ -1148,6 +1289,7 @@ export function clearAllDataDB(): void {
   try {
     const database = getDatabase();
     database.withTransactionSync(() => {
+      database.runSync("DELETE FROM invoice_payments");
       database.runSync("DELETE FROM quotes");
       database.runSync("DELETE FROM invoices");
       database.runSync("DELETE FROM clients");

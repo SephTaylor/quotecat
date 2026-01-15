@@ -2,8 +2,8 @@
 // Invoice storage and management - NOW USING SQLITE
 // This fixes OOM crashes by loading data row-by-row instead of all at once
 
-import type { Invoice, Quote, Contract } from "@/lib/types";
-export type { Invoice } from "@/lib/types";
+import type { Invoice, Quote, Contract, InvoicePayment } from "@/lib/types";
+export type { Invoice, InvoicePayment } from "@/lib/types";
 import { getQuoteById } from "@/lib/quotes";
 import { getContractById } from "@/lib/contracts";
 import { loadPreferences, updateInvoiceSettings } from "@/lib/preferences";
@@ -14,6 +14,10 @@ import {
   saveInvoicesBatchDB,
   deleteInvoiceDB,
   getInvoiceCountDB,
+  listInvoicePaymentsDB,
+  saveInvoicePaymentDB,
+  deleteInvoicePaymentDB,
+  getInvoicePaidTotalDB,
 } from "@/lib/database";
 
 /**
@@ -27,10 +31,10 @@ async function generateInvoiceNumber(): Promise<string> {
 }
 
 /**
- * Stable sort comparator - sorts by createdAt descending, then by id for determinism
+ * Stable sort comparator - sorts by updatedAt descending, then by id for determinism
  */
 function stableSort(a: Invoice, b: Invoice): number {
-  const timeDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  const timeDiff = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   if (timeDiff !== 0) return timeDiff;
   return a.id.localeCompare(b.id);
 }
@@ -417,4 +421,124 @@ export async function getToInvoiceStats(): Promise<{
  */
 export function getInvoiceCount(): number {
   return getInvoiceCountDB(false);
+}
+
+// ============================================
+// INVOICE PAYMENTS
+// ============================================
+
+/**
+ * List all payments for an invoice
+ */
+export function listInvoicePayments(invoiceId: string): InvoicePayment[] {
+  return listInvoicePaymentsDB(invoiceId);
+}
+
+/**
+ * Record a new payment for an invoice
+ */
+export async function recordPayment(
+  invoiceId: string,
+  amount: number,
+  paymentMethod?: string,
+  paymentDate?: Date,
+  notes?: string
+): Promise<InvoicePayment> {
+  const invoice = await getInvoiceById(invoiceId);
+  if (!invoice) {
+    throw new Error(`Invoice ${invoiceId} not found`);
+  }
+
+  const now = new Date().toISOString();
+  // Generate UUID v4 for payment ID (required for Supabase cloud sync)
+  const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+  const payment: InvoicePayment = {
+    id: uuid,
+    invoiceId,
+    amount,
+    paymentMethod,
+    paymentDate: paymentDate?.toISOString() || now,
+    notes,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // Save the payment record locally
+  saveInvoicePaymentDB(payment);
+
+  // Upload payment to cloud for Pro/Premium users (non-blocking)
+  import("@/lib/invoicesSync").then(({ isInvoiceSyncAvailable, uploadPayment }) => {
+    isInvoiceSyncAvailable().then((available) => {
+      if (available) {
+        uploadPayment(payment).catch((error) => {
+          console.warn("Background payment cloud sync failed:", error);
+        });
+      }
+    });
+  });
+
+  // Update the invoice's paidAmount and status
+  const totalPaid = getInvoicePaidTotalDB(invoiceId);
+  const { calculateQuoteTotals } = await import("@/lib/calculations");
+  const totals = calculateQuoteTotals(invoice);
+  const invoiceTotal = totals.total;
+
+  let newStatus = invoice.status;
+  let paidDate: string | undefined;
+
+  if (totalPaid >= invoiceTotal) {
+    newStatus = "paid";
+    paidDate = payment.paymentDate;
+  } else if (totalPaid > 0) {
+    newStatus = "partial";
+  }
+
+  await updateInvoice(invoiceId, {
+    paidAmount: totalPaid,
+    paidMethod: paymentMethod,
+    paidDate,
+    status: newStatus,
+  });
+
+  return payment;
+}
+
+/**
+ * Delete a payment and update invoice totals
+ */
+export async function deletePayment(paymentId: string, invoiceId: string): Promise<void> {
+  deleteInvoicePaymentDB(paymentId);
+
+  // Recalculate invoice totals
+  const invoice = await getInvoiceById(invoiceId);
+  if (!invoice) return;
+
+  const totalPaid = getInvoicePaidTotalDB(invoiceId);
+  const { calculateQuoteTotals } = await import("@/lib/calculations");
+  const totals = calculateQuoteTotals(invoice);
+  const invoiceTotal = totals.total;
+
+  let newStatus: "unpaid" | "partial" | "paid" | "overdue" = "unpaid";
+  if (totalPaid >= invoiceTotal) {
+    newStatus = "paid";
+  } else if (totalPaid > 0) {
+    newStatus = "partial";
+  }
+
+  await updateInvoice(invoiceId, {
+    paidAmount: totalPaid,
+    paidDate: newStatus === "paid" ? invoice.paidDate : undefined,
+    status: newStatus,
+  });
+}
+
+/**
+ * Get total paid amount for an invoice
+ */
+export function getInvoicePaidTotal(invoiceId: string): number {
+  return getInvoicePaidTotalDB(invoiceId);
 }

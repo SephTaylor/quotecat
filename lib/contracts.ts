@@ -117,7 +117,7 @@ export async function listContracts(): Promise<Contract[]> {
     .from("contracts")
     .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("updated_at", { ascending: false });
 
   if (error) {
     console.error("Failed to list contracts:", error);

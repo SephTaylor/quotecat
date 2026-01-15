@@ -486,45 +486,39 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
   const lineItemsHTML = invoice.items && invoice.items.length > 0
     ? invoice.items.map(item => `
         <tr>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5;">${item.name}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: center;">${item.qty}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${item.unitPrice.toFixed(2)}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600;">$${(item.unitPrice * item.qty).toFixed(2)}</td>
+          <td style="padding: 5px 8px; border-bottom: 1px solid #e5e5e5; font-size: 11px;">${item.name}</td>
+          <td style="padding: 5px 8px; border-bottom: 1px solid #e5e5e5; text-align: center; font-size: 11px;">${item.qty}</td>
+          <td style="padding: 5px 8px; border-bottom: 1px solid #e5e5e5; text-align: right; font-size: 11px;">$${item.unitPrice.toFixed(2)}</td>
+          <td style="padding: 5px 8px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600; font-size: 11px;">$${(item.unitPrice * item.qty).toFixed(2)}</td>
         </tr>
       `).join('')
-    : '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #999;">No materials</td></tr>';
+    : '<tr><td colspan="4" style="padding: 8px; text-align: center; color: #999; font-size: 11px;">No materials</td></tr>';
 
-  // QuoteCat branding for free tier - at top
+  // QuoteCat branding for free tier - compact
   const brandingHeader = includeBranding ? `
-    <div style="margin-bottom: 20px; padding: 16px; border-bottom: 3px solid #333; text-align: center; background: #FFF9F0;">
-      <div style="font-size: 14px; color: #333; margin-bottom: 6px; font-weight: 800;">
-        Powered by QuoteCat
-      </div>
-      <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
-        Create professional quotes in seconds • https://www.quotecat.ai
-      </div>
-      <div style="font-size: 10px; color: #666;">
-        Subscribe to personalize
+    <div style="margin-bottom: 8px; padding: 8px; border-bottom: 2px solid #333; text-align: center; background: #FFF9F0;">
+      <div style="font-size: 11px; color: #333; font-weight: 700;">
+        Powered by QuoteCat • https://www.quotecat.ai
       </div>
     </div>
   ` : '';
 
   const brandingFooter = '';
 
-  // Company header with logo on left, details on right
+  // Company header with logo on left, details on right - compact
   const companyHeader = `
-    <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
+    <div style="margin-bottom: 10px; padding: 8px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 10px;">
       ${logoBase64 ? `
         <div style="flex-shrink: 0;">
-          <img src="data:image/png;base64,${logoBase64}" style="max-width: 80px; max-height: 60px; object-fit: contain;" />
+          <img src="data:image/png;base64,${logoBase64}" style="max-width: 50px; max-height: 40px; object-fit: contain;" />
         </div>
       ` : ''}
       <div style="flex: 1;">
-        ${companyDetails?.companyName ? `<div style="font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #000;">${companyDetails.companyName}</div>` : ''}
-        ${companyDetails?.email ? `<div style="font-size: 12px; color: #666;">${companyDetails.email}</div>` : ''}
-        ${companyDetails?.phone ? `<div style="font-size: 12px; color: #666;">${companyDetails.phone}</div>` : ''}
-        ${companyDetails?.website ? `<div style="font-size: 12px; color: #666;">${companyDetails.website}</div>` : ''}
-        ${companyDetails?.address ? `<div style="font-size: 12px; color: #666;">${companyDetails.address}</div>` : ''}
+        ${companyDetails?.companyName ? `<div style="font-size: 14px; font-weight: 700; color: #000;">${companyDetails.companyName}</div>` : ''}
+        ${companyDetails?.email ? `<div style="font-size: 10px; color: #666;">${companyDetails.email}</div>` : ''}
+        ${companyDetails?.phone ? `<div style="font-size: 10px; color: #666;">${companyDetails.phone}</div>` : ''}
+        ${companyDetails?.website ? `<div style="font-size: 10px; color: #666;">${companyDetails.website}</div>` : ''}
+        ${companyDetails?.address ? `<div style="font-size: 10px; color: #666;">${companyDetails.address}</div>` : ''}
       </div>
     </div>
   `;
@@ -617,67 +611,66 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         }
 
         .page-content {
-          padding: 24px;
+          padding: 12px;
           position: relative;
         }
         .header {
-          margin-bottom: 20px;
-          padding-bottom: 16px;
-          border-bottom: 3px solid #333;
+          margin-bottom: 10px;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #333;
         }
         .invoice-number {
-          font-size: 32px;
+          font-size: 22px;
           font-weight: 800;
-          margin-bottom: 8px;
           color: #333;
         }
         .status-badge {
           display: inline-block;
-          padding: 6px 14px;
-          border-radius: 6px;
-          font-size: 14px;
+          padding: 4px 10px;
+          border-radius: 4px;
+          font-size: 11px;
           font-weight: 700;
-          margin-bottom: 12px;
+          margin-bottom: 6px;
         }
         .project-name {
-          font-size: 22px;
+          font-size: 16px;
           font-weight: 700;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
           color: #000;
         }
         .client-name {
-          font-size: 16px;
+          font-size: 13px;
           font-weight: 600;
-          margin-bottom: 12px;
+          margin-bottom: 6px;
           color: #333;
         }
         .date-row {
           display: flex;
           justify-content: space-between;
-          margin-top: 12px;
-          padding-top: 12px;
+          margin-top: 6px;
+          padding-top: 6px;
           border-top: 1px solid #e5e5e5;
         }
         .date-item {
           flex: 1;
         }
         .date-label {
-          font-size: 12px;
-          color: #999;
-          margin-bottom: 4px;
+          font-size: 10px;
+          color: #666;
+          margin-bottom: 2px;
         }
         .date-value {
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 600;
-          color: #333;
+          color: #000;
         }
         .section {
-          margin-bottom: 20px;
+          margin-bottom: 12px;
         }
         .section-title {
-          font-size: 20px;
+          font-size: 14px;
           font-weight: 700;
-          margin-bottom: 16px;
+          margin-bottom: 8px;
           color: #000;
         }
         table {
@@ -685,16 +678,16 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
           border-collapse: collapse;
           background: white;
           border: 1px solid #e5e5e5;
-          border-radius: 8px;
+          border-radius: 4px;
           page-break-inside: avoid;
         }
         th {
           background: #f9f9f9;
-          padding: 12px;
+          padding: 6px 8px;
           text-align: left;
           font-weight: 600;
-          border-bottom: 2px solid #e5e5e5;
-          font-size: 14px;
+          border-bottom: 1px solid #e5e5e5;
+          font-size: 11px;
         }
 
         tr {
@@ -706,38 +699,38 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         }
         .totals-table {
           margin-left: auto;
-          width: 400px;
+          width: 260px;
           border: none;
         }
         .totals-table td {
-          padding: 8px 12px;
+          padding: 3px 6px;
           border: none;
           border-bottom: 1px solid #f0f0f0;
         }
         .totals-table .label {
           color: #666;
-          font-size: 14px;
+          font-size: 11px;
         }
         .totals-table .value {
           text-align: right;
           font-weight: 600;
-          font-size: 14px;
+          font-size: 11px;
         }
         .totals-table .subtotal-row td {
-          padding-top: 12px;
-          border-top: 2px solid #e5e5e5;
+          padding-top: 4px;
+          border-top: 1px solid #e5e5e5;
           font-weight: 700;
-          font-size: 15px;
+          font-size: 12px;
         }
         .totals-table .total-row td {
-          padding-top: 12px;
-          border-top: 3px solid #333;
+          padding-top: 4px;
+          border-top: 2px solid #333;
           font-weight: 800;
-          font-size: 18px;
+          font-size: 13px;
         }
         .totals-table .total-row .value {
           color: #333;
-          font-size: 22px;
+          font-size: 14px;
         }
       </style>
     </head>
@@ -750,7 +743,7 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
       ${companyHeader}
 
       <div class="header">
-        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; margin-bottom: 6px;">
           <div class="invoice-number">${invoice.invoiceNumber}</div>
           ${partialBadge}
         </div>
@@ -759,9 +752,9 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         </div>
         <div class="project-name">${invoice.name || 'Untitled Invoice'}</div>
         ${invoice.clientName ? `<div class="client-name">Bill To: ${invoice.clientName}</div>` : ''}
-        ${invoice.clientEmail ? `<div style="font-size: 14px; color: #666; margin-bottom: 4px;">Email: ${invoice.clientEmail}</div>` : ''}
-        ${invoice.clientPhone ? `<div style="font-size: 14px; color: #666; margin-bottom: 4px;">Phone: ${invoice.clientPhone}</div>` : ''}
-        ${invoice.clientAddress ? `<div style="font-size: 14px; color: #666; margin-bottom: 8px;">${invoice.clientAddress.replace(/\n/g, '<br>')}</div>` : ''}
+        ${invoice.clientEmail ? `<div style="font-size: 11px; color: #666;">Email: ${invoice.clientEmail}</div>` : ''}
+        ${invoice.clientPhone ? `<div style="font-size: 11px; color: #666;">Phone: ${invoice.clientPhone}</div>` : ''}
+        ${invoice.clientAddress ? `<div style="font-size: 11px; color: #666; margin-bottom: 4px;">${invoice.clientAddress.replace(/\n/g, ', ')}</div>` : ''}
         <div class="date-row">
           <div class="date-item">
             <div class="date-label">Invoice Date</div>
@@ -803,9 +796,19 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
               </tr>
             ` : ''}
             <tr class="total-row">
-              <td class="label">Total Amount Due</td>
+              <td class="label">Invoice Total</td>
               <td class="value">$${grandTotal.toFixed(2)}</td>
             </tr>
+            ${(invoice.paidAmount && invoice.paidAmount > 0) ? `
+              <tr style="color: #16a34a;">
+                <td class="label">Payments Received</td>
+                <td class="value">-$${invoice.paidAmount.toFixed(2)}</td>
+              </tr>
+              <tr class="total-row" style="border-top: 2px solid #333; margin-top: 8px;">
+                <td class="label" style="font-size: 16px;">${grandTotal - invoice.paidAmount <= 0 ? 'PAID IN FULL' : 'Balance Due'}</td>
+                <td class="value" style="font-size: 18px; ${grandTotal - invoice.paidAmount <= 0 ? 'color: #16a34a;' : ''}">${grandTotal - invoice.paidAmount <= 0 ? '✓' : '$' + (grandTotal - invoice.paidAmount).toFixed(2)}</td>
+              </tr>
+            ` : ''}
           </tbody>
         </table>
       </div>

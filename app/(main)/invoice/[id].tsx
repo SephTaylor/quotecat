@@ -26,13 +26,17 @@ import {
   getInvoiceById,
   updateInvoice,
   deleteInvoice,
+  recordPayment,
+  listInvoicePayments,
+  deletePayment,
 } from "@/lib/invoices";
+import type { InvoicePayment } from "@/lib/types";
 import { calculateInvoiceTotals } from "@/lib/calculations";
 import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
-import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
+import { getCompanyLogo } from "@/lib/logo";
 import { FormScreen } from "@/modules/core/ui";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 
@@ -56,7 +60,7 @@ export default function InvoiceDetailScreen() {
 
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [logo, setLogo] = useState<CompanyLogo | null>(null);
+  const [payments, setPayments] = useState<InvoicePayment[]>([]);
 
   // Editing states
   const [editingDueDate, setEditingDueDate] = useState(false);
@@ -66,6 +70,7 @@ export default function InvoiceDetailScreen() {
   const [editingClientPhone, setEditingClientPhone] = useState(false);
   const [editingClientAddress, setEditingClientAddress] = useState(false);
   const [editingTaxPercent, setEditingTaxPercent] = useState(false);
+  const [editingMarkupPercent, setEditingMarkupPercent] = useState(false);
   const [editingProjectName, setEditingProjectName] = useState(false);
   const [editingInvoiceNumber, setEditingInvoiceNumber] = useState(false);
   const [editingStatus, setEditingStatus] = useState(false);
@@ -76,6 +81,7 @@ export default function InvoiceDetailScreen() {
   const [tempClientPhone, setTempClientPhone] = useState("");
   const [tempClientAddress, setTempClientAddress] = useState("");
   const [tempTaxPercent, setTempTaxPercent] = useState("");
+  const [tempMarkupPercent, setTempMarkupPercent] = useState("");
   const [tempProjectName, setTempProjectName] = useState("");
   const [tempInvoiceNumber, setTempInvoiceNumber] = useState("");
 
@@ -99,12 +105,19 @@ export default function InvoiceDetailScreen() {
       const data = await getInvoiceById(invoiceId);
       setInvoice(data);
 
-      // Load logo
-      try {
-        const companyLogo = await getCompanyLogo();
-        setLogo(companyLogo);
-      } catch {
-        // Logo loading failed, continue without it
+      // Load payment history - first sync from cloud, then load local
+      if (data) {
+        // Try to sync payments from cloud (for Pro/Premium users)
+        try {
+          const { syncPaymentsForInvoice } = await import("@/lib/invoicesSync");
+          await syncPaymentsForInvoice(invoiceId);
+        } catch {
+          // Cloud sync failed or not available, continue with local data
+        }
+
+        // Load payments from local database (now includes any synced cloud payments)
+        const paymentHistory = listInvoicePayments(invoiceId);
+        setPayments(paymentHistory);
       }
     } catch (error) {
       console.error("Failed to load invoice:", error);
@@ -117,6 +130,13 @@ export default function InvoiceDetailScreen() {
   useEffect(() => {
     loadInvoice();
   }, [loadInvoice]);
+
+  // Initialize tempNotes when invoice loads
+  useEffect(() => {
+    if (invoice) {
+      setTempNotes(invoice.notes || "");
+    }
+  }, [invoice?.notes]);
 
   const handleExportPDF = useCallback(async () => {
     if (!invoice) return;
@@ -220,10 +240,11 @@ export default function InvoiceDetailScreen() {
 
   const handleSaveNotes = useCallback(async () => {
     if (!invoice) return;
+    // Only save if notes actually changed
+    if (tempNotes === invoice.notes) return;
     try {
       await updateInvoice(invoice.id, { notes: tempNotes });
       await loadInvoice();
-      setEditingNotes(false);
     } catch {
       Alert.alert("Error", "Failed to update notes");
     }
@@ -319,6 +340,24 @@ export default function InvoiceDetailScreen() {
     }
   }, [invoice, tempTaxPercent, loadInvoice]);
 
+  const handleEditMarkupPercent = useCallback(() => {
+    if (!invoice) return;
+    setTempMarkupPercent(invoice.markupPercent?.toString() || "");
+    setEditingMarkupPercent(true);
+  }, [invoice]);
+
+  const handleSaveMarkupPercent = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      const markupValue = parseFloat(tempMarkupPercent) || 0;
+      await updateInvoice(invoice.id, { markupPercent: markupValue });
+      await loadInvoice();
+      setEditingMarkupPercent(false);
+    } catch {
+      Alert.alert("Error", "Failed to update markup percent");
+    }
+  }, [invoice, tempMarkupPercent, loadInvoice]);
+
   const handleEditProjectName = useCallback(() => {
     if (!invoice) return;
     setTempProjectName(invoice.name || "");
@@ -389,17 +428,14 @@ export default function InvoiceDetailScreen() {
 
     setRecordingPayment(true);
     try {
-      const totals = calculateInvoiceTotals(invoice);
-      const currentPaid = invoice.paidAmount || 0;
-      const newPaidAmount = currentPaid + amount;
-      const isFullyPaid = newPaidAmount >= totals.total;
-
-      await updateInvoice(invoice.id, {
-        paidAmount: newPaidAmount,
-        paidDate: tempPaymentDate.toISOString(),
-        paidMethod: tempPaymentMethod,
-        status: isFullyPaid ? "paid" : "partial",
-      });
+      // Use the new recordPayment function that creates a payment record
+      await recordPayment(
+        invoice.id,
+        amount,
+        tempPaymentMethod,
+        tempPaymentDate,
+        tempPaymentNote || undefined
+      );
 
       await loadInvoice();
       setEditingPayment(false);
@@ -409,7 +445,31 @@ export default function InvoiceDetailScreen() {
     } finally {
       setRecordingPayment(false);
     }
-  }, [invoice, tempPaymentAmount, tempPaymentMethod, tempPaymentDate, loadInvoice]);
+  }, [invoice, tempPaymentAmount, tempPaymentMethod, tempPaymentDate, tempPaymentNote, loadInvoice]);
+
+  const handleDeletePayment = useCallback((payment: InvoicePayment) => {
+    if (!invoice) return;
+
+    Alert.alert(
+      "Delete Payment",
+      `Delete payment of $${payment.amount.toFixed(2)}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deletePayment(payment.id, invoice.id);
+              await loadInvoice();
+            } catch {
+              Alert.alert("Error", "Failed to delete payment");
+            }
+          },
+        },
+      ]
+    );
+  }, [invoice, loadInvoice]);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -507,14 +567,13 @@ export default function InvoiceDetailScreen() {
           <View style={styles.bottomButtons}>
             {invoice.status !== "paid" && (
               <Pressable style={styles.paymentButton} onPress={handleOpenPaymentModal}>
-                <Ionicons name="card-outline" size={20} color="#FFF" />
-                <Text style={styles.paymentButtonText}>Payment</Text>
+                <Text style={styles.paymentButtonIcon}>$</Text>
               </Pressable>
             )}
 
             <Pressable style={styles.exportButton} onPress={handleExportPDF}>
               <Ionicons name="document-outline" size={20} color="#000" />
-              <Text style={styles.exportButtonText}>Export</Text>
+              <Text style={styles.exportButtonText}>PDF</Text>
             </Pressable>
 
             <Pressable style={styles.deleteButton} onPress={handleDelete}>
@@ -527,17 +586,6 @@ export default function InvoiceDetailScreen() {
           paddingBottom: theme.spacing(1),
         }}
       >
-          {/* Logo Preview */}
-          {logo?.base64 && (
-            <View style={styles.logoContainer}>
-              <Image
-                source={{ uri: logo.base64 }}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
-          )}
-
           {/* Header Card */}
           <View style={styles.headerCard}>
             {invoice.isPartialInvoice && invoice.percentage && (
@@ -655,6 +703,93 @@ export default function InvoiceDetailScreen() {
             </View>
           </View>
 
+          {/* Total */}
+          <View style={styles.totalCard}>
+            <Text style={styles.totalLabel}>
+              {invoice.paidAmount && invoice.paidAmount > 0 && invoice.paidAmount < total
+                ? "Balance Due"
+                : "Total Amount"}
+            </Text>
+            <Text style={styles.totalValue}>
+              ${(total - (invoice.paidAmount || 0)).toFixed(2)}
+            </Text>
+            {/* Payment History - show if there are payment records OR legacy paidAmount */}
+            {(() => {
+              const trackedTotal = payments.reduce((sum, p) => sum + p.amount, 0);
+              const legacyAmount = (invoice.paidAmount || 0) - trackedTotal;
+              const hasPayments = payments.length > 0 || legacyAmount > 0;
+              const paymentCount = payments.length + (legacyAmount > 0 ? 1 : 0);
+
+              if (!hasPayments) return null;
+
+              return (
+                <View style={styles.paymentSummary}>
+                  <View style={styles.paymentSummaryRow}>
+                    <Text style={styles.paymentSummaryLabel}>Invoice Total</Text>
+                    <Text style={styles.paymentSummaryValue}>${total.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.paymentHistoryHeader}>
+                    <Text style={[styles.paymentSummaryLabel, styles.paymentReceivedLabel]}>
+                      Payments ({paymentCount})
+                    </Text>
+                  </View>
+                  {/* Legacy payment (recorded before payment history feature) */}
+                  {legacyAmount > 0 && (
+                    <View style={styles.paymentHistoryItem}>
+                      <View style={styles.paymentHistoryLeft}>
+                        <Text style={styles.paymentHistoryAmount}>
+                          -${legacyAmount.toFixed(2)}
+                        </Text>
+                        <Text style={styles.paymentHistoryDetails}>
+                          {invoice.paidDate
+                            ? new Date(invoice.paidDate).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "Previous"}
+                          {invoice.paidMethod && (
+                            ` • ${invoice.paidMethod.charAt(0).toUpperCase() + invoice.paidMethod.slice(1).replace('_', ' ')}`
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                  {/* Individual payment records */}
+                  {payments.map((payment) => (
+                    <Pressable
+                      key={payment.id}
+                      style={styles.paymentHistoryItem}
+                      onLongPress={() => handleDeletePayment(payment)}
+                    >
+                      <View style={styles.paymentHistoryLeft}>
+                        <Text style={styles.paymentHistoryAmount}>
+                          -${payment.amount.toFixed(2)}
+                        </Text>
+                        <Text style={styles.paymentHistoryDetails}>
+                          {new Date(payment.paymentDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                          {payment.paymentMethod && (
+                            ` • ${payment.paymentMethod.charAt(0).toUpperCase() + payment.paymentMethod.slice(1).replace('_', ' ')}`
+                          )}
+                        </Text>
+                        {payment.notes && (
+                          <Text style={styles.paymentHistoryNotes} numberOfLines={1}>
+                            {payment.notes}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.paymentHistoryRight}>
+                        <Ionicons name="trash-outline" size={16} color={theme.colors.muted} />
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              );
+            })()}
+          </View>
+
           {/* Line Items */}
           {invoice.items.length > 0 && (
             <View style={styles.section}>
@@ -672,7 +807,6 @@ export default function InvoiceDetailScreen() {
                   </Text>
                 </View>
               ))}
-              <View style={styles.divider} />
               <View style={styles.subtotalRow}>
                 <Text style={styles.subtotalLabel}>Items Subtotal</Text>
                 <Text style={styles.subtotalValue}>${materialsFromItems.toFixed(2)}</Text>
@@ -700,19 +834,16 @@ export default function InvoiceDetailScreen() {
               </View>
             )}
 
-            {invoice.markupPercent != null && invoice.markupPercent > 0 && (
-              <>
-                <View style={styles.divider} />
-                <View style={styles.costRow}>
-                  <Text style={styles.costLabel}>
-                    Markup ({invoice.markupPercent.toFixed(0)}%)
-                  </Text>
-                  <Text style={styles.costValue}>${markupAmount.toFixed(2)}</Text>
-                </View>
-              </>
-            )}
+            <Pressable style={styles.costRow} onPress={handleEditMarkupPercent}>
+              <View style={styles.costRowLeft}>
+                <Text style={styles.costLabel}>
+                  Markup ({invoice.markupPercent?.toFixed(0) || "0"}%)
+                </Text>
+                <Text style={styles.editTextSmall}>Edit</Text>
+              </View>
+              <Text style={styles.costValue}>${markupAmount.toFixed(2)}</Text>
+            </Pressable>
 
-            <View style={styles.divider} />
             <Pressable style={styles.costRow} onPress={handleEditTaxPercent}>
               <View style={styles.costRowLeft}>
                 <Text style={styles.costLabel}>
@@ -725,54 +856,18 @@ export default function InvoiceDetailScreen() {
           </View>
 
           {/* Notes */}
-          <TouchableOpacity
-            style={styles.section}
-            onPress={handleEditNotes}
-            activeOpacity={0.9}
-          >
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Notes</Text>
-              <Text style={styles.editText}>Edit</Text>
-            </View>
-            <Text style={[styles.notesText, !invoice.notes && styles.notesPlaceholder]}>
-              {invoice.notes || "Tap to add notes"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Total */}
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>
-              {invoice.paidAmount && invoice.paidAmount > 0 && invoice.paidAmount < total
-                ? "Balance Due"
-                : "Total Amount"}
-            </Text>
-            <Text style={styles.totalValue}>
-              ${(total - (invoice.paidAmount || 0)).toFixed(2)}
-            </Text>
-            {invoice.paidAmount && invoice.paidAmount > 0 && (
-              <View style={styles.paymentSummary}>
-                <View style={styles.paymentSummaryRow}>
-                  <Text style={styles.paymentSummaryLabel}>Invoice Total</Text>
-                  <Text style={styles.paymentSummaryValue}>${total.toFixed(2)}</Text>
-                </View>
-                <View style={styles.paymentSummaryRow}>
-                  <Text style={[styles.paymentSummaryLabel, styles.paymentReceivedLabel]}>
-                    Payments Received
-                  </Text>
-                  <Text style={[styles.paymentSummaryValue, styles.paymentReceivedValue]}>
-                    -${invoice.paidAmount.toFixed(2)}
-                  </Text>
-                </View>
-                {invoice.paidMethod && (
-                  <View style={styles.paymentSummaryRow}>
-                    <Text style={styles.paymentSummaryLabel}>Last Payment</Text>
-                    <Text style={styles.paymentSummaryValue}>
-                      {invoice.paidMethod.charAt(0).toUpperCase() + invoice.paidMethod.slice(1).replace('_', ' ')}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Notes</Text>
+            <TextInput
+              style={styles.notesInput}
+              value={tempNotes}
+              onChangeText={setTempNotes}
+              onBlur={handleSaveNotes}
+              placeholder="Add notes..."
+              placeholderTextColor={theme.colors.muted}
+              multiline
+              textAlignVertical="top"
+            />
           </View>
       </FormScreen>
 
@@ -828,52 +923,6 @@ export default function InvoiceDetailScreen() {
             }}
           />
         )}
-
-        {/* Notes Editor */}
-        <Modal
-          visible={editingNotes}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setEditingNotes(false)}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalOverlay}
-          >
-            <Pressable
-              style={styles.modalOverlayInner}
-              onPress={() => {
-                Keyboard.dismiss();
-                setEditingNotes(false);
-              }}
-            >
-              <Pressable
-                style={styles.textEditorModal}
-                onPress={(e) => e.stopPropagation()}
-              >
-                <View style={styles.modalHeader}>
-                  <Pressable onPress={() => setEditingNotes(false)}>
-                    <Text style={styles.modalCancel}>Cancel</Text>
-                  </Pressable>
-                  <Text style={styles.modalTitle}>Edit Notes</Text>
-                  <Pressable onPress={handleSaveNotes}>
-                    <Text style={styles.modalDone}>Save</Text>
-                  </Pressable>
-                </View>
-                <TextInput
-                  style={styles.textEditor}
-                  value={tempNotes}
-                  onChangeText={setTempNotes}
-                  placeholder="Add notes..."
-                  placeholderTextColor={theme.colors.muted}
-                  multiline
-                  autoFocus
-                  textAlignVertical="top"
-                />
-              </Pressable>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Modal>
 
         {/* Project Name Editor */}
         <Modal
@@ -1247,6 +1296,59 @@ export default function InvoiceDetailScreen() {
           </KeyboardAvoidingView>
         </Modal>
 
+        {/* Markup Percent Editor */}
+        <Modal
+          visible={editingMarkupPercent}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingMarkupPercent(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlayCentered}
+          >
+            <Pressable
+              style={styles.modalOverlayInner}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingMarkupPercent(false);
+              }}
+            >
+              <View style={styles.inputModalContainer}>
+                <Pressable
+                  style={styles.inputModal}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <Text style={styles.modalTitleCentered}>Markup Percentage</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={tempMarkupPercent}
+                    onChangeText={setTempMarkupPercent}
+                    placeholder="0"
+                    placeholderTextColor={theme.colors.muted}
+                    autoFocus={Platform.OS === 'ios'}
+                    keyboardType="decimal-pad"
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonCancel]}
+                      onPress={() => setEditingMarkupPercent(false)}
+                    >
+                      <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalButton, styles.modalButtonSave]}
+                      onPress={handleSaveMarkupPercent}
+                    >
+                      <Text style={styles.modalButtonSaveText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
+
         {/* Status Selector */}
         <Modal
           visible={editingStatus}
@@ -1312,7 +1414,7 @@ export default function InvoiceDetailScreen() {
             >
               <Pressable
                 style={styles.paymentModal}
-                onPress={(e) => e.stopPropagation()}
+                onPress={() => Keyboard.dismiss()}
               >
                 <View style={styles.modalHeader}>
                   <Pressable onPress={() => setEditingPayment(false)}>
@@ -1336,6 +1438,12 @@ export default function InvoiceDetailScreen() {
                         style={styles.amountInput}
                         value={tempPaymentAmount}
                         onChangeText={setTempPaymentAmount}
+                        onBlur={() => {
+                          const num = parseFloat(tempPaymentAmount);
+                          if (!isNaN(num)) {
+                            setTempPaymentAmount(num.toFixed(2));
+                          }
+                        }}
                         placeholder="0.00"
                         placeholderTextColor={theme.colors.muted}
                         keyboardType="decimal-pad"
@@ -1630,8 +1738,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     section: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
-      padding: theme.spacing(3),
-      marginBottom: theme.spacing(3),
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(2),
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
@@ -1639,20 +1747,18 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
-      marginBottom: theme.spacing(2),
+      marginBottom: theme.spacing(1),
     },
     sectionHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: theme.spacing(2),
+      marginBottom: theme.spacing(1),
     },
     lineItem: {
       flexDirection: "row",
       justifyContent: "space-between",
-      paddingVertical: theme.spacing(1.5),
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border,
+      paddingVertical: theme.spacing(0.75),
     },
     lineItemLeft: {
       flex: 1,
@@ -1676,12 +1782,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     divider: {
       height: 1,
       backgroundColor: theme.colors.border,
-      marginVertical: theme.spacing(2),
+      marginVertical: theme.spacing(1),
     },
     subtotalRow: {
       flexDirection: "row",
       justifyContent: "space-between",
-      paddingTop: theme.spacing(1),
+      paddingTop: theme.spacing(0.5),
     },
     subtotalLabel: {
       fontSize: 14,
@@ -1697,7 +1803,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: theme.spacing(1),
+      paddingVertical: theme.spacing(0.5),
     },
     costRowLeft: {
       flexDirection: "row",
@@ -1722,11 +1828,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.muted,
       fontStyle: "italic",
     },
+    notesInput: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(2),
+      fontSize: 14,
+      color: theme.colors.text,
+      minHeight: 100,
+      lineHeight: 20,
+    },
     totalCard: {
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
-      padding: theme.spacing(3),
-      marginBottom: 0,
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(2),
       borderWidth: 2,
       borderColor: theme.colors.accent,
     },
@@ -1803,11 +1920,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     textEditorModal: {
       backgroundColor: theme.colors.card,
-      borderTopLeftRadius: theme.radius.xl,
-      borderTopRightRadius: theme.radius.xl,
-      width: "100%",
-      height: "50%",
+      borderRadius: theme.radius.xl,
+      margin: theme.spacing(2),
       padding: theme.spacing(2),
+      height: 300,
     },
     inputModalContainer: {
       flex: 1,
@@ -1951,15 +2067,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#000",
       fontWeight: "700",
     },
-    logoContainer: {
-      alignItems: "flex-start",
-      marginBottom: theme.spacing(2),
-      height: 40,
-    },
-    logoImage: {
-      height: 40,
-      width: 120,
-    },
     // Payment button styles
     paymentButton: {
       flex: 1,
@@ -1971,9 +2078,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       flexDirection: "row",
       gap: theme.spacing(0.75),
     },
-    paymentButtonText: {
-      fontSize: 14,
-      fontWeight: "700",
+    paymentButtonIcon: {
+      fontSize: 20,
+      fontWeight: "800",
       color: "#FFF",
     },
     // Payment summary in total card
@@ -2003,12 +2110,48 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     paymentReceivedValue: {
       color: "#34C759",
     },
+    paymentHistoryHeader: {
+      marginTop: theme.spacing(1),
+      marginBottom: theme.spacing(0.5),
+    },
+    paymentHistoryItem: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing(1.5),
+      paddingVertical: theme.spacing(1),
+      marginBottom: theme.spacing(0.5),
+    },
+    paymentHistoryLeft: {
+      flex: 1,
+    },
+    paymentHistoryRight: {
+      paddingLeft: theme.spacing(1),
+      opacity: 0.5,
+    },
+    paymentHistoryAmount: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#34C759",
+    },
+    paymentHistoryDetails: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: 2,
+    },
+    paymentHistoryNotes: {
+      fontSize: 11,
+      fontStyle: "italic",
+      color: theme.colors.muted,
+      marginTop: 2,
+    },
     // Payment modal styles
     paymentModal: {
       backgroundColor: theme.colors.card,
-      borderTopLeftRadius: theme.radius.xl,
-      borderTopRightRadius: theme.radius.xl,
-      width: "100%",
+      borderRadius: theme.radius.xl,
+      margin: theme.spacing(2),
       maxHeight: "85%",
     },
     paymentFormContent: {
