@@ -22,6 +22,8 @@ import { loadPreferences } from "@/lib/preferences";
 import { canAccessAssemblies } from "@/lib/features";
 import { getUserState } from "@/lib/user";
 import { getCompanyLogo } from "@/lib/logo";
+import { isSyncAvailable } from "@/lib/quotesSync";
+import { syncInvoices } from "@/lib/invoicesSync";
 
 export function useInvoiceList() {
   const router = useRouter();
@@ -106,9 +108,19 @@ export function useInvoiceList() {
     }
   }, [trigger, isPro, isPremium, availableQuotes.length, availableContracts.length, router]);
 
-  // Refresh handler
+  // Pull-to-refresh handler - triggers cloud sync for Pro/Premium users
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    try {
+      // Trigger cloud sync if available (Pro/Premium users)
+      const available = await isSyncAvailable();
+      const user = await getUserState();
+      if (available && (user.tier === 'pro' || user.tier === 'premium')) {
+        await syncInvoices().catch(() => {});
+      }
+    } catch {
+      // Sync failed, continue with local data
+    }
     await load();
     setRefreshing(false);
   }, [load]);

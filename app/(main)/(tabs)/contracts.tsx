@@ -19,6 +19,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -38,6 +39,7 @@ export default function ContractsScreen() {
   const [approvedQuotes, setApprovedQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,6 +71,13 @@ export default function ContractsScreen() {
       load();
     }, [load])
   );
+
+  // Pull-to-refresh handler - contracts are cloud-only, so load() already fetches from Supabase
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   const handleContractPress = (contract: Contract) => {
     router.push(`/(forms)/contract/${contract.id}/edit`);
@@ -254,6 +263,9 @@ export default function ContractsScreen() {
           renderItem={renderContract}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
       )}
     </GestureHandlerRootView>

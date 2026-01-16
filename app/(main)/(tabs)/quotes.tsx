@@ -16,6 +16,7 @@ import { generateAndShareMultiTierPDF } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
 import { getCachedLogo } from "@/lib/logo";
+import { isSyncAvailable, syncQuotes } from "@/lib/quotesSync";
 import { getActiveChangeOrderCount } from "@/modules/changeOrders";
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState, useRef } from "react";
@@ -168,8 +169,19 @@ export default function QuotesList() {
     router.push("/quote/new/edit");
   }, [router]);
 
+  // Pull-to-refresh handler - triggers cloud sync for Pro/Premium users
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    try {
+      // Trigger cloud sync if available (Pro/Premium users)
+      const available = await isSyncAvailable();
+      const user = await getUserState();
+      if (available && (user.tier === 'pro' || user.tier === 'premium')) {
+        await syncQuotes().catch(() => {});
+      }
+    } catch {
+      // Sync failed, continue with local data
+    }
     await load();
     setRefreshing(false);
   }, [load]);

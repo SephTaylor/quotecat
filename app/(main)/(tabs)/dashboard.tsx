@@ -21,7 +21,9 @@ import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshEvents, REFRESH_QUOTES_LIST } from "@/lib/refreshEvents";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { getLastSyncTime, isSyncAvailable } from "@/lib/quotesSync";
+import { getLastSyncTime, isSyncAvailable, syncQuotes } from "@/lib/quotesSync";
+import { syncInvoices } from "@/lib/invoicesSync";
+import { syncClients } from "@/lib/clientsSync";
 import { getUserState } from "@/lib/user";
 import { hasSyncCompletedSince, onSyncComplete } from "@/lib/syncState";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -168,9 +170,24 @@ export default function Dashboard() {
     return unsubscribe;
   }, [load]);
 
-  // Pull-to-refresh handler
+  // Pull-to-refresh handler - triggers cloud sync for Pro/Premium users
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    try {
+      // Trigger cloud sync if available (Pro/Premium users)
+      const available = await isSyncAvailable();
+      const user = await getUserState();
+      if (available && (user.tier === 'pro' || user.tier === 'premium')) {
+        // Run syncs in parallel for speed
+        await Promise.all([
+          syncQuotes().catch(() => {}),
+          syncInvoices().catch(() => {}),
+          syncClients().catch(() => {}),
+        ]);
+      }
+    } catch {
+      // Sync failed, continue with local data
+    }
     await load();
     setRefreshing(false);
   }, [load]);
