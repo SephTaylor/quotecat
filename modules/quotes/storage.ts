@@ -724,17 +724,9 @@ export async function getLinkedQuotes(quoteId: string): Promise<Quote[]> {
   // Filter quotes by IDs (single pass through array)
   const quotes = allQuotes.filter((q) => allIds.has(q.id));
 
-  // Sort by tier name if present, otherwise by creation date
+  // Sort by price (low to high) - matches portal behavior
   return quotes.sort((a, b) => {
-    // If both have tier names, sort alphabetically
-    if (a.tier && b.tier) {
-      return a.tier.localeCompare(b.tier);
-    }
-    // Quotes with tier names come first
-    if (a.tier) return -1;
-    if (b.tier) return 1;
-    // Otherwise sort by creation date
-    return getTimestamp(a.createdAt) - getTimestamp(b.createdAt);
+    return (a.total || 0) - (b.total || 0);
   });
 }
 

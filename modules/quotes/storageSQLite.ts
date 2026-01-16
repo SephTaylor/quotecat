@@ -470,11 +470,9 @@ export async function getLinkedQuotes(quoteId: string): Promise<Quote[]> {
     .map((id) => getQuoteByIdDB(id))
     .filter(Boolean) as Quote[];
 
+  // Sort by price (low to high) - matches portal behavior
   return quotes.sort((a, b) => {
-    if (a.tier && b.tier) return a.tier.localeCompare(b.tier);
-    if (a.tier) return -1;
-    if (b.tier) return 1;
-    return getTimestamp(a.createdAt) - getTimestamp(b.createdAt);
+    return (a.total || 0) - (b.total || 0);
   });
 }
 

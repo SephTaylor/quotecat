@@ -938,12 +938,9 @@ export async function generateAndShareInvoicePDF(
 function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): string {
   const { includeBranding, companyDetails, logoBase64 } = options;
 
-  // Sort by tier name (alphabetically) or creation date
+  // Sort by price (low to high) - matches portal behavior
   const sortedQuotes = [...quotes].sort((a, b) => {
-    if (a.tier && b.tier) return a.tier.localeCompare(b.tier);
-    if (a.tier) return -1;
-    if (b.tier) return 1;
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return (a.total || 0) - (b.total || 0);
   });
 
   // Use first quote for project/client info

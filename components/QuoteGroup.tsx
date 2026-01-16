@@ -42,12 +42,9 @@ export function QuoteGroup({
   const [expanded, setExpanded] = useState(false);
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-  // Sort quotes by tier name
+  // Sort quotes by price (low to high) - matches portal behavior
   const sortedQuotes = [...quotes].sort((a, b) => {
-    if (a.tier && b.tier) return a.tier.localeCompare(b.tier);
-    if (a.tier) return -1;
-    if (b.tier) return 1;
-    return 0;
+    return calculateQuoteTotal(a) - calculateQuoteTotal(b);
   });
 
   // Use first quote for group header info
