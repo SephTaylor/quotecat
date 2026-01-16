@@ -50,6 +50,12 @@ export async function createContractFromQuote(
       return null;
     }
 
+    // Defensive check: only approved or completed quotes can become contracts
+    if (quote.status !== "approved" && quote.status !== "completed") {
+      console.error("Cannot create contract: quote must be approved or completed");
+      return null;
+    }
+
   const contractNumber = await generateContractNumber();
 
   // Use centralized calculation (markup on line items only, not material estimate)
@@ -70,7 +76,7 @@ export async function createContractFromQuote(
     client_phone: quote.clientPhone || null,
     client_address: quote.clientAddress || null,
     project_name: quote.name || "Untitled Project",
-    scope_of_work: null,
+    scope_of_work: quote.notes || null,
     materials: quote.items,
     labor: quote.labor || 0,
     material_estimate: quote.materialEstimate || null,
@@ -294,7 +300,7 @@ export async function isContractFullySigned(contractId: string): Promise<boolean
  */
 export function getContractShareLink(contractId: string): string {
   // This will be the webapp URL
-  return `https://contracts.quotecat.ai/c/${contractId}`;
+  return `https://portal.quotecat.ai/c/${contractId}`;
 }
 
 // Helper: Map Supabase row to Contract type

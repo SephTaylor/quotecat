@@ -200,7 +200,7 @@ export async function createInvoiceFromQuote(
     taxPercent: quote.taxPercent,
     notes: percentage === 100
       ? quote.notes
-      : `${percentage}% Down Payment Invoice${quote.notes ? `\n\n${quote.notes}` : ''}`,
+      : `${percentage}% Payment for ${quote.name}${quote.notes ? `\n\n${quote.notes}` : ''}`,
     invoiceDate: now,
     dueDate: dueDate.toISOString(),
     status: "unpaid",
@@ -259,7 +259,7 @@ export async function createInvoiceFromContract(
     taxPercent: contract.taxPercent,
     notes: percentage === 100
       ? undefined
-      : `${percentage}% Down Payment Invoice`,
+      : `${percentage}% Payment for ${contract.projectName}`,
     invoiceDate: now,
     dueDate: dueDate.toISOString(),
     status: "unpaid",
@@ -374,21 +374,24 @@ export async function getQuotesNeedingInvoice(): Promise<Quote[]> {
 
 /**
  * Get contracts that need invoicing
+ * Allows invoicing from signed or completed contracts (matches portal behavior)
  */
 export async function getContractsNeedingInvoice(): Promise<Contract[]> {
   const { listContracts } = await import("@/lib/contracts");
 
   const allContracts = await listContracts();
-  const completedContracts = allContracts.filter(c => c.status === "completed");
+  const invoiceableContracts = allContracts.filter(
+    c => c.status === "signed" || c.status === "completed"
+  );
 
-  if (completedContracts.length === 0) return [];
+  if (invoiceableContracts.length === 0) return [];
 
   const invoices = await listInvoices();
   const invoicedContractIds = new Set(
     invoices.filter(inv => inv.contractId).map(inv => inv.contractId)
   );
 
-  return completedContracts.filter(c => !invoicedContractIds.has(c.id));
+  return invoiceableContracts.filter(c => !invoicedContractIds.has(c.id));
 }
 
 /**
