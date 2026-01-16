@@ -514,20 +514,42 @@ export default function QuotesList() {
     const result: QuoteOrGroup[] = [];
     const processedIds = new Set<string>();
 
+    // Helper to collect all linked quotes transitively (handles star topology)
+    const collectLinkedQuotes = (startQuote: Quote): Quote[] => {
+      const group: Quote[] = [];
+      const toProcess = [startQuote];
+      const seen = new Set<string>();
+
+      while (toProcess.length > 0) {
+        const current = toProcess.pop()!;
+        if (seen.has(current.id)) continue;
+        seen.add(current.id);
+        group.push(current);
+
+        // Check this quote's linked quotes
+        if (current.linkedQuoteIds) {
+          for (const linkedId of current.linkedQuoteIds) {
+            if (!seen.has(linkedId)) {
+              const linkedQuote = filteredQuotes.find(q => q.id === linkedId);
+              if (linkedQuote) {
+                toProcess.push(linkedQuote);
+              }
+            }
+          }
+        }
+      }
+
+      return group;
+    };
+
     for (const quote of filteredQuotes) {
       // Skip if already processed as part of a group
       if (processedIds.has(quote.id)) continue;
 
       // Check if this quote has linked quotes
       if (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0) {
-        // Find all linked quotes that are in our filtered list
-        const groupQuotes = [quote];
-        for (const linkedId of quote.linkedQuoteIds) {
-          const linkedQuote = filteredQuotes.find(q => q.id === linkedId);
-          if (linkedQuote && !processedIds.has(linkedId)) {
-            groupQuotes.push(linkedQuote);
-          }
-        }
+        // Collect all linked quotes transitively (follows links through base)
+        const groupQuotes = collectLinkedQuotes(quote);
 
         // Mark all as processed
         for (const gq of groupQuotes) {
