@@ -518,6 +518,7 @@ export async function createTierFromQuote(
     createdAt: now,
     updatedAt: now,
     pinned: false,
+    notes: null, // Don't copy notes - each tier typically has different scope
     linkedQuoteIds: [baseQuoteId], // Star topology: only link to base
   };
 
