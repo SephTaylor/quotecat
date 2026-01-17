@@ -877,6 +877,23 @@ Features to consider for future releases (not blockers for launch):
 ### Invoices
 - *(Add ideas here)*
 
+### Communication (Premium)
+- **Two-Way SMS Texting** - Real SMS/MMS messaging with clients from within the app, similar to Jobber's Grow plan feature. Each business gets a dedicated phone number. Clients can text that number and replies show up in QuoteCat. Supports images (before/after photos, on-site updates). Requires Twilio integration, 10DLC registration for compliance. Keeps business/personal communication separate. (Discussed Jan 17, 2026)
+
+### Integrations (Premium)
+- **QuickBooks Sync** - Two-way sync with QuickBooks Online for invoices, payments, and clients. Push QuoteCat invoices to QuickBooks, sync payment records, map customers. Uses OAuth 2.0 (tokens expire, need refresh handling). Consider unified API like Merge or Apideck to also support Xero/FreshBooks with same integration. ~2 weeks development. (Discussed Jan 17, 2026)
+
+### Automations (Premium)
+- **Workflow Automations** - Automated email/SMS delivery for existing notifications. **Recommended: Use Knock.app** (10K messages/mo free, $250/mo for 50K). Knock handles workflow orchestration, delays, batching, and multi-channel delivery. We call Knock API when events happen (quote sent, invoice overdue), Knock handles the timing and delivery via our Twilio/SendGrid. Phase 1: Quote follow-up reminders, Invoice overdue reminders. Phase 2: Review requests, Appointment reminders. Phase 3: Custom automation builder. Cuts dev time from ~2 weeks to ~2-3 days. (Discussed Jan 17, 2026)
+
+### Field Operations (Premium)
+- **GPS Tracking & Route Optimization** - Phase 1: GPS waypoints on clock-in/out (useful for timesheets, proves tech was on-site). Phase 2: Live map view showing tech locations (owner can see where crew is). Phase 3: Route optimization - auto-calculate most efficient job order, re-optimize when jobs change. Uses Google Maps SDK + Routes API (~$10/1000 routes) or open-source OSRM/OpenRouteService. Privacy-conscious: only track when clocked in. (Discussed Jan 17, 2026)
+
+### Marketing (Premium Add-on)
+- **Google Review Requests** - Auto-request Google reviews after job completion or invoice paid. Send up to 2 follow-up reminders. Track which clients have reviewed (don't ask again). Dashboard showing average rating, total reviews, requests sent. Requires Google Business Profile API integration. Jobber charges $39/mo for this - could be Premium included or separate add-on. (Discussed Jan 17, 2026)
+- **Email/SMS Campaigns** - Marketing campaigns to client list. Re-engagement ("haven't seen you in 6 months"), seasonal promos, announcements. AI-generated campaign content via Drew. Could use Knock.app for delivery (same infrastructure as automations). Jobber charges $29/mo. (Discussed Jan 17, 2026)
+- **Referral Program** - Automated referral tracking. Client shares link, new customer signs up, original client gets credit/reward. Track referral sources. Jobber charges $29/mo. (Discussed Jan 17, 2026)
+
 ### General
 - **Drew Visibility Toggle** - Add a button in the header to show/hide Drew (WizardFAB). Useful for users who want a cleaner screen sometimes or prefer to "summon" Drew only when needed. Could be a small icon that toggles Drew's visibility. (Discussed Jan 7, 2026)
 
