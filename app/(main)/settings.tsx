@@ -18,10 +18,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 import { useSettingsState, formatSyncTime } from "@/hooks/useSettingsState";
+import { useTechContext } from "@/contexts/TechContext";
 
 export default function Settings() {
   const { mode, theme, setThemeMode } = useTheme();
   const router = useRouter();
+  const { isTech, ownerCompanyName, permissions } = useTechContext();
 
   const {
     // State
@@ -131,6 +133,14 @@ export default function Settings() {
                     </Text>
                   </View>
                 </View>
+                {isTech && ownerCompanyName && (
+                  <View style={styles.techIndicator}>
+                    <Ionicons name="people" size={16} color={theme.colors.accent} />
+                    <Text style={styles.techIndicatorText}>
+                      Working for {ownerCompanyName}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               {userEmail ? (
@@ -860,6 +870,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     tierBadgeTextPremium: {
       color: "#FFF",
+    },
+    techIndicator: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: theme.spacing(1),
+      paddingTop: theme.spacing(1),
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    techIndicatorText: {
+      fontSize: 14,
+      color: theme.colors.accent,
+      fontWeight: "500",
     },
     settingButton: {
       flexDirection: "row",

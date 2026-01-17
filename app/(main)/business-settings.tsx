@@ -1,7 +1,9 @@
 // app/(main)/business-settings.tsx
 // Business configuration screen for Pro/Premium users
+// Techs see read-only view of owner's settings
 
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTechContext } from "@/contexts/TechContext";
 import { getUserState, type UserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
 import {
@@ -35,6 +37,7 @@ export default function BusinessSettings() {
   const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isTech, ownerCompanyName } = useTechContext();
 
   const [userState, setUserState] = useState<UserState | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
@@ -42,8 +45,10 @@ export default function BusinessSettings() {
   const [logo, setLogo] = useState<CompanyLogo | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
+  // Techs can view settings but cannot edit them
   const hasProAccess = userState ? canAccessAssemblies(userState) : false;
   const hasPremiumAccess = userState?.tier === "premium";
+  const canEdit = !isTech; // Techs cannot edit - they view owner's settings
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,13 +147,27 @@ export default function BusinessSettings() {
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="on-drag"
       >
+          {/* Tech Read-Only Banner */}
+          {isTech && (
+            <View style={styles.techBanner}>
+              <Ionicons name="information-circle" size={20} color={theme.colors.accent} />
+              <View style={styles.techBannerText}>
+                <Text style={styles.techBannerTitle}>Viewing {ownerCompanyName}'s Settings</Text>
+                <Text style={styles.techBannerSubtitle}>
+                  These settings are managed by the business owner and will be used on your quotes and invoices.
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Company Section */}
         <Pressable style={styles.section} onPress={Keyboard.dismiss}>
           <Text style={styles.sectionTitle}>Company</Text>
           <View style={styles.card}>
             <Pressable
               style={styles.row}
-              onPress={() => hasProAccess ? router.push("/(main)/company-details") : handleLearnMore()}
+              onPress={() => (hasProAccess && canEdit) ? router.push("/(main)/company-details") : (!hasProAccess ? handleLearnMore() : undefined)}
+              disabled={isTech}
             >
               <Text style={styles.rowLabel}>Company Details</Text>
               {hasProAccess ? (
@@ -156,7 +175,7 @@ export default function BusinessSettings() {
                   <Text style={styles.rowValue} numberOfLines={1}>
                     {preferences.company?.companyName || "Not set"}
                   </Text>
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
+                  {canEdit && <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />}
                 </View>
               ) : (
                 <LockBadge theme={theme} />
@@ -174,7 +193,7 @@ export default function BusinessSettings() {
               </View>
               {!hasProAccess ? (
                 <LockBadge theme={theme} />
-              ) : (
+              ) : canEdit ? (
                 <View style={styles.logoButtons}>
                   <Pressable style={styles.textButton} onPress={handleUploadLogo} disabled={uploadingLogo}>
                     {uploadingLogo ? (
@@ -189,6 +208,8 @@ export default function BusinessSettings() {
                     </Pressable>
                   )}
                 </View>
+              ) : (
+                <Text style={styles.rowValue}>{logo ? "Set" : "Not set"}</Text>
               )}
             </View>
           </View>
@@ -201,39 +222,43 @@ export default function BusinessSettings() {
             <InlineField
               label="Invoice Prefix"
               value={preferences.invoice?.prefix || "INV"}
-              enabled={hasProAccess}
+              enabled={hasProAccess && canEdit}
               onSave={async (v) => setPreferences(await updateInvoiceSettings({ prefix: v.trim().toUpperCase() }))}
               onLocked={handleLearnMore}
               theme={theme}
+              readOnly={isTech}
             />
             <InlineField
               label="Next Invoice #"
               value={String(preferences.invoice?.nextNumber || 1)}
               keyboardType="number-pad"
-              enabled={hasProAccess}
+              enabled={hasProAccess && canEdit}
               onSave={async (v) => { const n = parseInt(v, 10); if (n > 0) setPreferences(await updateInvoiceSettings({ nextNumber: n })); }}
               onLocked={handleLearnMore}
               theme={theme}
+              readOnly={isTech}
             />
             <View style={styles.divider} />
             <InlineField
               label="Contract Prefix"
               value={preferences.contract?.prefix || "CTR"}
-              enabled={hasPremiumAccess}
+              enabled={hasPremiumAccess && canEdit}
               premium
               onSave={async (v) => setPreferences(await updateContractSettings({ prefix: v.trim().toUpperCase() }))}
               onLocked={handleLearnMore}
               theme={theme}
+              readOnly={isTech}
             />
             <InlineField
               label="Next Contract #"
               value={String(preferences.contract?.nextNumber || 1)}
               keyboardType="number-pad"
-              enabled={hasPremiumAccess}
+              enabled={hasPremiumAccess && canEdit}
               premium
               onSave={async (v) => { const n = parseInt(v, 10); if (n > 0) setPreferences(await updateContractSettings({ nextNumber: n })); }}
               onLocked={handleLearnMore}
               theme={theme}
+              readOnly={isTech}
             />
           </View>
         </Pressable>
@@ -244,15 +269,16 @@ export default function BusinessSettings() {
           <View style={styles.card}>
             <Pressable
               style={styles.row}
-              onPress={() => hasProAccess ? router.push("/(main)/payment-methods" as never) : handleLearnMore()}
+              onPress={() => (hasProAccess && canEdit) ? router.push("/(main)/payment-methods" as never) : (!hasProAccess ? handleLearnMore() : undefined)}
+              disabled={isTech}
             >
               <Text style={styles.rowLabel}>Payment Methods</Text>
               {hasProAccess ? (
                 <View style={styles.rowRight}>
                   <Text style={styles.rowValue} numberOfLines={1}>
-                    Add Zelle, Venmo, etc.
+                    {isTech ? "View only" : "Add Zelle, Venmo, etc."}
                   </Text>
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
+                  {canEdit && <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />}
                 </View>
               ) : (
                 <LockBadge theme={theme} />
@@ -273,20 +299,22 @@ export default function BusinessSettings() {
               value={String(preferences.pricing?.defaultTaxPercent || 0)}
               suffix="%"
               keyboardType="decimal-pad"
-              enabled={hasProAccess}
+              enabled={hasProAccess && canEdit}
               onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0 && n <= 100) setPreferences(await updatePricingSettings({ defaultTaxPercent: n })); }}
               onLocked={handleLearnMore}
               theme={theme}
+              readOnly={isTech}
             />
             <InlineField
               label="Default Markup"
               value={String(preferences.pricing?.defaultMarkupPercent || 0)}
               suffix="%"
               keyboardType="decimal-pad"
-              enabled={hasProAccess}
+              enabled={hasProAccess && canEdit}
               onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0) setPreferences(await updatePricingSettings({ defaultMarkupPercent: n })); }}
               onLocked={handleLearnMore}
               theme={theme}
+              readOnly={isTech}
             />
             <InlineField
               label="Default Labor Rate"
@@ -294,20 +322,22 @@ export default function BusinessSettings() {
               prefix="$"
               suffix="/hr"
               keyboardType="decimal-pad"
-              enabled={hasProAccess}
+              enabled={hasProAccess && canEdit}
               onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0) setPreferences(await updatePricingSettings({ defaultLaborRate: n })); }}
               onLocked={handleLearnMore}
               theme={theme}
+              readOnly={isTech}
             />
             <InlineField
               label="Zip Code"
               value={preferences.pricing?.zipCode || ""}
               placeholder="—"
               keyboardType="number-pad"
-              enabled={hasProAccess}
+              enabled={hasProAccess && canEdit}
               onSave={async (v) => setPreferences(await updatePricingSettings({ zipCode: v.trim() }))}
               onLocked={handleLearnMore}
               theme={theme}
+              readOnly={isTech}
             />
           </View>
         </Pressable>
@@ -339,7 +369,7 @@ function PremiumBadge({ theme }: { theme: ReturnType<typeof useTheme>["theme"] }
 
 // Inline Field Component
 function InlineField({
-  label, value, placeholder, prefix, suffix, keyboardType = "default", enabled, premium, onSave, onLocked, theme
+  label, value, placeholder, prefix, suffix, keyboardType = "default", enabled, premium, onSave, onLocked, theme, readOnly = false
 }: {
   label: string;
   value: string;
@@ -352,6 +382,7 @@ function InlineField({
   onSave: (v: string) => Promise<void>;
   onLocked: () => void;
   theme: ReturnType<typeof useTheme>["theme"];
+  readOnly?: boolean;
 }) {
   const [local, setLocal] = useState(value);
   const [isFocused, setIsFocused] = useState(false);
@@ -369,6 +400,20 @@ function InlineField({
       await onSave(local);
     }
   };
+
+  // Read-only mode for techs: show value but no editing
+  if (readOnly) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8 }}>
+        <Text style={{ fontSize: 15, color: theme.colors.text }}>{label}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {prefix && <Text style={{ fontSize: 15, color: theme.colors.muted, marginRight: 2 }}>{prefix}</Text>}
+          <Text style={{ fontSize: 15, color: theme.colors.muted }}>{value || placeholder || "—"}</Text>
+          {suffix && <Text style={{ fontSize: 15, color: theme.colors.muted, marginLeft: 4 }}>{suffix}</Text>}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8 }}>
@@ -431,6 +476,32 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     container: { flex: 1, backgroundColor: theme.colors.bg },
     content: { padding: 16, paddingBottom: Math.max(24, insets.bottom) },
     loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.colors.bg },
+    // Tech banner styles
+    techBanner: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      backgroundColor: `${theme.colors.accent}15`,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: `${theme.colors.accent}30`,
+      padding: 12,
+      marginBottom: 20,
+      gap: 10,
+    },
+    techBannerText: {
+      flex: 1,
+    },
+    techBannerTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    techBannerSubtitle: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      lineHeight: 18,
+    },
     section: { marginBottom: 20 },
     sectionTitle: { fontSize: 13, fontWeight: "600", color: theme.colors.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, marginLeft: 4 },
     sectionHint: { fontSize: 12, color: theme.colors.muted, marginTop: 8, marginLeft: 4 },

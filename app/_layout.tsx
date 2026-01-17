@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
+import { TechContextProvider } from "@/contexts/TechContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
@@ -145,7 +146,9 @@ export default function RootLayout() {
       <ErrorBoundary>
         <SafeAreaProvider>
           <ThemeProvider>
-            <RootNavigator />
+            <TechContextProvider>
+              <RootNavigator />
+            </TechContextProvider>
           </ThemeProvider>
         </SafeAreaProvider>
       </ErrorBoundary>

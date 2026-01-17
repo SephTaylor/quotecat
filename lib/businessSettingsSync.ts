@@ -4,6 +4,7 @@
 
 import { supabase } from "./supabase";
 import { getCurrentUserId } from "./authUtils";
+import { getTechContext } from "./team";
 import { loadPreferences, savePreferences, type UserPreferences } from "./preferences";
 import { getCompanyLogo, type CompanyLogo } from "./logo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -135,6 +136,7 @@ export async function deleteLogoFromStorage(): Promise<boolean> {
 /**
  * Download business settings from cloud to local storage
  * Called on login to sync settings from another device
+ * For techs, downloads the OWNER's settings so PDFs use the owner's branding
  */
 export async function downloadBusinessSettings(): Promise<{ success: boolean; error?: string }> {
   const userId = await getCurrentUserId();
@@ -144,13 +146,23 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
   }
 
   try {
-    console.log("🔄 Downloading business settings from cloud...");
+    // Check if user is a tech - if so, download OWNER's settings
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
 
-    // Fetch profile from Supabase
+    if (techContext.isTech) {
+      console.log(`🔄 Downloading business settings from team owner (${techContext.ownerCompanyName})...`);
+    } else {
+      console.log("🔄 Downloading business settings from cloud...");
+    }
+
+    // Fetch profile from Supabase (owner's profile for techs)
     const { data: profile, error: fetchError } = await supabase
       .from("profiles")
       .select("company_name, company_email, company_phone, company_website, company_address, company_logo_url, zip_code, preferences")
-      .eq("id", userId)
+      .eq("id", effectiveUserId)
       .single();
 
     if (fetchError) {
@@ -175,51 +187,87 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
       return { success: true };
     }
 
-    // Merge cloud data into local preferences
-    const updatedPrefs: UserPreferences = {
-      ...localPrefs,
-      company: {
-        ...localPrefs.company,
-        companyName: profile.company_name || localPrefs.company?.companyName || "",
-        email: profile.company_email || localPrefs.company?.email || "",
-        phone: profile.company_phone || localPrefs.company?.phone || "",
-        website: profile.company_website || localPrefs.company?.website || "",
-        address: profile.company_address || localPrefs.company?.address || "",
-      },
-      pricing: {
-        ...localPrefs.pricing,
-        zipCode: profile.zip_code || localPrefs.pricing?.zipCode || "",
-      },
-    };
+    // For techs: ALWAYS override with owner's settings (not merge)
+    // For owners: merge cloud data into local preferences
+    let updatedPrefs: UserPreferences;
 
-    // Merge cloud preferences if they exist
-    if (profile.preferences) {
-      const cloudPrefs = profile.preferences as any;
-      if (cloudPrefs.invoice) {
-        updatedPrefs.invoice = { ...localPrefs.invoice, ...cloudPrefs.invoice };
+    if (techContext.isTech) {
+      // Techs get owner's settings as-is (override local)
+      updatedPrefs = {
+        ...localPrefs,
+        company: {
+          companyName: profile.company_name || "",
+          email: profile.company_email || "",
+          phone: profile.company_phone || "",
+          website: profile.company_website || "",
+          address: profile.company_address || "",
+        },
+        pricing: {
+          ...localPrefs.pricing,
+          zipCode: profile.zip_code || "",
+        },
+      };
+
+      // Override preferences with owner's
+      if (profile.preferences) {
+        const cloudPrefs = profile.preferences as any;
+        if (cloudPrefs.invoice) updatedPrefs.invoice = cloudPrefs.invoice;
+        if (cloudPrefs.contract) updatedPrefs.contract = cloudPrefs.contract;
+        if (cloudPrefs.quote) updatedPrefs.quote = cloudPrefs.quote;
+        if (cloudPrefs.pricing) updatedPrefs.pricing = { ...updatedPrefs.pricing, ...cloudPrefs.pricing };
+        if (cloudPrefs.paymentMethods) updatedPrefs.paymentMethods = cloudPrefs.paymentMethods;
       }
-      if (cloudPrefs.contract) {
-        updatedPrefs.contract = { ...localPrefs.contract, ...cloudPrefs.contract };
-      }
-      if (cloudPrefs.quote) {
-        updatedPrefs.quote = { ...localPrefs.quote, ...cloudPrefs.quote };
-      }
-      if (cloudPrefs.pricing) {
-        updatedPrefs.pricing = { ...updatedPrefs.pricing, ...cloudPrefs.pricing };
-      }
-      if (cloudPrefs.paymentMethods) {
-        updatedPrefs.paymentMethods = cloudPrefs.paymentMethods;
+    } else {
+      // Owners merge cloud data into local
+      updatedPrefs = {
+        ...localPrefs,
+        company: {
+          ...localPrefs.company,
+          companyName: profile.company_name || localPrefs.company?.companyName || "",
+          email: profile.company_email || localPrefs.company?.email || "",
+          phone: profile.company_phone || localPrefs.company?.phone || "",
+          website: profile.company_website || localPrefs.company?.website || "",
+          address: profile.company_address || localPrefs.company?.address || "",
+        },
+        pricing: {
+          ...localPrefs.pricing,
+          zipCode: profile.zip_code || localPrefs.pricing?.zipCode || "",
+        },
+      };
+
+      // Merge cloud preferences if they exist
+      if (profile.preferences) {
+        const cloudPrefs = profile.preferences as any;
+        if (cloudPrefs.invoice) {
+          updatedPrefs.invoice = { ...localPrefs.invoice, ...cloudPrefs.invoice };
+        }
+        if (cloudPrefs.contract) {
+          updatedPrefs.contract = { ...localPrefs.contract, ...cloudPrefs.contract };
+        }
+        if (cloudPrefs.quote) {
+          updatedPrefs.quote = { ...localPrefs.quote, ...cloudPrefs.quote };
+        }
+        if (cloudPrefs.pricing) {
+          updatedPrefs.pricing = { ...updatedPrefs.pricing, ...cloudPrefs.pricing };
+        }
+        if (cloudPrefs.paymentMethods) {
+          updatedPrefs.paymentMethods = cloudPrefs.paymentMethods;
+        }
       }
     }
 
-    // Save merged preferences locally
+    // Save preferences locally
     await savePreferences(updatedPrefs);
     console.log("✅ Business settings downloaded from cloud");
 
-    // Download logo if cloud has one and we don't have it locally
+    // Download logo from cloud
+    // For techs: ALWAYS update logo to match owner's current logo (including removal)
+    // For owners: only download if local is missing
     if (profile.company_logo_url) {
       const localLogo = await getCompanyLogo();
-      if (!localLogo) {
+      const shouldDownloadLogo = techContext.isTech || !localLogo;
+
+      if (shouldDownloadLogo) {
         console.log("🔄 Downloading logo from cloud...");
         try {
           // Fetch the logo image
@@ -251,6 +299,13 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
           // Non-fatal - continue without logo
         }
       }
+    } else if (techContext.isTech) {
+      // Owner has no logo - remove any local logo for tech to stay in sync
+      const localLogo = await getCompanyLogo();
+      if (localLogo) {
+        await AsyncStorage.removeItem(LOGO_STORAGE_KEY);
+        console.log("🗑️ Removed local logo to match owner (no logo set)");
+      }
     }
 
     return { success: true };
@@ -263,11 +318,19 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
 /**
  * Sync business settings to cloud (profiles table)
  * This includes company details, logo URL, and preferences
+ * NOTE: Techs should NOT upload settings - they use the owner's settings
  */
 export async function syncBusinessSettings(): Promise<{ success: boolean; error?: string }> {
   const userId = await getCurrentUserId();
   if (!userId) {
     console.log("⏭️ Business settings sync skipped - no user ID");
+    return { success: true };
+  }
+
+  // Techs should not upload business settings - they use the owner's
+  const techContext = await getTechContext(userId);
+  if (techContext.isTech) {
+    console.log("⏭️ Business settings upload skipped - techs use owner's settings");
     return { success: true };
   }
 

@@ -4,6 +4,7 @@
 import { supabase } from "./supabase";
 import type { Invoice, InvoicePayment } from "./types";
 import { getCurrentUserId } from "./authUtils";
+import { getTechContext } from "./team";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   listInvoicesDB,
@@ -190,6 +191,7 @@ function markLocalInvoiceDeleted(id: string): void {
 
 /**
  * Upload a single invoice to Supabase
+ * For techs, invoices are owned by the team owner (user_id = owner_id)
  */
 export async function uploadInvoice(invoice: Invoice): Promise<boolean> {
   try {
@@ -199,10 +201,16 @@ export async function uploadInvoice(invoice: Invoice): Promise<boolean> {
       return false;
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
     // Map local Invoice to Supabase schema
     const supabaseInvoice = {
       id: invoice.id,
-      user_id: userId,
+      user_id: effectiveUserId,
       quote_id: invoice.quoteId || null,
       contract_id: invoice.contractId || null,
       invoice_number: invoice.invoiceNumber,
@@ -252,6 +260,7 @@ export async function uploadInvoice(invoice: Invoice): Promise<boolean> {
 
 /**
  * Upload a single payment record to Supabase
+ * For techs, payments are owned by the team owner (user_id = owner_id)
  */
 export async function uploadPayment(payment: InvoicePayment): Promise<boolean> {
   try {
@@ -261,11 +270,17 @@ export async function uploadPayment(payment: InvoicePayment): Promise<boolean> {
       return false;
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
     // Map local InvoicePayment to Supabase schema
     const supabasePayment = {
       id: payment.id,
       invoice_id: payment.invoiceId,
-      user_id: userId,
+      user_id: effectiveUserId,
       amount: payment.amount,
       payment_method: payment.paymentMethod || null,
       payment_date: payment.paymentDate,
@@ -294,6 +309,7 @@ export async function uploadPayment(payment: InvoicePayment): Promise<boolean> {
 
 /**
  * Download payments from Supabase for an invoice
+ * For techs, downloads payments owned by the team owner
  */
 export async function downloadPaymentsForInvoice(invoiceId: string): Promise<InvoicePayment[]> {
   try {
@@ -302,11 +318,17 @@ export async function downloadPaymentsForInvoice(invoiceId: string): Promise<Inv
       return [];
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
     const { data, error } = await supabase
       .from("invoice_payments")
       .select("*")
       .eq("invoice_id", invoiceId)
-      .eq("user_id", userId);
+      .eq("user_id", effectiveUserId);
 
     if (error) {
       console.error("Failed to download payments:", error);
@@ -367,6 +389,7 @@ export async function syncPaymentsForInvoice(invoiceId: string): Promise<number>
 
 /**
  * Get IDs of deleted invoices from cloud (for syncing deletions across devices)
+ * For techs, fetches deletions from the team owner's data
  * @param since - Only fetch deletions after this timestamp (incremental sync)
  */
 async function getDeletedInvoiceIds(since?: string): Promise<string[]> {
@@ -376,10 +399,16 @@ async function getDeletedInvoiceIds(since?: string): Promise<string[]> {
       return [];
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
     let query = supabase
       .from("invoices")
       .select("id")
-      .eq("user_id", userId)
+      .eq("user_id", effectiveUserId)
       .not("deleted_at", "is", null);
 
     // Incremental: only fetch deletions since last sync
@@ -405,6 +434,7 @@ async function getDeletedInvoiceIds(since?: string): Promise<string[]> {
 
 /**
  * Download invoices from Supabase for current user
+ * For techs, downloads invoices owned by the team owner
  * @param since - Only fetch invoices updated after this timestamp (incremental sync)
  * @param isInitialSync - If true, this is a first-time sync (higher limit)
  */
@@ -416,10 +446,20 @@ export async function downloadInvoices(since?: string, isInitialSync = false): P
       return [];
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
+    if (techContext.isTech) {
+      console.log(`🔄 Downloading invoices from team owner (${techContext.ownerCompanyName})...`);
+    }
+
     let query = supabase
       .from("invoices")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", effectiveUserId)
       .is("deleted_at", null);
 
     // Incremental sync: only fetch invoices updated since last sync
@@ -506,6 +546,7 @@ export async function downloadInvoices(since?: string, isInitialSync = false): P
 
 /**
  * Delete an invoice from cloud (soft delete - sets deleted_at timestamp)
+ * For techs, deletes from the team owner's data
  */
 export async function deleteInvoiceFromCloud(
   invoiceId: string
@@ -517,13 +558,19 @@ export async function deleteInvoiceFromCloud(
       return false;
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
     // Use hard DELETE instead of soft delete (UPDATE)
     // The DELETE RLS policy works, and local soft delete handles resurrection prevention
     const { error } = await supabase
       .from("invoices")
       .delete()
       .eq("id", invoiceId)
-      .eq("user_id", userId);
+      .eq("user_id", effectiveUserId);
 
     if (error) {
       console.error("Failed to delete invoice from cloud:", error);
@@ -664,12 +711,17 @@ export async function syncInvoices(): Promise<{
       return { success: false, downloaded: 0, uploaded: 0, deleted: 0 };
     }
 
+    // Check if user is a tech - if so, sync with owner's data
+    const techContext = await getTechContext(userId);
+
     // Get sync metadata to determine if this is initial or incremental sync
     const metadata = await getSyncMetadata();
     const lastSyncAt = metadata.lastSyncAt;
     const isInitialSync = !lastSyncAt;
 
-    if (isInitialSync) {
+    if (techContext.isTech) {
+      console.log(`🔄 Syncing invoices with team owner (${techContext.ownerCompanyName})...`);
+    } else if (isInitialSync) {
       console.log("🔄 Starting initial full invoices sync...");
     } else {
       console.log(`🔄 Starting incremental invoices sync since ${lastSyncAt}`);

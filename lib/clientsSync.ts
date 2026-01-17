@@ -5,6 +5,7 @@ import { supabase } from "./supabase";
 // Note: clients functions are imported dynamically to avoid circular dependency
 import type { Client } from "./types";
 import { getCurrentUserId } from "./authUtils";
+import { getTechContext } from "./team";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getLocallyDeletedClientIdsDB } from "./database";
 
@@ -147,6 +148,7 @@ async function saveSyncMetadata(metadata: SyncMetadata): Promise<void> {
 
 /**
  * Upload a single client to Supabase
+ * For techs, clients are owned by the team owner (user_id = owner_id)
  */
 export async function uploadClient(client: Client): Promise<boolean> {
   try {
@@ -156,10 +158,16 @@ export async function uploadClient(client: Client): Promise<boolean> {
       return false;
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
     // Map local Client to Supabase schema
     const supabaseClient = {
       id: client.id,
-      user_id: userId,
+      user_id: effectiveUserId,
       name: client.name,
       email: client.email || null,
       phone: client.phone || null,
@@ -191,6 +199,7 @@ export async function uploadClient(client: Client): Promise<boolean> {
 
 /**
  * Download clients from Supabase for current user
+ * For techs, downloads clients owned by the team owner
  * @param since - Only fetch clients updated after this timestamp (incremental sync)
  * @param isInitialSync - If true, this is a first-time sync (higher limit)
  */
@@ -202,10 +211,20 @@ export async function downloadClients(since?: string, isInitialSync = false): Pr
       return [];
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
+    if (techContext.isTech) {
+      console.log(`🔄 Downloading clients from team owner (${techContext.ownerCompanyName})...`);
+    }
+
     let query = supabase
       .from("clients")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", effectiveUserId)
       .is("deleted_at", null);
 
     // Incremental sync: only fetch clients updated since last sync
@@ -372,12 +391,17 @@ export async function syncClients(): Promise<{
       return { success: false, downloaded: 0, uploaded: 0 };
     }
 
+    // Check if user is a tech - if so, sync with owner's data
+    const techContext = await getTechContext(userId);
+
     // Get sync metadata to determine if this is initial or incremental sync
     const metadata = await getSyncMetadata();
     const lastSyncAt = metadata.lastSyncAt;
     const isInitialSync = !lastSyncAt;
 
-    if (isInitialSync) {
+    if (techContext.isTech) {
+      console.log(`🔄 Syncing clients with team owner (${techContext.ownerCompanyName})...`);
+    } else if (isInitialSync) {
       console.log("🔄 Starting initial full clients sync...");
     } else {
       console.log(`🔄 Starting incremental clients sync since ${lastSyncAt}`);
@@ -528,6 +552,7 @@ export async function syncClients(): Promise<{
 
 /**
  * Delete a client from cloud (soft delete)
+ * For techs, deletes from the team owner's data
  */
 export async function deleteClientFromCloud(clientId: string): Promise<boolean> {
   try {
@@ -537,12 +562,18 @@ export async function deleteClientFromCloud(clientId: string): Promise<boolean> 
       return false;
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
     // Use hard delete instead of soft delete to avoid RLS issues with UPDATE
     const { error } = await supabase
       .from("clients")
       .delete()
       .eq("id", clientId)
-      .eq("user_id", userId);
+      .eq("user_id", effectiveUserId);
 
     if (error) {
       console.error("Failed to delete client from cloud:", error);

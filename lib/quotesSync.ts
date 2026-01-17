@@ -6,6 +6,7 @@ import { listQuotes, saveQuoteLocally, saveQuotesBatch, getQuoteById, updateQuot
 import type { Quote } from "./types";
 import { normalizeQuote } from "./validation";
 import { getCurrentUserId } from "./authUtils";
+import { getTechContext } from "./team";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getLocallyDeletedQuoteIdsDB } from "./database";
 
@@ -149,6 +150,8 @@ async function saveSyncMetadata(metadata: SyncMetadata): Promise<void> {
 
 /**
  * Upload a single quote to Supabase
+ * For techs, quotes are owned by the team owner (user_id = owner_id)
+ * and created_by_tech_id tracks who actually created it
  */
 export async function uploadQuote(quote: Quote): Promise<boolean> {
   try {
@@ -158,10 +161,18 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
       return false;
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+    const createdByTechId = techContext.isTech ? userId : null;
+
     // Map local Quote to Supabase schema
     const supabaseQuote = {
       id: quote.id,
-      user_id: userId,
+      user_id: effectiveUserId,
+      created_by_tech_id: createdByTechId,
       name: quote.name,
       client_name: quote.clientName || null,
       client_email: quote.clientEmail || null,
@@ -219,10 +230,16 @@ async function getDeletedQuoteIds(since?: string): Promise<string[]> {
       return [];
     }
 
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
     let query = supabase
       .from("quotes")
       .select("id")
-      .eq("user_id", userId)
+      .eq("user_id", effectiveUserId)
       .not("deleted_at", "is", null);
 
     // Incremental: only fetch deletions since last sync
@@ -247,7 +264,7 @@ async function getDeletedQuoteIds(since?: string): Promise<string[]> {
 }
 
 /**
- * Download quotes from Supabase for current user
+ * Download quotes from Supabase for current user (or team owner if user is a tech)
  * @param since - Only fetch quotes updated after this timestamp (incremental sync)
  * @param isInitialSync - If true, this is a first-time sync (higher limit)
  */
@@ -259,10 +276,16 @@ export async function downloadQuotes(since?: string, isInitialSync = false): Pro
       return [];
     }
 
+    // Check if user is a tech - if so, download owner's quotes
+    const techContext = await getTechContext(userId);
+    const effectiveUserId = techContext.isTech && techContext.ownerId
+      ? techContext.ownerId
+      : userId;
+
     let query = supabase
       .from("quotes")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", effectiveUserId)
       .is("deleted_at", null);
 
     // Incremental sync: only fetch quotes updated since last sync
