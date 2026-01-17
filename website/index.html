@@ -1370,7 +1370,7 @@
                     <div class="tier-name">Pro</div>
                     <div class="tier-description">For contractors who mean business</div>
                     <div class="tier-price">$29<span class="tier-price-small">/mo</span></div>
-                    <div class="tier-price-period">Founder pricing - First 500 spots</div>
+                    <div class="tier-price-period">Founder pricing - First 50 spots</div>
                     <ul class="tier-features">
                         <li>Unlimited quotes & exports</li>
                         <li>Custom job templates</li>
@@ -1381,14 +1381,14 @@
                         <li>Priority email support</li>
                     </ul>
                     <button onclick="handleGetPro()" class="tier-button">Get Pro Now</button>
-                    <div class="tier-note">Regular price: $99/mo after 500 spots filled</div>
+                    <div class="tier-note">Regular price: $39/mo after 50 spots filled</div>
                 </div>
                 <div class="tier-card">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <div class="tier-name">Premium</div>
                     <div class="tier-description">Complete business toolkit</div>
                     <div class="tier-price">$79<span class="tier-price-small">/mo</span></div>
-                    <div class="tier-price-period">Founder pricing - First 100 spots</div>
+                    <div class="tier-price-period">Founder pricing - First 25 spots</div>
                     <ul class="tier-features">
                         <li>Everything in Pro</li>
                         <li>Quote Wizard (AI-assisted)</li>
@@ -1400,7 +1400,7 @@
                         <li>Priority phone support</li>
                     </ul>
                     <button onclick="handleGetPremium()" class="tier-button">Get Premium Now</button>
-                    <div class="tier-note">Regular price: $199/mo after 100 spots filled</div>
+                    <div class="tier-note">Regular price: $99/mo after 25 spots filled</div>
                 </div>
             </div>
         </div>
@@ -1586,11 +1586,12 @@
             emailError.style.display = 'none';
 
             // Determine price ID based on tier and period
+            // Founder prices: Pro $29/mo, $290/yr | Premium $79/mo, $790/yr
             let priceId;
             if (currentTier === 'pro') {
-                priceId = selectedPeriod === 'monthly' ? 'price_1SRYudEJ6nOeXQImORnpOn57' : 'price_1SRYxvEJ6nOeXQImgcguc1Tb';
+                priceId = selectedPeriod === 'monthly' ? 'price_1SRYudEJ6nOeXQImORnpOn57' : 'price_1Sqdi0EJ6nOeXQImgNqqgXe3';
             } else {
-                priceId = selectedPeriod === 'monthly' ? 'price_1SRYzJEJ6nOeXQImUR9ZE9dg' : 'price_1SRYzpEJ6nOeXQImLJcob9DI';
+                priceId = selectedPeriod === 'monthly' ? 'price_1SRYzJEJ6nOeXQImUR9ZE9dg' : 'price_1Sqdi1EJ6nOeXQImyT9xgVwB';
             }
 
             // Show loading state
@@ -1766,24 +1767,13 @@
                     const period = card.querySelector('.tier-price-period');
                     if (period && spotsData.remaining !== undefined) {
                         const remaining = spotsData.remaining;
-                        const urgency = remaining < 50 ? ' - Almost gone!' : remaining < 100 ? ' - Selling fast!' : '';
-
-                        period.textContent = `Founder pricing - ${remaining} of ${spotsData.total} spots left${urgency}`;
-
-                        // Add urgency styling
-                        if (remaining < 50) {
-                            period.style.color = '#ff4444';
-                            period.style.fontWeight = '700';
-                        } else if (remaining < 100) {
-                            period.style.color = '#ff9500';
-                            period.style.fontWeight = '600';
-                        }
+                        period.textContent = `Founder pricing - ${remaining} of ${spotsData.total} spots left`;
                     }
 
                     // Update the note text
                     const note = card.querySelector('.tier-note');
                     if (note && spotsData.remaining !== undefined) {
-                        const regularPrice = tier === 'pro' ? '$99/mo' : '$79/mo';
+                        const regularPrice = tier === 'pro' ? '$39/mo' : '$99/mo';
                         note.textContent = `Regular price: ${regularPrice} after ${spotsData.remaining} spots filled`;
                     }
                 }

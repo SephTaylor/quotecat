@@ -39,10 +39,21 @@ serve(async (req) => {
 
     // Validate price ID is one of our known prices
     const validPriceIds = [
-      "price_1SRYudEJ6nOeXQImORnpOn57", // Pro Monthly
-      "price_1SRYxvEJ6nOeXQImgcguc1Tb", // Pro Yearly
-      "price_1SRYzJEJ6nOeXQImUR9ZE9dg", // Premium Monthly
-      "price_1SRYzpEJ6nOeXQImLJcob9DI", // Premium Yearly
+      // === FOUNDER PRICES (limited: 100 Pro, 50 Premium) ===
+      "price_1SRYudEJ6nOeXQImORnpOn57", // Founder Pro Monthly - $29/mo
+      "price_1Sqdi0EJ6nOeXQImgNqqgXe3", // Founder Pro Yearly - $290/yr
+      "price_1SRYzJEJ6nOeXQImUR9ZE9dg", // Founder Premium Monthly - $79/mo
+      "price_1Sqdi1EJ6nOeXQImyT9xgVwB", // Founder Premium Yearly - $790/yr
+
+      // === REGULAR PRICES ===
+      "price_1Sqdi1EJ6nOeXQImkAgDKGax", // Pro Monthly - $39/mo
+      "price_1Sqdi2EJ6nOeXQImK5BZmdv9", // Pro Yearly - $372/yr
+      "price_1Sqdi2EJ6nOeXQImXnZGM8ff", // Premium Monthly - $99/mo
+      "price_1Sqdi2EJ6nOeXQImpve8MWHO", // Premium Yearly - $948/yr
+
+      // === LEGACY (deprecated one-time annual) ===
+      "price_1SRYxvEJ6nOeXQImgcguc1Tb", // Pro Yearly (one-time)
+      "price_1SRYzpEJ6nOeXQImLJcob9DI", // Premium Yearly (one-time)
     ];
 
     if (!validPriceIds.includes(priceId)) {

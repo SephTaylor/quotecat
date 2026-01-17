@@ -43,19 +43,20 @@ exports.handler = async (event, context) => {
     }
 
     // Return spots remaining
+    // Founder spots: 50 Pro, 25 Premium
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         pro: {
-          remaining: proData || 500,
-          total: 500,
-          percentage: Math.round(((proData || 500) / 500) * 100),
+          remaining: proData || 50,
+          total: 50,
+          percentage: Math.round(((proData || 50) / 50) * 100),
         },
         premium: {
-          remaining: premiumData || 100,
-          total: 100,
-          percentage: Math.round(((premiumData || 100) / 100) * 100),
+          remaining: premiumData || 25,
+          total: 25,
+          percentage: Math.round(((premiumData || 25) / 25) * 100),
         },
         timestamp: new Date().toISOString(),
       }),
@@ -64,18 +65,19 @@ exports.handler = async (event, context) => {
     console.error('Function error:', error);
 
     // Return fallback data on error
+    // Founder spots: 50 Pro, 25 Premium
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         pro: {
-          remaining: 500,
-          total: 500,
+          remaining: 50,
+          total: 50,
           percentage: 100,
         },
         premium: {
-          remaining: 100,
-          total: 100,
+          remaining: 25,
+          total: 25,
           percentage: 100,
         },
         error: 'Using fallback data',
