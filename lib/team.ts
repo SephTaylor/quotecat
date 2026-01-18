@@ -36,6 +36,9 @@ export type TechContext = {
   ownerId: string | null;  // The owner's user_id (for creating quotes)
   ownerCompanyName: string | null;
   permissions: TechPermissions | null;
+  // Removal detection
+  wasRemoved: boolean;  // True if tech was removed or suspended
+  removalReason: 'removed' | 'suspended' | null;
 };
 
 const DEFAULT_PERMISSIONS: TechPermissions = {
@@ -50,6 +53,7 @@ const DEFAULT_PERMISSIONS: TechPermissions = {
 /**
  * Check if the current user is a tech on someone's team
  * Returns null if not a tech, or the TechContext if they are
+ * Also detects if the tech was removed/suspended
  */
 export async function getTechContext(userId: string): Promise<TechContext> {
   const notATech: TechContext = {
@@ -58,6 +62,8 @@ export async function getTechContext(userId: string): Promise<TechContext> {
     ownerId: null,
     ownerCompanyName: null,
     permissions: null,
+    wasRemoved: false,
+    removalReason: null,
   };
 
   if (!userId) {
@@ -66,6 +72,7 @@ export async function getTechContext(userId: string): Promise<TechContext> {
 
   try {
     // Query team_tech_accounts where this user is the tech
+    // Don't filter by status - we need to detect removed/suspended
     const { data, error } = await supabase
       .from('team_tech_accounts')
       .select(`
@@ -83,15 +90,45 @@ export async function getTechContext(userId: string): Promise<TechContext> {
         removed_at
       `)
       .eq('tech_auth_id', userId)
-      .eq('status', 'active')
       .single();
 
     if (error || !data) {
-      // Not a tech or no active tech account
+      // Not a tech (never was)
       return notATech;
     }
 
-    // Get owner's company details
+    // Check if tech was removed or suspended
+    if (data.status === 'removed' || data.status === 'suspended') {
+      console.log(`⚠️ Tech account ${data.status}:`, {
+        name: data.name,
+        status: data.status,
+        removedAt: data.removed_at,
+      });
+
+      // Get owner's company name for the removal message
+      const { data: ownerProfile } = await supabase
+        .from('profiles')
+        .select('company_name')
+        .eq('id', data.owner_id)
+        .single();
+
+      return {
+        isTech: false,
+        techAccount: null,
+        ownerId: null,
+        ownerCompanyName: ownerProfile?.company_name || 'the team',
+        permissions: null,
+        wasRemoved: true,
+        removalReason: data.status as 'removed' | 'suspended',
+      };
+    }
+
+    // Check if still pending (hasn't fully joined)
+    if (data.status === 'pending') {
+      return notATech;
+    }
+
+    // Get owner's company details for active tech
     const { data: ownerProfile } = await supabase
       .from('profiles')
       .select('company_name, email')
@@ -111,6 +148,8 @@ export async function getTechContext(userId: string): Promise<TechContext> {
       ownerId: data.owner_id,
       ownerCompanyName: ownerProfile?.company_name || 'Unknown Company',
       permissions: techAccount.permissions,
+      wasRemoved: false,
+      removalReason: null,
     };
   } catch (err) {
     console.error('Error fetching tech context:', err);

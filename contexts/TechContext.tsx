@@ -1,9 +1,11 @@
 // contexts/TechContext.tsx
 // React Context for tech/team state
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import { Alert } from 'react-native';
 import { getTechContext, TechContext as TechContextType, TechPermissions, canViewPricing, canCreateQuotes, canEditQuote } from '@/lib/team';
 import { getCurrentUserId } from '@/lib/authUtils';
+import { signOut } from '@/lib/auth';
 
 interface TechContextValue {
   // State
@@ -15,6 +17,10 @@ interface TechContextValue {
   ownerId: string | null;
   ownerCompanyName: string | null;
   permissions: TechPermissions | null;
+
+  // Removal detection
+  wasRemoved: boolean;
+  removalReason: 'removed' | 'suspended' | null;
 
   // Permission helpers
   canViewPricing: boolean;
@@ -33,6 +39,9 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  // Track if we've already shown the removal alert (prevent duplicate alerts)
+  const hasShownRemovalAlert = useRef(false);
+
   const refreshTechContext = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -50,6 +59,36 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
             permissions: context.permissions,
           });
         }
+
+        // Handle removed/suspended tech
+        if (context.wasRemoved && !hasShownRemovalAlert.current) {
+          hasShownRemovalAlert.current = true;
+          const companyName = context.ownerCompanyName || 'the team';
+          const reason = context.removalReason === 'suspended' ? 'suspended' : 'removed';
+
+          console.log(`🚫 Tech was ${reason} from ${companyName}, signing out...`);
+
+          // Show alert then sign out
+          Alert.alert(
+            reason === 'suspended' ? 'Account Suspended' : 'Team Access Removed',
+            reason === 'suspended'
+              ? `Your access to ${companyName} has been temporarily suspended. Please contact your team administrator.`
+              : `You have been removed from ${companyName}. You will be signed out.`,
+            [
+              {
+                text: 'OK',
+                onPress: async () => {
+                  try {
+                    await signOut();
+                  } catch (error) {
+                    console.error('Error signing out after removal:', error);
+                  }
+                },
+              },
+            ],
+            { cancelable: false }
+          );
+        }
       } else {
         setTechContext(null);
       }
@@ -64,6 +103,7 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
   const clearTechContext = useCallback(() => {
     setTechContext(null);
     setCurrentUserId(null);
+    hasShownRemovalAlert.current = false; // Reset for next login
   }, []);
 
   // Load tech context on mount
@@ -79,6 +119,10 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
     ownerId: techContext?.ownerId ?? null,
     ownerCompanyName: techContext?.ownerCompanyName ?? null,
     permissions: techContext?.permissions ?? null,
+
+    // Removal detection
+    wasRemoved: techContext?.wasRemoved ?? false,
+    removalReason: techContext?.removalReason ?? null,
 
     canViewPricing: canViewPricing(techContext),
     canCreateQuotes: canCreateQuotes(techContext),
@@ -108,6 +152,8 @@ export function useTechContext(): TechContextValue {
       ownerId: null,
       ownerCompanyName: null,
       permissions: null,
+      wasRemoved: false,
+      removalReason: null,
       canViewPricing: true,
       canCreateQuotes: true,
       canEditQuote: () => true,

@@ -872,7 +872,7 @@ Features to consider for future releases (not blockers for launch):
 - **Decline/Request Changes** - Allow clients to decline a contract or request changes via the web portal instead of just signing or doing nothing. Would add "declined" and "needs revision" statuses, plus a notes field for client feedback. (Discussed Jan 7, 2026)
 
 ### Quotes
-- *(Add ideas here)*
+- **Quick Custom Items (Free Tier)** - Allow users to quickly add custom line items to quotes without browsing the catalog. Targets contractors who normally scribble on notepads - just type item name + price, done. Stored locally in SQLite `custom_line_items` table with `name`, `price`, `times_used`, `first_added`, `last_used`. Fuzzy deduplication ("Ceiling Fan Install" vs "Install Ceiling Fan"). Creates a "Temp Items" list the user can review later. Natural upsell: "You've added 'Ceiling Fan Install' to 7 quotes. Save to your pricebook?" (Pricebook is Pro feature). Also provides data on what products/services contractors actually quote that aren't in the catalog. (Discussed Jan 18, 2026)
 
 ### Invoices
 - *(Add ideas here)*
@@ -893,6 +893,9 @@ Features to consider for future releases (not blockers for launch):
 - **Google Review Requests** - Auto-request Google reviews after job completion or invoice paid. Send up to 2 follow-up reminders. Track which clients have reviewed (don't ask again). Dashboard showing average rating, total reviews, requests sent. Requires Google Business Profile API integration. Jobber charges $39/mo for this - could be Premium included or separate add-on. (Discussed Jan 17, 2026)
 - **Email/SMS Campaigns** - Marketing campaigns to client list. Re-engagement ("haven't seen you in 6 months"), seasonal promos, announcements. AI-generated campaign content via Drew. Could use Knock.app for delivery (same infrastructure as automations). Jobber charges $29/mo. (Discussed Jan 17, 2026)
 - **Referral Program** - Automated referral tracking. Client shares link, new customer signs up, original client gets credit/reward. Track referral sources. Jobber charges $29/mo. (Discussed Jan 17, 2026)
+
+### Drew AI (Premium)
+- **Site Visit Mode (Voice-to-Scope)** - Record conversations during on-site walkthroughs with clients. AI transcribes and extracts job details (tasks, locations, measurements, client concerns) so contractors don't have to take notes. Pre-fills quote draft with captured details. Uses Whisper API (~$0.006/min) or Deepgram for transcription, Claude for extraction. Add 🎤 button to Drew chat screen. Requires consent prompt for recording (two-party consent states). Killer differentiator - no competitor has this. (Discussed Jan 17, 2026)
 
 ### General
 - **Drew Visibility Toggle** - Add a button in the header to show/hide Drew (WizardFAB). Useful for users who want a cleaner screen sometimes or prefer to "summon" Drew only when needed. Could be a small icon that toggles Drew's visibility. (Discussed Jan 7, 2026)
