@@ -21,6 +21,7 @@ type SwipeableMaterialItemProps = {
   onQtyChange: (text: string) => void;
   onUpdateQty: (itemId: string, delta: number) => void;
   isNew?: boolean;
+  showPricing?: boolean; // Hide pricing for techs without permission
 };
 
 export const SwipeableMaterialItem = React.memo(
@@ -35,6 +36,7 @@ export const SwipeableMaterialItem = React.memo(
     onQtyChange,
     onUpdateQty,
     isNew = false,
+    showPricing = true,
   }: SwipeableMaterialItemProps) => {
     const { theme } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
@@ -82,9 +84,11 @@ export const SwipeableMaterialItem = React.memo(
         >
           <View style={styles.itemInfo}>
             <Text style={styles.itemName}>{item.name}</Text>
-            <Text style={styles.itemPrice}>
-              ${item.unitPrice.toFixed(2)} each
-            </Text>
+            {showPricing && (
+              <Text style={styles.itemPrice}>
+                ${item.unitPrice.toFixed(2)} each
+              </Text>
+            )}
           </View>
 
           <View style={styles.itemControls}>
@@ -117,9 +121,11 @@ export const SwipeableMaterialItem = React.memo(
                 <Text style={styles.stepText}>+</Text>
               </Pressable>
             </View>
-            <Text style={styles.itemTotal}>
-              ${(item.unitPrice * item.qty).toFixed(2)}
-            </Text>
+            {showPricing && (
+              <Text style={styles.itemTotal}>
+                ${(item.unitPrice * item.qty).toFixed(2)}
+              </Text>
+            )}
           </View>
         </View>
       </Swipeable>

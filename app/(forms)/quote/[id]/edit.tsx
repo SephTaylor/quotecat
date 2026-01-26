@@ -1,5 +1,6 @@
 // app/(forms)/quote/[id]/edit.tsx
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTechContext } from "@/contexts/TechContext";
 import { updateQuote, getQuoteById } from "@/lib/quotes";
 import { getClients, getAndClearLastCreatedClientId, getClientById, createClient, type Client } from "@/lib/clients";
 import { getUserState } from "@/lib/user";
@@ -28,6 +29,7 @@ import { formatNetChange } from "@/modules/changeOrders/diff";
 
 export default function EditQuote() {
   const { theme } = useTheme();
+  const { isTech, ownerCompanyName, canViewPricing } = useTechContext();
   const { id, newItems: newItemsParam } = useLocalSearchParams<{ id?: string; newItems?: string }>();
   const router = useRouter();
 
@@ -672,9 +674,15 @@ export default function EditQuote() {
               <Text style={{ fontSize: 17, fontWeight: "700", color: theme.colors.text }}>
                 {tier ? `Edit Quote - ${tier}` : "Edit Quote"}
               </Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.accent, marginTop: 2 }}>
-                Total: ${calculations.total.toFixed(2)}
-              </Text>
+              {isTech && ownerCompanyName ? (
+                <Text style={{ fontSize: 12, color: theme.colors.muted, marginTop: 2 }}>
+                  Working for {ownerCompanyName}
+                </Text>
+              ) : canViewPricing ? (
+                <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.accent, marginTop: 2 }}>
+                  Total: ${calculations.total.toFixed(2)}
+                </Text>
+              ) : null}
             </View>
           ),
           headerStyle: {
@@ -895,6 +903,7 @@ export default function EditQuote() {
                     onFinishEditingQty={handleFinishEditingQty}
                     onQtyChange={handleQtyChange}
                     onUpdateQty={handleUpdateItemQty}
+                    showPricing={canViewPricing}
                   />
                 );
               })}
@@ -934,16 +943,20 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(3) }} />
 
-        <Text style={styles.label}>Labor</Text>
-        <FormInput
-          placeholder="0.00"
-          value={labor}
-          onChangeText={(text) => setLabor(formatLaborInput(text))}
-          onBlur={() => setLabor(formatMoneyOnBlur(labor))}
-          keyboardType="decimal-pad"
-        />
+        {canViewPricing && (
+          <>
+            <Text style={styles.label}>Labor</Text>
+            <FormInput
+              placeholder="0.00"
+              value={labor}
+              onChangeText={(text) => setLabor(formatLaborInput(text))}
+              onBlur={() => setLabor(formatMoneyOnBlur(labor))}
+              keyboardType="decimal-pad"
+            />
 
-        <View style={{ height: theme.spacing(3) }} />
+            <View style={{ height: theme.spacing(3) }} />
+          </>
+        )}
 
         <Text style={styles.h2}>Notes & Adjustments</Text>
 
@@ -1025,61 +1038,65 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.label}>Materials (Quick Estimate)</Text>
-        <FormInput
-          placeholder="0.00"
-          value={materialEstimate}
-          onChangeText={(text) => setMaterialEstimate(formatLaborInput(text))}
-          onBlur={() => setMaterialEstimate(formatMoneyOnBlur(materialEstimate))}
-          keyboardType="decimal-pad"
-        />
+        {canViewPricing && (
+          <>
+            <Text style={styles.label}>Materials (Quick Estimate)</Text>
+            <FormInput
+              placeholder="0.00"
+              value={materialEstimate}
+              onChangeText={(text) => setMaterialEstimate(formatLaborInput(text))}
+              onBlur={() => setMaterialEstimate(formatMoneyOnBlur(materialEstimate))}
+              keyboardType="decimal-pad"
+            />
 
-        <View style={{ height: theme.spacing(2) }} />
+            <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.label}>Markup %</Text>
-        <View style={styles.inputWithSuffix}>
-          <FormInput
-            placeholder="0"
-            value={markupPercent}
-            onChangeText={(text) => {
-              // Only allow numbers and one decimal point
-              const cleaned = text.replace(/[^0-9.]/g, "");
-              const parts = cleaned.split(".");
-              if (parts.length > 2) {
-                setMarkupPercent(parts[0] + "." + parts.slice(1).join(""));
-              } else {
-                setMarkupPercent(cleaned);
-              }
-            }}
-            keyboardType="decimal-pad"
-            style={styles.inputWithSuffixField}
-          />
-          <Text style={styles.inputSuffix}>%</Text>
-        </View>
-        <Text style={styles.helper}>Applied to line items only</Text>
+            <Text style={styles.label}>Markup %</Text>
+            <View style={styles.inputWithSuffix}>
+              <FormInput
+                placeholder="0"
+                value={markupPercent}
+                onChangeText={(text) => {
+                  // Only allow numbers and one decimal point
+                  const cleaned = text.replace(/[^0-9.]/g, "");
+                  const parts = cleaned.split(".");
+                  if (parts.length > 2) {
+                    setMarkupPercent(parts[0] + "." + parts.slice(1).join(""));
+                  } else {
+                    setMarkupPercent(cleaned);
+                  }
+                }}
+                keyboardType="decimal-pad"
+                style={styles.inputWithSuffixField}
+              />
+              <Text style={styles.inputSuffix}>%</Text>
+            </View>
+            <Text style={styles.helper}>Applied to line items only</Text>
 
-        <View style={{ height: theme.spacing(2) }} />
+            <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.label}>Tax %</Text>
-        <View style={styles.inputWithSuffix}>
-          <FormInput
-            placeholder="0"
-            value={taxPercent}
-            onChangeText={(text) => {
-              // Only allow numbers and one decimal point
-              const cleaned = text.replace(/[^0-9.]/g, "");
-              const parts = cleaned.split(".");
-              if (parts.length > 2) {
-                setTaxPercent(parts[0] + "." + parts.slice(1).join(""));
-              } else {
-                setTaxPercent(cleaned);
-              }
-            }}
-            keyboardType="decimal-pad"
-            style={styles.inputWithSuffixField}
-          />
-          <Text style={styles.inputSuffix}>%</Text>
-        </View>
+            <Text style={styles.label}>Tax %</Text>
+            <View style={styles.inputWithSuffix}>
+              <FormInput
+                placeholder="0"
+                value={taxPercent}
+                onChangeText={(text) => {
+                  // Only allow numbers and one decimal point
+                  const cleaned = text.replace(/[^0-9.]/g, "");
+                  const parts = cleaned.split(".");
+                  if (parts.length > 2) {
+                    setTaxPercent(parts[0] + "." + parts.slice(1).join(""));
+                  } else {
+                    setTaxPercent(cleaned);
+                  }
+                }}
+                keyboardType="decimal-pad"
+                style={styles.inputWithSuffixField}
+              />
+              <Text style={styles.inputSuffix}>%</Text>
+            </View>
+          </>
+        )}
 
         <View style={{ height: theme.spacing(2) }} />
 
@@ -1095,74 +1112,83 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(3) }} />
 
-        <View style={styles.totalsCard}>
-          <Text style={styles.totalsTitle}>Quote Total</Text>
+        {canViewPricing ? (
+          <View style={styles.totalsCard}>
+            <Text style={styles.totalsTitle}>Quote Total</Text>
 
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>Materials (Items)</Text>
-            <Text style={styles.totalsValue}>
-              ${calculations.materialsFromItems.toFixed(2)}
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Materials (Items)</Text>
+              <Text style={styles.totalsValue}>
+                ${calculations.materialsFromItems.toFixed(2)}
+              </Text>
+            </View>
+
+            {calculations.markupAmount > 0 && (
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>
+                  Markup ({markupPercent}%)
+                </Text>
+                <Text style={styles.totalsValue}>
+                  ${calculations.markupAmount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            {calculations.materialsEstimateValue > 0 && (
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>Materials (Estimate)</Text>
+                <Text style={styles.totalsValue}>
+                  ${calculations.materialsEstimateValue.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            {calculations.laborValue > 0 && (
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>Labor</Text>
+                <Text style={styles.totalsValue}>
+                  ${calculations.laborValue.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.totalsDivider} />
+
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabelBold}>Subtotal</Text>
+              <Text style={styles.totalsValueBold}>
+                ${calculations.subtotal.toFixed(2)}
+              </Text>
+            </View>
+
+            {calculations.taxAmount > 0 && (
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>
+                  Tax ({taxPercent}%)
+                </Text>
+                <Text style={styles.totalsValue}>
+                  ${calculations.taxAmount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.totalsDivider} />
+
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsFinalLabel}>Total</Text>
+              <Text style={styles.totalsFinalValue}>
+                ${calculations.total.toFixed(2)}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.totalsCard}>
+            <Text style={styles.totalsTitle}>Items Summary</Text>
+            <Text style={styles.totalsLabel}>
+              {items.length} item{items.length !== 1 ? 's' : ''} added
             </Text>
           </View>
-
-          {calculations.markupAmount > 0 && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>
-                Markup ({markupPercent}%)
-              </Text>
-              <Text style={styles.totalsValue}>
-                ${calculations.markupAmount.toFixed(2)}
-              </Text>
-            </View>
-          )}
-
-          {calculations.materialsEstimateValue > 0 && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Materials (Estimate)</Text>
-              <Text style={styles.totalsValue}>
-                ${calculations.materialsEstimateValue.toFixed(2)}
-              </Text>
-            </View>
-          )}
-
-          {calculations.laborValue > 0 && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Labor</Text>
-              <Text style={styles.totalsValue}>
-                ${calculations.laborValue.toFixed(2)}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.totalsDivider} />
-
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabelBold}>Subtotal</Text>
-            <Text style={styles.totalsValueBold}>
-              ${calculations.subtotal.toFixed(2)}
-            </Text>
-          </View>
-
-          {calculations.taxAmount > 0 && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>
-                Tax ({taxPercent}%)
-              </Text>
-              <Text style={styles.totalsValue}>
-                ${calculations.taxAmount.toFixed(2)}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.totalsDivider} />
-
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsFinalLabel}>Total</Text>
-            <Text style={styles.totalsFinalValue}>
-              ${calculations.total.toFixed(2)}
-            </Text>
-          </View>
-        </View>
+        )}
 
         {/* Change History Section - only show for Pro/Premium users with history */}
         {isPro && changeHistory.trim() && (
