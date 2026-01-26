@@ -56,6 +56,8 @@ export default function Settings() {
     handleForceSync,
     handleUpdateNotifications,
     handleUpdatePrivacy,
+    handleDeleteAccount,
+    deleting,
   } = useSettingsState();
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -144,13 +146,24 @@ export default function Settings() {
               </View>
 
               {userEmail ? (
-                <Pressable
-                  style={[styles.settingButton, styles.settingButtonLast]}
-                  onPress={handleManageAccount}
-                >
-                  <Text style={styles.settingButtonText}>Manage Account</Text>
-                  <Text style={styles.settingButtonIcon}>→</Text>
-                </Pressable>
+                <>
+                  <Pressable
+                    style={styles.settingButton}
+                    onPress={handleManageAccount}
+                  >
+                    <Text style={styles.settingButtonText}>Manage Account</Text>
+                    <Text style={styles.settingButtonIcon}>→</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.deleteAccountButton}
+                    onPress={handleDeleteAccount}
+                    disabled={deleting}
+                  >
+                    <Text style={styles.deleteAccountText}>
+                      {deleting ? "Deleting..." : "Delete Account"}
+                    </Text>
+                  </Pressable>
+                </>
               ) : (
                 <>
                   {/* Email capture for non-signed-in users */}
@@ -587,36 +600,6 @@ export default function Settings() {
             </View>
           </CollapsibleSection>
 
-          {/* Coming Soon Section */}
-          <CollapsibleSection
-            title="🔜 Coming in v1.0 Launch"
-            isExpanded={expandedSections.comingSoon}
-            onToggle={() => toggleSection('comingSoon')}
-            theme={theme}
-            titleColor={theme.colors.accent}
-          >
-            <View style={styles.card}>
-              <View style={styles.comingSoonHeader}>
-                <Text style={styles.comingSoonTitle}>Good/Better/Best Pricing</Text>
-                <View style={styles.comingSoonBadge}>
-                  <Text style={styles.comingSoonBadgeText}>PLANNED FOR V1</Text>
-                </View>
-              </View>
-              <Text style={styles.comingSoonDescription}>
-                Create tiered pricing quotes with one click. Offer your clients Good, Better, and Best options - or create add-on quotes for optional upgrades like surge protectors or generator hookups.
-              </Text>
-              <View style={styles.comingSoonFeatures}>
-                <Text style={styles.comingSoonFeature}>✓ Auto-generate 3 pricing tiers</Text>
-                <Text style={styles.comingSoonFeature}>✓ Basic → Premium material swaps</Text>
-                <Text style={styles.comingSoonFeature}>✓ Add-on quote creation</Text>
-                <Text style={styles.comingSoonFeature}>✓ Present all options in one PDF</Text>
-              </View>
-              <Text style={styles.comingSoonNote}>
-                💡 Tip: You can manually create tiers now using the &quot;Tier / Variant&quot; field when editing quotes!
-              </Text>
-            </View>
-          </CollapsibleSection>
-
           {/* About Section */}
           <CollapsibleSection
             title="About"
@@ -905,6 +888,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     settingButtonLast: {
       borderBottomWidth: 0,
     },
+    deleteAccountButton: {
+      paddingVertical: theme.spacing(1.5),
+      alignItems: "center",
+    },
+    deleteAccountText: {
+      color: theme.colors.muted,
+      fontSize: 13,
+    },
     settingButtonContent: {
       flexDirection: "row",
       alignItems: "center",
@@ -1039,60 +1030,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       height: "100%",
       backgroundColor: theme.colors.accent,
       borderRadius: 3,
-    },
-    comingSoonHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: theme.spacing(1.5),
-      padding: theme.spacing(2),
-      paddingBottom: 0,
-    },
-    comingSoonTitle: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: theme.colors.text,
-      flex: 1,
-    },
-    comingSoonBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: theme.radius.sm,
-      backgroundColor: theme.colors.accent,
-    },
-    comingSoonBadgeText: {
-      fontSize: 10,
-      fontWeight: "800",
-      color: "#000",
-      letterSpacing: 0.5,
-    },
-    comingSoonDescription: {
-      fontSize: 14,
-      color: theme.colors.muted,
-      lineHeight: 20,
-      paddingHorizontal: theme.spacing(2),
-      marginBottom: theme.spacing(2),
-    },
-    comingSoonFeatures: {
-      paddingHorizontal: theme.spacing(2),
-      marginBottom: theme.spacing(2),
-      gap: theme.spacing(0.75),
-    },
-    comingSoonFeature: {
-      fontSize: 14,
-      color: theme.colors.text,
-      lineHeight: 20,
-    },
-    comingSoonNote: {
-      fontSize: 13,
-      color: theme.colors.accent,
-      fontStyle: "italic",
-      backgroundColor: theme.colors.bg,
-      padding: theme.spacing(1.5),
-      borderRadius: theme.radius.md,
-      marginHorizontal: theme.spacing(2),
-      marginBottom: theme.spacing(2),
-      lineHeight: 18,
     },
     // Notification section styles
     notifSectionLabel: {

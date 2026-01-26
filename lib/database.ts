@@ -1293,6 +1293,7 @@ export function clearAllDataDB(): void {
       database.runSync("DELETE FROM quotes");
       database.runSync("DELETE FROM invoices");
       database.runSync("DELETE FROM clients");
+      database.runSync("DELETE FROM pricebook_items");
       database.runSync("DELETE FROM migration_status");
     });
   } catch (error) {

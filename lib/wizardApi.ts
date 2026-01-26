@@ -5,6 +5,40 @@
 import { supabase } from './supabase';
 
 // =============================================================================
+// TIMEOUT CONFIGURATION
+// =============================================================================
+
+const API_TIMEOUT_MS = 45000; // 45 seconds - give Claude time but don't hang forever
+
+export class WizardTimeoutError extends Error {
+  constructor() {
+    super('Drew is taking longer than usual. Want to try again?');
+    this.name = 'WizardTimeoutError';
+  }
+}
+
+/**
+ * Wrap a promise with a timeout
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new WizardTimeoutError());
+    }, ms);
+
+    promise
+      .then((result) => {
+        clearTimeout(timer);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+// =============================================================================
 // FEATURE FLAG - Toggle between drew-agent and wizard-chat
 // =============================================================================
 
@@ -212,7 +246,7 @@ async function sendDrewAgentMessage(
 ): Promise<WizardResponse> {
   console.log('[wizardApi] drew-agent: Sending message:', userMessage.substring(0, 30));
 
-  const { data, error } = await supabase.functions.invoke('drew-agent', {
+  const apiCall = supabase.functions.invoke('drew-agent', {
     body: {
       userMessage,
       state,
@@ -222,6 +256,8 @@ async function sendDrewAgentMessage(
       },
     },
   });
+
+  const { data, error } = await withTimeout(apiCall, API_TIMEOUT_MS);
 
   if (error) {
     console.error('[wizardApi] drew-agent error:', error);
@@ -254,13 +290,15 @@ async function sendWizardChatMessage(
 ): Promise<WizardResponse> {
   console.log('[wizardApi] wizard-chat: Sending message:', userMessage.substring(0, 30), 'Phase:', state.phase);
 
-  const { data, error } = await supabase.functions.invoke('wizard-chat', {
+  const apiCall = supabase.functions.invoke('wizard-chat', {
     body: {
       userMessage,
       state,
       userDefaults,
     },
   });
+
+  const { data, error } = await withTimeout(apiCall, API_TIMEOUT_MS);
 
   if (error) {
     console.error('[wizardApi] wizard-chat error:', error);

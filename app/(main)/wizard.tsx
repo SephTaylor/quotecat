@@ -26,6 +26,7 @@ import {
   searchCatalog,
   createInitialState,
   USE_DREW_AGENT,
+  WizardTimeoutError,
   type WizardState as ServerWizardState,
   type DrewAgentState,
   type WizardTool,
@@ -69,7 +70,10 @@ export default function WizardScreen() {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStartTime, setLoadingStartTime] = useState<number | null>(null);
+  const [isLongWait, setIsLongWait] = useState(false);
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<'none' | 'remove' | 'quantity'>('none');
   // Track product selections: { productId: quantity }
   const [selections, setSelections] = useState<Record<string, number>>({});
@@ -186,6 +190,20 @@ export default function WizardScreen() {
       cleanup?.();
     };
   }, [screenState]);
+
+  // Track long waits - show "thinking hard" message after 10 seconds
+  useEffect(() => {
+    if (!isLoading || !loadingStartTime) {
+      setIsLongWait(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsLongWait(true);
+    }, 10000); // 10 seconds
+
+    return () => clearTimeout(timer);
+  }, [isLoading, loadingStartTime]);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -367,6 +385,14 @@ export default function WizardScreen() {
       handleStart();
       return;
     }
+    if (reply === 'Try Again' && failedMessage) {
+      // Retry the last failed message
+      setQuickReplies([]);
+      setIsLoading(true);
+      setLoadingStartTime(Date.now());
+      sendMessageLoop(messages, failedMessage);
+      return;
+    }
     if (reply === 'Add Selected') {
       submitSelections();
       return;
@@ -379,6 +405,7 @@ export default function WizardScreen() {
   const handleStart = async () => {
     setScreenState('chat');
     setIsLoading(true);
+    setLoadingStartTime(Date.now());
     const initialState = createInitialState();
     setWizardState(initialState);
     setMessages([]);
@@ -454,6 +481,7 @@ export default function WizardScreen() {
     setMessages(currentMessages);
     setQuickReplies([]); // Clear quick replies when sending
     setIsLoading(true);
+    setLoadingStartTime(Date.now());
 
     // Scroll to bottom
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -593,24 +621,43 @@ export default function WizardScreen() {
         const replies = generateQuickReplies(message);
         setQuickReplies(replies);
       }
+      // Clear failed message on success
+      setFailedMessage(null);
     } catch (error) {
       console.error('Wizard API error:', error);
-      // Drew-style error messages
-      const errorMessages = [
-        "Hmm, lost my train of thought there. Mind saying that again?",
-        "Signal's a bit spotty. Let's try that again.",
-        "Hit a snag on my end. One more time?",
-        "My brain froze for a sec. What were we talking about?",
-      ];
-      const randomError = errorMessages[Math.floor(Math.random() * errorMessages.length)];
+
+      // Store the failed message for retry
+      const lastUserMessage = currentMessages.filter(m => m.role === 'user').pop();
+      const userMessageText = apiMessage || lastUserMessage?.content || '';
+      if (userMessageText) {
+        setFailedMessage(userMessageText);
+      }
+
+      // Determine error message based on error type
+      let errorText: string;
+      if (error instanceof WizardTimeoutError) {
+        errorText = "I'm taking longer than usual to think this through. Want to try again?";
+      } else {
+        // Drew-style error messages for other errors
+        const errorMessages = [
+          "Hmm, lost my train of thought there. Mind trying again?",
+          "Signal's a bit spotty. Let's give that another shot.",
+          "Hit a snag on my end. One more time?",
+          "My brain froze for a sec. Can you try again?",
+        ];
+        errorText = errorMessages[Math.floor(Math.random() * errorMessages.length)];
+      }
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: randomError,
+        content: errorText,
       };
       setMessages((prev) => [...prev, errorMessage]);
+      setQuickReplies(['Try Again']);
     } finally {
       setIsLoading(false);
+      setLoadingStartTime(null);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
   };
@@ -898,6 +945,9 @@ export default function WizardScreen() {
                         <View style={[styles.typingDot, styles.typingDot2]} />
                         <View style={[styles.typingDot, styles.typingDot3]} />
                       </View>
+                      {isLongWait && (
+                        <Text style={styles.thinkingText}>Thinking hard...</Text>
+                      )}
                     </View>
                   </View>
                 )}
@@ -1188,6 +1238,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     typingDot3: {
       opacity: 0.8,
+    },
+    thinkingText: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: 6,
+      fontStyle: 'italic',
     },
     quickRepliesContainer: {
       flexDirection: 'row',

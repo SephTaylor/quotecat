@@ -27,6 +27,7 @@ import { listQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { getClients } from "@/lib/clients";
 import { supabase } from "@/lib/supabase";
+import { clearAllDataDB } from "@/lib/database";
 
 export type ExpandedSections = {
   usage: boolean;
@@ -35,7 +36,6 @@ export type ExpandedSections = {
   dashboard: boolean;
   notifications: boolean;
   privacy: boolean;
-  comingSoon: boolean;
   about: boolean;
 };
 
@@ -66,7 +66,6 @@ export function useSettingsState() {
     dashboard: false,
     notifications: false,
     privacy: false,
-    comingSoon: false,
     about: false,
   });
 
@@ -474,6 +473,95 @@ export function useSettingsState() {
     [preferences]
   );
 
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (!userEmail) {
+      Alert.alert("Error", "You must be signed in to delete your account.");
+      return;
+    }
+
+    // First confirmation
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all associated data including quotes, invoices, clients, and contracts. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Continue",
+          style: "destructive",
+          onPress: () => {
+            // Second confirmation - require typing DELETE
+            Alert.prompt(
+              "Confirm Deletion",
+              'Type "DELETE" to permanently delete your account:',
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: async (input?: string) => {
+                    if (input !== "DELETE") {
+                      Alert.alert("Cancelled", 'You must type "DELETE" to confirm.');
+                      return;
+                    }
+
+                    setDeleting(true);
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (!session) {
+                        Alert.alert("Error", "Session expired. Please sign in again.");
+                        setDeleting(false);
+                        return;
+                      }
+
+                      const response = await fetch(
+                        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/delete-account`,
+                        {
+                          method: "POST",
+                          headers: {
+                            Authorization: `Bearer ${session.access_token}`,
+                            "Content-Type": "application/json",
+                          },
+                        }
+                      );
+
+                      const result = await response.json();
+
+                      if (result.success) {
+                        // Clear local data (SQLite + AsyncStorage)
+                        clearAllDataDB();
+                        await AsyncStorage.clear();
+                        await supabase.auth.signOut();
+
+                        Alert.alert(
+                          "Account Deleted",
+                          "Your account has been permanently deleted.",
+                          [{ text: "OK", onPress: () => router.replace("/") }]
+                        );
+                      } else {
+                        Alert.alert(
+                          "Error",
+                          result.error || "Failed to delete account. Please try again."
+                        );
+                      }
+                    } catch (error) {
+                      console.error("Delete account error:", error);
+                      Alert.alert("Error", "Failed to delete account. Please try again.");
+                    } finally {
+                      setDeleting(false);
+                    }
+                  },
+                },
+              ],
+              "plain-text"
+            );
+          },
+        },
+      ]
+    );
+  }, [userEmail, router]);
+
   return {
     // State
     isPro,
@@ -506,6 +594,8 @@ export function useSettingsState() {
     handleForceSync,
     handleUpdateNotifications,
     handleUpdatePrivacy,
+    handleDeleteAccount,
+    deleting,
   };
 }
 

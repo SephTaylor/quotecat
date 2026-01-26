@@ -27,6 +27,7 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const isMountedRef = useRef(true);
 
   // Track mounted state to avoid state updates on unmounted component
@@ -105,6 +106,54 @@ export default function SignInScreen() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const emailToReset = email.trim();
+
+    if (!emailToReset) {
+      Alert.alert(
+        "Enter Your Email",
+        "Please enter your email address first, then tap Forgot Password."
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Reset Password",
+      `Send a password reset link to ${emailToReset}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send",
+          onPress: async () => {
+            setResetLoading(true);
+            try {
+              const { error } = await supabase.auth.resetPasswordForEmail(emailToReset, {
+                redirectTo: "https://quotecat.ai/callback.html",
+              });
+
+              if (error) throw error;
+
+              Alert.alert(
+                "Check Your Email",
+                "If an account exists with that email, you'll receive a password reset link shortly."
+              );
+            } catch (error) {
+              console.error("Password reset error:", error);
+              Alert.alert(
+                "Error",
+                "Unable to send reset email. Please try again later."
+              );
+            } finally {
+              if (isMountedRef.current) {
+                setResetLoading(false);
+              }
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
@@ -146,6 +195,15 @@ export default function SignInScreen() {
                   secureTextEntry
                   editable={!loading}
                 />
+                <Pressable
+                  onPress={handleForgotPassword}
+                  disabled={loading || resetLoading}
+                  style={styles.forgotPassword}
+                >
+                  <Text style={styles.forgotPasswordText}>
+                    {resetLoading ? "Sending..." : "Forgot Password?"}
+                  </Text>
+                </Pressable>
               </View>
 
               <Pressable
@@ -228,6 +286,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingVertical: theme.spacing(1.5),
       fontSize: 16,
       color: theme.colors.text,
+    },
+    forgotPassword: {
+      alignSelf: "flex-end",
+      marginTop: theme.spacing(0.5),
+    },
+    forgotPasswordText: {
+      fontSize: 14,
+      color: theme.colors.accent,
+      fontWeight: "500",
     },
     button: {
       backgroundColor: theme.colors.accent,

@@ -135,16 +135,13 @@ export default function EditQuote() {
           processedNewItemsRef.current = newItemsParam;
           try {
             const newItems = JSON.parse(newItemsParam) as QuoteItem[];
-            console.log("CO mode (in focus): received", newItems.length, "items to merge");
             if (newItems.length > 0 && effectiveId) {
               // Fetch current quote from storage to get existing items
               const currentQuote = await getQuoteById(effectiveId);
               const existingItems = currentQuote?.items ?? [];
-              console.log("CO mode (in focus): existing items:", existingItems.length);
 
               // Merge existing items with new items
               const merged = mergeById(existingItems, newItems);
-              console.log("CO mode (in focus): merged result:", merged.length, "items");
 
               // Update form state with merged items
               setItems(merged);
@@ -356,20 +353,11 @@ export default function EditQuote() {
     const currentQuote = await getQuoteById(effectiveId!);
     const formData = getFormData();
 
-    console.log("=== SAVE DEBUG ===");
-    console.log("Quote ID:", effectiveId);
-    console.log("Current quote status:", currentQuote?.status);
-    console.log("Form status:", status);
-    console.log("Has approvedSnapshot:", !!currentQuote?.approvedSnapshot);
-    console.log("Current items count:", items.length);
-    console.log("isPro (change tracking enabled):", isPro);
-
     // Check if quote is currently approved/completed AND has a snapshot to compare against
     // Only Pro/Premium users get change tracking
     // Only track when status is approved/completed (not while editing drafts)
     const isCurrentlyApproved = currentQuote?.status === "approved" || currentQuote?.status === "completed";
     if (isPro && isCurrentlyApproved && currentQuote?.approvedSnapshot) {
-      console.log("Found approvedSnapshot, comparing...");
       try {
         const snapshotItems = JSON.parse(currentQuote.approvedSnapshot) as Array<{
           productId?: string;
@@ -434,9 +422,6 @@ export default function EditQuote() {
             });
           }
         });
-
-        console.log("Changes detected:", changes.length);
-        console.log("Changes:", JSON.stringify(changes, null, 2));
 
         // If there are changes, log them
         if (changes.length > 0) {
@@ -507,8 +492,6 @@ export default function EditQuote() {
     if (isPro && isCurrentlyApproved && !currentQuote?.approvedSnapshot) {
       const currentItems = currentQuote?.items || [];
       if (currentItems.length > 0) {
-        console.log("Creating initial snapshot for approved quote that had no snapshot");
-        console.log("Items to snapshot:", currentItems.length);
         const snapshot = JSON.stringify(currentItems.map((item) => ({
           productId: item.productId,
           name: item.name,
@@ -526,24 +509,19 @@ export default function EditQuote() {
       // Creating snapshot when quote becomes approved
       // Use storage items to include assembly/pricebook additions
       const itemsToSnapshot = currentQuote?.items?.length ? currentQuote.items : items;
-      console.log("Creating approvedSnapshot for newly approved quote");
-      console.log("Items to snapshot count:", itemsToSnapshot.length);
       const snapshot = JSON.stringify(itemsToSnapshot.map((item) => ({
         productId: item.productId,
         name: item.name,
         qty: item.qty,
         unitPrice: item.unitPrice,
       })));
-      console.log("Snapshot:", snapshot);
 
       await updateQuote(effectiveId!, { ...formData, items: itemsToSnapshot, approvedSnapshot: snapshot });
-      console.log("Saved with approvedSnapshot");
       Alert.alert("Saved", "Quote saved and approved. Future changes will be tracked.", [{ text: "OK" }]);
       return;
     }
 
     // No changes or not tracking - just save normally
-    console.log("Falling through to regular handleSave()");
     await handleSave();
   }, [id, realQuoteId, effectiveId, items, status, isPro, handleSave, validateRequiredFields, ensureQuoteExists, maybePromptToSaveClient, changeHistory, setChangeHistory, setStatus, getFormData]);
 

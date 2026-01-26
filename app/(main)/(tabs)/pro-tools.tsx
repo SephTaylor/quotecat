@@ -6,7 +6,6 @@ import { getUserState } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -53,13 +52,6 @@ export default function ProTools() {
         router.push("/(main)/(tabs)/contracts" as any);
       } else if (featureName === "Price Book") {
         router.push("/(main)/price-book" as any);
-      } else if (featureName === "Wizard") {
-        // Coming soon
-        Alert.alert(
-          "Coming Soon",
-          "The Quote Wizard will help you build quotes faster by calculating materials based on room dimensions and project scope.",
-          [{ text: "OK" }]
-        );
       }
       // Add other pro features here
     } else {
