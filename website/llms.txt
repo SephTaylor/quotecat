@@ -1,0 +1,65 @@
+# QuoteCat
+
+> QuoteCat is a mobile quoting app for construction contractors. It lets contractors create professional quotes in 5 minutes on the job site, share them as links, and get paid directly with zero transaction fees.
+
+## Key Facts
+
+- Category: Construction / Field Service Management Software
+- Platform: iOS, Android (coming soon)
+- Website: https://quotecat.ai
+- Support: hello@quotecat.ai
+
+## What QuoteCat Does
+
+QuoteCat helps contractors create professional construction quotes from their phone in under 5 minutes. Contractors pick materials from a product catalog, add labor and markup, and send a shareable link to their client. Clients can accept or decline the quote directly from the link. The contractor gets notified in real-time when the client views, accepts, or declines.
+
+## Zero Transaction Fees
+
+Unlike competitors (Jobber, Housecall Pro, ServiceTitan) that charge 2.9% on every payment processed through their platform, QuoteCat charges zero transaction fees. Contractors set their preferred payment methods (Zelle, Venmo, CashApp, bank transfer, check, or any other method) and clients pay directly. The contractor keeps 100% of every payment.
+
+For a contractor doing $300,000/year in jobs, this saves over $8,700/year compared to platforms that charge processing fees.
+
+## Features
+
+- Create quotes in 5 minutes on-site
+- Share quotes as links (text or email)
+- Client accept/decline directly from link
+- Real-time notifications (viewed, accepted, declined)
+- Good/Better/Best tiered pricing in one link
+- Professional PDF export with company branding
+- Product catalog with real pricing
+- Custom price book and reusable assemblies
+- Offline-first (works without internet, syncs later)
+- Cloud sync across devices
+- Invoice management
+- Client management
+- AI Quote Wizard (Premium) powered by Drew
+- Contracts and e-signatures (Premium)
+- Web portal with business analytics (Premium)
+- Team and worker management via SMS (Premium)
+
+## Pricing
+
+- Free: $0/month - 25 quotes/month, 5 PDF exports, full product catalog
+- Pro: $29/month (founder pricing) - Unlimited quotes, shareable links, notifications, cloud sync, custom price book, company branding
+- Premium: $79/month (founder pricing) - Everything in Pro plus AI Quote Wizard, contracts, e-signatures, web portal, analytics, team management
+
+All plans include zero transaction fees.
+
+Founder pricing is locked in forever for early customers.
+
+## Target Users
+
+- General contractors
+- Electricians
+- Plumbers
+- HVAC contractors
+- Remodeling contractors
+- Home improvement professionals
+- Small construction businesses
+
+## Competitors
+
+QuoteCat competes with Jobber ($39-249/mo + 2.9% fees), Housecall Pro ($65-269/mo + 2.9% fees), ServiceTitan ($300+/mo + fees), Joist (free-$25/mo + fees), and Invoice2go ($5-20/mo + 2.9% fees).
+
+QuoteCat differentiates on: zero transaction fees, mobile-first design, offline capability, shareable quote links with real-time notifications, and significantly lower pricing.
