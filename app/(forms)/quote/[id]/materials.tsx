@@ -255,7 +255,7 @@ export default function QuoteMaterials() {
   const handleSourceChange = useCallback((source: SourceType) => {
     if (source === "pricebook" && !hasPricebookAccess) {
       Alert.alert(
-        "Premium Feature",
+        "Pro Feature",
         "Price Book lets you create and manage your own custom products with your pricing.",
         [
           { text: "OK", style: "cancel" },

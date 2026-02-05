@@ -1,5 +1,5 @@
 // app/(main)/price-book.tsx
-// Premium tool for managing custom products in price book
+// Pro/Premium tool for managing custom products in price book
 import { useTheme } from "@/contexts/ThemeContext";
 import { getUserState } from "@/lib/user";
 import {
@@ -80,7 +80,7 @@ export default function PriceBookManager() {
   React.useEffect(() => {
     const load = async () => {
       const user = await getUserState();
-      setIsPremium(user.tier === "premium");
+      setIsPremium(user.tier === "pro" || user.tier === "premium");
     };
     load();
   }, []);
@@ -147,7 +147,7 @@ export default function PriceBookManager() {
   const handleAddItem = () => {
     if (!isPremium) {
       Alert.alert(
-        "Premium Feature",
+        "Pro Feature",
         "Price Book lets you create and manage your own custom products with your pricing.",
         [
           { text: "OK", style: "cancel" },
@@ -383,7 +383,7 @@ export default function PriceBookManager() {
                     ? `No products match "${searchQuery}"`
                     : isPremium
                     ? "No products yet. Tap + New to add your first product."
-                    : "Price Book is a Premium feature."}
+                    : "Price Book is a Pro feature."}
                 </Text>
               </View>
             ) : (

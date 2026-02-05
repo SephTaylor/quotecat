@@ -20,6 +20,7 @@ export type QuoteStatus =
   | "draft" // Building the quote
   | "sent" // Sent to client, awaiting response
   | "approved" // Client accepted, work authorized
+  | "declined" // Client declined the quote
   | "completed" // Work finished, ready to invoice
   | "archived"; // Closed/inactive
 
@@ -44,6 +45,11 @@ export const QuoteStatusMeta: Record<
     label: "Approved",
     color: "#34C759",
     description: "Client accepted, work authorized",
+  },
+  declined: {
+    label: "Declined",
+    color: "#FF3B30",
+    description: "Client declined the quote",
   },
   completed: {
     label: "Completed",

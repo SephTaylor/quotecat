@@ -75,6 +75,7 @@ export function normalizeStatus(raw: any): QuoteStatus {
     "draft",
     "sent",
     "approved",
+    "declined",
     "completed",
     "archived",
   ];

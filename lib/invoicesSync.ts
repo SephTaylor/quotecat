@@ -865,26 +865,24 @@ export async function syncInvoices(): Promise<{
     // Step 6: Process local invoices (upload new or updated since last sync)
     for (const localInvoice of localInvoices) {
       try {
+        // For incremental sync, skip invoices that haven't changed locally since last sync
+        if (lastSyncAt) {
+          const localUpdated = safeGetTimestamp(localInvoice.updatedAt);
+          const lastSync = safeGetTimestamp(lastSyncAt);
+
+          if (localUpdated <= lastSync) {
+            continue;
+          }
+        }
+
         const cloudInvoice = cloudMap.get(localInvoice.id);
 
         if (!cloudInvoice) {
-          // New local invoice that doesn't exist in cloud - always upload
+          // New local invoice that doesn't exist in cloud - upload
           const success = await uploadInvoice(localInvoice);
           if (success) uploaded++;
         } else {
           // Invoice exists in both - only upload if local is newer
-          // For incremental sync, skip if local hasn't changed since last sync
-          if (lastSyncAt) {
-            const localUpdated = safeGetTimestamp(localInvoice.updatedAt);
-            const lastSync = safeGetTimestamp(lastSyncAt);
-
-            // Skip invoices that haven't changed since last sync
-            if (localUpdated <= lastSync) {
-              continue;
-            }
-          }
-
-          // Check which is newer (use safe timestamp)
           const cloudUpdated = safeGetTimestamp(cloudInvoice.updatedAt);
           const localUpdated = safeGetTimestamp(localInvoice.updatedAt);
 

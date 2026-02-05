@@ -598,26 +598,24 @@ export async function syncQuotes(): Promise<{
     // Step 5: Process local quotes (upload new or updated since last sync)
     for (const localQuote of localQuotes) {
       try {
+        // For incremental sync, skip quotes that haven't changed locally since last sync
+        if (lastSyncAt) {
+          const localUpdated = safeGetTimestamp(localQuote.updatedAt);
+          const lastSync = safeGetTimestamp(lastSyncAt);
+
+          if (localUpdated <= lastSync) {
+            continue;
+          }
+        }
+
         const cloudQuote = cloudMap.get(localQuote.id);
 
         if (!cloudQuote) {
-          // New local quote that doesn't exist in cloud - always upload
+          // New local quote that doesn't exist in cloud - upload
           const success = await uploadQuote(localQuote);
           if (success) uploaded++;
         } else {
           // Quote exists in both - only upload if local is newer
-          // For incremental sync, skip if local hasn't changed since last sync
-          if (lastSyncAt) {
-            const localUpdated = safeGetTimestamp(localQuote.updatedAt);
-            const lastSync = safeGetTimestamp(lastSyncAt);
-
-            // Skip quotes that haven't changed since last sync
-            if (localUpdated <= lastSync) {
-              continue;
-            }
-          }
-
-          // Check which is newer (use safe timestamp)
           const cloudUpdated = safeGetTimestamp(cloudQuote.updatedAt);
           const localUpdated = safeGetTimestamp(localQuote.updatedAt);
 

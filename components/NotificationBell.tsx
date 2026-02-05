@@ -9,7 +9,7 @@ import { useFocusEffect } from "expo-router";
 import { listQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { loadPreferences } from "@/lib/preferences";
-import { getActiveReminders, getProWelcomeReminder, getPremiumWelcomeReminder, getContractNotifications, getAssemblyHealthReminders, type Reminder } from "@/lib/reminders";
+import { getActiveReminders, getProWelcomeReminder, getPremiumWelcomeReminder, getCloudNotifications, getAssemblyHealthReminders, type Reminder } from "@/lib/reminders";
 import { getUserState } from "@/lib/user";
 import { NotificationPanel } from "./NotificationPanel";
 
@@ -54,22 +54,22 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
       const wasExplicitlyActivated = userState.proActivatedAt !== undefined;
       if (wasExplicitlyActivated) {
         if (userState.tier === "premium") {
-          // Premium users get Premium welcome
           const premiumWelcome = await getPremiumWelcomeReminder();
           if (premiumWelcome) {
             active.unshift(premiumWelcome);
           }
-          // Fetch contract notifications for Premium users
-          const contractNotifications = await getContractNotifications();
-          // Add contract notifications at the top (most important)
-          active.unshift(...contractNotifications);
         } else if (userState.tier === "pro") {
-          // Pro users get Pro welcome
           const proWelcome = await getProWelcomeReminder();
           if (proWelcome) {
             active.unshift(proWelcome);
           }
         }
+      }
+
+      // Fetch cloud notifications for Pro/Premium users (quote/contract status changes)
+      if (userState.tier === "pro" || userState.tier === "premium") {
+        const cloudNotifications = await getCloudNotifications();
+        active.unshift(...cloudNotifications);
       }
 
       setReminders(active);

@@ -124,7 +124,7 @@ export default function QuotesList() {
     if (!filterScrollRef.current) return;
 
     // Calculate approximate position based on filter order
-    const filters = ["all", "followup", "draft", "sent", "approved", "completed", "archived"];
+    const filters = ["all", "followup", "draft", "sent", "approved", "declined", "completed", "archived"];
     const index = filters.indexOf(filter);
 
     if (index === -1) return;
@@ -422,7 +422,7 @@ export default function QuotesList() {
   const handleBulkStatusChange = useCallback(() => {
     if (selectedIds.size === 0) return;
 
-    const statusOptions: QuoteStatus[] = ["draft", "sent", "approved", "completed", "archived"];
+    const statusOptions: QuoteStatus[] = ["draft", "sent", "approved", "declined", "completed", "archived"];
 
     Alert.alert(
       "Change Status",
@@ -639,6 +639,13 @@ export default function QuotesList() {
             active={selectedStatus === "approved"}
             onPress={() => setSelectedStatus("approved")}
             color={QuoteStatusMeta.approved.color}
+            theme={theme}
+          />
+          <FilterChip
+            label="Declined"
+            active={selectedStatus === "declined"}
+            onPress={() => setSelectedStatus("declined")}
+            color={QuoteStatusMeta.declined.color}
             theme={theme}
           />
           <FilterChip

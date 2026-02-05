@@ -10,9 +10,13 @@ import { calculateInvoiceTotal } from "./calculations";
 
 export type ReminderType =
   | "quote_followup"      // Sent quote needs follow-up (auto or manual date)
+  | "quote_approved"      // Client approved a quote
+  | "quote_declined"      // Client declined a quote
+  | "quote_viewed"        // Client viewed a quote
   | "invoice_overdue"     // Invoice past due date
   | "invoice_due_soon"    // Invoice due in 3 days
   | "invoice_due_today"   // Invoice due today
+  | "invoice_paid"        // Invoice marked as paid
   | "pro_welcome"         // Welcome notification for new Pro users
   | "premium_welcome"     // Welcome notification for new Premium users
   | "contract_signed"     // Client signed a contract
@@ -423,15 +427,26 @@ type SupabaseNotification = {
   title: string;
   message: string;
   contract_id: string | null;
+  quote_id: string | null;
   read: boolean;
   read_at: string | null;
   created_at: string;
 };
 
 /**
- * Fetch unread contract notifications from Supabase
+ * Determine entityType from notification type
  */
-export async function getContractNotifications(): Promise<Reminder[]> {
+function getEntityType(type: string): "quote" | "invoice" | "contract" | "assembly" | "system" {
+  if (type.startsWith("quote_")) return "quote";
+  if (type.startsWith("invoice_")) return "invoice";
+  if (type.startsWith("contract_")) return "contract";
+  return "system";
+}
+
+/**
+ * Fetch unread notifications from Supabase (contracts, quotes, invoices)
+ */
+export async function getCloudNotifications(): Promise<Reminder[]> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return [];
@@ -452,21 +467,31 @@ export async function getContractNotifications(): Promise<Reminder[]> {
     if (!data || data.length === 0) return [];
 
     // Convert to Reminder format
-    return (data as SupabaseNotification[]).map((n) => ({
-      id: `notification_${n.id}`,
-      type: n.type as ReminderType,
-      entityId: n.contract_id || "system",
-      entityType: "contract" as const,
-      title: n.title,
-      subtitle: n.message,
-      dueDate: n.created_at,
-      createdAt: n.created_at,
-    }));
+    return (data as SupabaseNotification[]).map((n) => {
+      const entityType = getEntityType(n.type);
+      const entityId = n.quote_id || n.contract_id || "system";
+
+      return {
+        id: `notification_${n.id}`,
+        type: n.type as ReminderType,
+        entityId,
+        entityType,
+        title: n.title,
+        subtitle: n.message,
+        dueDate: n.created_at,
+        createdAt: n.created_at,
+      };
+    });
   } catch (error) {
-    console.error("Error fetching contract notifications:", error);
+    console.error("Error fetching cloud notifications:", error);
     return [];
   }
 }
+
+/**
+ * @deprecated Use getCloudNotifications instead
+ */
+export const getContractNotifications = getCloudNotifications;
 
 /**
  * Mark a notification as read in Supabase

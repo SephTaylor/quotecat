@@ -1,5 +1,5 @@
 // lib/pricebookSync.ts
-// Cloud sync service for pricebook items (Premium feature)
+// Cloud sync service for pricebook items (Pro/Premium feature)
 // Syncs with webapp's pricebook_items table
 
 import { supabase } from "./supabase";
@@ -140,12 +140,12 @@ async function saveSyncMetadata(metadata: SyncMetadata): Promise<void> {
 }
 
 /**
- * Check if user has Premium tier (required for pricebook)
+ * Check if user has Pro or Premium tier (required for pricebook)
  */
-async function isPremiumUser(): Promise<boolean> {
+async function isPricebookUser(): Promise<boolean> {
   try {
     const user = await getUserState();
-    return user.tier === "premium";
+    return user.tier === "pro" || user.tier === "premium";
   } catch {
     return false;
   }
@@ -162,8 +162,8 @@ export async function uploadPricebookItem(item: PricebookItem): Promise<boolean>
       return false;
     }
 
-    if (!(await isPremiumUser())) {
-      console.warn("Cannot upload pricebook item: Premium tier required");
+    if (!(await isPricebookUser())) {
+      console.warn("Cannot upload pricebook item: Pro/Premium tier required");
       return false;
     }
 
@@ -295,8 +295,8 @@ export async function migrateLocalPricebookToCloud(): Promise<{
       return { success: false, uploaded: 0, failed: 0 };
     }
 
-    if (!(await isPremiumUser())) {
-      console.warn("Cannot migrate pricebook: Premium tier required");
+    if (!(await isPricebookUser())) {
+      console.warn("Cannot migrate pricebook: Pro/Premium tier required");
       return { success: false, uploaded: 0, failed: 0 };
     }
 
@@ -374,8 +374,8 @@ export async function syncPricebook(): Promise<{
       return { success: false, downloaded: 0, uploaded: 0 };
     }
 
-    if (!(await isPremiumUser())) {
-      console.warn("Cannot sync pricebook: Premium tier required");
+    if (!(await isPricebookUser())) {
+      console.warn("Cannot sync pricebook: Pro/Premium tier required");
       return { success: false, downloaded: 0, uploaded: 0 };
     }
 
@@ -526,7 +526,7 @@ export async function deletePricebookItemFromCloud(itemId: string): Promise<bool
 export async function isPricebookSyncAvailable(): Promise<boolean> {
   const userId = await getCurrentUserId();
   if (!userId) return false;
-  return isPremiumUser();
+  return isPricebookUser();
 }
 
 /**

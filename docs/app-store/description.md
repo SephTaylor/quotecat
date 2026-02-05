@@ -11,90 +11,64 @@ Create professional construction quotes in minutes, right from the job site. Win
 
 ## Description (4000 characters max)
 
-**Stop losing jobs to slow quotes. Quote faster, win more bids.**
+**Stop losing jobs to slow quotes. Quote faster, win more bids. Keep 100% of your money.**
 
-QuoteCat is the first mobile quoting app built specifically for contractors. Create professional, accurate quotes in 5 minutes while you're still on the job site.
+QuoteCat is the mobile quoting app built specifically for contractors. Create professional quotes in 5 minutes on the job site, send a link to your client, and get notified the moment they respond. No middleman. No transaction fees. You keep every dollar.
 
-**Why QuoteCat?**
+**Why Contractors Switch to QuoteCat:**
 
-Traditional quoting means:
-- Going home after the job walk
-- Booting up your laptop
-- Spending hours in spreadsheets
-- Sending quotes days later
-
-By then, your client already hired someone faster.
-
-QuoteCat puts professional quoting right in your pocket. Quote on-site, close deals faster, and get back to work.
+Other apps take 2.9% of every payment. On a $10,000 job, that's $290 gone. QuoteCat lets your clients pay you directly via Zelle, Venmo, CashApp, or bank transfer. You keep 100%.
 
 **Key Features:**
 
-📱 **Mobile-First Design**
-Built for contractors on the go. Create quotes anywhere - job sites, your truck, or the coffee shop. No laptop required.
-
 ⚡ **5-Minute Quotes**
-Pick materials, add labor, done. While competitors are still driving home, you've already sent a professional quote.
+Pick materials from the catalog, add labor and markup, done. Send a professional PDF or shareable link while you're still on-site.
 
-💰 **Accurate Pricing**
-Real product catalog with current pricing. Materials, labor, overhead, and markup calculated instantly. Never lose money on bad math again.
+🔗 **Share Quotes as Links**
+Send your client a link. They can accept or decline right from their phone. You get notified instantly when they view it, approve it, or decline it.
 
-📄 **Professional PDFs**
-Client-ready quotes with your company branding. Look like an established business, even if you're just starting out. Email or text instantly.
+📊 **Good / Better / Best Pricing**
+Present multiple pricing options in one link. Clients pick the tier that fits their budget. You close more deals.
 
-🔧 **Smart Templates**
-Quote a bathroom remodel? Save it as a template. Next bathroom? Done in 2 minutes. Work smarter, not harder.
+💰 **Keep 100% of Payments**
+No processing fees. Clients see your Zelle, Venmo, or bank details right on the invoice and pay you directly.
 
-☁️ **Cloud Backup (Pro)**
-Your quotes backed up automatically. Switch between phone and tablet seamlessly. Never lose important data.
+📋 **Contracts & E-Signatures (Premium)**
+Turn approved quotes into contracts. Send for e-signature. Get notified when they sign. All from your phone.
+
+📱 **Works Offline**
+No internet at the job site? No problem. QuoteCat works offline and syncs when you're back online. No other app at this price does that.
+
+🔧 **Custom Price Book & Assemblies**
+Save your go-to materials with your pricing. Build reusable assemblies for common jobs. Quote a panel upgrade in 2 minutes.
+
+📈 **Web Portal & Analytics (Premium)**
+Full business dashboard: revenue tracking, sales funnel, conversion rates, top clients. See your business at a glance.
+
+👷 **Team Management (Premium)**
+Assign jobs to workers via text message. They get a link, no app download needed. Track progress, photos, and completion in real time.
 
 **Perfect for:**
 - General contractors
+- Electricians, plumbers, HVAC
 - Remodeling contractors
-- Specialty trades (electrical, plumbing, HVAC)
-- Home improvement professionals
+- Home improvement pros
 - Small construction businesses
-
-**What Users Are Saying:**
-
-"I closed a $15K job because I quoted on-site while the client was still evaluating. Game changer." - Mike R., General Contractor
-
-"Finally, an app that understands how contractors actually work. No bloat, just fast quotes." - Sarah K., Remodeling Contractor
 
 **Subscription Plans:**
 
-**FREE TIER**
-- 25 quotes per month
-- 5 PDF exports
-- Full product catalog
-- Professional templates
-- Local storage only
+**FREE** - 25 quotes/month, 5 PDF exports, full product catalog
 
-**PRO TIER ($29/month founder pricing)**
-- Unlimited quotes & exports
-- Cloud backup & sync
-- Multi-device access
-- Custom job templates
-- Company branding
-- Priority email support
+**PRO ($29/month)** - Unlimited quotes & exports, cloud sync, custom price book, reusable assemblies, shareable quote links with notifications, change orders, client management, company branding
 
-**PREMIUM TIER ($79/month founder pricing)**
-- Everything in Pro
-- Quote Wizard (AI-assisted)
-- Advanced analytics
-- Team collaboration
-- Priority phone support
+**PREMIUM ($79/month)** - Everything in Pro plus AI Quote Wizard, contracts & e-signatures, web portal with analytics, team & worker management, priority support
 
-**Start Free, Upgrade When You're Ready**
-
-Try QuoteCat risk-free. No credit card required for free tier. Upgrade only when you're ready to scale your business.
+Founder pricing locks in your rate forever.
 
 **Support**
 Questions? Email us at hello@quotecat.ai
-We're here to help you succeed.
 
 **Privacy**
 Your data is encrypted and secure. Read our privacy policy at quotecat.ai/privacy
-
----
 
 Download QuoteCat today and start winning more bids.

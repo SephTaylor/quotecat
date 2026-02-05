@@ -15,6 +15,7 @@ import {
   Platform,
   Modal,
   TextInput,
+  Share,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,6 +32,7 @@ import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
 import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { createInvoiceFromQuote } from "@/lib/invoices";
 import { createContractFromQuote } from "@/lib/contracts";
+import { uploadQuote } from "@/lib/quotesSync";
 import { ChangeOrderList } from "@/modules/changeOrders/ui";
 
 export default function QuoteReviewScreen() {
@@ -369,12 +371,42 @@ export default function QuoteReviewScreen() {
     }
   };
 
+  const handleShareLink = async () => {
+    if (!quote) return;
+
+    try {
+      // Ensure quote is synced to cloud before sharing
+      const synced = await uploadQuote(quote);
+      if (!synced) {
+        Alert.alert(
+          "Sync Required",
+          "Unable to sync quote to cloud. Please check your internet connection and try again."
+        );
+        return;
+      }
+
+      const url = `https://portal.quotecat.ai/q/${quote.id}`;
+      await Share.share({
+        message: `View your quote for ${quote.name}: ${url}`,
+        url, // iOS uses this for the share sheet
+      });
+    } catch (error) {
+      console.error("Share link error:", error);
+      Alert.alert("Error", "Failed to share quote link. Please try again.");
+    }
+  };
+
   const showExportMenu = () => {
     // Build options based on user tier
     const options = [
       "Export as PDF",
       "Export as CSV",
     ];
+
+    // Add share link for Pro/Premium users (quote must be synced to cloud)
+    if (isPro || isPremium) {
+      options.push("Share as Link");
+    }
 
     // Add invoice options for Pro/Premium users
     if (isPro || isPremium) {
@@ -399,6 +431,9 @@ export default function QuoteReviewScreen() {
           break;
         case "Export as CSV":
           handleExportSpreadsheet();
+          break;
+        case "Share as Link":
+          handleShareLink();
           break;
         case "Create Full Invoice":
           showDueDatePicker(100);
@@ -428,6 +463,14 @@ export default function QuoteReviewScreen() {
         { text: "Export as PDF", onPress: () => handleExportPDF() },
         { text: "Export as CSV", onPress: () => handleExportSpreadsheet() },
       ];
+
+      // Add share link for Pro/Premium users
+      if (isPro || isPremium) {
+        androidButtons.push({
+          text: "Share as Link",
+          onPress: () => handleShareLink(),
+        });
+      }
 
       // Add invoice option for Pro/Premium users
       if (isPro || isPremium) {

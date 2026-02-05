@@ -493,26 +493,24 @@ export async function syncClients(): Promise<{
     // Process local clients (upload new or updated since last sync)
     for (const localClient of localClients) {
       try {
+        // For incremental sync, skip clients that haven't changed locally since last sync
+        if (lastSyncAt) {
+          const localUpdated = safeGetTimestamp(localClient.updatedAt);
+          const lastSync = safeGetTimestamp(lastSyncAt);
+
+          if (localUpdated <= lastSync) {
+            continue;
+          }
+        }
+
         const cloudClient = cloudMap.get(localClient.id);
 
         if (!cloudClient) {
-          // New local client that doesn't exist in cloud - always upload
+          // New local client that doesn't exist in cloud - upload
           const success = await uploadClient(localClient);
           if (success) uploaded++;
         } else {
           // Client exists in both - only upload if local is newer
-          // For incremental sync, skip if local hasn't changed since last sync
-          if (lastSyncAt) {
-            const localUpdated = safeGetTimestamp(localClient.updatedAt);
-            const lastSync = safeGetTimestamp(lastSyncAt);
-
-            // Skip clients that haven't changed since last sync
-            if (localUpdated <= lastSync) {
-              continue;
-            }
-          }
-
-          // Check which is newer (use safe timestamp)
           const cloudUpdated = safeGetTimestamp(cloudClient.updatedAt);
           const localUpdated = safeGetTimestamp(localClient.updatedAt);
 

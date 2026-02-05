@@ -91,8 +91,8 @@ export function NotificationPanel({
       return;
     }
 
-    // Mark contract notifications as read when tapped
-    if (reminder.entityType === "contract" && reminder.id.startsWith("notification_")) {
+    // Mark cloud notifications as read when tapped
+    if (reminder.id.startsWith("notification_")) {
       await markNotificationAsRead(reminder.id);
     }
 
@@ -385,12 +385,20 @@ function getReminderTypeInfo(reminder: Reminder): {
       return { label: "DUE TODAY", icon: "today-outline", color: "#FF9500" };
     case "invoice_due_soon":
       return { label: "DUE SOON", icon: "time-outline", color: "#007AFF" };
+    case "quote_approved":
+      return { label: "APPROVED", icon: "checkmark-circle-outline", color: "#34C759" };
+    case "quote_declined":
+      return { label: "DECLINED", icon: "close-circle-outline", color: "#FF3B30" };
+    case "quote_viewed":
+      return { label: "VIEWED", icon: "eye-outline", color: "#007AFF" };
     case "contract_signed":
       return { label: "SIGNED", icon: "checkmark-circle-outline", color: "#34C759" };
     case "contract_viewed":
       return { label: "VIEWED", icon: "eye-outline", color: "#007AFF" };
     case "contract_declined":
       return { label: "DECLINED", icon: "close-circle-outline", color: "#FF3B30" };
+    case "invoice_paid":
+      return { label: "PAID", icon: "checkmark-circle-outline", color: "#34C759" };
     case "assembly_unhealthy":
       return { label: "NEEDS REVIEW", icon: "warning-outline", color: "#FF9500" };
     default:
