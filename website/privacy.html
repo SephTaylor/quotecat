@@ -431,7 +431,7 @@
     <div class="container">
         <div class="content">
             <h1>Privacy Policy</h1>
-            <p class="last-updated">Last Updated: October 28, 2024</p>
+            <p class="last-updated">Last Updated: February 5, 2026</p>
 
             <p>QuoteCat.ai ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application and website.</p>
 
@@ -443,6 +443,8 @@
                 <li><strong>Quote Data:</strong> Customer names, project details, materials, pricing, and other information you enter when creating quotes</li>
                 <li><strong>Company Information:</strong> Business name, contact details, and branding elements you provide</li>
                 <li><strong>Payment Information:</strong> Processed securely through our payment processor (we do not store credit card details)</li>
+                <li><strong>Location Information:</strong> ZIP code (provided during onboarding) used to show relevant local supplier pricing</li>
+                <li><strong>Voice Data:</strong> If you use the AI Quote Wizard's voice input feature, speech audio is processed on-device using Apple's Speech Recognition framework. Audio is not stored or transmitted to our servers</li>
             </ul>
 
             <h3>Automatically Collected Information</h3>
@@ -463,6 +465,7 @@
                 <li>Send important service updates and notifications</li>
                 <li>Provide customer support</li>
                 <li>Analyze usage patterns to improve our app</li>
+                <li>Power AI features such as the Quote Wizard (Premium), which processes your conversation text to generate material lists and quote suggestions</li>
                 <li>Detect and prevent fraud or technical issues</li>
             </ul>
 
@@ -487,9 +490,11 @@
             <h3>Service Providers</h3>
             <ul>
                 <li><strong>Supabase:</strong> Cloud database and authentication services</li>
-                <li><strong>Stripe/Payment Processors:</strong> Payment processing for subscriptions</li>
-                <li><strong>1Build:</strong> Material pricing data (only product queries, no personal data)</li>
-                <li><strong>Analytics Services:</strong> Anonymized usage analytics</li>
+                <li><strong>Stripe:</strong> Payment processing for subscriptions</li>
+                <li><strong>X-Byte Enterprise Crawling:</strong> Material pricing data from retail suppliers (only product/pricing queries, no personal data is shared)</li>
+                <li><strong>Anthropic (Claude):</strong> AI-powered Quote Wizard for Premium users (conversation text is sent to generate responses; no personal data is stored by Anthropic beyond the session)</li>
+                <li><strong>OpenAI:</strong> Text embeddings for product search relevance (only product search terms are sent, no personal data)</li>
+                <li><strong>PostHog:</strong> Anonymized product analytics to improve the app experience</li>
             </ul>
 
             <h3>Legal Requirements</h3>
@@ -504,7 +509,7 @@
             <p>You can access and update your information through the app settings at any time.</p>
 
             <h3>Data Deletion</h3>
-            <p>You can request deletion of your account and data by contacting us at <a href="mailto:hello@quotecat.ai">hello@quotecat.ai</a>. Free tier users can simply delete the app to remove local data.</p>
+            <p>You can delete your account directly in the app by going to Settings &gt; Delete Account. This permanently removes your account and all associated cloud data. You can also request deletion by contacting us at <a href="mailto:hello@quotecat.ai">hello@quotecat.ai</a>. Free tier users can simply delete the app to remove local data.</p>
 
             <h3>Export Your Data</h3>
             <p>Pro and Premium users can export all their quotes as PDF or CSV files at any time.</p>
@@ -533,8 +538,12 @@
 
             <p>QuoteCat integrates with third-party services:</p>
             <ul>
-                <li><strong>1Build:</strong> For material pricing data (<a href="https://www.1build.com/privacy-policy" target="_blank">Privacy Policy</a>)</li>
+                <li><strong>X-Byte Enterprise Crawling:</strong> For material pricing data (<a href="https://www.xbyte.io/privacy-policy" target="_blank">Privacy Policy</a>)</li>
                 <li><strong>Supabase:</strong> For cloud storage and authentication (<a href="https://supabase.com/privacy" target="_blank">Privacy Policy</a>)</li>
+                <li><strong>Anthropic:</strong> For AI-powered Quote Wizard (<a href="https://www.anthropic.com/privacy" target="_blank">Privacy Policy</a>)</li>
+                <li><strong>OpenAI:</strong> For product search embeddings (<a href="https://openai.com/privacy" target="_blank">Privacy Policy</a>)</li>
+                <li><strong>PostHog:</strong> For product analytics (<a href="https://posthog.com/privacy" target="_blank">Privacy Policy</a>)</li>
+                <li><strong>Stripe:</strong> For payment processing (<a href="https://stripe.com/privacy" target="_blank">Privacy Policy</a>)</li>
             </ul>
 
             <p>These services have their own privacy policies, and we encourage you to review them.</p>
@@ -584,7 +593,7 @@
                 Questions? Email us at <a href="mailto:hello@quotecat.ai">hello@quotecat.ai</a>
             </p>
             <p style="margin-top: 40px; font-size: 14px; color: #6b7280;">
-                &copy; 2025 QuoteCat.ai. All rights reserved. |
+                &copy; 2026 QuoteCat.ai. All rights reserved. |
                 <a href="faq.html">FAQ</a> |
                 <a href="privacy.html">Privacy Policy</a> |
                 <a href="terms.html">Terms of Service</a>
