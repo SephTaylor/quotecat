@@ -3,10 +3,32 @@
  *
  * An AI agent that uses tools to help contractors build quotes.
  * Uses RAG with tradecraft knowledge base for domain expertise.
+ *
+ * ARCHITECTURE (Drew 2.0):
+ * - USE_STATE_MACHINE=true: State machine controls flow, Claude only for intelligence
+ * - USE_STATE_MACHINE=false: Full Claude agent loop (legacy, expensive)
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// State machine imports
+import {
+  dispatch as stateMachineDispatch,
+  createInitialContext,
+  type DrewState,
+  type DrewContext,
+  type DrewResponse as StateMachineResponse,
+  type UserSettings as StateMachineSettings,
+} from './state-machine-v2.ts';
+
+// =============================================================================
+// FEATURE FLAG - Toggle between state machine and full Claude agent
+// =============================================================================
+
+// Set to true to use the new state machine (Phase 1 of Drew 2.0)
+// Set to false to use the legacy full Claude agent
+const USE_STATE_MACHINE = true;
 
 // =============================================================================
 // ENVIRONMENT
@@ -111,6 +133,10 @@ interface ConversationState {
   pendingProducts?: WizardProduct[];
   // Track if quote is complete
   isComplete?: boolean;
+
+  // State machine fields (Drew 2.0)
+  machineState?: DrewState;
+  machineContext?: DrewContext;
 }
 
 interface UserSettings {
@@ -1363,6 +1389,88 @@ serve(async (req) => {
 
     console.log('[drew-agent] User message:', userMessage.substring(0, 100));
 
+    // ==========================================================================
+    // STATE MACHINE PATH (Drew 2.0)
+    // ==========================================================================
+    if (USE_STATE_MACHINE) {
+      // Extract or initialize machine state
+      const machineState: DrewState = state.machineState || 'greeting';
+      const machineContext: DrewContext = state.machineContext || createInitialContext();
+      const machineSettings: StateMachineSettings = {
+        defaultLaborRate: userSettings.defaultLaborRate,
+        defaultMarkupPercent: userSettings.defaultMarkupPercent,
+      };
+
+      console.log(`[drew-agent] State machine mode - State: ${machineState}`);
+
+      // Dispatch through state machine
+      const smResponse: StateMachineResponse = await stateMachineDispatch(
+        machineState,
+        userMessage,
+        machineContext,
+        machineSettings,
+        supabase
+      );
+
+      console.log(`[drew-agent] State machine response - New state: ${smResponse.state}`);
+
+      // Map state machine response to agent response format
+      const agentResponse: AgentResponse = {
+        message: smResponse.message,
+        state: {
+          // Preserve existing state fields
+          ...state,
+          // Map from machine context
+          messages: smResponse.context.messages,
+          quoteItems: smResponse.context.quoteItems,
+          quoteName: smResponse.context.quoteName,
+          clientName: smResponse.context.clientName,
+          laborHours: smResponse.context.laborHours,
+          laborRate: smResponse.context.laborRate,
+          markupPercent: smResponse.context.markupPercent,
+          tradecraftContext: smResponse.context.tradecraft?.content,
+          tradecraftJobType: smResponse.context.tradecraft?.job_type,
+          pendingChecklist: smResponse.context.pendingChecklist,
+          pendingProducts: smResponse.context.pendingProducts?.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            unit: p.unit,
+            suggestedQty: p.suggestedQty,
+          })),
+          isComplete: smResponse.isComplete,
+          // Persist machine state for next request
+          machineState: smResponse.state,
+          machineContext: smResponse.context,
+        },
+        display: smResponse.display ? {
+          type: smResponse.display.type,
+          checklist: smResponse.display.checklist,
+          products: smResponse.display.products?.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            unit: p.unit,
+            suggestedQty: p.suggestedQty,
+          })),
+        } : undefined,
+        quickReplies: smResponse.quickReplies,
+      };
+
+      console.log('[drew-agent] Response:', agentResponse.message.substring(0, 100));
+      if (agentResponse.display) {
+        console.log('[drew-agent] Display type:', agentResponse.display.type);
+      }
+
+      return new Response(
+        JSON.stringify(agentResponse),
+        { headers }
+      );
+    }
+
+    // ==========================================================================
+    // LEGACY CLAUDE AGENT PATH
+    // ==========================================================================
     const agentResponse = await runAgent(
       supabase,
       userMessage,

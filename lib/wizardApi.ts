@@ -63,6 +63,34 @@ interface QuoteItem {
   unit?: string;
 }
 
+// Drew 2.0 State Machine types
+export type DrewState =
+  | 'greeting'
+  | 'job_selection'
+  | 'scoping'
+  | 'checklist'
+  | 'products'
+  | 'labor'
+  | 'markup'
+  | 'review'
+  | 'done'
+  | 'clarify';
+
+// Minimal context type for client-side (full type is on server)
+export interface DrewContext {
+  quoteItems: QuoteItem[];
+  quoteName?: string;
+  clientName?: string;
+  laborHours?: number;
+  laborRate?: number;
+  markupPercent?: number;
+  currentQuestionIndex: number;
+  scopingAnswers: Record<string, string>;
+  messages: Message[];
+  // Other fields are managed by server
+  [key: string]: unknown;
+}
+
 // Checklist item for material category selection
 export interface ChecklistItem {
   category: string;      // e.g., "main_panel", "wire", "grounding"
@@ -96,6 +124,10 @@ export interface DrewAgentState {
   pendingChecklist?: ChecklistItem[];  // Material checklist awaiting confirmation
   pendingProducts?: WizardProduct[];
   isComplete?: boolean;
+
+  // Drew 2.0 State Machine fields (managed by server, round-trip through client)
+  machineState?: DrewState;
+  machineContext?: DrewContext;
 }
 
 export function createDrewAgentInitialState(): DrewAgentState {
