@@ -11,6 +11,7 @@ type SwipeableMaterialItemProps = {
     name: string;
     unitPrice: number;
     qty: number;
+    productId?: string; // If no productId, it's a custom item
   };
   onDelete: () => void;
   isLastItem: boolean;
@@ -22,6 +23,7 @@ type SwipeableMaterialItemProps = {
   onUpdateQty: (itemId: string, delta: number) => void;
   isNew?: boolean;
   showPricing?: boolean; // Hide pricing for techs without permission
+  isCustom?: boolean; // Tinted background for custom items
 };
 
 export const SwipeableMaterialItem = React.memo(
@@ -37,10 +39,14 @@ export const SwipeableMaterialItem = React.memo(
     onUpdateQty,
     isNew = false,
     showPricing = true,
+    isCustom,
   }: SwipeableMaterialItemProps) => {
-    const { theme } = useTheme();
+    const { theme, mode } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
-    const styles = React.useMemo(() => createStyles(theme), [theme]);
+    // Auto-detect custom items: no productId = custom item
+    const isCustomItem = isCustom ?? !item.productId;
+    const isDark = mode === "dark";
+    const styles = React.useMemo(() => createStyles(theme, isCustomItem, isDark), [theme, isCustomItem, isDark]);
 
     const renderRightActions = (
       progress: Animated.AnimatedInterpolation<number>,
@@ -135,7 +141,11 @@ export const SwipeableMaterialItem = React.memo(
 
 SwipeableMaterialItem.displayName = "SwipeableMaterialItem";
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], isCustom: boolean = false, isDark: boolean = false) {
+  // Tinted background for custom items (light amber)
+  const tintedBg = isDark ? "#3D3020" : "#FFF8E7";
+  const rowBg = isCustom ? tintedBg : theme.colors.card;
+
   return StyleSheet.create({
     itemRow: {
       flexDirection: "row",
@@ -145,7 +155,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingHorizontal: theme.spacing(2),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
-      backgroundColor: theme.colors.card,
+      backgroundColor: rowBg,
     },
     itemInfo: {
       flex: 1,
@@ -192,7 +202,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 14,
       fontWeight: "600",
       color: theme.colors.text,
-      backgroundColor: theme.colors.card,
+      backgroundColor: rowBg,
     },
     qtyText: {
       width: 40,

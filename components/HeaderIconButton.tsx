@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 24,
+    fontWeight: '700',
     textAlign: 'center',
   },
 });

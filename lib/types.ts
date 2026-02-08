@@ -501,3 +501,20 @@ export type PricebookItem = {
   createdAt: string;
   updatedAt: string;
 };
+
+/**
+ * Custom line item for Quick Custom Items feature
+ * Stores user-typed items locally for autocomplete and reuse
+ * Free tier feature - helps contractors add items without catalog
+ */
+export type CustomLineItem = {
+  id: string;
+  name: string;
+  defaultPrice: number; // Last-used price for autocomplete
+  timesUsed: number; // For sorting by frequency
+  firstAdded: string; // ISO 8601 - when first created
+  lastUsed: string; // ISO 8601 - when last added to a quote
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string; // Soft delete
+};

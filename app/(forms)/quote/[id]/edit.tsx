@@ -20,6 +20,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
+import { AddItemRow } from "@/components/AddItemRow";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
@@ -639,6 +640,32 @@ export default function EditQuote() {
     setDeletedItemIndex(-1);
   };
 
+  // Handle adding custom line item
+  const handleAddCustomItem = async (name: string, qty: number, price: number) => {
+    const newItem: QuoteItem = {
+      id: `custom_${Date.now()}`,
+      name,
+      qty,
+      unitPrice: price,
+      // No productId = custom item (auto-detected by SwipeableMaterialItem)
+    };
+
+    // Use functional update to avoid stale closure issues
+    setItems(prevItems => {
+      const updatedItems = [...prevItems, newItem];
+
+      // Auto-save if quote exists (not "new") and not tracking changes
+      if (effectiveId && effectiveId !== "new" && !shouldTrackChanges) {
+        updateQuote(effectiveId, { items: updatedItems });
+      }
+
+      return updatedItems;
+    });
+  };
+
+  // State for showing additional blank rows
+  const [additionalBlankRows, setAdditionalBlankRows] = useState(0);
+
   return (
     <>
       <Stack.Screen
@@ -855,7 +882,12 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.h2}>Items</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <Text style={styles.h2}>Items</Text>
+          <Text style={{ fontSize: 12, color: theme.colors.muted, marginLeft: 8 }}>
+            *swipe to delete
+          </Text>
+        </View>
 
         <View style={{ height: theme.spacing(2) }} />
 
@@ -872,6 +904,7 @@ export default function EditQuote() {
                       name: item.name,
                       unitPrice: item.unitPrice,
                       qty: item.qty,
+                      productId: item.productId,
                     }}
                     onDelete={() => handleDeleteItem(itemId)}
                     isLastItem={index === items.length - 1}
@@ -886,9 +919,43 @@ export default function EditQuote() {
                 );
               })}
             </GestureHandlerRootView>
-            <View style={{ height: theme.spacing(2) }} />
           </>
         )}
+
+        {/* Quick Custom Items Section - only show rows when user taps Add */}
+        {additionalBlankRows > 0 && (
+          <View style={styles.customItemsSection}>
+            {Array.from({ length: additionalBlankRows }).map((_, index) => (
+              <AddItemRow
+                key={`blank-${index}`}
+                onAddItem={(name, qty, price) => {
+                  handleAddCustomItem(name, qty, price);
+                  // Remove this row after adding
+                  setAdditionalBlankRows((prev) => Math.max(0, prev - 1));
+                }}
+                isLastItem={index === additionalBlankRows - 1}
+                onDelete={() => setAdditionalBlankRows((prev) => Math.max(0, prev - 1))}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Add Custom Item Button */}
+        <View style={styles.addRowContainer}>
+          <Pressable
+            onPress={() => setAdditionalBlankRows((prev) => prev + 1)}
+            style={({ pressed }) => [
+              styles.addRowBtn,
+              { opacity: pressed ? 0.6 : 1 },
+            ]}
+            hitSlop={8}
+          >
+            <Ionicons name="add-circle" size={18} color="#34C759" />
+            <Text style={styles.addRowText}>Add custom item</Text>
+          </Pressable>
+        </View>
+
+        <View style={{ height: theme.spacing(2) }} />
 
         <Pressable
           onPress={async () => {
@@ -1723,6 +1790,30 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 17,
       fontWeight: "600",
       color: theme.colors.accent,
+    },
+    // Custom Items Section styles
+    customItemsSection: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      overflow: "hidden",
+    },
+    addRowContainer: {
+      alignItems: "flex-start",
+      paddingLeft: theme.spacing(2),
+    },
+    addRowBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(1),
+    },
+    addRowText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: "#34C759",
     },
   });
 }

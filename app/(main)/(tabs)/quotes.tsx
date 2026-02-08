@@ -1,5 +1,6 @@
 // app/(main)/(tabs)/quotes.tsx
 import { useTheme } from "@/contexts/ThemeContext";
+import { HeaderIconButton } from "@/components/HeaderIconButton";
 import {
   deleteQuote,
   duplicateQuote,
@@ -591,9 +592,11 @@ export default function QuotesList() {
                 </Text>
               </Pressable>
             ) : (
-              <Pressable onPress={handleCreateNewQuote} style={{ paddingHorizontal: 16 }}>
-                <Ionicons name="add" size={28} color={theme.colors.accent} />
-              </Pressable>
+              <HeaderIconButton
+                onPress={handleCreateNewQuote}
+                icon="+"
+                side="right"
+              />
             )
           ),
         }}

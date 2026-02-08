@@ -9,7 +9,7 @@ import type { Quote, Invoice, Client, QuoteItem, PricebookItem, InvoicePayment }
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 /**
  * Get or create the database instance
@@ -248,6 +248,32 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
 
     database.execSync(`
       CREATE INDEX IF NOT EXISTS idx_invoice_payments_payment_date ON invoice_payments(payment_date);
+    `);
+  }
+
+  if (fromVersion < 5) {
+    // Add custom_line_items table for Quick Custom Items feature
+    // Stores user-typed custom items for autocomplete and reuse
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS custom_line_items (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        default_price REAL NOT NULL DEFAULT 0,
+        times_used INTEGER NOT NULL DEFAULT 1,
+        first_added TEXT NOT NULL,
+        last_used TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
+      );
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_custom_line_items_name ON custom_line_items(name);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_custom_line_items_times_used ON custom_line_items(times_used DESC);
     `);
   }
 

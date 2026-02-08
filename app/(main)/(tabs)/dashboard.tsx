@@ -604,7 +604,12 @@ export default function Dashboard() {
           {/* Recent Activity */}
           {preferences.showRecentQuotes && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Quotes</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                <Text style={styles.sectionTitle}>Recent Quotes</Text>
+                <Text style={{ fontSize: 12, color: theme.colors.muted, marginLeft: 8 }}>
+                  *swipe for options
+                </Text>
+              </View>
               {groupedRecentQuotes.length === 0 ? (
                 <View style={styles.emptyStateSimple}>
                   <Text style={styles.emptyTextSimple}>
