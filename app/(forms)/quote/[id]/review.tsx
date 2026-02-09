@@ -588,11 +588,11 @@ export default function QuoteReviewScreen() {
                   <View style={styles.itemLeft}>
                     <Text style={styles.itemName}>{item.name}</Text>
                     <Text style={styles.itemDetails}>
-                      ${item.unitPrice.toFixed(2)} × {item.qty}
+                      ${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {item.qty}
                     </Text>
                   </View>
                   <Text style={styles.itemTotal}>
-                    ${(item.unitPrice * item.qty).toFixed(2)}
+                    ${(item.unitPrice * item.qty).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
               ))}
@@ -612,28 +612,28 @@ export default function QuoteReviewScreen() {
             {materialsFromItems > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Materials</Text>
-                <Text style={styles.totalValue}>${materialsFromItems.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>${materialsFromItems.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               </View>
             )}
 
             {markupAmount > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Markup ({markupPercent}%)</Text>
-                <Text style={styles.totalValue}>${markupAmount.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>${markupAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               </View>
             )}
 
             {materialEstimate > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Materials (Estimate)</Text>
-                <Text style={styles.totalValue}>${materialEstimate.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>${materialEstimate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               </View>
             )}
 
             {labor > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Labor</Text>
-                <Text style={styles.totalValue}>${labor.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>${labor.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               </View>
             )}
 
@@ -641,13 +641,13 @@ export default function QuoteReviewScreen() {
 
             <View style={styles.totalRow}>
               <Text style={styles.subtotalLabel}>Subtotal</Text>
-              <Text style={styles.subtotalValue}>${subtotal.toFixed(2)}</Text>
+              <Text style={styles.subtotalValue}>${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
 
             {taxAmount > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Tax ({totals?.taxPercent ?? 0}%)</Text>
-                <Text style={styles.totalValue}>${taxAmount.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>${taxAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               </View>
             )}
 
@@ -655,7 +655,7 @@ export default function QuoteReviewScreen() {
 
             <View style={styles.totalRow}>
               <Text style={styles.grandTotalLabel}>Total</Text>
-              <Text style={styles.grandTotalValue}>${grandTotal.toFixed(2)}</Text>
+              <Text style={styles.grandTotalValue}>${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
           </View>
         </View>

@@ -97,6 +97,10 @@ export default function SignContract() {
       );
 
       if (result) {
+        // Don't update status to "signed" here - that happens when CLIENT signs
+        // The contract remains in "sent" or "viewed" status so client can still sign
+        // Portal API checks for contractor signature before allowing client to sign
+
         Alert.alert(
           "Signature Saved",
           "Your signature has been added to the contract.",
@@ -180,18 +184,18 @@ export default function SignContract() {
         <View style={styles.summaryCard}>
           <Text style={styles.projectName}>{contract.projectName}</Text>
           <Text style={styles.clientName}>For: {contract.clientName}</Text>
-          <Text style={styles.totalAmount}>${contract.total.toFixed(2)}</Text>
+          <Text style={styles.totalAmount}>${contract.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
         </View>
 
         {/* Signer Name Input */}
         <View style={styles.inputSection}>
-          <Text style={styles.label}>Your Full Name (Contractor)</Text>
+          <Text style={styles.label}>Your Full Name (Contractor) <Text style={{ color: theme.colors.accent }}>*</Text></Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, !signerName.trim() && styles.inputRequired]}
             value={signerName}
             onChangeText={setSignerName}
-            placeholder="Enter your full legal name"
-            placeholderTextColor={theme.colors.muted}
+            placeholder="Required - Enter your full legal name"
+            placeholderTextColor={!signerName.trim() ? theme.colors.accent : theme.colors.muted}
             autoCapitalize="words"
           />
         </View>
@@ -344,6 +348,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       paddingVertical: theme.spacing(1.5),
       fontSize: 16,
       color: theme.colors.text,
+    },
+    inputRequired: {
+      borderColor: theme.colors.accent,
+      borderWidth: 2,
     },
     signatureSection: {
       flex: 1,

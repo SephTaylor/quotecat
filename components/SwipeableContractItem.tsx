@@ -20,6 +20,10 @@ export const SwipeableContractItem = React.memo(
     const styles = React.useMemo(() => createStyles(theme), [theme]);
     const statusMeta = ContractStatusMeta[item.status];
 
+    // Check signature status
+    const contractorSigned = item.signatures?.some(s => s.signerType === 'contractor');
+    const clientSigned = item.signatures?.some(s => s.signerType === 'client');
+
     const renderRightActions = (
       progress: Animated.AnimatedInterpolation<number>,
       dragX: Animated.AnimatedInterpolation<number>,
@@ -79,10 +83,22 @@ export const SwipeableContractItem = React.memo(
           </Text>
 
           <View style={styles.footer}>
-            <Text style={styles.totalAmount}>${item.total.toFixed(2)}</Text>
-            <Text style={styles.dateText}>
-              {new Date(item.createdAt).toLocaleDateString()}
-            </Text>
+            <Text style={styles.totalAmount}>${item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+            <View style={styles.footerRight}>
+              {item.status !== 'draft' && item.status !== 'signed' && (
+                <View style={styles.signatureStatus}>
+                  <Text style={[
+                    styles.signatureText,
+                    { color: contractorSigned ? theme.colors.success : theme.colors.textMuted }
+                  ]}>
+                    {contractorSigned ? '✓ You signed' : 'Not signed'}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.dateText}>
+                {new Date(item.createdAt).toLocaleDateString()}
+              </Text>
+            </View>
           </View>
         </Pressable>
       </Swipeable>
@@ -157,6 +173,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     dateText: {
       fontSize: 12,
       color: theme.colors.muted,
+    },
+    footerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1.5),
+    },
+    signatureStatus: {
+      paddingHorizontal: theme.spacing(1),
+      paddingVertical: 2,
+      borderRadius: 4,
+      backgroundColor: theme.colors.background,
+    },
+    signatureText: {
+      fontSize: 11,
+      fontWeight: "600",
     },
     actionsContainer: {
       flexDirection: "row",

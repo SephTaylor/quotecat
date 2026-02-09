@@ -9,6 +9,9 @@ import type { Quote, Invoice, ChangeOrder } from './types';
 import type { CompanyDetails, PaymentMethods } from './preferences';
 import { trackEvent, AnalyticsEvents } from './app-analytics';
 
+/** Format a number as currency with thousand separators */
+const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export type PDFOptions = {
   includeBranding: boolean; // true for free tier, false for pro
   companyDetails?: CompanyDetails;
@@ -265,30 +268,30 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
             ${materialsWithMarkup > 0 ? `
               <tr>
                 <td class="label">Materials</td>
-                <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
+                <td class="value">$${fmt(materialsWithMarkup)}</td>
               </tr>
             ` : ''}
             ${materialEstimate > 0 ? `
               <tr>
                 <td class="label">Materials (Estimate)</td>
-                <td class="value">$${materialEstimate.toFixed(2)}</td>
+                <td class="value">$${fmt(materialEstimate)}</td>
               </tr>
             ` : ''}
             ${labor > 0 ? `
               <tr>
                 <td class="label">Labor</td>
-                <td class="value">$${labor.toFixed(2)}</td>
+                <td class="value">$${fmt(labor)}</td>
               </tr>
             ` : ''}
             ${taxPercent > 0 ? `
               <tr>
                 <td class="label">Tax (${taxPercent}%)</td>
-                <td class="value">$${taxAmount.toFixed(2)}</td>
+                <td class="value">$${fmt(taxAmount)}</td>
               </tr>
             ` : ''}
             <tr class="total-row">
               <td class="label">Total</td>
-              <td class="value">$${grandTotal.toFixed(2)}</td>
+              <td class="value">$${fmt(grandTotal)}</td>
             </tr>
           </tbody>
         </table>
@@ -482,17 +485,15 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
   };
   const statusColor = statusColors[invoice.status] || '#8E8E93';
 
-  // Generate line items HTML
+  // Generate line items HTML (names and quantities only - no prices for client view)
   const lineItemsHTML = invoice.items && invoice.items.length > 0
     ? invoice.items.map(item => `
         <tr>
           <td style="padding: 5px 8px; border-bottom: 1px solid #e5e5e5; font-size: 11px;">${item.name}</td>
           <td style="padding: 5px 8px; border-bottom: 1px solid #e5e5e5; text-align: center; font-size: 11px;">${item.qty}</td>
-          <td style="padding: 5px 8px; border-bottom: 1px solid #e5e5e5; text-align: right; font-size: 11px;">$${item.unitPrice.toFixed(2)}</td>
-          <td style="padding: 5px 8px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600; font-size: 11px;">$${(item.unitPrice * item.qty).toFixed(2)}</td>
         </tr>
       `).join('')
-    : '<tr><td colspan="4" style="padding: 8px; text-align: center; color: #999; font-size: 11px;">No materials</td></tr>';
+    : '<tr><td colspan="2" style="padding: 8px; text-align: center; color: #999; font-size: 11px;">No materials</td></tr>';
 
   // QuoteCat branding for free tier - compact
   const brandingHeader = includeBranding ? `
@@ -774,39 +775,39 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
             ${materialsWithMarkup > 0 ? `
               <tr>
                 <td class="label">Materials</td>
-                <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
+                <td class="value">$${fmt(materialsWithMarkup)}</td>
               </tr>
             ` : ''}
             ${materialEstimate > 0 ? `
               <tr>
                 <td class="label">Materials (Estimate)</td>
-                <td class="value">$${materialEstimate.toFixed(2)}</td>
+                <td class="value">$${fmt(materialEstimate)}</td>
               </tr>
             ` : ''}
             ${labor > 0 ? `
               <tr>
                 <td class="label">Labor</td>
-                <td class="value">$${labor.toFixed(2)}</td>
+                <td class="value">$${fmt(labor)}</td>
               </tr>
             ` : ''}
             ${taxPercent > 0 ? `
               <tr>
                 <td class="label">Tax (${taxPercent}%)</td>
-                <td class="value">$${taxAmount.toFixed(2)}</td>
+                <td class="value">$${fmt(taxAmount)}</td>
               </tr>
             ` : ''}
             <tr class="total-row">
               <td class="label">Invoice Total</td>
-              <td class="value">$${grandTotal.toFixed(2)}</td>
+              <td class="value">$${fmt(grandTotal)}</td>
             </tr>
             ${(invoice.paidAmount && invoice.paidAmount > 0) ? `
               <tr style="color: #16a34a;">
                 <td class="label">Payments Received</td>
-                <td class="value">-$${invoice.paidAmount.toFixed(2)}</td>
+                <td class="value">-$${fmt(invoice.paidAmount)}</td>
               </tr>
               <tr class="total-row" style="border-top: 2px solid #333; margin-top: 8px;">
                 <td class="label" style="font-size: 16px;">${grandTotal - invoice.paidAmount <= 0 ? 'PAID IN FULL' : 'Balance Due'}</td>
-                <td class="value" style="font-size: 18px; ${grandTotal - invoice.paidAmount <= 0 ? 'color: #16a34a;' : ''}">${grandTotal - invoice.paidAmount <= 0 ? '✓' : '$' + (grandTotal - invoice.paidAmount).toFixed(2)}</td>
+                <td class="value" style="font-size: 18px; ${grandTotal - invoice.paidAmount <= 0 ? 'color: #16a34a;' : ''}">${grandTotal - invoice.paidAmount <= 0 ? '✓' : '$' + fmt(grandTotal - invoice.paidAmount)}</td>
               </tr>
             ` : ''}
           </tbody>
@@ -823,8 +824,6 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
               <tr>
                 <th>Item</th>
                 <th style="text-align: center; width: 80px;">Qty</th>
-                <th style="text-align: right; width: 120px;">Unit Price</th>
-                <th style="text-align: right; width: 120px;">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -986,7 +985,7 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
       <div class="option-page" style="${index > 0 ? 'page-break-before: always;' : ''}">
         <div class="option-header">
           <div class="option-tier-badge">${tierLabel}</div>
-          <div class="option-total">$${grandTotal.toFixed(2)}</div>
+          <div class="option-total">$${fmt(grandTotal)}</div>
         </div>
 
         ${quote.items && quote.items.length > 0 ? `
@@ -1012,30 +1011,30 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
               ${materialsWithMarkup > 0 ? `
                 <tr>
                   <td class="label">Materials</td>
-                  <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
+                  <td class="value">$${fmt(materialsWithMarkup)}</td>
                 </tr>
               ` : ''}
               ${materialEstimate > 0 ? `
                 <tr>
                   <td class="label">Materials (Estimate)</td>
-                  <td class="value">$${materialEstimate.toFixed(2)}</td>
+                  <td class="value">$${fmt(materialEstimate)}</td>
                 </tr>
               ` : ''}
               ${labor > 0 ? `
                 <tr>
                   <td class="label">Labor</td>
-                  <td class="value">$${labor.toFixed(2)}</td>
+                  <td class="value">$${fmt(labor)}</td>
                 </tr>
               ` : ''}
               ${taxPercent > 0 ? `
                 <tr>
                   <td class="label">Tax (${taxPercent}%)</td>
-                  <td class="value">$${taxAmount.toFixed(2)}</td>
+                  <td class="value">$${fmt(taxAmount)}</td>
                 </tr>
               ` : ''}
               <tr class="total-row">
                 <td class="label">Total</td>
-                <td class="value">$${grandTotal.toFixed(2)}</td>
+                <td class="value">$${fmt(grandTotal)}</td>
               </tr>
             </tbody>
           </table>
@@ -1076,9 +1075,9 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
     return `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; font-weight: 600;">${quote.tier || 'Base'}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${totalMaterials.toFixed(2)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${labor.toFixed(2)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 700; color: #333;">$${grandTotal.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${fmt(totalMaterials)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${fmt(labor)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 700; color: #333;">$${fmt(grandTotal)}</td>
       </tr>
     `;
   }).join('');
@@ -1316,7 +1315,7 @@ function generateChangeOrderHTML(
 
   const formatMoney = (amount: number) => {
     const prefix = amount > 0 ? '+' : '';
-    return `${prefix}$${Math.abs(amount).toFixed(2)}`;
+    return `${prefix}$${fmt(Math.abs(amount))}`;
   };
 
   // Group items by type
@@ -1348,7 +1347,7 @@ function generateChangeOrderHTML(
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">
                   ${item.qtyBefore} → ${item.qtyAfter} ${item.unit}
                 </td>
-                <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">$${item.unitPrice.toFixed(2)}</td>
+                <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">$${fmt(item.unitPrice)}</td>
                 <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee; font-weight: 600; color: ${item.lineDelta >= 0 ? '#22C55E' : '#EF4444'};">
                   ${formatMoney(item.lineDelta)}
                 </td>
@@ -1443,7 +1442,7 @@ function generateChangeOrderHTML(
         <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div style="font-size: 14px; font-weight: 600; color: #333;">Labor Adjustment</div>
-            <div style="font-size: 12px; color: #666;">$${changeOrder.laborBefore.toFixed(2)} → $${changeOrder.laborAfter.toFixed(2)}</div>
+            <div style="font-size: 12px; color: #666;">$${fmt(changeOrder.laborBefore)} → $${fmt(changeOrder.laborAfter)}</div>
           </div>
           <div style="font-size: 18px; font-weight: 700; color: ${changeOrder.laborDelta >= 0 ? '#22C55E' : '#EF4444'};">
             ${formatMoney(changeOrder.laborDelta)}
@@ -1455,7 +1454,7 @@ function generateChangeOrderHTML(
       <div style="background: #1a1a1a; color: white; padding: 24px; border-radius: 8px; margin-top: 32px;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #999;">Original Quote Total</span>
-          <span>$${changeOrder.quoteTotalBefore.toFixed(2)}</span>
+          <span>$${fmt(changeOrder.quoteTotalBefore)}</span>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #333;">
           <span style="color: #999;">Change Amount</span>
@@ -1466,7 +1465,7 @@ function generateChangeOrderHTML(
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 18px; font-weight: 700;">New Quote Total</span>
           <span style="font-size: 24px; font-weight: 800; color: #333;">
-            $${changeOrder.quoteTotalAfter.toFixed(2)}
+            $${fmt(changeOrder.quoteTotalAfter)}
           </span>
         </div>
       </div>

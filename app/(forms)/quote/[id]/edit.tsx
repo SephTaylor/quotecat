@@ -685,7 +685,7 @@ export default function EditQuote() {
                 </Text>
               ) : canViewPricing ? (
                 <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.accent, marginTop: 2 }}>
-                  Total: ${calculations.total.toFixed(2)}
+                  Total: ${calculations.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               ) : null}
             </View>
@@ -1164,7 +1164,7 @@ export default function EditQuote() {
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Materials (Items)</Text>
               <Text style={styles.totalsValue}>
-                ${calculations.materialsFromItems.toFixed(2)}
+                ${calculations.materialsFromItems.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </View>
 
@@ -1174,7 +1174,7 @@ export default function EditQuote() {
                   Markup ({markupPercent}%)
                 </Text>
                 <Text style={styles.totalsValue}>
-                  ${calculations.markupAmount.toFixed(2)}
+                  ${calculations.markupAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
             )}
@@ -1183,7 +1183,7 @@ export default function EditQuote() {
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>Materials (Estimate)</Text>
                 <Text style={styles.totalsValue}>
-                  ${calculations.materialsEstimateValue.toFixed(2)}
+                  ${calculations.materialsEstimateValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
             )}
@@ -1192,7 +1192,7 @@ export default function EditQuote() {
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>Labor</Text>
                 <Text style={styles.totalsValue}>
-                  ${calculations.laborValue.toFixed(2)}
+                  ${calculations.laborValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
             )}
@@ -1202,7 +1202,7 @@ export default function EditQuote() {
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabelBold}>Subtotal</Text>
               <Text style={styles.totalsValueBold}>
-                ${calculations.subtotal.toFixed(2)}
+                ${calculations.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </View>
 
@@ -1212,7 +1212,7 @@ export default function EditQuote() {
                   Tax ({taxPercent}%)
                 </Text>
                 <Text style={styles.totalsValue}>
-                  ${calculations.taxAmount.toFixed(2)}
+                  ${calculations.taxAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
             )}
@@ -1222,7 +1222,7 @@ export default function EditQuote() {
             <View style={styles.totalsRow}>
               <Text style={styles.totalsFinalLabel}>Total</Text>
               <Text style={styles.totalsFinalValue}>
-                ${calculations.total.toFixed(2)}
+                ${calculations.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </View>
           </View>

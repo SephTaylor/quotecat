@@ -711,7 +711,7 @@ export default function InvoiceDetailScreen() {
                 : "Total Amount"}
             </Text>
             <Text style={styles.totalValue}>
-              ${(total - (invoice.paidAmount || 0)).toFixed(2)}
+              ${(total - (invoice.paidAmount || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
             {/* Payment History - show if there are payment records OR legacy paidAmount */}
             {(() => {
@@ -726,7 +726,7 @@ export default function InvoiceDetailScreen() {
                 <View style={styles.paymentSummary}>
                   <View style={styles.paymentSummaryRow}>
                     <Text style={styles.paymentSummaryLabel}>Invoice Total</Text>
-                    <Text style={styles.paymentSummaryValue}>${total.toFixed(2)}</Text>
+                    <Text style={styles.paymentSummaryValue}>${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                   </View>
                   <View style={styles.paymentHistoryHeader}>
                     <Text style={[styles.paymentSummaryLabel, styles.paymentReceivedLabel]}>
@@ -738,7 +738,7 @@ export default function InvoiceDetailScreen() {
                     <View style={styles.paymentHistoryItem}>
                       <View style={styles.paymentHistoryLeft}>
                         <Text style={styles.paymentHistoryAmount}>
-                          -${legacyAmount.toFixed(2)}
+                          -${legacyAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Text>
                         <Text style={styles.paymentHistoryDetails}>
                           {invoice.paidDate
@@ -763,7 +763,7 @@ export default function InvoiceDetailScreen() {
                     >
                       <View style={styles.paymentHistoryLeft}>
                         <Text style={styles.paymentHistoryAmount}>
-                          -${payment.amount.toFixed(2)}
+                          -${payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Text>
                         <Text style={styles.paymentHistoryDetails}>
                           {new Date(payment.paymentDate).toLocaleDateString("en-US", {
@@ -799,17 +799,17 @@ export default function InvoiceDetailScreen() {
                   <View style={styles.lineItemLeft}>
                     <Text style={styles.lineItemName}>{item.name}</Text>
                     <Text style={styles.lineItemDetails}>
-                      {item.qty} × ${item.unitPrice.toFixed(2)}
+                      {item.qty} × ${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </Text>
                   </View>
                   <Text style={styles.lineItemTotal}>
-                    ${(item.qty * item.unitPrice).toFixed(2)}
+                    ${(item.qty * item.unitPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
               ))}
               <View style={styles.subtotalRow}>
                 <Text style={styles.subtotalLabel}>Items Subtotal</Text>
-                <Text style={styles.subtotalValue}>${materialsFromItems.toFixed(2)}</Text>
+                <Text style={styles.subtotalValue}>${materialsFromItems.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               </View>
             </View>
           )}
@@ -821,7 +821,7 @@ export default function InvoiceDetailScreen() {
             {invoice.labor > 0 && (
               <View style={styles.costRow}>
                 <Text style={styles.costLabel}>Labor</Text>
-                <Text style={styles.costValue}>${invoice.labor.toFixed(2)}</Text>
+                <Text style={styles.costValue}>${invoice.labor.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               </View>
             )}
 
@@ -829,7 +829,7 @@ export default function InvoiceDetailScreen() {
               <View style={styles.costRow}>
                 <Text style={styles.costLabel}>Material Estimate</Text>
                 <Text style={styles.costValue}>
-                  ${invoice.materialEstimate!.toFixed(2)}
+                  ${invoice.materialEstimate!.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
             )}
@@ -841,7 +841,7 @@ export default function InvoiceDetailScreen() {
                 </Text>
                 <Text style={styles.editTextSmall}>Edit</Text>
               </View>
-              <Text style={styles.costValue}>${markupAmount.toFixed(2)}</Text>
+              <Text style={styles.costValue}>${markupAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </Pressable>
 
             <Pressable style={styles.costRow} onPress={handleEditTaxPercent}>
@@ -851,7 +851,7 @@ export default function InvoiceDetailScreen() {
                 </Text>
                 <Text style={styles.editTextSmall}>Edit</Text>
               </View>
-              <Text style={styles.costValue}>${taxAmount.toFixed(2)}</Text>
+              <Text style={styles.costValue}>${taxAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </Pressable>
           </View>
 

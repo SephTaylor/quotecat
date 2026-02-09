@@ -169,7 +169,7 @@ export const SwipeableInvoiceItem = React.memo(
           </View>
 
           <Text style={styles.footer}>
-            Due {formattedDueDate}  •  ${total.toFixed(2)}
+            Due {formattedDueDate}  •  ${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
         </Pressable>
       </Swipeable>

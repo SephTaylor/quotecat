@@ -113,7 +113,7 @@ export async function createContractFromQuote(
 }
 
 /**
- * Get all contracts for current user
+ * Get all contracts for current user (with signatures)
  */
 export async function listContracts(): Promise<Contract[]> {
   const userId = await getCurrentUserId();
@@ -121,7 +121,7 @@ export async function listContracts(): Promise<Contract[]> {
 
   const { data, error } = await supabase
     .from("contracts")
-    .select("*")
+    .select("*, signatures(*)")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
@@ -130,7 +130,14 @@ export async function listContracts(): Promise<Contract[]> {
     return [];
   }
 
-  return (data || []).map(mapSupabaseToContract);
+  return (data || []).map((row) => {
+    const contract = mapSupabaseToContract(row);
+    // Add signatures from the joined data
+    if (row.signatures && Array.isArray(row.signatures)) {
+      contract.signatures = row.signatures.map(mapSupabaseToSignature);
+    }
+    return contract;
+  });
 }
 
 /**
@@ -293,6 +300,23 @@ export async function isContractFullySigned(contractId: string): Promise<boolean
   const hasContractor = signatures.some((s) => s.signerType === "contractor");
   const hasClient = signatures.some((s) => s.signerType === "client");
   return hasContractor && hasClient;
+}
+
+/**
+ * Delete a signature by ID
+ */
+export async function deleteSignature(signatureId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("signatures")
+    .delete()
+    .eq("id", signatureId);
+
+  if (error) {
+    console.error("Failed to delete signature:", error);
+    return false;
+  }
+
+  return true;
 }
 
 /**

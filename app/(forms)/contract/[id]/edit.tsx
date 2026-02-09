@@ -2,7 +2,7 @@
 // Contract editing screen for Premium users
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { getContractWithSignatures, updateContract, markContractSent, getContractShareLink } from "@/lib/contracts";
+import { getContractWithSignatures, updateContract, markContractSent, getContractShareLink, deleteSignature } from "@/lib/contracts";
 import type { Contract } from "@/lib/types";
 import { ContractStatusMeta } from "@/lib/types";
 import {
@@ -13,8 +13,10 @@ import {
 } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  ActionSheetIOS,
   Alert,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -146,6 +148,29 @@ export default function EditContract() {
     router.push(`/(forms)/contract/${id}/sign`);
   };
 
+  const handleClearSignature = (signatureId: string, signerType: string) => {
+    Alert.alert(
+      "Clear Signature",
+      `Are you sure you want to remove the ${signerType} signature?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => {
+            const success = await deleteSignature(signatureId);
+            if (success) {
+              // Reload contract to refresh signatures
+              await load();
+            } else {
+              Alert.alert("Error", "Failed to clear signature.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleMarkComplete = async () => {
     if (!id || !contract) return;
 
@@ -169,6 +194,70 @@ export default function EditContract() {
         },
       ]
     );
+  };
+
+  const handleChangeStatus = () => {
+    if (!id || !contract) return;
+
+    const statuses: Array<{ key: Contract["status"]; label: string }> = [
+      { key: "draft", label: "Draft" },
+      { key: "sent", label: "Sent" },
+      { key: "signed", label: "Signed" },
+      { key: "completed", label: "Completed" },
+    ];
+
+    const options = statuses.map(s => s.label);
+    options.push("Cancel");
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "Change Status",
+          message: "Select a new status for this contract",
+          options,
+          cancelButtonIndex: options.length - 1,
+        },
+        async (buttonIndex) => {
+          if (buttonIndex < statuses.length) {
+            const newStatus = statuses[buttonIndex].key;
+            if (newStatus !== contract.status) {
+              try {
+                const updated = await updateContract(id, { status: newStatus });
+                if (updated) {
+                  setContract(updated);
+                }
+              } catch {
+                Alert.alert("Error", "Failed to update status.");
+              }
+            }
+          }
+        }
+      );
+    } else {
+      // Android fallback
+      Alert.alert(
+        "Change Status",
+        "Select a new status",
+        [
+          ...statuses.map(s => ({
+            text: s.label + (s.key === contract.status ? " ✓" : ""),
+            onPress: async () => {
+              if (s.key !== contract.status) {
+                try {
+                  const updated = await updateContract(id, { status: s.key });
+                  if (updated) {
+                    setContract(updated);
+                  }
+                } catch {
+                  Alert.alert("Error", "Failed to update status.");
+                }
+              }
+            },
+          })),
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+    }
   };
 
   const formatPhoneNumber = (value: string): string => {
@@ -241,13 +330,17 @@ export default function EditContract() {
         }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Status Badge */}
+        {/* Status Badge - Tappable to change status */}
         <View style={styles.statusRow}>
-          <View style={[styles.statusBadge, { backgroundColor: statusMeta.color + "20" }]}>
+          <Pressable
+            style={[styles.statusBadge, { backgroundColor: statusMeta.color + "20" }]}
+            onPress={handleChangeStatus}
+          >
             <View style={[styles.statusDot, { backgroundColor: statusMeta.color }]} />
             <Text style={[styles.statusText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
-          </View>
-          <Text style={styles.totalText}>${contract.total.toFixed(2)}</Text>
+            <Ionicons name="chevron-down" size={14} color={statusMeta.color} style={{ marginLeft: 4 }} />
+          </Pressable>
+          <Text style={styles.totalText}>${contract.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
         </View>
 
         {/* Client Section */}
@@ -340,9 +433,9 @@ export default function EditContract() {
                 <View key={item.id || index} style={[styles.materialRow, index === contract.materials.length - 1 && { borderBottomWidth: 0 }]}>
                   <View style={styles.materialInfo}>
                     <Text style={styles.materialName}>{item.name}</Text>
-                    <Text style={styles.materialDetails}>${item.unitPrice.toFixed(2)} × {item.qty}</Text>
+                    <Text style={styles.materialDetails}>${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {item.qty}</Text>
                   </View>
-                  <Text style={styles.materialTotal}>${(item.unitPrice * item.qty).toFixed(2)}</Text>
+                  <Text style={styles.materialTotal}>${(item.unitPrice * item.qty).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
               ))}
             </View>
@@ -400,6 +493,18 @@ export default function EditContract() {
                   <Text style={styles.signatureDate}>
                     {new Date(contract.signatures.find(s => s.signerType === "contractor")!.signedAt).toLocaleDateString()}
                   </Text>
+                  {contract.status === "draft" && (
+                    <Pressable
+                      style={styles.clearSignatureButton}
+                      onPress={() => handleClearSignature(
+                        contract.signatures!.find(s => s.signerType === "contractor")!.id,
+                        "contractor"
+                      )}
+                    >
+                      <Ionicons name="close-circle-outline" size={16} color={theme.colors.muted} />
+                      <Text style={styles.clearSignatureText}>Clear Signature</Text>
+                    </Pressable>
+                  )}
                 </View>
               ) : (
                 <View style={styles.signaturePending}>
@@ -748,6 +853,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       color: theme.colors.muted,
       marginTop: theme.spacing(1),
       textAlign: "center",
+    },
+    clearSignatureButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: theme.spacing(1.5),
+      gap: 4,
+    },
+    clearSignatureText: {
+      fontSize: 13,
+      color: theme.colors.muted,
     },
     signatureDivider: {
       height: 1,

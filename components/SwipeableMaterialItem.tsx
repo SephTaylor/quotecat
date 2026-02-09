@@ -92,7 +92,7 @@ export const SwipeableMaterialItem = React.memo(
             <Text style={styles.itemName}>{item.name}</Text>
             {showPricing && (
               <Text style={styles.itemPrice}>
-                ${item.unitPrice.toFixed(2)} each
+                ${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each
               </Text>
             )}
           </View>
@@ -129,7 +129,7 @@ export const SwipeableMaterialItem = React.memo(
             </View>
             {showPricing && (
               <Text style={styles.itemTotal}>
-                ${(item.unitPrice * item.qty).toFixed(2)}
+                ${(item.unitPrice * item.qty).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             )}
           </View>

@@ -128,7 +128,7 @@ export const AddItemRow = React.memo(({ onAddItem, isLastItem = true, onDelete }
   // Calculate line total
   const parsedQty = parseInt(qty, 10) || 1;
   const parsedPrice = parseFloat(price) || 0;
-  const lineTotal = (parsedQty * parsedPrice).toFixed(2);
+  const lineTotal = (parsedQty * parsedPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <View style={styles.container}>
@@ -232,7 +232,7 @@ export const AddItemRow = React.memo(({ onAddItem, isLastItem = true, onDelete }
             >
               <Text style={styles.suggestionName}>{item.name}</Text>
               <Text style={styles.suggestionPrice}>
-                ${item.defaultPrice.toFixed(2)}
+                ${item.defaultPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </Pressable>
           ))}
