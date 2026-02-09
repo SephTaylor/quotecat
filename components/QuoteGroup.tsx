@@ -111,7 +111,10 @@ export function QuoteGroup({
                   onLongPress={() => onLongPress(quote)}
                   onCreateTier={() => onCreateTier(quote)}
                   onExportAllTiers={() => onExportAllTiers(quote)}
-                  onUnlink={() => onUnlink(quote)}
+                  onUnlink={() => {
+                    console.log(`[QUOTE_GROUP] onUnlink called for ${quote.id}, calling parent onUnlink`);
+                    onUnlink(quote);
+                  }}
                   changeOrderCount={coCounts?.[quote.id]}
                 />
               </View>

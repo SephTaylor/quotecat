@@ -195,6 +195,18 @@ export default function QuotesList() {
     setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
 
     try {
+      // If quote is part of a group, clean up links on related quotes first
+      if (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0) {
+        const linkedQuotes = await getLinkedQuotes(quote.id);
+        for (const linked of linkedQuotes) {
+          if (linked.id !== quote.id) {
+            // Remove this quote's ID from the linked quote's linkedQuoteIds
+            const updatedLinks = (linked.linkedQuoteIds || []).filter(id => id !== quote.id);
+            await updateQuote(linked.id, { linkedQuoteIds: updatedLinks.length > 0 ? updatedLinks : undefined });
+          }
+        }
+      }
+
       // Delete from storage
       await deleteQuote(quote.id);
     } catch (error) {
@@ -325,6 +337,12 @@ export default function QuotesList() {
   }, []);
 
   const handleUnlink = useCallback((quote: Quote) => {
+    console.log(`[UNLINK UI] handleUnlink called with quote:`, {
+      id: quote.id,
+      name: quote.name,
+      tier: quote.tier,
+      linkedQuoteIds: quote.linkedQuoteIds,
+    });
     Alert.alert(
       "Unlink Quote",
       `Remove "${quote.name || "Untitled"}${quote.tier ? ` (${quote.tier})` : ""}" from this group? The quote won't be deleted, just unlinked from the other options.`,
@@ -334,9 +352,12 @@ export default function QuotesList() {
           text: "Unlink",
           style: "destructive",
           onPress: async () => {
+            console.log(`[UNLINK UI] User confirmed unlink for ${quote.id}`);
             try {
               await unlinkQuote(quote.id);
+              console.log(`[UNLINK UI] unlinkQuote completed, refreshing list`);
               await load();
+              console.log(`[UNLINK UI] List refreshed`);
             } catch (error) {
               console.error("Failed to unlink quote:", error);
               Alert.alert("Error", "Failed to unlink quote. Please try again.");

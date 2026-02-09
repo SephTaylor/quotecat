@@ -10,6 +10,7 @@ import {
   setLastCreatedClientId,
   type Client,
 } from "@/lib/clients";
+import { deduplicateClients } from "@/lib/clientsSync";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState, useCallback } from "react";
 import {
@@ -56,6 +57,20 @@ export default function ClientManager() {
     data.sort((a, b) => a.name.localeCompare(b.name));
     setClients(data);
   }, []);
+
+  // Run deduplication once on first load to clean up any existing duplicates
+  const [hasDeduped, setHasDeduped] = useState(false);
+  React.useEffect(() => {
+    if (!hasDeduped && isPro) {
+      setHasDeduped(true);
+      deduplicateClients().then(({ removed }) => {
+        if (removed > 0) {
+          // Reload if duplicates were removed
+          loadClients();
+        }
+      }).catch(console.error);
+    }
+  }, [hasDeduped, isPro, loadClients]);
 
   // Load Pro status and clients
   React.useEffect(() => {

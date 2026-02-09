@@ -423,6 +423,15 @@ export async function syncClients(): Promise<{
     const cloudMap = new Map(cloudClients.map((c) => [c.id, c]));
     const localMap = new Map(localClients.map((c) => [c.id, c]));
 
+    // Build name map for deduplication (lowercase for case-insensitive matching)
+    const localNameMap = new Map<string, Client>();
+    for (const client of localClients) {
+      const normalizedName = client.name.toLowerCase().trim();
+      if (normalizedName) {
+        localNameMap.set(normalizedName, client);
+      }
+    }
+
     // Get locally deleted client IDs to avoid re-downloading them
     const locallyDeletedIds = new Set(getLocallyDeletedClientIdsDB());
     if (locallyDeletedIds.size > 0) {
@@ -452,9 +461,33 @@ export async function syncClients(): Promise<{
         const localClient = localMap.get(cloudClient.id);
 
         if (!localClient) {
-          // New client from cloud - queue for batch save
-          clientsToSave.push(cloudClient);
-          downloaded++;
+          // Check for duplicate by name (case-insensitive)
+          const normalizedName = cloudClient.name.toLowerCase().trim();
+          const existingByName = localNameMap.get(normalizedName);
+
+          if (existingByName) {
+            // Duplicate detected - client with same name exists with different ID
+            // Merge: use local ID but update with cloud data if cloud is newer
+            const cloudUpdated = safeGetTimestamp(cloudClient.updatedAt);
+            const localUpdated = safeGetTimestamp(existingByName.updatedAt);
+
+            if (cloudUpdated > localUpdated && cloudUpdated > 0) {
+              // Cloud data is newer - update local client with cloud data but keep local ID
+              const mergedClient: Client = {
+                ...cloudClient,
+                id: existingByName.id, // Keep local ID to avoid duplicate
+              };
+              clientsToSave.push(mergedClient);
+              downloaded++;
+              console.log(`🔀 Merged duplicate client "${cloudClient.name}" (cloud ID: ${cloudClient.id} → local ID: ${existingByName.id})`);
+            } else {
+              console.log(`⏭️ Skipping duplicate client "${cloudClient.name}" (local is newer or same)`);
+            }
+          } else {
+            // Truly new client from cloud - queue for batch save
+            clientsToSave.push(cloudClient);
+            downloaded++;
+          }
         } else {
           // Client exists in both - check which is newer (use safe timestamp)
           const cloudUpdated = safeGetTimestamp(cloudClient.updatedAt);
@@ -600,4 +633,68 @@ export async function isClientsSyncAvailable(): Promise<boolean> {
 export async function getClientsLastSyncTime(): Promise<Date | null> {
   const metadata = await getSyncMetadata();
   return metadata.lastSyncAt ? new Date(metadata.lastSyncAt) : null;
+}
+
+/**
+ * Remove duplicate clients (keeps the one with most recent updatedAt)
+ * Call this once to clean up existing duplicates
+ */
+export async function deduplicateClients(): Promise<{
+  removed: number;
+  kept: number;
+}> {
+  try {
+    const { getClients, deleteClient } = await import("./clients");
+    const allClients = await getClients();
+
+    // Group clients by normalized name
+    const nameGroups = new Map<string, Client[]>();
+    for (const client of allClients) {
+      const normalizedName = client.name.toLowerCase().trim();
+      if (!normalizedName) continue;
+
+      const group = nameGroups.get(normalizedName) || [];
+      group.push(client);
+      nameGroups.set(normalizedName, group);
+    }
+
+    let removed = 0;
+    let kept = 0;
+
+    // For each group with duplicates, keep the newest and delete the rest
+    for (const [name, clients] of nameGroups) {
+      if (clients.length <= 1) {
+        kept += clients.length;
+        continue;
+      }
+
+      // Sort by updatedAt descending (newest first)
+      clients.sort((a, b) => {
+        const aTime = safeGetTimestamp(a.updatedAt);
+        const bTime = safeGetTimestamp(b.updatedAt);
+        return bTime - aTime;
+      });
+
+      // Keep the first (newest), delete the rest
+      const [keeper, ...duplicates] = clients;
+      console.log(`🔀 Keeping "${keeper.name}" (${keeper.id}), removing ${duplicates.length} duplicate(s)`);
+      kept++;
+
+      for (const dup of duplicates) {
+        try {
+          await deleteClient(dup.id);
+          removed++;
+          console.log(`  🗑️ Removed duplicate: ${dup.id}`);
+        } catch (error) {
+          console.error(`  ❌ Failed to remove duplicate ${dup.id}:`, error);
+        }
+      }
+    }
+
+    console.log(`✅ Deduplication complete: kept ${kept}, removed ${removed}`);
+    return { removed, kept };
+  } catch (error) {
+    console.error("Deduplication error:", error);
+    return { removed: 0, kept: 0 };
+  }
 }

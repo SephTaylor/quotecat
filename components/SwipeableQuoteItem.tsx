@@ -1,7 +1,7 @@
 // components/SwipeableQuoteItem.tsx
 import React, { useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View, Pressable, ActivityIndicator, Alert } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
+import { Swipeable, TouchableOpacity } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import type { Quote } from "@/lib/types";
 import { QuoteStatusMeta } from "@/lib/types";
@@ -142,13 +142,13 @@ export const SwipeableQuoteItem = React.memo(
           style={[styles.actionsContainer, { transform: [{ translateX }] }]}
         >
           {onDuplicate && (
-            <Pressable style={styles.duplicateButton} onPress={handleDuplicate}>
+            <TouchableOpacity style={styles.duplicateButton} onPress={handleDuplicate}>
               <Text style={styles.actionText}>Duplicate</Text>
-            </Pressable>
+            </TouchableOpacity>
           )}
-          <Pressable style={styles.deleteButton} onPress={handleDelete}>
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
             <Text style={styles.actionText}>Delete</Text>
-          </Pressable>
+          </TouchableOpacity>
         </Animated.View>
       );
     };
@@ -157,9 +157,8 @@ export const SwipeableQuoteItem = React.memo(
       progress: Animated.AnimatedInterpolation<number>,
       dragX: Animated.AnimatedInterpolation<number>,
     ) => {
-      // Calculate width based on available actions
-      const hasLinkedQuotes = item.linkedQuoteIds && item.linkedQuoteIds.length > 0;
-      const actionCount = 1 + (onCreateTier ? 1 : 0) + (hasLinkedQuotes && onUnlink ? 1 : 0);
+      // Calculate width based on available actions (Export + optional Create Tier)
+      const actionCount = 1 + (onCreateTier ? 1 : 0);
       const totalWidth = actionCount * 100;
 
       const translateX = dragX.interpolate({
@@ -176,19 +175,11 @@ export const SwipeableQuoteItem = React.memo(
         }
       };
 
-      const handleUnlink = () => {
-        if (onUnlink) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          swipeableRef.current?.close();
-          onUnlink();
-        }
-      };
-
       return (
         <Animated.View
           style={[styles.actionsContainer, { transform: [{ translateX }] }]}
         >
-          <Pressable
+          <TouchableOpacity
             style={styles.exportButton}
             onPress={handleExport}
             disabled={isExporting}
@@ -198,16 +189,11 @@ export const SwipeableQuoteItem = React.memo(
             ) : (
               <Text style={styles.actionText}>Export</Text>
             )}
-          </Pressable>
+          </TouchableOpacity>
           {onCreateTier && (
-            <Pressable style={styles.tierButton} onPress={handleCreateTier}>
+            <TouchableOpacity style={styles.tierButton} onPress={handleCreateTier}>
               <Text style={styles.actionText}>Create Tier</Text>
-            </Pressable>
-          )}
-          {hasLinkedQuotes && onUnlink && (
-            <Pressable style={styles.unlinkButton} onPress={handleUnlink}>
-              <Text style={styles.actionText}>Unlink</Text>
-            </Pressable>
+            </TouchableOpacity>
           )}
         </Animated.View>
       );
@@ -373,6 +359,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     actionsContainer: {
       flexDirection: "row",
+      alignItems: "center",
       marginBottom: theme.spacing(1),
     },
     actionButton: {
@@ -384,6 +371,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     deleteButton: {
       backgroundColor: "#FF3B30",
       width: 100,
+      paddingVertical: 16,
       justifyContent: "center",
       alignItems: "center",
       borderRadius: theme.radius.lg,
@@ -391,6 +379,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     exportButton: {
       backgroundColor: "#34C759",
       width: 100,
+      paddingVertical: 16,
       justifyContent: "center",
       alignItems: "center",
       borderRadius: theme.radius.lg,
@@ -398,6 +387,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     duplicateButton: {
       backgroundColor: theme.colors.accent,
       width: 100,
+      paddingVertical: 16,
       justifyContent: "center",
       alignItems: "center",
       borderRadius: theme.radius.lg,
@@ -405,13 +395,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     tierButton: {
       backgroundColor: "#5856D6",
       width: 100,
-      justifyContent: "center",
-      alignItems: "center",
-      borderRadius: theme.radius.lg,
-    },
-    unlinkButton: {
-      backgroundColor: "#FF9500",
-      width: 100,
+      paddingVertical: 16,
       justifyContent: "center",
       alignItems: "center",
       borderRadius: theme.radius.lg,
