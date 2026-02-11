@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support - QuoteCat</title>
+    <meta name="description" content="Get help with QuoteCat or submit a feature request. We're here to help contractors succeed.">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="shortcut icon" type="image/png" href="/favicon-32x32.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #ffffff;
+            background: linear-gradient(to bottom,
+                #1a1a1a 0%,
+                #2d2d2d 25%,
+                #1f1f1f 50%,
+                #2d2d2d 75%,
+                #1a1a1a 100%
+            );
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 16px 0;
+            backdrop-filter: blur(10px);
+            background: rgba(20, 20, 20, 0.95);
+            border-bottom: 1px solid rgba(249, 115, 22, 0.3);
+            position: relative;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .logo:hover {
+            opacity: 0.85;
+        }
+
+        .logo img {
+            height: 100px;
+            width: auto;
+            margin-right: -20px;
+        }
+
+        .logo-text {
+            font-size: 42px;
+            font-weight: 400;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        /* Hamburger Menu */
+        .hamburger {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .hamburger-line {
+            width: 100%;
+            height: 2px;
+            background: #f97316;
+            transition: all 0.3s;
+            border-radius: 2px;
+        }
+
+        .hamburger:hover .hamburger-line {
+            background: #ea580c;
+        }
+
+        /* Mobile Menu Overlay */
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 300px;
+            height: 100vh;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .mobile-menu.open {
+            right: 0;
+        }
+
+        .menu-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 999;
+        }
+
+        .menu-backdrop.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .mobile-menu-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #f97316;
+        }
+
+        .close-menu {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .close-menu:hover {
+            color: #ffffff;
+        }
+
+        .mobile-menu-content {
+            padding: 20px;
+        }
+
+        .menu-section {
+            margin-bottom: 24px;
+        }
+
+        .menu-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+
+        .menu-link {
+            display: block;
+            padding: 12px 0;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: color 0.2s;
+        }
+
+        .menu-link:hover {
+            color: #f97316;
+        }
+
+        /* Content */
+        .content {
+            padding: 60px 0;
+        }
+
+        h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #f97316;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-top: 40px;
+            margin-bottom: 16px;
+            color: #ffffff;
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: #d1d5db;
+        }
+
+        a {
+            color: #f97316;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Support Cards */
+        .support-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin: 32px 0;
+        }
+
+        .support-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            transition: border-color 0.2s;
+        }
+
+        .support-card:hover {
+            border-color: rgba(249, 115, 22, 0.5);
+        }
+
+        .support-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .support-card p {
+            font-size: 14px;
+            color: #9ca3af;
+            margin-bottom: 16px;
+        }
+
+        .support-card a.btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #f97316;
+            color: #000;
+            font-weight: 600;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .support-card a.btn:hover {
+            background: #ea580c;
+            text-decoration: none;
+        }
+
+        /* Form */
+        .form-section {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 32px;
+            margin-top: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #d1d5db;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 16px;
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #f97316;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        select option {
+            background: #1f2937;
+            color: #ffffff;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        button[type="submit"] {
+            display: inline-block;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #000;
+            background: #f97316;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button[type="submit"]:hover {
+            background: #ea580c;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            margin-top: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        footer a {
+            color: #9ca3af;
+        }
+
+        footer a:hover {
+            color: #f97316;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 28px;
+            }
+
+            .logo img {
+                height: 60px;
+            }
+
+            .logo-text {
+                font-size: 28px;
+            }
+
+            .form-section {
+                padding: 24px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <img src="logo.png" alt="QuoteCat Logo">
+                    <span class="logo-text">QuoteCat</span>
+                </a>
+                <div class="header-nav">
+                    <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+                        <div class="hamburger-line"></div>
+                        <div class="hamburger-line"></div>
+                        <div class="hamburger-line"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Menu Backdrop -->
+    <div class="menu-backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+            <span class="mobile-menu-title">Menu</span>
+            <button class="close-menu" onclick="toggleMenu()" aria-label="Close">&times;</button>
+        </div>
+        <div class="mobile-menu-content">
+            <div class="menu-section">
+                <div class="menu-section-title">Navigation</div>
+                <a href="index.html" class="menu-link">Home</a>
+                <a href="index.html#pricing" class="menu-link">Pricing</a>
+                <a href="faq.html" class="menu-link">FAQ</a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">Resources</div>
+                <a href="privacy.html" class="menu-link">Privacy Policy</a>
+                <a href="terms.html" class="menu-link">Terms of Service</a>
+                <a href="support.html" class="menu-link">Support</a>
+            </div>
+            <div class="menu-section">
+                <div class="menu-section-title">Contact</div>
+                <a href="mailto:hello@quotecat.ai" class="menu-link">Email Support</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="content">
+            <h1>Support</h1>
+            <p>We're here to help you get the most out of QuoteCat.</p>
+
+            <div class="support-grid">
+                <div class="support-card">
+                    <h3>Quick Answers</h3>
+                    <p>Check our FAQ for answers to common questions about features, pricing, and getting started.</p>
+                    <a href="faq.html" class="btn">View FAQ</a>
+                </div>
+                <div class="support-card">
+                    <h3>Email Support</h3>
+                    <p>Can't find what you're looking for? Reach out and we'll get back to you within 24 hours.</p>
+                    <a href="mailto:hello@quotecat.ai" class="btn">Email Us</a>
+                </div>
+            </div>
+
+            <h2>Submit Feedback</h2>
+            <p>Have a feature idea or found a bug? We'd love to hear from you. Your feedback shapes how we build QuoteCat.</p>
+
+            <div class="form-section">
+                <form name="feedback" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+                    <input type="hidden" name="form-name" value="feedback">
+                    <p style="display:none;">
+                        <label>Don't fill this out: <input name="bot-field"></label>
+                    </p>
+
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required placeholder="you@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="type">What's this about?</label>
+                        <select id="type" name="type" required>
+                            <option value="">Select one...</option>
+                            <option value="feature">Feature Request</option>
+                            <option value="bug">Bug Report</option>
+                            <option value="question">Question</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="message">Message</label>
+                        <textarea id="message" name="message" required placeholder="Tell us what's on your mind..."></textarea>
+                    </div>
+
+                    <button type="submit">Send Feedback</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p style="margin-bottom: 20px;">
+                <strong>QuoteCat</strong> - Built for contractors, by developers who care.
+            </p>
+            <p style="color: #9ca3af;">
+                Questions? Email us at <a href="mailto:hello@quotecat.ai">hello@quotecat.ai</a>
+            </p>
+            <p style="margin-top: 40px; font-size: 14px; color: #6b7280;">
+                &copy; 2026 QuoteCat.ai. All rights reserved. |
+                <a href="faq.html">FAQ</a> |
+                <a href="privacy.html">Privacy Policy</a> |
+                <a href="terms.html">Terms of Service</a> |
+                <a href="support.html">Support</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const backdrop = document.getElementById('menuBackdrop');
+            menu.classList.toggle('open');
+            backdrop.classList.toggle('open');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const menu = document.getElementById('mobileMenu');
+                if (menu.classList.contains('open')) {
+                    toggleMenu();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
