@@ -20,16 +20,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   // ---- plugins (explicit, no spreading to avoid duplicates) ----
   plugins: [
     "expo-router",
-    [
-      "expo-splash-screen",
-      {
-        image: "./assets/images/splash-icon.png",
-        imageWidth: 200,
-        resizeMode: "contain",
-        backgroundColor: "#ffffff",
-        dark: { backgroundColor: "#000000" },
-      },
-    ],
     "expo-font",
     "expo-web-browser",
     "expo-sqlite",

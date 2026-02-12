@@ -42,7 +42,7 @@ export function canExportPDF(user: UserState): {
   if (remaining <= 0) {
     return {
       allowed: false,
-      reason: `You've used all ${FREE_LIMITS.pdfs} free PDF exports.`,
+      reason: `You've used all ${FREE_LIMITS.pdfs} free PDF exports this month. Resets on the 1st.`,
       remaining: 0,
     };
   }
@@ -67,7 +67,7 @@ export function canExportSpreadsheet(user: UserState): {
   if (remaining <= 0) {
     return {
       allowed: false,
-      reason: `You've used all ${FREE_LIMITS.spreadsheets} free spreadsheet exports.`,
+      reason: `You've used all ${FREE_LIMITS.spreadsheets} free spreadsheet exports this month. Resets on the 1st.`,
       remaining: 0,
     };
   }
@@ -104,10 +104,54 @@ export function canAccessChangeOrders(user: UserState): boolean {
 }
 
 /**
+ * Check if user can access invoices (all tiers - free has limits)
+ */
+export function canAccessInvoices(_user: UserState): boolean {
+  return true; // All users can access invoices
+}
+
+/**
+ * Check if user can export an invoice PDF
+ * Free users have monthly limit and get QuoteCat branding
+ */
+export function canExportInvoice(user: UserState): {
+  allowed: boolean;
+  reason?: string;
+  remaining?: number;
+  hasBranding: boolean; // True if export will have QuoteCat branding
+} {
+  if (user.tier === "pro" || user.tier === "premium") {
+    return { allowed: true, hasBranding: false };
+  }
+
+  const invoicesUsed = user.invoicesUsed || 0;
+  const remaining = FREE_LIMITS.invoices - invoicesUsed;
+
+  if (remaining <= 0) {
+    return {
+      allowed: false,
+      reason: `You've used all ${FREE_LIMITS.invoices} free invoice exports this month. Upgrade to Pro for unlimited exports without branding.`,
+      remaining: 0,
+      hasBranding: true,
+    };
+  }
+
+  return { allowed: true, remaining, hasBranding: true };
+}
+
+/**
  * Check if user can access Quote Wizard / Drew (Premium only)
  */
 export function canAccessWizard(user: UserState): boolean {
   return user.tier === "premium";
+}
+
+/**
+ * Check if user can access Drew for support questions (all tiers)
+ * Everyone can ask Drew questions; only Premium can build quotes with Drew
+ */
+export function canAccessDrewSupport(_user: UserState): boolean {
+  return true;  // All users can ask Drew questions
 }
 
 /**
@@ -122,7 +166,7 @@ export function canAccessValueTracking(user: UserState): boolean {
  */
 export function getQuotaRemaining(
   user: UserState,
-  resource: "quotes" | "pdfs" | "spreadsheets",
+  resource: "quotes" | "pdfs" | "spreadsheets" | "invoices",
 ): number {
   if (user.tier === "pro" || user.tier === "premium") {
     return Infinity;
@@ -138,6 +182,10 @@ export function getQuotaRemaining(
 
   if (resource === "spreadsheets") {
     return Math.max(0, FREE_LIMITS.spreadsheets - user.spreadsheetsUsed);
+  }
+
+  if (resource === "invoices") {
+    return Math.max(0, FREE_LIMITS.invoices - (user.invoicesUsed || 0));
   }
 
   return 0;

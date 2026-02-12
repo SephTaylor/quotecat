@@ -36,9 +36,9 @@ export default function ProTools() {
     router.push("/(auth)/sign-in" as any);
   };
 
-  const handleFeatureTap = (featureName: string, requiresPremium: boolean = false) => {
-    // Check if user has the required tier
-    const hasAccess = requiresPremium ? isPremium : isPro;
+  const handleFeatureTap = (featureName: string, requiresPremium: boolean = false, freeAccess: boolean = false) => {
+    // Check if user has the required tier (or if feature is free for all)
+    const hasAccess = freeAccess || (requiresPremium ? isPremium : isPro);
 
     if (hasAccess) {
       // Navigate to feature
@@ -104,13 +104,13 @@ export default function ProTools() {
               theme={theme}
             />
 
-            {/* Client Manager */}
+            {/* Client Manager - Free for all users */}
             <ProFeatureCard
               icon=""
               title="Client Manager"
               description="Save and manage your client list"
-              locked={!isPro}
-              onPress={() => handleFeatureTap("Client Manager")}
+              locked={false}
+              onPress={() => handleFeatureTap("Client Manager", false, true)}
               details={[]}
               theme={theme}
             />

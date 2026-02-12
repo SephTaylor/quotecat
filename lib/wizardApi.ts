@@ -240,6 +240,12 @@ export type WizardResponse = {
 
   // Updated state
   state?: WizardState;
+
+  // In-app navigation route (for "Take me there" feature)
+  navigation?: string;
+
+  // Action to perform (e.g., 'navigate' to use last navigation)
+  action?: 'navigate';
 };
 
 // User defaults that can be passed to the wizard
@@ -248,6 +254,9 @@ export interface UserDefaults {
   defaultLaborRate?: number;
 }
 
+// Drew mode: 'support' for FAQ/feedback only, 'quote' for full quote building
+export type DrewMode = 'support' | 'quote';
+
 /**
  * Send a message to Drew (the Quote Wizard) and get a response.
  * Uses either drew-agent (intelligent RAG) or wizard-chat (state machine) based on USE_DREW_AGENT flag.
@@ -255,14 +264,16 @@ export interface UserDefaults {
  * @param userMessage - The user's message text
  * @param state - Current wizard state (use createInitialState() for first message)
  * @param userDefaults - Optional user defaults (markup %, labor rate)
+ * @param mode - 'support' for FAQ/feedback (all tiers), 'quote' for quote building (Premium only)
  */
 export async function sendWizardMessage(
   userMessage: string,
   state: WizardState,
   userDefaults?: UserDefaults,
+  mode: DrewMode = 'quote',
 ): Promise<WizardResponse> {
   if (USE_DREW_AGENT) {
-    return sendDrewAgentMessage(userMessage, state as DrewAgentState, userDefaults);
+    return sendDrewAgentMessage(userMessage, state as DrewAgentState, userDefaults, mode);
   } else {
     return sendWizardChatMessage(userMessage, state as WizardChatState, userDefaults);
   }
@@ -275,8 +286,9 @@ async function sendDrewAgentMessage(
   userMessage: string,
   state: DrewAgentState,
   userDefaults?: UserDefaults,
+  mode: DrewMode = 'quote',
 ): Promise<WizardResponse> {
-  console.log('[wizardApi] drew-agent: Sending message:', userMessage.substring(0, 30));
+  console.log('[wizardApi] drew-agent: Sending message:', userMessage.substring(0, 30), 'Mode:', mode);
 
   const apiCall = supabase.functions.invoke('drew-agent', {
     body: {
@@ -286,6 +298,7 @@ async function sendDrewAgentMessage(
         defaultLaborRate: userDefaults?.defaultLaborRate,
         defaultMarkupPercent: userDefaults?.defaultMarkupPercent,
       },
+      mode,  // 'support' or 'quote'
     },
   });
 
@@ -309,6 +322,8 @@ async function sendDrewAgentMessage(
     quickReplies: data.quickReplies,
     toolCalls: data.toolCalls,
     state: data.state,
+    navigation: data.navigation,
+    action: data.action,
   };
 }
 

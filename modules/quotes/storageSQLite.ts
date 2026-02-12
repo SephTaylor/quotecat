@@ -243,14 +243,38 @@ export async function updateQuote(
   id: string,
   patch: Partial<Quote>,
 ): Promise<Quote | null> {
+  console.log(`[UPDATE] updateQuote(${id}) with patch:`, {
+    labor: patch.labor,
+    tier: patch.tier,
+    linkedQuoteIds: patch.linkedQuoteIds,
+    itemCount: patch.items?.length,
+  });
+
   const current = await getQuoteById(id);
-  if (!current) return null;
+  if (!current) {
+    console.log(`[UPDATE] Quote ${id} not found in SQLite`);
+    return null;
+  }
+
+  console.log(`[UPDATE] Current quote from SQLite:`, {
+    labor: current.labor,
+    tier: current.tier,
+    linkedQuoteIds: current.linkedQuoteIds,
+    itemCount: current.items?.length,
+  });
 
   const merged: Quote = {
     ...current,
     ...patch,
     id, // Ensure ID doesn't change
   };
+
+  console.log(`[UPDATE] Merged quote:`, {
+    labor: merged.labor,
+    tier: merged.tier,
+    linkedQuoteIds: merged.linkedQuoteIds,
+    itemCount: merged.items?.length,
+  });
 
   return saveQuote(merged);
 }
@@ -382,16 +406,26 @@ export async function linkQuotes(quoteIds: string[]): Promise<void> {
  * Uses STAR TOPOLOGY: Base has links to children, children only link to base
  */
 export async function unlinkQuote(quoteId: string): Promise<void> {
+  console.log(`[UNLINK] Starting unlink for quote: ${quoteId}`);
   const quote = getQuoteByIdDB(quoteId);
   if (!quote) {
+    console.log(`[UNLINK] Quote not found: ${quoteId}`);
     throw new Error(`Quote ${quoteId} not found`);
   }
+
+  console.log(`[UNLINK] Quote found:`, {
+    id: quote.id,
+    name: quote.name,
+    tier: quote.tier,
+    linkedQuoteIds: quote.linkedQuoteIds,
+  });
 
   const linkedIds = quote.linkedQuoteIds || [];
   const now = new Date().toISOString();
 
   // STAR TOPOLOGY: Determine if this is the base or a child
   const isBase = quote.tier === "Base";
+  console.log(`[UNLINK] isBase=${isBase}, linkedIds=${JSON.stringify(linkedIds)}`);
 
   if (isBase) {
     // Unlinking the base: all children become standalone quotes
@@ -419,9 +453,16 @@ export async function unlinkQuote(quoteId: string): Promise<void> {
     // Unlinking a child: remove from base's linkedQuoteIds
     // In star topology, a child's linkedQuoteIds[0] is the base
     const baseId = linkedIds[0];
+    console.log(`[UNLINK] Child quote - looking for base with ID: ${baseId}`);
     const baseQuote = getQuoteByIdDB(baseId);
+    console.log(`[UNLINK] Base quote found:`, baseQuote ? {
+      id: baseQuote.id,
+      tier: baseQuote.tier,
+      linkedQuoteIds: baseQuote.linkedQuoteIds,
+    } : 'null');
 
     if (baseQuote && baseQuote.linkedQuoteIds) {
+      console.log(`[UNLINK] Updating base quote links`);
       const updatedBaseLinks = baseQuote.linkedQuoteIds.filter((id) => id !== quoteId);
 
       // If no children remain, clear base's tier info too
@@ -443,6 +484,7 @@ export async function unlinkQuote(quoteId: string): Promise<void> {
     }
 
     // Clear this child's links and tier
+    console.log(`[UNLINK] Clearing child quote links and tier`);
     saveQuoteDB({
       ...quote,
       linkedQuoteIds: undefined,
@@ -453,6 +495,7 @@ export async function unlinkQuote(quoteId: string): Promise<void> {
 
   cache.invalidate(CacheKeys.quotes.all());
   cache.invalidate(CacheKeys.quotes.byId(quoteId));
+  console.log(`[UNLINK] Unlink complete for ${quoteId}`);
 }
 
 /**
@@ -532,10 +575,15 @@ export async function createTierFromQuote(
   baseQuote.linkedQuoteIds = [...baseLinks, newQuote.id];
   baseQuote.updatedAt = now;
 
+  console.log(`[CREATE_TIER] Creating tier "${tierName}" for base "${baseQuoteId}"`);
+  console.log(`[CREATE_TIER] Base quote linkedQuoteIds:`, baseQuote.linkedQuoteIds);
+  console.log(`[CREATE_TIER] New quote linkedQuoteIds:`, newQuote.linkedQuoteIds);
+
   // In star topology, we don't update other children - they only link to base
 
   saveQuoteDB(baseQuote);
   saveQuoteDB(newQuote);
+  console.log(`[CREATE_TIER] Both quotes saved to SQLite`);
 
   trackEvent(AnalyticsEvents.QUOTE_DUPLICATED, {
     originalItemCount: source.items.length,

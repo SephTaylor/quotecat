@@ -5,6 +5,8 @@ import { getAssemblyById, saveAssembly } from "@/modules/assemblies";
 import type { Assembly, AssemblyItem } from "@/modules/assemblies";
 import { useProducts } from "@/modules/catalog";
 import type { Product } from "@/modules/catalog/seed";
+import { getPricebookItems } from "@/lib/pricebook";
+import type { PricebookItem } from "@/lib/types";
 import { BottomBar, Button, FormInput } from "@/modules/core/ui";
 import {
   MaterialsPicker,
@@ -15,6 +17,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,6 +26,8 @@ import {
   Keyboard,
   RefreshControl,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
+import * as Haptics from "expo-haptics";
 
 export default function AssemblyEditorScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
@@ -37,22 +42,28 @@ export default function AssemblyEditorScreen() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [showExistingItems, setShowExistingItems] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [pricebookItems, setPricebookItems] = useState<PricebookItem[]>([]);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   // Use the same selection hook as quote materials
   const { selection, inc, dec, clear, units, setQty, getSelection } = useSelection(new Map());
 
-  // Load assembly
+  // Load assembly and pricebook items
   useEffect(() => {
     const load = async () => {
       if (!assemblyId) return;
       try {
-        const asm = await getAssemblyById(assemblyId);
+        // Load assembly and pricebook items in parallel
+        const [asm, pbItems] = await Promise.all([
+          getAssemblyById(assemblyId),
+          getPricebookItems(),
+        ]);
         if (asm) {
           setAssembly(asm);
           setAssemblyName(asm.name);
         }
+        setPricebookItems(pbItems);
       } finally {
         setLoading(false);
       }
@@ -305,73 +316,123 @@ export default function AssemblyEditorScreen() {
             nestedScrollEnabled
           >
             {assembly.items.map((item, index) => {
-              const product = products.find((p) => p.id === item.productId);
               const qty = "qty" in item ? item.qty : 0;
               const isLast = index === assembly.items.length - 1;
 
-              // Show missing products with warning
-              if (!product) {
-                // Use stored name if available, otherwise show generic message
-                const displayName = item.name || "Unknown product";
+              // Check source - pricebook items use pricebookItems, catalog items use products
+              const isPricebookItem = item.source === "pricebook";
+              const pricebookItem = isPricebookItem
+                ? pricebookItems.find((p) => p.id === item.productId)
+                : null;
+              const catalogProduct = !isPricebookItem
+                ? products.find((p) => p.id === item.productId)
+                : null;
+
+              // Item is valid if we found it in the appropriate source
+              const isValid = isPricebookItem ? !!pricebookItem : !!catalogProduct;
+              const displayName = isPricebookItem
+                ? (pricebookItem?.name || item.name || "Unknown item")
+                : (catalogProduct?.name || item.name || "Unknown product");
+              const displayPrice = isPricebookItem
+                ? pricebookItem?.unitPrice
+                : catalogProduct?.unitPrice;
+              const displayUnit = isPricebookItem
+                ? (pricebookItem?.unitType || "ea")
+                : (catalogProduct?.unit || "ea");
+
+              // Delete handler for swipe
+              const handleDelete = () => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                const updatedItems = assembly.items.filter((i) => i.productId !== item.productId);
+                setAssembly({ ...assembly, items: updatedItems });
+              };
+
+              // Render right swipe actions
+              const renderRightActions = (
+                progress: Animated.AnimatedInterpolation<number>,
+                dragX: Animated.AnimatedInterpolation<number>
+              ) => {
+                const translateX = dragX.interpolate({
+                  inputRange: [-100, 0],
+                  outputRange: [0, 100],
+                  extrapolate: "clamp",
+                });
                 return (
-                  <View key={item.productId} style={[styles.existingItemRow, styles.missingItemRow, isLast && styles.existingItemRowLast]}>
-                    <View style={styles.productInfo}>
-                      <Text style={styles.missingProductName}>⚠️ {displayName}</Text>
-                      <Text style={styles.missingProductMeta}>Unavailable · qty: {qty}</Text>
-                    </View>
-                    <Pressable
-                      style={styles.removeButton}
-                      onPress={() => {
-                        const updatedItems = assembly.items.filter((i) => i.productId !== item.productId);
-                        setAssembly({ ...assembly, items: updatedItems });
-                      }}
-                    >
-                      <Text style={styles.removeButtonText}>Remove</Text>
+                  <Animated.View style={[styles.swipeActionsContainer, { transform: [{ translateX }] }]}>
+                    <Pressable style={styles.swipeDeleteButton} onPress={handleDelete}>
+                      <Text style={styles.swipeActionText}>Delete</Text>
                     </Pressable>
-                  </View>
+                  </Animated.View>
+                );
+              };
+
+              // Show missing items with warning (only if truly missing from their source)
+              if (!isValid) {
+                const missingDisplayName = item.name || "Unknown item";
+                return (
+                  <Swipeable
+                    key={item.productId}
+                    renderRightActions={renderRightActions}
+                    friction={2}
+                    overshootRight={false}
+                  >
+                    <View style={[styles.existingItemRow, styles.missingItemRow, isLast && styles.existingItemRowLast]}>
+                      <View style={styles.productInfo}>
+                        <Text style={styles.missingProductName}>⚠️ {missingDisplayName}</Text>
+                        <Text style={styles.missingProductMeta}>Unavailable · qty: {qty}</Text>
+                      </View>
+                    </View>
+                  </Swipeable>
                 );
               }
 
               return (
-                <View key={item.productId} style={[styles.existingItemRow, isLast && styles.existingItemRowLast]}>
-                  <View style={styles.productInfo}>
-                    <Text style={styles.productName}>{product.name}</Text>
-                    <Text style={styles.productMeta}>
-                      ${product.unitPrice.toFixed(2)} / {product.unit}
-                    </Text>
-                  </View>
-                  <View style={styles.stepper}>
-                    <Pressable
-                      style={styles.stepperButton}
-                      onPress={() => {
-                        const updatedItems = assembly.items
-                          .map((i) =>
+                <Swipeable
+                  key={item.productId}
+                  renderRightActions={renderRightActions}
+                  friction={2}
+                  overshootRight={false}
+                >
+                  <View style={[styles.existingItemRow, isLast && styles.existingItemRowLast]}>
+                    <View style={styles.productInfo}>
+                      <Text style={styles.productName}>{displayName}</Text>
+                      <Text style={styles.productMeta}>
+                        ${displayPrice?.toFixed(2) ?? "0.00"} / {displayUnit}
+                      </Text>
+                    </View>
+                    <View style={styles.stepper}>
+                      <Pressable
+                        style={styles.stepperButton}
+                        onPress={() => {
+                          const updatedItems = assembly.items
+                            .map((i) =>
+                              i.productId === item.productId
+                                ? { ...i, qty: ("qty" in i ? i.qty : 0) - 1 }
+                                : i
+                            )
+                            .filter((i) => ("qty" in i ? i.qty : 0) > 0);
+                          setAssembly({ ...assembly, items: updatedItems });
+                        }}
+                      >
+                        <Text style={styles.stepperText}>−</Text>
+                      </Pressable>
+                      <Text style={styles.qtyText}>{qty}</Text>
+                      <Pressable
+                        style={styles.stepperButton}
+                        onPress={() => {
+                          const updatedItems = assembly.items.map((i) =>
                             i.productId === item.productId
-                              ? { ...i, qty: ("qty" in i ? i.qty : 0) - 1 }
+                              ? { ...i, qty: ("qty" in i ? i.qty : 0) + 1 }
                               : i
-                          )
-                          .filter((i) => ("qty" in i ? i.qty : 0) > 0);
-                        setAssembly({ ...assembly, items: updatedItems });
-                      }}
-                    >
-                      <Text style={styles.stepperText}>−</Text>
-                    </Pressable>
-                    <Text style={styles.qtyText}>{qty}</Text>
-                    <Pressable
-                      style={styles.stepperButton}
-                      onPress={() => {
-                        const updatedItems = assembly.items.map((i) =>
-                          i.productId === item.productId
-                            ? { ...i, qty: ("qty" in i ? i.qty : 0) + 1 }
-                            : i
-                        );
-                        setAssembly({ ...assembly, items: updatedItems });
-                      }}
-                    >
-                      <Text style={styles.stepperText}>+</Text>
-                    </Pressable>
+                          );
+                          setAssembly({ ...assembly, items: updatedItems });
+                        }}
+                      >
+                        <Text style={styles.stepperText}>+</Text>
+                      </Pressable>
+                    </View>
                   </View>
-                </View>
+                </Swipeable>
               );
             })}
           </ScrollView>
@@ -582,8 +643,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     // Missing product styles
     missingItemRow: {
       backgroundColor: "#FFF3CD",
-      marginHorizontal: -theme.spacing(2),
-      paddingHorizontal: theme.spacing(2),
     },
     missingProductName: {
       fontSize: 14,
@@ -605,6 +664,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 13,
       fontWeight: "700",
       color: "#FFF",
+    },
+    // Swipe actions
+    swipeActionsContainer: {
+      flexDirection: "row",
+    },
+    swipeDeleteButton: {
+      backgroundColor: "#FF3B30",
+      justifyContent: "center",
+      alignItems: "center",
+      width: 100,
+    },
+    swipeActionText: {
+      color: "#FFFFFF",
+      fontSize: 14,
+      fontWeight: "600",
     },
   });
 }

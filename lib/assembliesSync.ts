@@ -469,6 +469,17 @@ export async function syncAssemblies(): Promise<{
     const syncType = isInitialSync ? "Initial sync" : "Incremental sync";
     console.log(`✅ Assemblies ${syncType} complete: ${downloaded} downloaded, ${uploaded} uploaded`);
 
+    // Repair any assemblies with invalid product references after sync
+    // This ensures cloud data is also fixed
+    if (downloaded > 0) {
+      try {
+        const { repairAssemblies } = await import("./assemblyRepair");
+        await repairAssemblies();
+      } catch (repairError) {
+        console.error("Assembly repair after sync failed:", repairError);
+      }
+    }
+
     return { success: true, downloaded, uploaded };
   } catch (error) {
     console.error("Assemblies sync error:", error);

@@ -17,6 +17,7 @@ import {
   markStartupSuccess
 } from "@/lib/dataIntegrity";
 import { migrateAsyncStorageToSQLite } from "@/lib/asyncStorageMigration";
+import { repairAssemblies } from "@/lib/assemblyRepair";
 
 function RootNavigator() {
   const { mode } = useTheme();
@@ -116,6 +117,15 @@ export default function RootLayout() {
           console.error("Auth init error:", e);
         }
 
+        // Step 3.5: Repair any assemblies with invalid product references
+        // - Matches items to EXISTING pricebook entries only (no auto-creation)
+        // - Removes broken seed assemblies (example data) entirely
+        try {
+          await repairAssemblies();
+        } catch (e) {
+          console.error("Assembly repair error:", e);
+        }
+
         // Step 4: Mark startup as successful
         // This resets the crash counter so we don't trigger nuclear reset
         await markStartupSuccess();
@@ -135,14 +145,14 @@ export default function RootLayout() {
   // Show loading screen during initialization
   if (!isInitialized) {
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#F97316' }}>
         <LoadingScreen message={loadingMessage} />
       </GestureHandlerRootView>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#F97316' }}>
       <ErrorBoundary>
         <SafeAreaProvider>
           <ThemeProvider>

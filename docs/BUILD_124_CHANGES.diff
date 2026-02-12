@@ -1,0 +1,1509 @@
+diff --git a/app/(forms)/quote/[id]/review.tsx b/app/(forms)/quote/[id]/review.tsx
+index f9932d0..b8004ef 100644
+--- a/app/(forms)/quote/[id]/review.tsx
++++ b/app/(forms)/quote/[id]/review.tsx
+@@ -20,6 +20,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
+ import { useSafeAreaInsets } from "react-native-safe-area-context";
+ import { getQuoteById } from "@/lib/quotes";
+ import type { Quote } from "@/lib/quotes";
++import { calculateQuoteTotals } from "@/lib/calculations";
+ import { useTheme } from "@/contexts/ThemeContext";
+ import { getUserState, incrementPdfCount, incrementSpreadsheetCount } from "@/lib/user";
+ import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
+@@ -80,20 +81,16 @@ export default function QuoteReviewScreen() {
+ 
+   const styles = React.useMemo(() => createStyles(theme, insets), [theme, insets]);
+ 
+-  // Calculate totals
+-  const materialsFromItems = quote?.items?.reduce(
+-    (sum, item) => sum + item.unitPrice * item.qty,
+-    0
+-  ) ?? 0;
+-
+-  const materialEstimate = quote?.materialEstimate ?? 0;
+-  const labor = quote?.labor ?? 0;
+-  const overhead = quote?.overhead ?? 0;
+-  const markupPercent = quote?.markupPercent ?? 0;
+-
+-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+-  const markupAmount = (subtotal * markupPercent) / 100;
+-  const grandTotal = subtotal + markupAmount;
++  // Use centralized calculation (markup on line items only, includes tax)
++  const totals = quote ? calculateQuoteTotals(quote) : null;
++  const materialsFromItems = totals?.materialsFromItems ?? 0;
++  const materialEstimate = totals?.materialEstimate ?? 0;
++  const labor = totals?.labor ?? 0;
++  const markupPercent = totals?.markupPercent ?? 0;
++  const markupAmount = totals?.markupAmount ?? 0;
++  const subtotal = totals?.subtotal ?? 0;
++  const taxAmount = totals?.taxAmount ?? 0;
++  const grandTotal = totals?.total ?? 0;
+ 
+   const handleExportPDF = async () => {
+     if (!userState || !quote) return;
+@@ -563,7 +560,7 @@ export default function QuoteReviewScreen() {
+         {/* Totals Section */}
+         <View style={styles.section}>
+           <Text style={styles.sectionTitle}>Cost Breakdown</Text>
+-          {(overhead > 0 || markupAmount > 0) && (
++          {markupAmount > 0 && (
+             <Text style={styles.exportNote}>
+               Note: Detailed breakdown shown here. PDF export shows simplified total only.
+             </Text>
+@@ -590,13 +587,6 @@ export default function QuoteReviewScreen() {
+               </View>
+             )}
+ 
+-            {overhead > 0 && (
+-              <View style={styles.totalRow}>
+-                <Text style={styles.totalLabel}>Overhead</Text>
+-                <Text style={styles.totalValue}>${overhead.toFixed(2)}</Text>
+-              </View>
+-            )}
+-
+             <View style={styles.divider} />
+ 
+             <View style={styles.totalRow}>
+diff --git a/app/(main)/invoice/[id].tsx b/app/(main)/invoice/[id].tsx
+index 37a1fc6..b774b2d 100644
+--- a/app/(main)/invoice/[id].tsx
++++ b/app/(main)/invoice/[id].tsx
+@@ -27,6 +27,7 @@ import {
+   updateInvoice,
+   deleteInvoice,
+ } from "@/lib/invoices";
++import { calculateInvoiceTotals } from "@/lib/calculations";
+ import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
+ import { loadPreferences } from "@/lib/preferences";
+ import { getUserState } from "@/lib/user";
+@@ -78,6 +79,15 @@ export default function InvoiceDetailScreen() {
+   const [tempProjectName, setTempProjectName] = useState("");
+   const [tempInvoiceNumber, setTempInvoiceNumber] = useState("");
+ 
++  // Payment modal state
++  const [editingPayment, setEditingPayment] = useState(false);
++  const [tempPaymentAmount, setTempPaymentAmount] = useState("");
++  const [tempPaymentMethod, setTempPaymentMethod] = useState("");
++  const [tempPaymentDate, setTempPaymentDate] = useState<Date>(new Date());
++  const [tempPaymentNote, setTempPaymentNote] = useState("");
++  const [showPaymentDatePicker, setShowPaymentDatePicker] = useState(false);
++  const [recordingPayment, setRecordingPayment] = useState(false);
++
+   // Refs for TextInput focus
+   const projectInputRef = useRef<TextInput>(null);
+   const clientInputRef = useRef<TextInput>(null);
+@@ -351,6 +361,56 @@ export default function InvoiceDetailScreen() {
+     }
+   }, [invoice, tempInvoiceNumber, loadInvoice]);
+ 
++  const handleOpenPaymentModal = useCallback(() => {
++    if (!invoice) return;
++    // Calculate remaining balance
++    const totals = calculateInvoiceTotals(invoice);
++    const remaining = totals.total - (invoice.paidAmount || 0);
++    setTempPaymentAmount(remaining.toFixed(2));
++    setTempPaymentMethod("");
++    setTempPaymentDate(new Date());
++    setTempPaymentNote("");
++    setEditingPayment(true);
++  }, [invoice]);
++
++  const handleRecordPayment = useCallback(async () => {
++    if (!invoice) return;
++
++    const amount = parseFloat(tempPaymentAmount);
++    if (isNaN(amount) || amount <= 0) {
++      Alert.alert("Error", "Please enter a valid amount");
++      return;
++    }
++
++    if (!tempPaymentMethod) {
++      Alert.alert("Error", "Please select a payment method");
++      return;
++    }
++
++    setRecordingPayment(true);
++    try {
++      const totals = calculateInvoiceTotals(invoice);
++      const currentPaid = invoice.paidAmount || 0;
++      const newPaidAmount = currentPaid + amount;
++      const isFullyPaid = newPaidAmount >= totals.total;
++
++      await updateInvoice(invoice.id, {
++        paidAmount: newPaidAmount,
++        paidDate: tempPaymentDate.toISOString(),
++        paidMethod: tempPaymentMethod,
++        status: isFullyPaid ? "paid" : "partial",
++      });
++
++      await loadInvoice();
++      setEditingPayment(false);
++      Alert.alert("Success", "Payment recorded successfully");
++    } catch {
++      Alert.alert("Error", "Failed to record payment");
++    } finally {
++      setRecordingPayment(false);
++    }
++  }, [invoice, tempPaymentAmount, tempPaymentMethod, tempPaymentDate, loadInvoice]);
++
+   const styles = React.useMemo(() => createStyles(theme), [theme]);
+ 
+   if (loading) {
+@@ -404,24 +464,9 @@ export default function InvoiceDetailScreen() {
+     );
+   }
+ 
+-  // Calculate totals
+-  const itemsTotal = invoice.items.reduce(
+-    (sum, item) => sum + item.unitPrice * item.qty,
+-    0
+-  );
+-  const subtotal =
+-    itemsTotal +
+-    (invoice.labor || 0) +
+-    (invoice.materialEstimate || 0) +
+-    (invoice.overhead || 0);
+-  const markup = invoice.markupPercent
+-    ? subtotal * (invoice.markupPercent / 100)
+-    : 0;
+-  const subtotalWithMarkup = subtotal + markup;
+-  const tax = invoice.taxPercent
+-    ? subtotalWithMarkup * (invoice.taxPercent / 100)
+-    : 0;
+-  const total = subtotalWithMarkup + tax;
++  // Use centralized calculation (markup on line items only, not material estimate)
++  const totals = calculateInvoiceTotals(invoice);
++  const { materialsFromItems, materialEstimate, labor, subtotal, markupAmount, taxAmount, total } = totals;
+ 
+   // Format dates
+   const invoiceDate = new Date(invoice.invoiceDate);
+@@ -460,14 +505,20 @@ export default function InvoiceDetailScreen() {
+         scroll
+         bottomBar={
+           <View style={styles.bottomButtons}>
++            {invoice.status !== "paid" && (
++              <Pressable style={styles.paymentButton} onPress={handleOpenPaymentModal}>
++                <Ionicons name="card-outline" size={20} color="#FFF" />
++                <Text style={styles.paymentButtonText}>Payment</Text>
++              </Pressable>
++            )}
++
+             <Pressable style={styles.exportButton} onPress={handleExportPDF}>
+-              <Ionicons name="document-outline" size={24} color="#000" />
+-              <Text style={styles.exportButtonText}>Export PDF</Text>
++              <Ionicons name="document-outline" size={20} color="#000" />
++              <Text style={styles.exportButtonText}>Export</Text>
+             </Pressable>
+ 
+             <Pressable style={styles.deleteButton} onPress={handleDelete}>
+-              <Ionicons name="trash-outline" size={24} color="#FFF" />
+-              <Text style={styles.deleteButtonText}>Delete</Text>
++              <Ionicons name="trash-outline" size={20} color="#FFF" />
+             </Pressable>
+           </View>
+         }
+@@ -624,7 +675,7 @@ export default function InvoiceDetailScreen() {
+               <View style={styles.divider} />
+               <View style={styles.subtotalRow}>
+                 <Text style={styles.subtotalLabel}>Items Subtotal</Text>
+-                <Text style={styles.subtotalValue}>${itemsTotal.toFixed(2)}</Text>
++                <Text style={styles.subtotalValue}>${materialsFromItems.toFixed(2)}</Text>
+               </View>
+             </View>
+           )}
+@@ -649,13 +700,6 @@ export default function InvoiceDetailScreen() {
+               </View>
+             )}
+ 
+-            {(invoice.overhead ?? 0) > 0 && (
+-              <View style={styles.costRow}>
+-                <Text style={styles.costLabel}>Overhead</Text>
+-                <Text style={styles.costValue}>${invoice.overhead!.toFixed(2)}</Text>
+-              </View>
+-            )}
+-
+             {invoice.markupPercent != null && invoice.markupPercent > 0 && (
+               <>
+                 <View style={styles.divider} />
+@@ -663,7 +707,7 @@ export default function InvoiceDetailScreen() {
+                   <Text style={styles.costLabel}>
+                     Markup ({invoice.markupPercent.toFixed(0)}%)
+                   </Text>
+-                  <Text style={styles.costValue}>${markup.toFixed(2)}</Text>
++                  <Text style={styles.costValue}>${markupAmount.toFixed(2)}</Text>
+                 </View>
+               </>
+             )}
+@@ -676,7 +720,7 @@ export default function InvoiceDetailScreen() {
+                 </Text>
+                 <Text style={styles.editTextSmall}>Edit</Text>
+               </View>
+-              <Text style={styles.costValue}>${tax.toFixed(2)}</Text>
++              <Text style={styles.costValue}>${taxAmount.toFixed(2)}</Text>
+             </Pressable>
+           </View>
+ 
+@@ -697,8 +741,38 @@ export default function InvoiceDetailScreen() {
+ 
+           {/* Total */}
+           <View style={styles.totalCard}>
+-            <Text style={styles.totalLabel}>Total Amount</Text>
+-            <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
++            <Text style={styles.totalLabel}>
++              {invoice.paidAmount && invoice.paidAmount > 0 && invoice.paidAmount < total
++                ? "Balance Due"
++                : "Total Amount"}
++            </Text>
++            <Text style={styles.totalValue}>
++              ${(total - (invoice.paidAmount || 0)).toFixed(2)}
++            </Text>
++            {invoice.paidAmount && invoice.paidAmount > 0 && (
++              <View style={styles.paymentSummary}>
++                <View style={styles.paymentSummaryRow}>
++                  <Text style={styles.paymentSummaryLabel}>Invoice Total</Text>
++                  <Text style={styles.paymentSummaryValue}>${total.toFixed(2)}</Text>
++                </View>
++                <View style={styles.paymentSummaryRow}>
++                  <Text style={[styles.paymentSummaryLabel, styles.paymentReceivedLabel]}>
++                    Payments Received
++                  </Text>
++                  <Text style={[styles.paymentSummaryValue, styles.paymentReceivedValue]}>
++                    -${invoice.paidAmount.toFixed(2)}
++                  </Text>
++                </View>
++                {invoice.paidMethod && (
++                  <View style={styles.paymentSummaryRow}>
++                    <Text style={styles.paymentSummaryLabel}>Last Payment</Text>
++                    <Text style={styles.paymentSummaryValue}>
++                      {invoice.paidMethod.charAt(0).toUpperCase() + invoice.paidMethod.slice(1).replace('_', ' ')}
++                    </Text>
++                  </View>
++                )}
++              </View>
++            )}
+           </View>
+       </FormScreen>
+ 
+@@ -1217,6 +1291,180 @@ export default function InvoiceDetailScreen() {
+             </View>
+           </Pressable>
+         </Modal>
++
++        {/* Payment Modal */}
++        <Modal
++          visible={editingPayment}
++          transparent
++          animationType="slide"
++          onRequestClose={() => setEditingPayment(false)}
++        >
++          <KeyboardAvoidingView
++            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
++            style={styles.modalOverlay}
++          >
++            <Pressable
++              style={styles.modalOverlayInner}
++              onPress={() => {
++                Keyboard.dismiss();
++                setEditingPayment(false);
++              }}
++            >
++              <Pressable
++                style={styles.paymentModal}
++                onPress={(e) => e.stopPropagation()}
++              >
++                <View style={styles.modalHeader}>
++                  <Pressable onPress={() => setEditingPayment(false)}>
++                    <Text style={styles.modalCancel}>Cancel</Text>
++                  </Pressable>
++                  <Text style={styles.modalTitle}>Record Payment</Text>
++                  <Pressable onPress={handleRecordPayment} disabled={recordingPayment}>
++                    <Text style={[styles.modalDone, recordingPayment && { opacity: 0.5 }]}>
++                      {recordingPayment ? "Saving..." : "Save"}
++                    </Text>
++                  </Pressable>
++                </View>
++
++                <View style={styles.paymentFormContent}>
++                  {/* Amount */}
++                  <View style={styles.paymentField}>
++                    <Text style={styles.paymentFieldLabel}>Amount</Text>
++                    <View style={styles.amountInputContainer}>
++                      <Text style={styles.currencySymbol}>$</Text>
++                      <TextInput
++                        style={styles.amountInput}
++                        value={tempPaymentAmount}
++                        onChangeText={setTempPaymentAmount}
++                        placeholder="0.00"
++                        placeholderTextColor={theme.colors.muted}
++                        keyboardType="decimal-pad"
++                        autoFocus
++                      />
++                    </View>
++                  </View>
++
++                  {/* Payment Method */}
++                  <View style={styles.paymentField}>
++                    <Text style={styles.paymentFieldLabel}>Payment Method</Text>
++                    <View style={styles.paymentMethodGrid}>
++                      {[
++                        { value: "cash", label: "Cash" },
++                        { value: "check", label: "Check" },
++                        { value: "card", label: "Card" },
++                        { value: "bank_transfer", label: "Bank" },
++                        { value: "zelle", label: "Zelle" },
++                        { value: "venmo", label: "Venmo" },
++                        { value: "cashapp", label: "Cash App" },
++                        { value: "other", label: "Other" },
++                      ].map((method) => (
++                        <Pressable
++                          key={method.value}
++                          style={[
++                            styles.paymentMethodOption,
++                            tempPaymentMethod === method.value && styles.paymentMethodOptionActive,
++                          ]}
++                          onPress={() => setTempPaymentMethod(method.value)}
++                        >
++                          <Text
++                            style={[
++                              styles.paymentMethodText,
++                              tempPaymentMethod === method.value && styles.paymentMethodTextActive,
++                            ]}
++                          >
++                            {method.label}
++                          </Text>
++                        </Pressable>
++                      ))}
++                    </View>
++                  </View>
++
++                  {/* Payment Date */}
++                  <View style={styles.paymentField}>
++                    <Text style={styles.paymentFieldLabel}>Payment Date</Text>
++                    <Pressable
++                      style={styles.dateButton}
++                      onPress={() => setShowPaymentDatePicker(true)}
++                    >
++                      <Text style={styles.dateButtonText}>
++                        {tempPaymentDate.toLocaleDateString("en-US", {
++                          month: "short",
++                          day: "numeric",
++                          year: "numeric",
++                        })}
++                      </Text>
++                      <Ionicons name="calendar-outline" size={20} color={theme.colors.muted} />
++                    </Pressable>
++                  </View>
++
++                  {/* Note */}
++                  <View style={styles.paymentField}>
++                    <Text style={styles.paymentFieldLabel}>Note (optional)</Text>
++                    <TextInput
++                      style={styles.noteInput}
++                      value={tempPaymentNote}
++                      onChangeText={setTempPaymentNote}
++                      placeholder="Check #1234, partial payment, etc."
++                      placeholderTextColor={theme.colors.muted}
++                      multiline
++                    />
++                  </View>
++                </View>
++              </Pressable>
++            </Pressable>
++          </KeyboardAvoidingView>
++        </Modal>
++
++        {/* Payment Date Picker */}
++        {showPaymentDatePicker && Platform.OS === 'ios' && (
++          <Modal
++            visible={showPaymentDatePicker}
++            transparent
++            animationType="slide"
++            onRequestClose={() => setShowPaymentDatePicker(false)}
++          >
++            <Pressable
++              style={styles.modalOverlay}
++              onPress={() => setShowPaymentDatePicker(false)}
++            >
++              <Pressable
++                style={styles.datePickerModal}
++                onPress={(e) => e.stopPropagation()}
++              >
++                <View style={styles.modalHeader}>
++                  <Pressable onPress={() => setShowPaymentDatePicker(false)}>
++                    <Text style={styles.modalCancel}>Cancel</Text>
++                  </Pressable>
++                  <Text style={styles.modalTitle}>Payment Date</Text>
++                  <Pressable onPress={() => setShowPaymentDatePicker(false)}>
++                    <Text style={styles.modalDone}>Done</Text>
++                  </Pressable>
++                </View>
++                <DateTimePicker
++                  value={tempPaymentDate}
++                  mode="date"
++                  display="spinner"
++                  onChange={(event, date) => date && setTempPaymentDate(date)}
++                  textColor={theme.colors.text}
++                />
++              </Pressable>
++            </Pressable>
++          </Modal>
++        )}
++
++        {showPaymentDatePicker && Platform.OS === 'android' && (
++          <DateTimePicker
++            value={tempPaymentDate}
++            mode="date"
++            display="default"
++            onChange={(event, date) => {
++              setShowPaymentDatePicker(false);
++              if (event.type === 'set' && date) {
++                setTempPaymentDate(date);
++              }
++            }}
++          />
++        )}
+     </>
+   );
+ }
+@@ -1712,5 +1960,143 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+       height: 40,
+       width: 120,
+     },
++    // Payment button styles
++    paymentButton: {
++      flex: 1,
++      backgroundColor: "#34C759",
++      borderRadius: theme.radius.md,
++      paddingVertical: theme.spacing(1.25),
++      alignItems: "center",
++      justifyContent: "center",
++      flexDirection: "row",
++      gap: theme.spacing(0.75),
++    },
++    paymentButtonText: {
++      fontSize: 14,
++      fontWeight: "700",
++      color: "#FFF",
++    },
++    // Payment summary in total card
++    paymentSummary: {
++      marginTop: theme.spacing(2),
++      paddingTop: theme.spacing(2),
++      borderTopWidth: 1,
++      borderTopColor: theme.colors.border,
++    },
++    paymentSummaryRow: {
++      flexDirection: "row",
++      justifyContent: "space-between",
++      marginBottom: theme.spacing(0.5),
++    },
++    paymentSummaryLabel: {
++      fontSize: 13,
++      color: theme.colors.muted,
++    },
++    paymentSummaryValue: {
++      fontSize: 13,
++      fontWeight: "600",
++      color: theme.colors.text,
++    },
++    paymentReceivedLabel: {
++      color: "#34C759",
++    },
++    paymentReceivedValue: {
++      color: "#34C759",
++    },
++    // Payment modal styles
++    paymentModal: {
++      backgroundColor: theme.colors.card,
++      borderTopLeftRadius: theme.radius.xl,
++      borderTopRightRadius: theme.radius.xl,
++      width: "100%",
++      maxHeight: "85%",
++    },
++    paymentFormContent: {
++      padding: theme.spacing(3),
++    },
++    paymentField: {
++      marginBottom: theme.spacing(3),
++    },
++    paymentFieldLabel: {
++      fontSize: 14,
++      fontWeight: "600",
++      color: theme.colors.text,
++      marginBottom: theme.spacing(1),
++    },
++    amountInputContainer: {
++      flexDirection: "row",
++      alignItems: "center",
++      backgroundColor: theme.colors.bg,
++      borderRadius: theme.radius.md,
++      borderWidth: 1,
++      borderColor: theme.colors.border,
++      paddingHorizontal: theme.spacing(2),
++    },
++    currencySymbol: {
++      fontSize: 20,
++      fontWeight: "600",
++      color: theme.colors.muted,
++      marginRight: theme.spacing(0.5),
++    },
++    amountInput: {
++      flex: 1,
++      fontSize: 20,
++      fontWeight: "600",
++      color: theme.colors.text,
++      paddingVertical: theme.spacing(2),
++    },
++    paymentMethodGrid: {
++      flexDirection: "row",
++      flexWrap: "wrap",
++      gap: theme.spacing(1),
++    },
++    paymentMethodOption: {
++      paddingVertical: theme.spacing(1),
++      paddingHorizontal: theme.spacing(2),
++      backgroundColor: theme.colors.bg,
++      borderRadius: theme.radius.md,
++      borderWidth: 1,
++      borderColor: theme.colors.border,
++    },
++    paymentMethodOptionActive: {
++      backgroundColor: theme.colors.accent,
++      borderColor: theme.colors.accent,
++    },
++    paymentMethodText: {
++      fontSize: 14,
++      fontWeight: "600",
++      color: theme.colors.text,
++    },
++    paymentMethodTextActive: {
++      color: "#000",
++    },
++    dateButton: {
++      flexDirection: "row",
++      justifyContent: "space-between",
++      alignItems: "center",
++      backgroundColor: theme.colors.bg,
++      borderRadius: theme.radius.md,
++      borderWidth: 1,
++      borderColor: theme.colors.border,
++      paddingVertical: theme.spacing(2),
++      paddingHorizontal: theme.spacing(2),
++    },
++    dateButtonText: {
++      fontSize: 16,
++      fontWeight: "500",
++      color: theme.colors.text,
++    },
++    noteInput: {
++      backgroundColor: theme.colors.bg,
++      borderRadius: theme.radius.md,
++      borderWidth: 1,
++      borderColor: theme.colors.border,
++      paddingHorizontal: theme.spacing(2),
++      paddingVertical: theme.spacing(2),
++      fontSize: 14,
++      color: theme.colors.text,
++      minHeight: 60,
++      textAlignVertical: "top",
++    },
+   });
+ }
+diff --git a/app/(main)/wizard.tsx b/app/(main)/wizard.tsx
+index 0ee3bce..3390e13 100644
+--- a/app/(main)/wizard.tsx
++++ b/app/(main)/wizard.tsx
+@@ -989,9 +989,10 @@ export default function WizardScreen() {
+                       <Text style={styles.summaryTotalValue}>
+                         ${(() => {
+                           const itemsTotal = draftQuote.items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+-                          const subtotal = itemsTotal + draftQuote.labor;
+-                          const markup = subtotal * (draftQuote.markupPercent / 100);
+-                          return (subtotal + markup).toFixed(2);
++                          // Apply markup to materials only (not labor)
++                          const markup = itemsTotal * (draftQuote.markupPercent / 100);
++                          const materialsWithMarkup = itemsTotal + markup;
++                          return (materialsWithMarkup + draftQuote.labor).toFixed(2);
+                         })()}
+                       </Text>
+                     </View>
+diff --git a/components/SwipeableInvoiceItem.tsx b/components/SwipeableInvoiceItem.tsx
+index e65f00a..77b1d4d 100644
+--- a/components/SwipeableInvoiceItem.tsx
++++ b/components/SwipeableInvoiceItem.tsx
+@@ -5,6 +5,7 @@ import { Swipeable } from "react-native-gesture-handler";
+ import * as Haptics from "expo-haptics";
+ import type { Invoice } from "@/lib/types";
+ import { InvoiceStatusMeta } from "@/lib/types";
++import { calculateInvoiceTotal } from "@/lib/calculations";
+ import { useTheme } from "@/contexts/ThemeContext";
+ 
+ type SwipeableInvoiceItemProps = {
+@@ -26,16 +27,8 @@ export const SwipeableInvoiceItem = React.memo(
+     const styles = React.useMemo(() => createStyles(theme), [theme]);
+     const statusMeta = InvoiceStatusMeta[item.status];
+ 
+-    // Calculate total (memoized to prevent recalculation on every render)
+-    const total = React.useMemo(() => {
+-      const itemsTotal = item.items.reduce(
+-        (sum, lineItem) => sum + lineItem.unitPrice * lineItem.qty,
+-        0,
+-      );
+-      const subtotal = itemsTotal + item.labor + (item.materialEstimate || 0) + (item.overhead || 0);
+-      const markup = item.markupPercent ? subtotal * (item.markupPercent / 100) : 0;
+-      return subtotal + markup;
+-    }, [item.items, item.labor, item.materialEstimate, item.overhead, item.markupPercent]);
++    // Use centralized calculation (includes markup, tax, and percentage)
++    const total = React.useMemo(() => calculateInvoiceTotal(item), [item]);
+ 
+     // Format due date
+     const dueDate = new Date(item.dueDate);
+diff --git a/docs/DREW_ARCHITECTURE.md b/docs/DREW_ARCHITECTURE.md
+index 02efea5..fcfec29 100644
+--- a/docs/DREW_ARCHITECTURE.md
++++ b/docs/DREW_ARCHITECTURE.md
+@@ -196,6 +196,271 @@ Conversations are saved. User can close app and resume where they left off.
+ 
+ ---
+ 
++## Alternative: Drew as App Companion (Lower Risk)
++
++### The Problem with Material Lookup
++
++The material search flow has inherent challenges:
++1. **Product catalog quality** - Search relevance depends on data we don't fully control
++2. **Category mapping** - "Panel upgrade" returning gutters breaks trust instantly
++3. **Tradecraft-to-product gaps** - Even good tradecraft docs need verified product mappings
++4. **High stakes** - Wrong material suggestions make the business look bad
++
++### Companion Mode: What It Is
++
++Instead of (or in addition to) material lookup, Drew acts as a **knowledgeable assistant** that helps users navigate the app and understand construction concepts.
++
++**Companion mode handles:**
++- "How do I add a client?"
++- "How do I generate a PDF?"
++- "What's the difference between labor and overhead?"
++- "How do I share a quote with a customer?"
++- "What's markup vs margin?"
++- "How do I duplicate a quote?"
++- "Where are my invoices?"
++
++**Benefits:**
++- **Much simpler** - Just needs app knowledge, no product catalog integration
++- **Lower risk** - Wrong answer about navigation doesn't lose a sale
++- **Immediately useful** - Helps onboarding and feature discovery
++- **Works reliably** - No external API dependencies
++- **Ships fast** - Could implement in a day
++
++### Companion Mode Architecture
++
++```
++User: "How do I export a PDF?"
++         │
++         ▼
++┌────────────────────────────────────────────┐
++│           DREW COMPANION MODE              │
++│                                            │
++│  System Prompt:                            │
++│  - QuoteCat feature knowledge              │
++│  - Screen/navigation guide                 │
++│  - Field explanations                      │
++│  - Construction terminology                │
++│                                            │
++│  NO TOOLS NEEDED (just conversation)       │
++└────────────────────────────────────────────┘
++         │
++         ▼
++Drew: "To export a PDF, open your quote and tap
++       the 'Export' button in the top right.
++       You can share it directly or save to Files."
++```
++
++### Implementation
++
++**Minimal changes required:**
++
++1. **New system prompt** with app knowledge:
++   ```typescript
++   const companionPrompt = `
++   You are Drew, a helpful assistant for QuoteCat.
++
++   ## What You Know
++   - How to use every QuoteCat feature
++   - Where to find things in the app
++   - What each field means (labor, overhead, markup, etc.)
++   - General construction/contracting terminology
++
++   ## Your Personality
++   - Friendly, like a knowledgeable coworker
++   - Concise answers (mobile screen = short messages)
++   - If you don't know, say so
++
++   ## QuoteCat Features
++   [App feature documentation here]
++   `;
++   ```
++
++2. **Mode detection** - Check if user is asking about app vs wanting to build a quote:
++   - Questions about "how to" / "where is" / "what does X mean" → Companion mode
++   - "I need to quote a panel upgrade" → Material wizard mode (when ready)
++
++3. **No tools required** - Pure conversation, no database lookups
++
++### Companion Mode Knowledge Base
++
++Drew needs to know:
++
++**Navigation:**
++- Home screen → Quote list
++- Tapping a quote → Edit screen
++- Export button → PDF/CSV options
++- Settings → Company info, preferences
++- Clients tab → Client manager
++
++**Features:**
++- Creating quotes (manual vs wizard)
++- Adding line items
++- Setting labor hours and rate
++- Markup vs margin calculation
++- Tax percentage
++- PDF generation and sharing
++- Duplicating quotes
++- Converting quote to invoice
++- Cloud sync (Pro/Premium)
++
++**Field Explanations:**
++- Labor: Hours × hourly rate
++- Materials: Line items from catalog or manual entry
++- Overhead: Fixed costs (truck, insurance, etc.)
++- Markup: Percentage added to subtotal
++- Tax: Applied to taxable items
++
++**Terminology:**
++- Quote vs estimate vs bid
++- Invoice vs receipt
++- Net 30, due on receipt
++- Change order
++- Punch list
++
++### Coexistence Strategy
++
++Companion mode and material wizard aren't mutually exclusive:
++
++```
++┌─────────────────────────────────────────────────────────┐
++│                    DREW ROUTER                          │
++│                                                         │
++│  User message → Classify intent:                        │
++│                                                         │
++│  "How do I..."        → COMPANION MODE (always works)   │
++│  "Where is..."        → COMPANION MODE                  │
++│  "What does X mean"   → COMPANION MODE                  │
++│                                                         │
++│  "Quote a panel..."   → MATERIAL WIZARD (when ready)    │
++│  "Need materials for" → MATERIAL WIZARD                 │
++│                                                         │
++│  Ambiguous            → Ask clarifying question         │
++└─────────────────────────────────────────────────────────┘
++```
++
++### Option B: Tradecraft Without Product Lookup
++
++A middle-ground where Drew provides tradecraft value without searching the product catalog:
++
++**Flow:**
++```
++User: "I'm quoting a 200A panel upgrade"
++
++Drew: "For a 200A panel upgrade, you'll typically need:
++
++• 200A main breaker panel (1)
++• 200A main breaker, 2-pole (1)
++• Service entrance cable, 2/0 aluminum (25-50 ft)
++• Ground rod, 8ft copper (2)
++• Ground rod clamps (2)
++
++Should I add these to your quote? You can search the catalog
++or enter prices manually for each one."
++
++User: "Yes, add them"
++
++Drew: [Adds line items with $0 prices]
++      "Added 5 items. Tap any item to search the catalog
++       or enter your price."
++```
++
++**What Drew adds to quote:**
++- Item name (from tradecraft knowledge)
++- Suggested quantity
++- $0 price (user fills in)
++- Optional search hint: "search: 200A panel"
++
++**Why this could work:**
++- Drew still knows the trade (premium value)
++- No broken product search
++- User picks their own supplier/prices
++- Works for contractors who buy from local suppliers, not just big box
++- Drew is still "building" the quote with them
++
++**Trade-off:** More manual work for user, but reliable and still valuable.
++
++---
++
++### Tiered Drew Strategy (Decided)
++
++**All Tiers: Drew as Help Companion**
++- Answers app questions ("how do I export a PDF?", "where are my invoices?")
++- Explains fields and terminology
++- Available to everyone, builds familiarity
++
++**Premium Only: Drew as Quote-Building Companion**
++- Tradecraft expertise (materials, quantities, labor estimates)
++- Actually helps build quotes
++- Upsell prompt for Free/Pro users who ask about jobs:
++
++```
++Free user: "I need to quote a panel upgrade"
++
++Drew: "I can help with that! With Premium, I'll walk you
++       through what materials you need, suggest quantities,
++       and help estimate labor. Want to learn more?
++
++       [Learn about Premium]
++
++       For now, I can help you navigate the app - just ask
++       how to do anything in QuoteCat."
++```
++
++**Rollout:**
++1. Ship help companion for all users (low risk, ships fast)
++2. Add tradecraft/quote-building for Premium when ready
++3. Add product lookup later if/when catalog quality supports it
++
++No features get "removed" - Premium just unlocks more depth.
++
++---
++
++## Future: Crowdsourced Tradecraft from User Data
++
++### The Idea
++
++Use anonymized quote data from real users to generate and improve tradecraft documents. Instead of guessing what materials contractors need, learn from what they actually use.
++
++### What Data Could Be Analyzed
++
++- **Project names** → Common job types ("panel upgrade", "200a panel", "service upgrade" cluster together)
++- **Materials added** → What contractors actually use for each job type
++- **Quantities** → Real-world amounts (not textbook estimates)
++- **Labor hours** → Actual time estimates from the field
++
++### How It Could Work
++
++1. **Opt-in data sharing** - Users consent to share anonymized quote patterns
++2. **Cluster similar projects** - Group freeform project names into job types
++3. **Find material patterns** - "For panel upgrades, 80% of contractors add X, Y, Z"
++4. **Generate/validate tradecraft** - Create docs from real data, not AI guesses
++5. **Feedback loop** - "Was this material list helpful?" improves suggestions
++
++### Implementation Considerations
++
++| Consideration | Approach |
++|---------------|----------|
++| **Privacy** | Explicit opt-in: "Help improve Drew by sharing anonymized quote data" |
++| **Data quality** | Normalize freeform project names via clustering/NLP |
++| **Volume** | Need critical mass of Premium users before patterns emerge |
++| **Validation** | Cross-reference with expert review (Wyatt) |
++
++### The Flywheel
++
++```
++More users → More quote data → Better tradecraft → Better Drew → More users
++```
++
++This creates a defensible moat. Tradecraft based on real contractor behavior is more valuable than AI-generated guesses.
++
++### When to Pursue
++
++- After Premium user base reaches ~100+ active users
++- When quote volume is sufficient for pattern detection
++- As a v2/v3 enhancement, not launch priority
++
++---
++
+ ## Costs
+ 
+ ### API Stack
+@@ -408,6 +673,7 @@ These issues stem from the LLM making its own decisions. The hybrid state machin
+ | **Re-proposes checklist** | Drew calls `propose_checklist` again when user says partial selection | Added guard: if checklist already pending, return error message |
+ | **Random scoping questions** | Drew sometimes asks questions not in tradecraft (e.g., "Any permits required?") with mismatched quick replies | Need to either add to tradecraft or constrain Drew to tradecraft questions only |
+ | **$0 draft quotes appearing** | After finalizing a quote through Drew, $0 draft quotes appear on dashboard - possible sync/merge issue or partial quotes being saved | Needs investigation - may be creating quotes during session that don't get cleaned up |
++| **Unbounded message history** | Conversation messages accumulate without limit. Every user message, assistant response, tool call, and tool result gets stored. Long sessions (10-15+ exchanges) can exceed token limits causing API errors | Need to add message truncation: keep last N messages, preserve first user message (job type), summarize/drop old tool results |
+ 
+ ### Fixes Applied Today
+ 
+@@ -433,4 +699,4 @@ The LLM behavior issues above all have the same root cause: Claude is making flo
+ ---
+ 
+ *Document created: January 2026*
+-*Last updated: January 11, 2026*
++*Last updated: January 13, 2026*
+diff --git a/lib/calculations.ts b/lib/calculations.ts
+index b86b32e..7e030e5 100644
+--- a/lib/calculations.ts
++++ b/lib/calculations.ts
+@@ -14,12 +14,17 @@ export function calculateMaterialSubtotal(items: QuoteItem[] | undefined): numbe
+ 
+ /**
+  * Calculate all quote totals with breakdown
++ *
++ * Calculation order:
++ * 1. Materials = line items total (from catalog)
++ * 2. Markup applied to line items ONLY (not material estimate or labor)
++ * 3. Subtotal = materials with markup + material estimate + labor
++ * 4. Tax applied to subtotal
+  */
+ export function calculateQuoteTotals(quote: Quote): {
+   materialsFromItems: number;
+   materialEstimate: number;
+   labor: number;
+-  overhead: number;
+   subtotal: number;
+   markupPercent: number;
+   markupAmount: number;
+@@ -30,21 +35,21 @@ export function calculateQuoteTotals(quote: Quote): {
+   const materialsFromItems = calculateMaterialSubtotal(quote.items);
+   const materialEstimate = quote.materialEstimate ?? 0;
+   const labor = quote.labor ?? 0;
+-  const overhead = quote.overhead ?? 0;
+   const markupPercent = quote.markupPercent ?? 0;
+   const taxPercent = quote.taxPercent ?? 0;
+ 
+-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+-  const markupAmount = (subtotal * markupPercent) / 100;
+-  const afterMarkup = subtotal + markupAmount;
+-  const taxAmount = (afterMarkup * taxPercent) / 100;
+-  const total = afterMarkup + taxAmount;
++  // Apply markup to line items ONLY (not material estimate or labor)
++  // Material estimate is a contractor's guess with margin already baked in
++  const markupAmount = (materialsFromItems * markupPercent) / 100;
++  const materialsWithMarkup = materialsFromItems + markupAmount;
++  const subtotal = materialsWithMarkup + materialEstimate + labor;
++  const taxAmount = (subtotal * taxPercent) / 100;
++  const total = subtotal + taxAmount;
+ 
+   return {
+     materialsFromItems,
+     materialEstimate,
+     labor,
+-    overhead,
+     subtotal,
+     markupPercent,
+     markupAmount,
+@@ -63,12 +68,18 @@ export function calculateQuoteTotal(quote: Quote): number {
+ 
+ /**
+  * Calculate all invoice totals with breakdown
++ *
++ * Calculation order:
++ * 1. Materials = line items total (from catalog)
++ * 2. Markup applied to line items ONLY (not material estimate or labor)
++ * 3. Subtotal = materials with markup + material estimate + labor
++ * 4. Tax applied to subtotal
++ * 5. Percentage applied at end (for partial invoices)
+  */
+ export function calculateInvoiceTotals(invoice: Invoice): {
+   materialsFromItems: number;
+   materialEstimate: number;
+   labor: number;
+-  overhead: number;
+   subtotal: number;
+   markupPercent: number;
+   markupAmount: number;
+@@ -83,16 +94,17 @@ export function calculateInvoiceTotals(invoice: Invoice): {
+   ) ?? 0;
+   const materialEstimate = invoice.materialEstimate ?? 0;
+   const labor = invoice.labor ?? 0;
+-  const overhead = invoice.overhead ?? 0;
+   const markupPercent = invoice.markupPercent ?? 0;
+   const taxPercent = invoice.taxPercent ?? 0;
+   const percentage = invoice.percentage ?? 100;
+ 
+-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+-  const markupAmount = (subtotal * markupPercent) / 100;
+-  const afterMarkup = subtotal + markupAmount;
+-  const taxAmount = (afterMarkup * taxPercent) / 100;
+-  let total = afterMarkup + taxAmount;
++  // Apply markup to line items ONLY (not material estimate or labor)
++  // Material estimate is a contractor's guess with margin already baked in
++  const markupAmount = (materialsFromItems * markupPercent) / 100;
++  const materialsWithMarkup = materialsFromItems + markupAmount;
++  const subtotal = materialsWithMarkup + materialEstimate + labor;
++  const taxAmount = (subtotal * taxPercent) / 100;
++  let total = subtotal + taxAmount;
+ 
+   // Apply percentage if this is a partial invoice
+   if (percentage < 100) {
+@@ -103,7 +115,6 @@ export function calculateInvoiceTotals(invoice: Invoice): {
+     materialsFromItems,
+     materialEstimate,
+     labor,
+-    overhead,
+     subtotal,
+     markupPercent,
+     markupAmount,
+diff --git a/lib/contracts.ts b/lib/contracts.ts
+index e37a04b..6b35f5e 100644
+--- a/lib/contracts.ts
++++ b/lib/contracts.ts
+@@ -5,6 +5,7 @@ import { supabase } from "./supabase";
+ import type { Contract, ContractUpdate, Signature, Quote, QuoteItem } from "./types";
+ import { getCurrentUserId } from "./authUtils";
+ import { loadPreferences, updateContractSettings } from "./preferences";
++import { calculateQuoteTotal } from "./calculations";
+ 
+ /**
+  * Generate next contract number using user preferences
+@@ -51,16 +52,8 @@ export async function createContractFromQuote(
+ 
+   const contractNumber = await generateContractNumber();
+ 
+-  // Calculate total
+-  const materialsTotal = quote.items.reduce(
+-    (sum, item) => sum + item.unitPrice * item.qty,
+-    0
+-  );
+-  const subtotal = materialsTotal + (quote.materialEstimate || 0) + (quote.labor || 0);
+-  const markupAmount = quote.markupPercent ? subtotal * (quote.markupPercent / 100) : 0;
+-  const subtotalWithMarkup = subtotal + markupAmount;
+-  const taxAmount = quote.taxPercent ? subtotalWithMarkup * (quote.taxPercent / 100) : 0;
+-  const total = subtotalWithMarkup + taxAmount;
++  // Use centralized calculation (markup on line items only, not material estimate)
++  const total = calculateQuoteTotal(quote);
+ 
+   const now = new Date().toISOString();
+ 
+diff --git a/lib/invoicesSQLite.ts b/lib/invoicesSQLite.ts
+index dbc3e07..9501af4 100644
+--- a/lib/invoicesSQLite.ts
++++ b/lib/invoicesSQLite.ts
+@@ -359,14 +359,15 @@ export function calculateInvoiceTotal(invoice: Invoice): number {
+     0;
+   const laborTotal = invoice.labor || 0;
+   const estimateTotal = invoice.materialEstimate || 0;
+-  const overheadTotal = invoice.overhead || 0;
+-
+-  let subtotal = materialsTotal + laborTotal + estimateTotal + overheadTotal;
+ 
++  // Apply markup to materials only (not labor)
++  let totalMaterials = materialsTotal + estimateTotal;
+   if (invoice.markupPercent) {
+-    subtotal = subtotal * (1 + invoice.markupPercent / 100);
++    totalMaterials = totalMaterials * (1 + invoice.markupPercent / 100);
+   }
+ 
++  let subtotal = totalMaterials + laborTotal;
++
+   if (invoice.taxPercent) {
+     subtotal = subtotal * (1 + invoice.taxPercent / 100);
+   }
+diff --git a/lib/pdf.ts b/lib/pdf.ts
+index 681c1b2..77155f3 100644
+--- a/lib/pdf.ts
++++ b/lib/pdf.ts
+@@ -38,10 +38,13 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
+ 
+   const materialEstimate = quote.materialEstimate ?? 0;
+   const labor = quote.labor ?? 0;
+-  const overhead = quote.overhead ?? 0;
++  const markupPercent = quote.markupPercent ?? 0;
+   const taxPercent = quote.taxPercent ?? 0;
+ 
+-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
++  // Apply markup to line items ONLY (not material estimate or labor)
++  // Material estimate is a contractor's guess with margin already baked in
++  const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
++  const subtotal = materialsWithMarkup + materialEstimate + labor;
+   const taxAmount = (subtotal * taxPercent) / 100;
+   const grandTotal = subtotal + taxAmount;
+ 
+@@ -51,17 +54,15 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
+     day: 'numeric'
+   });
+ 
+-  // Generate line items HTML
++  // Generate line items HTML (names and quantities only - no prices for client view)
+   const lineItemsHTML = quote.items && quote.items.length > 0
+     ? quote.items.map(item => `
+         <tr>
+           <td style="padding: 12px; border-bottom: 1px solid #e5e5e5;">${item.name}</td>
+           <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: center;">${item.qty}</td>
+-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${item.unitPrice.toFixed(2)}</td>
+-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600;">$${(item.unitPrice * item.qty).toFixed(2)}</td>
+         </tr>
+       `).join('')
+-    : '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #999;">No materials</td></tr>';
++    : '<tr><td colspan="2" style="padding: 24px; text-align: center; color: #999;">No materials</td></tr>';
+ 
+   // QuoteCat branding for free tier - at top
+   const brandingHeader = includeBranding ? `
+@@ -241,16 +242,10 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
+         <div class="section-title">Cost Summary</div>
+         <table class="totals-table">
+           <tbody>
+-            ${materialsFromItems > 0 ? `
++            ${materialsWithMarkup > 0 ? `
+               <tr>
+                 <td class="label">Materials</td>
+-                <td class="value">$${materialsFromItems.toFixed(2)}</td>
+-              </tr>
+-            ` : ''}
+-            ${materialEstimate > 0 ? `
+-              <tr>
+-                <td class="label">Materials (Estimate)</td>
+-                <td class="value">$${materialEstimate.toFixed(2)}</td>
++                <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
+               </tr>
+             ` : ''}
+             ${labor > 0 ? `
+@@ -259,12 +254,6 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
+                 <td class="value">$${labor.toFixed(2)}</td>
+               </tr>
+             ` : ''}
+-            ${overhead > 0 ? `
+-              <tr>
+-                <td class="label">Overhead</td>
+-                <td class="value">$${overhead.toFixed(2)}</td>
+-              </tr>
+-            ` : ''}
+             ${taxPercent > 0 ? `
+               <tr>
+                 <td class="label">Tax (${taxPercent}%)</td>
+@@ -290,14 +279,12 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
+ 
+       ${quote.items && quote.items.length > 0 ? `
+         <div class="section" style="page-break-before: auto;">
+-          <div class="section-title">Materials Detail</div>
++          <div class="section-title">Materials Included</div>
+           <table>
+             <thead>
+               <tr>
+                 <th>Item</th>
+-                <th style="text-align: center; width: 80px;">Qty</th>
+-                <th style="text-align: right; width: 120px;">Unit Price</th>
+-                <th style="text-align: right; width: 120px;">Total</th>
++                <th style="text-align: center; width: 100px;">Qty</th>
+               </tr>
+             </thead>
+             <tbody>
+@@ -425,20 +412,28 @@ export async function generateAndSharePDF(
+ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
+   const { includeBranding, companyDetails, logoBase64, paymentMethods } = options;
+ 
+-  // Calculate totals
++  // Calculate totals - markup applies to line items only (not material estimate or labor)
+   const materialsFromItems = invoice.items?.reduce(
+     (sum, item) => sum + item.unitPrice * item.qty,
+     0
+   ) ?? 0;
+ 
++  // Apply markup to line items ONLY
++  const markupPercent = invoice.markupPercent ?? 0;
++  const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
++
+   const materialEstimate = invoice.materialEstimate ?? 0;
+   const labor = invoice.labor ?? 0;
+-  const overhead = invoice.overhead ?? 0;
+   const taxPercent = invoice.taxPercent ?? 0;
+ 
+-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
++  const subtotal = materialsWithMarkup + materialEstimate + labor;
+   const taxAmount = (subtotal * taxPercent) / 100;
+-  const grandTotal = subtotal + taxAmount;
++  let grandTotal = subtotal + taxAmount;
++
++  // Apply percentage for partial invoices
++  if (invoice.percentage && invoice.percentage < 100) {
++    grandTotal = grandTotal * (invoice.percentage / 100);
++  }
+ 
+   const invoiceDateString = new Date(invoice.invoiceDate).toLocaleDateString('en-US', {
+     year: 'numeric',
+@@ -757,10 +752,10 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
+         <div class="section-title">Amount Due</div>
+         <table class="totals-table">
+           <tbody>
+-            ${materialsFromItems > 0 ? `
++            ${materialsWithMarkup > 0 ? `
+               <tr>
+                 <td class="label">Materials</td>
+-                <td class="value">$${materialsFromItems.toFixed(2)}</td>
++                <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
+               </tr>
+             ` : ''}
+             ${materialEstimate > 0 ? `
+@@ -775,12 +770,6 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
+                 <td class="value">$${labor.toFixed(2)}</td>
+               </tr>
+             ` : ''}
+-            ${overhead > 0 ? `
+-              <tr>
+-                <td class="label">Overhead</td>
+-                <td class="value">$${overhead.toFixed(2)}</td>
+-              </tr>
+-            ` : ''}
+             ${taxPercent > 0 ? `
+               <tr>
+                 <td class="label">Tax (${taxPercent}%)</td>
+@@ -944,19 +933,21 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
+     ) ?? 0;
+     const materialEstimate = quote.materialEstimate ?? 0;
+     const labor = quote.labor ?? 0;
+-    const overhead = quote.overhead ?? 0;
++    const markupPercent = quote.markupPercent ?? 0;
+     const taxPercent = quote.taxPercent ?? 0;
+-    const subtotal = materialsFromItems + materialEstimate + labor + overhead;
++
++    // Apply markup to line items ONLY (not material estimate or labor)
++    const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
++    const subtotal = materialsWithMarkup + materialEstimate + labor;
+     const taxAmount = (subtotal * taxPercent) / 100;
+     const grandTotal = subtotal + taxAmount;
+ 
++    // Line items show names and quantities only (no prices for client view)
+     const lineItemsHTML = quote.items && quote.items.length > 0
+       ? quote.items.map(item => `
+           <tr>
+             <td style="padding: 10px; border-bottom: 1px solid #e5e5e5;">${item.name}</td>
+             <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: center;">${item.qty}</td>
+-            <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${item.unitPrice.toFixed(2)}</td>
+-            <td style="padding: 10px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600;">$${(item.unitPrice * item.qty).toFixed(2)}</td>
+           </tr>
+         `).join('')
+       : '';
+@@ -972,14 +963,12 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
+ 
+         ${quote.items && quote.items.length > 0 ? `
+           <div class="section">
+-            <div class="section-title">Materials</div>
++            <div class="section-title">Materials Included</div>
+             <table>
+               <thead>
+                 <tr>
+                   <th>Item</th>
+-                  <th style="text-align: center; width: 70px;">Qty</th>
+-                  <th style="text-align: right; width: 100px;">Unit</th>
+-                  <th style="text-align: right; width: 100px;">Total</th>
++                  <th style="text-align: center; width: 100px;">Qty</th>
+                 </tr>
+               </thead>
+               <tbody>
+@@ -992,16 +981,10 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
+         <div class="section">
+           <table class="totals-table">
+             <tbody>
+-              ${materialsFromItems > 0 ? `
++              ${materialsWithMarkup > 0 ? `
+                 <tr>
+                   <td class="label">Materials</td>
+-                  <td class="value">$${materialsFromItems.toFixed(2)}</td>
+-                </tr>
+-              ` : ''}
+-              ${materialEstimate > 0 ? `
+-                <tr>
+-                  <td class="label">Materials (Est.)</td>
+-                  <td class="value">$${materialEstimate.toFixed(2)}</td>
++                  <td class="value">$${materialsWithMarkup.toFixed(2)}</td>
+                 </tr>
+               ` : ''}
+               ${labor > 0 ? `
+@@ -1010,12 +993,6 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
+                   <td class="value">$${labor.toFixed(2)}</td>
+                 </tr>
+               ` : ''}
+-              ${overhead > 0 ? `
+-                <tr>
+-                  <td class="label">Overhead</td>
+-                  <td class="value">$${overhead.toFixed(2)}</td>
+-                </tr>
+-              ` : ''}
+               ${taxPercent > 0 ? `
+                 <tr>
+                   <td class="label">Tax (${taxPercent}%)</td>
+@@ -1050,16 +1027,20 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
+     ) ?? 0;
+     const materialEstimate = quote.materialEstimate ?? 0;
+     const labor = quote.labor ?? 0;
+-    const overhead = quote.overhead ?? 0;
++    const markupPercent = quote.markupPercent ?? 0;
+     const taxPercent = quote.taxPercent ?? 0;
+-    const subtotal = materialsFromItems + materialEstimate + labor + overhead;
++
++    // Apply markup to line items ONLY (not material estimate or labor)
++    const materialsWithMarkup = materialsFromItems * (1 + markupPercent / 100);
++    const totalMaterials = materialsWithMarkup + materialEstimate;
++    const subtotal = totalMaterials + labor;
+     const taxAmount = (subtotal * taxPercent) / 100;
+     const grandTotal = subtotal + taxAmount;
+ 
+     return `
+       <tr>
+         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; font-weight: 600;">${quote.tier || 'Base'}</td>
+-        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${materialsFromItems.toFixed(2)}</td>
++        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${totalMaterials.toFixed(2)}</td>
+         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">$${labor.toFixed(2)}</td>
+         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 700; color: #333;">$${grandTotal.toFixed(2)}</td>
+       </tr>
+diff --git a/lib/spreadsheet.ts b/lib/spreadsheet.ts
+index f0c7d0a..7b6528d 100644
+--- a/lib/spreadsheet.ts
++++ b/lib/spreadsheet.ts
+@@ -56,11 +56,13 @@ function generateQuoteCSV(quote: Quote): string {
+   ) ?? 0;
+   const materialEstimate = quote.materialEstimate ?? 0;
+   const labor = quote.labor ?? 0;
+-  const overhead = quote.overhead ?? 0;
+   const markupPercent = quote.markupPercent ?? 0;
+-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+-  const markupAmount = (subtotal * markupPercent) / 100;
+-  const grandTotal = subtotal + markupAmount;
++  // Apply markup to materials only (not labor)
++  const totalMaterials = materialsFromItems + materialEstimate;
++  const markupAmount = (totalMaterials * markupPercent) / 100;
++  const materialsWithMarkup = totalMaterials + markupAmount;
++  const subtotal = materialsWithMarkup + labor;
++  const grandTotal = subtotal;
+ 
+   // Cost Breakdown
+   lines.push('COST BREAKDOWN');
+@@ -75,9 +77,6 @@ function generateQuoteCSV(quote: Quote): string {
+   if (labor > 0) {
+     lines.push(`Labor,${labor.toFixed(2)}`);
+   }
+-  if (overhead > 0) {
+-    lines.push(`Overhead,${overhead.toFixed(2)}`);
+-  }
+ 
+   lines.push(`Subtotal,${subtotal.toFixed(2)}`);
+ 
+diff --git a/lib/validation.ts b/lib/validation.ts
+index 2385ef6..72f1f26 100644
+--- a/lib/validation.ts
++++ b/lib/validation.ts
+@@ -22,17 +22,28 @@ const KNOWN_QUOTE_KEYS = new Set([
+   "id",
+   "name",
+   "clientName",
++  "clientEmail",
++  "clientPhone",
++  "clientAddress",
+   "items",
+   "labor",
+   "materialEstimate",
+   "overhead",
+   "markupPercent",
++  "taxPercent",
++  "notes",
++  "changeHistory",
++  "approvedSnapshot",
++  "followUpDate",
+   "currency",
+   "status",
+   "pinned",
+   "tier",
++  "quoteNumber",
++  "linkedQuoteIds",
+   "createdAt",
+   "updatedAt",
++  "deletedAt",
+   "materialSubtotal",
+   "total",
+ ]);
+@@ -126,17 +137,31 @@ export function normalizeQuote(raw: any): Quote {
+     name: typeof raw?.name === "string" ? raw.name : "",
+     clientName:
+       typeof raw?.clientName === "string" ? raw.clientName : undefined,
++    clientEmail:
++      typeof raw?.clientEmail === "string" ? raw.clientEmail : undefined,
++    clientPhone:
++      typeof raw?.clientPhone === "string" ? raw.clientPhone : undefined,
++    clientAddress:
++      typeof raw?.clientAddress === "string" ? raw.clientAddress : undefined,
+     items: itemsArray.map(normalizeQuoteItem),
+     labor: Number.isFinite(raw?.labor) ? Number(raw.labor) : 0,
+     materialEstimate: Number.isFinite(raw?.materialEstimate) ? Number(raw.materialEstimate) : undefined,
+     overhead: Number.isFinite(raw?.overhead) ? Number(raw.overhead) : undefined,
+     markupPercent: Number.isFinite(raw?.markupPercent) ? Number(raw.markupPercent) : undefined,
++    taxPercent: Number.isFinite(raw?.taxPercent) ? Number(raw.taxPercent) : undefined,
++    notes: typeof raw?.notes === "string" ? raw.notes : undefined,
++    changeHistory: typeof raw?.changeHistory === "string" ? raw.changeHistory : undefined,
++    approvedSnapshot: typeof raw?.approvedSnapshot === "string" ? raw.approvedSnapshot : undefined,
++    followUpDate: typeof raw?.followUpDate === "string" ? raw.followUpDate : undefined,
+     currency: normalizeCurrency(raw?.currency),
+     status: normalizeStatus(raw?.status),
+     pinned: typeof raw?.pinned === "boolean" ? raw.pinned : false,
+     tier: typeof raw?.tier === "string" && raw.tier ? raw.tier : undefined,
++    quoteNumber: typeof raw?.quoteNumber === "string" ? raw.quoteNumber : undefined,
++    linkedQuoteIds: Array.isArray(raw?.linkedQuoteIds) ? raw.linkedQuoteIds : undefined,
+     createdAt: typeof raw?.createdAt === "string" ? raw.createdAt : nowIso,
+     updatedAt: typeof raw?.updatedAt === "string" ? raw.updatedAt : nowIso,
++    deletedAt: typeof raw?.deletedAt === "string" ? raw.deletedAt : undefined,
+   };
+ 
+   // Preserve extras but remove computed fields
+@@ -176,7 +201,6 @@ export function calculateQuoteTotals(quote: Quote): {
+   materialsFromItems: number;
+   materialEstimate: number;
+   labor: number;
+-  overhead: number;
+   subtotal: number;
+   markupPercent: number;
+   markupAmount: number;
+@@ -185,18 +209,19 @@ export function calculateQuoteTotals(quote: Quote): {
+   const materialsFromItems = calculateMaterialSubtotal(quote.items);
+   const materialEstimate = quote.materialEstimate ?? 0;
+   const labor = quote.labor ?? 0;
+-  const overhead = quote.overhead ?? 0;
+   const markupPercent = quote.markupPercent ?? 0;
+ 
+-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
+-  const markupAmount = (subtotal * markupPercent) / 100;
+-  const total = subtotal + markupAmount;
++  // Apply markup to materials only (not labor)
++  const totalMaterials = materialsFromItems + materialEstimate;
++  const markupAmount = (totalMaterials * markupPercent) / 100;
++  const materialsWithMarkup = totalMaterials + markupAmount;
++  const subtotal = materialsWithMarkup + labor;
++  const total = subtotal;
+ 
+   return {
+     materialsFromItems,
+     materialEstimate,
+     labor,
+-    overhead,
+     subtotal,
+     markupPercent,
+     markupAmount,
+diff --git a/modules/quotes/useQuoteForm.ts b/modules/quotes/useQuoteForm.ts
+index 6157d10..5296f11 100644
+--- a/modules/quotes/useQuoteForm.ts
++++ b/modules/quotes/useQuoteForm.ts
+@@ -91,11 +91,13 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
+     const markupPercentValue = parseFloat(markupPercent) || 0;
+     const taxPercentValue = parseFloat(taxPercent) || 0;
+ 
+-    const subtotal = materialsFromItems + materialsEstimateValue + laborValue;
+-    const markupAmount = (subtotal * markupPercentValue) / 100;
+-    const subtotalWithMarkup = subtotal + markupAmount;
+-    const taxAmount = (subtotalWithMarkup * taxPercentValue) / 100;
+-    const total = subtotalWithMarkup + taxAmount;
++    // Apply markup to materials only (not labor)
++    const totalMaterials = materialsFromItems + materialsEstimateValue;
++    const markupAmount = (totalMaterials * markupPercentValue) / 100;
++    const materialsWithMarkup = totalMaterials + markupAmount;
++    const subtotal = materialsWithMarkup + laborValue;
++    const taxAmount = (subtotal * taxPercentValue) / 100;
++    const total = subtotal + taxAmount;
+ 
+     return {
+       materialsFromItems,

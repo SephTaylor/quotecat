@@ -2,9 +2,16 @@ import type { Product } from "@/modules/catalog/seed";
 
 export type AssemblyVarBag = Record<string, number | string | boolean>;
 
+/**
+ * Source of the product reference in an assembly item
+ * - "catalog": References a product from the built-in catalog (real-time pricing from suppliers)
+ * - "pricebook": References a user's custom pricebook item
+ */
+export type ItemSource = "catalog" | "pricebook";
+
 export type AssemblyItem =
-  | { productId: string; qty: number; name?: string } // fixed qty
-  | { productId: string; qtyFn: (vars: AssemblyVarBag) => number; name?: string }; // computed
+  | { productId: string; source?: ItemSource; qty: number; name?: string } // fixed qty
+  | { productId: string; source?: ItemSource; qtyFn: (vars: AssemblyVarBag) => number; name?: string }; // computed
 
 export type Assembly = {
   id: string;

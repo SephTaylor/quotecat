@@ -157,6 +157,7 @@ interface RequestBody {
   userMessage: string;
   state?: ConversationState;
   userSettings?: UserSettings;
+  mode?: 'support' | 'quote';  // Support mode skips state machine, handles FAQ/feedback
 }
 
 // =============================================================================
@@ -1345,6 +1346,442 @@ async function runAgent(
 }
 
 // =============================================================================
+// SUPPORT/FAQ HANDLING (for Drew as Support Channel)
+// =============================================================================
+
+/**
+ * Lookup FAQ answers by keyword matching.
+ * Returns null if no match found.
+ */
+function lookupFAQ(question: string): string | null {
+  const normalized = question.toLowerCase();
+
+  const faqMap: Record<string, string> = {
+    // Invoices (include variations)
+    'create an invoice': "Open drawer menu (☰) → Invoices → tap + → 'From Quote'. Pro/Premium only.",
+    'create invoice': "Open drawer menu (☰) → Invoices → tap + → 'From Quote'. Pro/Premium only.",
+    'make an invoice': "Open drawer menu (☰) → Invoices → tap + → 'From Quote'. Pro/Premium only.",
+    'new invoice': "Open drawer menu (☰) → Invoices → tap + → 'From Quote'. Pro/Premium only.",
+    'invoice': "Open drawer menu (☰) → Invoices → tap + → 'From Quote'. Pro/Premium only.",
+
+    // Contracts (include variations)
+    'create a contract': "Open drawer menu (☰) → Contracts → tap + → select approved quote. Premium only.",
+    'create contract': "Open drawer menu (☰) → Contracts → tap + → select approved quote. Premium only.",
+    'make a contract': "Open drawer menu (☰) → Contracts → tap + → select approved quote. Premium only.",
+    'new contract': "Open drawer menu (☰) → Contracts → tap + → select approved quote. Premium only.",
+    'contract': "Open drawer menu (☰) → Contracts → tap + → select approved quote. Premium only.",
+
+    // Custom items
+    'custom item': "Edit a quote → scroll to bottom → tap '+ Add custom item' → enter name and price.",
+    'custom': "Edit a quote → scroll to bottom → tap '+ Add custom item' → enter name and price.",
+
+    // Price Book
+    'price book': "Drawer → Pro Tools → Price Book. Add your own products with custom pricing.",
+    'pricebook': "Drawer → Pro Tools → Price Book. Add your own products with custom pricing.",
+
+    // Assemblies
+    'assembl': "Drawer → Pro Tools → Assembly Library. Browse templates or community assemblies.",
+
+    // Clients
+    'client': "Drawer → Pro Tools → Client Manager. Save clients for quick selection on quotes.",
+
+    // Sync
+    'sync': "Drawer → Settings → Cloud Sync → tap Sync button. Pro/Premium only.",
+    'cloud': "Pro/Premium get cloud sync. Drawer → Settings → Cloud Sync to check status.",
+
+    // Theme
+    'dark mode': "Drawer → Settings → Appearance → Dark Mode toggle.",
+    'dark': "Drawer → Settings → Appearance → Dark Mode toggle.",
+
+    // Export
+    'export': "Swipe right on quote → Export. Free: 5 PDFs/month. Pro/Premium: unlimited.",
+    'pdf': "Swipe right on quote → Export, or open quote → Review → Export PDF.",
+
+    // Portal
+    'portal': "Premium users: portal.quotecat.ai from any browser.",
+    'computer': "Premium users can access portal.quotecat.ai from your computer.",
+    'browser': "Premium users can access portal.quotecat.ai from any browser.",
+
+    // Tiers
+    'pro': "Pro: invoices, assemblies, price book, cloud sync, client manager, unlimited exports.",
+    'premium': "Premium: everything in Pro + contracts, Drew AI (me!), web portal.",
+    'tier': "Free: limited exports. Pro: invoices, sync, assemblies. Premium: contracts, Drew, portal.",
+
+    // Quotes (include variations with articles)
+    'create a quote': "Tap the + button in the header on Dashboard or Quotes screen.",
+    'create quote': "Tap the + button in the header on Dashboard or Quotes screen.",
+    'make a quote': "Tap the + button in the header on Dashboard or Quotes screen.",
+    'new quote': "Tap the + button in the header on Dashboard or Quotes screen.",
+    'start a quote': "Tap the + button in the header on Dashboard or Quotes screen.",
+    'add a quote': "Tap the + button in the header on Dashboard or Quotes screen.",
+    'edit a quote': "Tap a quote to open it, or swipe left → Edit.",
+    'edit quote': "Tap a quote to open it, or swipe left → Edit.",
+    'duplicate': "Swipe left on any quote → Duplicate.",
+    'copy a quote': "Swipe left on any quote → Duplicate.",
+    'delete a quote': "Swipe left on quote → Delete. Undo available.",
+    'delete quote': "Swipe left on quote → Delete. Undo available.",
+    'remove a quote': "Swipe left on quote → Delete. Undo available.",
+    'status': "Quotes screen → use filter chips at top (Draft, Sent, Approved, etc).",
+    'filter': "Quotes screen → use filter chips at top (Draft, Sent, Approved, etc).",
+
+    // Settings
+    'setting': "Open drawer menu (☰) → Settings at the bottom.",
+    'business': "Drawer → Settings → Business Settings for company name, logo, address.",
+    'notification': "Drawer → Settings → Notifications to configure reminders.",
+  };
+
+  // Find matching keyword (order matters - check longer phrases first)
+  const sortedKeywords = Object.keys(faqMap).sort((a, b) => b.length - a.length);
+  for (const keyword of sortedKeywords) {
+    if (normalized.includes(keyword)) {
+      return faqMap[keyword];
+    }
+  }
+  return null;
+}
+
+/**
+ * Send email notification to admin for unknown questions/feedback.
+ */
+async function sendAdminEmail(subject: string, userMessage: string): Promise<void> {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-admin-email`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: 'hello@quotecat.ai',
+        subject: `[QuoteCat] ${subject}`,
+        body: `A user asked Drew a question that couldn't be answered:\n\n"${userMessage}"\n\nThis has been logged to the user_feedback table.\n\nCheck Supabase to review.`,
+      }),
+    });
+    if (!response.ok) {
+      console.error('[drew-agent] Failed to send admin email:', await response.text());
+    }
+  } catch (error) {
+    console.error('[drew-agent] Email error:', error);
+    // Don't throw - email failure shouldn't break the user experience
+  }
+}
+
+/**
+ * Handle support intent - FAQ questions and feature requests.
+ * Returns AgentResponse if this is a support question, null otherwise.
+ */
+async function handleSupportIntent(
+  supabase: ReturnType<typeof createClient>,
+  message: string,
+  userId?: string,
+  conversationState?: any
+): Promise<AgentResponse | null> {
+  const normalized = message.trim().toLowerCase();
+
+  // Handle positive responses after helping with a question
+  const positiveResponses = ['that helped', 'thanks', 'thank you', 'got it', 'perfect', 'awesome', 'great'];
+  if (positiveResponses.some(p => normalized.includes(p))) {
+    return {
+      message: "Glad I could help! Anything else?",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Show me a quick tutorial', 'I have another question', 'I\'m good, thanks'],
+    };
+  }
+
+  // Handle "I'm good" / closing responses
+  const closingResponses = ['i\'m good', 'im good', 'no thanks', 'nope', 'all set', 'that\'s all'];
+  if (closingResponses.some(p => normalized.includes(p))) {
+    return {
+      message: "Alright, I'm here whenever you need me.",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: [],
+    };
+  }
+
+  // Handle tutorial request - show topic menu
+  if (normalized.includes('tutorial') || normalized.includes('show me') || normalized.includes('how does') || normalized.includes('walk me through') || normalized.includes('learn')) {
+    return {
+      message: "What would you like to learn about?",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Creating quotes', 'Invoices', 'Assemblies', 'Contracts', 'Settings'],
+    };
+  }
+
+  // Topic: Creating quotes
+  if (normalized.includes('creating quote') || normalized.includes('create a quote') || normalized.includes('new quote') || normalized.includes('make a quote')) {
+    return {
+      message: "Tap the + button on the Dashboard to start a new quote. You can add materials from the catalog or your own custom items.",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Take me there', 'Tell me more', 'Back to topics'],
+      navigation: '/(main)/(tabs)',  // Dashboard
+    };
+  }
+
+  // Topic: Invoices (Pro/Premium)
+  if (normalized.includes('invoice')) {
+    return {
+      message: "Create invoices from approved quotes. This is a Pro/Premium feature - upgrade to unlock it.",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['How do I upgrade?', 'Back to topics'],
+    };
+  }
+
+  // Topic: Assemblies (Pro/Premium)
+  if (normalized.includes('assembl')) {
+    return {
+      message: "Assemblies are reusable templates that add all materials for a job at once. This is a Pro/Premium feature.",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['How do I upgrade?', 'Back to topics'],
+    };
+  }
+
+  // Topic: Contracts (Premium)
+  if (normalized.includes('contract')) {
+    return {
+      message: "Send contracts for clients to sign digitally before work begins. This is a Premium feature.",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['How do I upgrade?', 'Back to topics'],
+    };
+  }
+
+  // Topic: Settings (Free)
+  if (normalized.includes('setting')) {
+    return {
+      message: "Configure your business info, default rates, appearance, and sync settings.",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Take me there', 'Back to topics'],
+      navigation: '/(main)/settings',
+    };
+  }
+
+  // Topic: Price Book (Pro/Premium)
+  if (normalized.includes('price book') || normalized.includes('pricebook')) {
+    return {
+      message: "Save your own products with custom pricing for quick access. This is a Pro/Premium feature.",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['How do I upgrade?', 'Back to topics'],
+    };
+  }
+
+  // Topic: Clients (available to all users)
+  if (normalized.includes('client')) {
+    return {
+      message: "Save client info for quick selection when creating quotes. Add name, email, phone, and address.",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Take me there', 'Back to topics'],
+      navigation: '/(main)/client-manager',
+    };
+  }
+
+  // Handle "Take me there"
+  if (normalized.includes('take me there') || normalized.includes('go there') || normalized.includes('open it')) {
+    // This will be handled by the client using the last navigation value
+    return {
+      message: "Taking you there now...",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: [],
+      action: 'navigate',  // Signal to client to use last navigation
+    };
+  }
+
+  // Handle "Tell me more" - give detailed explanation
+  if (normalized.includes('tell me more') || normalized.includes('more detail') || normalized.includes('explain')) {
+    return {
+      message: "What topic would you like more details on?",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Creating quotes', 'Invoices', 'Assemblies', 'Contracts'],
+    };
+  }
+
+  // Handle "Back to topics"
+  if (normalized.includes('back to topic') || normalized.includes('other topic') || normalized.includes('something else')) {
+    return {
+      message: "What else would you like to learn about?",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Creating quotes', 'Invoices', 'Assemblies', 'Contracts', 'Settings'],
+    };
+  }
+
+  // Handle Pro features / upgrade questions
+  if (normalized.includes('pro feature') || normalized.includes('premium') || normalized.includes('upgrade') || normalized.includes('pricing')) {
+    return {
+      message: "**Free** — Unlimited quotes, 5 exports/month\n**Pro** — Invoices, sync, assemblies, unlimited exports\n**Premium** — Contracts, client portal, Drew AI\n\nUpgrade anytime at quotecat.ai",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Back to topics', 'I\'m good, thanks'],
+    };
+  }
+
+  // Get pending feedback state
+  const pendingFeedback = conversationState?.pendingFeedback || null;
+  const pendingFeedbackType = conversationState?.pendingFeedbackType || null;
+
+  // Step 2: User provided description, now ask for confirmation
+  if (pendingFeedbackType && !pendingFeedback?.description) {
+    // First check if their "description" is actually an FAQ we can answer
+    const faqAnswer = lookupFAQ(normalized);
+    if (faqAnswer) {
+      // It's a question we can answer! Answer it instead of treating as bug/feature
+      return {
+        message: faqAnswer + "\n\nDoes that help, or is there still an issue?",
+        state: { messages: [], quoteItems: [] },  // Clear the pending feedback
+        quickReplies: ['That helped!', 'Still having issues'],
+      };
+    }
+
+    // They provided actual feedback - summarize and ask to confirm
+    const typeLabel = pendingFeedbackType === 'bug' ? 'bug report' : 'feature request';
+    return {
+      message: `Got it! Here's what I'll send to the team:\n\n**${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)}:** "${message}"\n\nWant me to include your email so we can follow up? (optional)`,
+      state: {
+        messages: [],
+        quoteItems: [],
+        pendingFeedback: {
+          type: pendingFeedbackType,
+          description: message,
+          step: 'confirm',
+        },
+      } as any,
+      quickReplies: ['Submit without email', 'Add my email'],
+    };
+  }
+
+  // Step 3: Waiting for confirmation or email
+  if (pendingFeedback?.step === 'confirm') {
+    const wantsEmail = normalized.includes('email') || normalized.includes('yes') || normalized.includes('add');
+    const isSubmit = normalized.includes('submit') || normalized.includes('without') || normalized.includes('no') || normalized.includes('send it');
+
+    if (wantsEmail && !isSubmit) {
+      return {
+        message: "What's your email? (So we can let you know when it ships!)",
+        state: {
+          messages: [],
+          quoteItems: [],
+          pendingFeedback: {
+            ...pendingFeedback,
+            step: 'email',
+          },
+        } as any,
+        quickReplies: [],
+      };
+    }
+
+    // Submit without email
+    await supabase.from('user_feedback').insert({
+      user_id: userId || null,
+      feedback_type: pendingFeedback.type,
+      message: pendingFeedback.description,
+      drew_conversation_context: 'Drew chat',
+    });
+
+    return {
+      message: "Sent! We're a small team that ships fast — this could be live in days. Anything else?",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Start a quote', 'Another request'],
+    };
+  }
+
+  // Step 4: They're providing their email
+  if (pendingFeedback?.step === 'email') {
+    // Extract email from message (simple pattern)
+    const emailMatch = message.match(/[\w.-]+@[\w.-]+\.\w+/);
+    const email = emailMatch ? emailMatch[0] : null;
+
+    await supabase.from('user_feedback').insert({
+      user_id: userId || null,
+      feedback_type: pendingFeedback.type,
+      message: `${pendingFeedback.description}\n\n[Contact: ${email || message}]`,
+      drew_conversation_context: 'Drew chat',
+    });
+
+    return {
+      message: email
+        ? `Sent! We'll email ${email} when there's an update. Anything else?`
+        : "Sent! We're a small team that ships fast — this could be live in days. Anything else?",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Start a quote', 'Another request'],
+    };
+  }
+
+  // FAQ patterns: "how do I...", "where is...", "can I..."
+  const faqPatterns = [
+    /^(how (do|can) i|where (do i|is|can i)|can i|what('?s| is)|where'?s)/i,
+    /^(help|support|question)/i,
+  ];
+
+  // Feedback patterns: "feature request", "bug report", "I wish..."
+  const feedbackPatterns = [
+    /\b(feature request|bug report|feedback|suggestion)\b/i,
+    /^(i (want to|wish|would like to) (request|suggest|report))/i,
+    /^(can you add|please add|you should add)/i,
+    /^report (a |an )?(bug|issue|problem)/i,  // "report a bug", "report an issue"
+  ];
+
+  // Check FAQ first
+  if (faqPatterns.some(p => p.test(message))) {
+    const answer = lookupFAQ(normalized);
+    if (answer) {
+      return {
+        message: answer + "\n\nNeed help with anything else?",
+        state: { messages: [], quoteItems: [] },
+        quickReplies: ['Start a quote', 'Another question'],
+      };
+    }
+    // Unknown FAQ - log it AND notify admin
+    await supabase.from('user_feedback').insert({
+      user_id: userId || null,
+      feedback_type: 'question',
+      message: message,
+      drew_conversation_context: 'Drew chat - unknown FAQ',
+    });
+    await sendAdminEmail('Unknown Question from Drew', message);
+
+    return {
+      message: "Good question! I've passed it to the team - they'll add it to my knowledge. In the meantime, try quotecat.ai/support.",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Start a quote'],
+    };
+  }
+
+  // Check for feedback
+  if (feedbackPatterns.some(p => p.test(message))) {
+    const feedbackType = (normalized.includes('bug') || normalized.includes('problem') || normalized.includes('issue')) ? 'bug' : 'feature';
+
+    // Check if this is just a trigger phrase without actual content
+    // Short messages like "feature request" or "bug report" need a follow-up
+    const shortTriggers = ['feature request', 'bug report', 'feedback', 'suggestion', 'report a bug', 'report a problem', 'report an issue'];
+    const isJustTrigger = shortTriggers.some(t => normalized.trim() === t || normalized.trim() === t + 's');
+
+    if (isJustTrigger) {
+      // Ask for details before logging - track that we're waiting for their description
+      const prompt = feedbackType === 'bug'
+        ? "Tell me what's not working right - what did you expect to happen vs. what actually happened?"
+        : "What feature would you like to see? The more detail, the better!";
+      return {
+        message: prompt,
+        state: { messages: [], quoteItems: [], pendingFeedbackType: feedbackType } as any,
+        quickReplies: [],  // No quick replies - we want them to type
+      };
+    }
+
+    // They provided actual content - log it
+    await supabase.from('user_feedback').insert({
+      user_id: userId || null,
+      feedback_type: feedbackType,
+      message: message,
+      drew_conversation_context: 'Drew chat',
+    });
+
+    return {
+      message: "Got it! I've passed this to the dev team. We're a small team that ships fast — this could be live in days. Anything else?",
+      state: { messages: [], quoteItems: [] },
+      quickReplies: ['Start a quote', 'Another request'],
+    };
+  }
+
+  return null; // Not support, continue to state machine
+}
+
+// =============================================================================
 // MAIN HANDLER
 // =============================================================================
 
@@ -1386,8 +1823,27 @@ serve(async (req) => {
       quoteItems: [],
     };
     const userSettings: UserSettings = body.userSettings || {};
+    const mode = body.mode || 'quote';  // Default to quote mode for backwards compatibility
 
     console.log('[drew-agent] User message:', userMessage.substring(0, 100));
+    console.log('[drew-agent] Mode:', mode);
+
+    // ==========================================================================
+    // SUPPORT MODE - Handle FAQ and feedback (skips state machine)
+    // ==========================================================================
+    if (mode === 'support') {
+      const supportResponse = await handleSupportIntent(supabase, userMessage, userId, state);
+      if (supportResponse) {
+        console.log('[drew-agent] Support response:', supportResponse.message.substring(0, 100));
+        return new Response(JSON.stringify(supportResponse), { headers });
+      }
+      // If handleSupportIntent returns null in support mode, give a generic response
+      return new Response(JSON.stringify({
+        message: "Hey, I'm Drew. How can I help?",
+        state: { messages: [], quoteItems: [] },
+        quickReplies: ['How do I create a quote?', 'Feature request', 'Report a problem'],
+      }), { headers });
+    }
 
     // ==========================================================================
     // STATE MACHINE PATH (Drew 2.0)

@@ -33,12 +33,13 @@ import {
   type WizardDisplay,
   type UserDefaults,
   type ChecklistItem,
+  type DrewMode,
 } from '@/lib/wizardApi';
 import { useProducts } from '@/modules/catalog/useProducts';
 import { createQuote, updateQuote, type QuoteItem } from '@/modules/quotes';
 import { loadPreferences } from '@/lib/preferences';
-import { getUserState } from '@/lib/user';
-import { canAccessWizard } from '@/lib/features';
+import { getUserState, type UserTier } from '@/lib/user';
+import { canAccessWizard, canAccessDrewSupport } from '@/lib/features';
 
 type ScreenState = 'intro' | 'chat' | 'upgrade';
 
@@ -65,6 +66,8 @@ export default function WizardScreen() {
   const { categories, products } = useProducts();
 
   const [screenState, setScreenState] = useState<ScreenState>('intro');
+  const [userTier, setUserTier] = useState<UserTier>('free');
+  const [drewMode, setDrewMode] = useState<DrewMode>('quote');
   const [wizardState, setWizardState] = useState<ServerWizardState>(createInitialState());
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -88,13 +91,16 @@ export default function WizardScreen() {
   });
   // User defaults loaded from preferences
   const [userDefaults, setUserDefaults] = useState<UserDefaults>({});
+  // Last navigation route from Drew (for "Take me there" feature)
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   // Check tier access on mount
   useEffect(() => {
     getUserState().then(user => {
-      if (!canAccessWizard(user)) {
-        setScreenState('upgrade');
-      }
+      setUserTier(user.tier);
+      // Premium users can access quote mode directly
+      // Free/Pro users see the two-button intro screen (support vs quote)
+      // No need to auto-upgrade screen anymore - handled in intro
     });
   }, []);
 
@@ -402,7 +408,8 @@ export default function WizardScreen() {
     handleSendWithMessage(reply);
   };
 
-  const handleStart = async () => {
+  const handleStart = async (mode: DrewMode = 'quote') => {
+    setDrewMode(mode);
     setScreenState('chat');
     setIsLoading(true);
     setLoadingStartTime(Date.now());
@@ -411,15 +418,17 @@ export default function WizardScreen() {
     setMessages([]);
 
     try {
-      // Get Drew's opening message from the state machine
-      const response = await sendWizardMessage('', initialState, userDefaults);
+      // Get Drew's opening message - different for support vs quote mode
+      const response = await sendWizardMessage('', initialState, userDefaults, mode);
 
       setWizardState(response.state || initialState);
       setMessages([
         {
           id: '1',
           role: 'assistant',
-          content: response.message || "Hey! What kind of project are we quoting?",
+          content: response.message || (mode === 'support'
+            ? "Hey! How can I help you today?"
+            : "Hey! What kind of project are we quoting?"),
         },
       ]);
 
@@ -434,7 +443,9 @@ export default function WizardScreen() {
         {
           id: '1',
           role: 'assistant',
-          content: "Hey! What kind of project are we quoting?",
+          content: mode === 'support'
+            ? "Hey! How can I help you today?"
+            : "Hey! What kind of project are we quoting?",
         },
       ]);
     } finally {
@@ -585,8 +596,8 @@ export default function WizardScreen() {
       const lastUserMessage = currentMessages.filter(m => m.role === 'user').pop();
       const userMessageText = apiMessage || lastUserMessage?.content || '';
 
-      // Call the state machine API
-      const response = await sendWizardMessage(userMessageText, wizardState, userDefaults);
+      // Call the state machine API (pass drewMode for support vs quote handling)
+      const response = await sendWizardMessage(userMessageText, wizardState, userDefaults, drewMode);
 
       // Update state from response
       if (response.state) {
@@ -621,6 +632,18 @@ export default function WizardScreen() {
         const replies = generateQuickReplies(message);
         setQuickReplies(replies);
       }
+
+      // Handle navigation - save route for "Take me there"
+      if (response.navigation) {
+        setPendingNavigation(response.navigation);
+      }
+
+      // Handle navigate action - go to the pending route
+      if (response.action === 'navigate' && pendingNavigation) {
+        router.push(pendingNavigation as any);
+        return;
+      }
+
       // Clear failed message on success
       setFailedMessage(null);
     } catch (error) {
@@ -750,23 +773,58 @@ export default function WizardScreen() {
 
               <Text style={styles.greeting}>Hey, I&apos;m Drew!</Text>
               <Text style={styles.subtitle}>
-                Would you like me to help you draft a quote?
+                {userTier === 'premium'
+                  ? "Would you like me to help you draft a quote?"
+                  : "How can I help you today?"}
               </Text>
 
-              <View style={styles.buttonRow}>
-                <Pressable
-                  style={[styles.button, styles.primaryButton]}
-                  onPress={handleStart}
-                >
-                  <Text style={styles.primaryButtonText}>Let&apos;s go</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.button, styles.secondaryButton]}
-                  onPress={handleMaybeLater}
-                >
-                  <Text style={styles.secondaryButtonText}>Maybe later</Text>
-                </Pressable>
-              </View>
+              {userTier === 'premium' ? (
+                // Premium users: single start button (full access)
+                <View style={styles.buttonRow}>
+                  <Pressable
+                    style={[styles.button, styles.primaryButton]}
+                    onPress={() => handleStart('quote')}
+                  >
+                    <Text style={styles.primaryButtonText}>Let&apos;s go</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.button, styles.secondaryButton]}
+                    onPress={handleMaybeLater}
+                  >
+                    <Text style={styles.secondaryButtonText}>Maybe later</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                // Free/Pro users: two options (support is free, quotes require Premium)
+                <View style={styles.introOptions}>
+                  <Pressable
+                    style={[styles.button, styles.introOptionButton]}
+                    onPress={() => handleStart('support')}
+                  >
+                    <Ionicons name="chatbubble-ellipses-outline" size={20} color="#f97316" style={styles.introOptionIcon} />
+                    <View>
+                      <Text style={styles.introOptionTitle}>Ask a Question</Text>
+                      <Text style={styles.introOptionSubtitle}>Free for everyone</Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.button, styles.introOptionButton]}
+                    onPress={() => setScreenState('upgrade')}
+                  >
+                    <Ionicons name="construct-outline" size={20} color="#f97316" style={styles.introOptionIcon} />
+                    <View>
+                      <Text style={styles.introOptionTitle}>Build a Quote</Text>
+                      <Text style={styles.introOptionSubtitle}>Premium feature</Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.button, styles.secondaryButton, { marginTop: 8 }]}
+                    onPress={handleMaybeLater}
+                  >
+                    <Text style={styles.secondaryButtonText}>Maybe later</Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
           ) : (
             <KeyboardAvoidingView
@@ -1143,6 +1201,34 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     buttonRow: {
       flexDirection: 'row',
       gap: 12,
+    },
+    // Intro options for Free/Pro users (two buttons)
+    introOptions: {
+      width: '100%',
+      maxWidth: 300,
+      gap: 12,
+    },
+    introOptionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+    },
+    introOptionIcon: {
+      marginRight: 14,
+    },
+    introOptionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    introOptionSubtitle: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      marginTop: 2,
     },
     button: {
       paddingVertical: 14,

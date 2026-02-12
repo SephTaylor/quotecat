@@ -402,6 +402,14 @@ export function saveQuoteDB(quote: Quote): void {
   try {
     const database = getDatabase();
 
+    // Debug logging for tier/linkedQuoteIds
+    if (quote.tier || quote.linkedQuoteIds) {
+      console.log(`[DB] saveQuoteDB ${quote.id}:`, {
+        tier: quote.tier,
+        linkedQuoteIds: quote.linkedQuoteIds,
+      });
+    }
+
     database.runSync(
       `INSERT OR REPLACE INTO quotes (
         id, quote_number, name, client_name, client_email, client_phone, client_address,

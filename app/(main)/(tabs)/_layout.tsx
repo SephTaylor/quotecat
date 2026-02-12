@@ -3,7 +3,7 @@ import { Drawer } from "expo-router/drawer";
 import { useTheme } from "@/contexts/ThemeContext";
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } from "@react-navigation/drawer";
+import { DrawerContentScrollView, DrawerItem, DrawerContentComponentProps } from "@react-navigation/drawer";
 import { View, Text, StyleSheet, Pressable, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { createNewQuote } from "@/lib/quotes";
@@ -221,7 +221,69 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           <Text style={styles.userEmail}>{userEmail}</Text>
         )}
       </View>
-      <DrawerItemList {...props} />
+      <DrawerItem
+        label="Dashboard"
+        icon={({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />}
+        onPress={() => props.navigation.navigate("dashboard")}
+        activeTintColor={theme.colors.accent}
+        inactiveTintColor={theme.colors.muted}
+        activeBackgroundColor={`${theme.colors.accent}15`}
+        labelStyle={styles.drawerLabel}
+        style={styles.drawerItem}
+      />
+      <DrawerItem
+        label="Quotes"
+        icon={({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} />}
+        onPress={() => props.navigation.navigate("quotes")}
+        activeTintColor={theme.colors.accent}
+        inactiveTintColor={theme.colors.muted}
+        activeBackgroundColor={`${theme.colors.accent}15`}
+        labelStyle={styles.drawerLabel}
+        style={styles.drawerItem}
+      />
+      <DrawerItem
+        label="Contracts"
+        icon={({ color, size }) => <Ionicons name="document-lock-outline" size={size} color={color} />}
+        onPress={() => props.navigation.navigate("contracts")}
+        activeTintColor={theme.colors.accent}
+        inactiveTintColor={theme.colors.muted}
+        activeBackgroundColor={`${theme.colors.accent}15`}
+        labelStyle={styles.drawerLabel}
+        style={styles.drawerItem}
+      />
+      <DrawerItem
+        label="Invoices"
+        icon={({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />}
+        onPress={() => props.navigation.navigate("invoices")}
+        activeTintColor={theme.colors.accent}
+        inactiveTintColor={theme.colors.muted}
+        activeBackgroundColor={`${theme.colors.accent}15`}
+        labelStyle={styles.drawerLabel}
+        style={styles.drawerItem}
+      />
+      <DrawerItem
+        label="Clients"
+        icon={({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />}
+        onPress={() => {
+          props.navigation.closeDrawer();
+          router.push("/(main)/client-manager");
+        }}
+        activeTintColor={theme.colors.accent}
+        inactiveTintColor={theme.colors.muted}
+        activeBackgroundColor={`${theme.colors.accent}15`}
+        labelStyle={styles.drawerLabel}
+        style={styles.drawerItem}
+      />
+      <DrawerItem
+        label="Pro Tools"
+        icon={({ color, size }) => <Ionicons name="sparkles-outline" size={size} color={color} />}
+        onPress={() => props.navigation.navigate("pro-tools")}
+        activeTintColor={theme.colors.accent}
+        inactiveTintColor={theme.colors.muted}
+        activeBackgroundColor={`${theme.colors.accent}15`}
+        labelStyle={styles.drawerLabel}
+        style={styles.drawerItem}
+      />
       <View style={styles.drawerFooter}>
         {isSignedIn ? (
           <Pressable
@@ -313,6 +375,15 @@ function createDrawerStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "600",
       color: theme.colors.muted,
+    },
+    drawerLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    drawerItem: {
+      borderRadius: theme.radius.md,
+      marginHorizontal: 8,
+      marginVertical: 4,
     },
   });
 }

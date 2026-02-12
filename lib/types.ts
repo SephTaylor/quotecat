@@ -518,3 +518,96 @@ export type CustomLineItem = {
   updatedAt: string;
   deletedAt?: string; // Soft delete
 };
+
+// =============================================================================
+// SHARED ASSEMBLY LIBRARY TYPES
+// =============================================================================
+
+/**
+ * Trade categories for shared assemblies
+ */
+export const ASSEMBLY_TRADES = [
+  { id: "electrical", label: "Electrical" },
+  { id: "plumbing", label: "Plumbing" },
+  { id: "hvac", label: "HVAC" },
+  { id: "drywall", label: "Drywall" },
+  { id: "framing", label: "Framing" },
+  { id: "roofing", label: "Roofing" },
+  { id: "flooring", label: "Flooring" },
+  { id: "painting", label: "Painting" },
+  { id: "general", label: "General" },
+] as const;
+
+export type AssemblyTrade = (typeof ASSEMBLY_TRADES)[number]["id"];
+
+/**
+ * Item in a shared assembly (stored without prices for privacy)
+ */
+export type SharedAssemblyItem = {
+  name: string;
+  sku?: string;
+  qty: number;
+  unit?: string; // "ea", "ft", "sheet", etc.
+};
+
+/**
+ * Shared assembly from the community library
+ * Prices are NOT included - users map to their own pricebook when copying
+ */
+export type SharedAssembly = {
+  id: string;
+  creatorId?: string;
+  creatorDisplayName?: string; // null = anonymous
+  name: string;
+  description?: string;
+  trade: AssemblyTrade;
+  category?: string;
+  tags: string[];
+  items: SharedAssemblyItem[];
+  copyCount: number;
+  upvoteCount: number;
+  commentCount: number;
+  isActive: boolean;
+  isFeatured: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * User's like on a shared assembly (downvotes removed)
+ */
+export type AssemblyVote = {
+  id: string;
+  sharedAssemblyId: string;
+  userId: string;
+  voteType: "up";
+  createdAt: string;
+};
+
+/**
+ * Comment on a shared assembly
+ */
+export type AssemblyComment = {
+  id: string;
+  sharedAssemblyId: string;
+  userId: string;
+  userDisplayName?: string;
+  content: string;
+  createdAt: string;
+};
+
+/**
+ * Result of matching a shared assembly item to user's pricebook
+ */
+export type ItemMatchResult = {
+  sharedItem: SharedAssemblyItem;
+  matchType: "exact" | "fuzzy" | "none";
+  confidence: number; // 0-100
+  matchedPricebookItem?: PricebookItem;
+  suggestedMatches?: PricebookItem[]; // Top alternatives for fuzzy/none
+};
+
+/**
+ * Sort options for browsing shared assemblies
+ */
+export type SharedAssemblySortOption = "popular" | "newest" | "top_rated";

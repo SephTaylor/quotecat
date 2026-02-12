@@ -3,7 +3,7 @@
     "name": "QuoteCat",
     "slug": "quotecat",
 
-    "version": "1.1.0",
+    "version": "1.2.0",
 
     "runtimeVersion": {
       "policy": "appVersion"
@@ -22,12 +22,21 @@
         {
           "origin": "https://quotecat.ai"
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/qc-splash-tsnt-2048-text.png",
+          "imageWidth": 300,
+          "resizeMode": "contain",
+          "backgroundColor": "#F97316"
+        }
       ]
     ],
     "splash": {
       "image": "./assets/images/qc-splash-tsnt-2048-text.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#F97316"
     },
     "newArchEnabled": true,
     "ios": {
@@ -37,7 +46,7 @@
       "splash": {
         "image": "./assets/images/qc-splash-tsnt-2048-text.png",
         "resizeMode": "contain",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#F97316"
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

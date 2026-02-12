@@ -16,12 +16,12 @@ QuoteCat is a construction quoting platform with three main components:
 
 ### Shared Backend
 - **Supabase**: PostgreSQL database, Auth, Edge Functions (Deno)
-- **Edge Functions**: `wizard-chat` (AI), `create-checkout`, `stripe-webhook`, `cleanup-deleted`
+- **Edge Functions**: `wizard-chat` (AI), `create-checkout`, `stripe-webhook`, `cleanup-deleted`, `sync-xbyte`, `ingest-prices`
 - **Stripe**: Payment processing for subscriptions
 
 ### Launch Target
 - **Public Launch**: January 31, 2025
-- **Current Status**: TestFlight beta (Build #123)
+- **Current Status**: TestFlight beta (Build #145, v1.2.0)
 
 ---
 
@@ -276,22 +276,28 @@ Navigating between groups (e.g., `(forms)` → `(main)`) requires explicit back 
 - ❌ Urgency messaging with pricing ("Only 47 spots at $29!")
 - ❌ Price comparisons
 
-### Pricing Tiers (As of Jan 2025)
+### Pricing Tiers (As of Feb 2026)
 
 **Free Tier:**
 - Price: $0
-- Features: Unlimited quotes (local only), 25 quotes/month, 5 PDF exports/month, 2 CSV exports/month
-- No assemblies, no cloud sync
+- Features:
+  - Unlimited quotes (local only)
+  - Unlimited clients
+  - 5 quote PDF exports/month (resets on 1st)
+  - 5 invoice PDF exports/month (with QuoteCat branding, resets on 1st)
+  - 5 CSV exports/month (resets on 1st)
+  - Full invoice access (create, track, manage)
+- No assemblies, no cloud sync, no portal links
 
 **Pro Tier - Founder Pricing:**
 - Price: $29/mo or $290/yr (first 500 customers, locked forever)
 - Regular price: $99/mo or $990/yr
-- Features: Everything in Free + unlimited exports, custom assemblies, cloud sync, multi-device, company branding
+- Features: Everything in Free + unlimited exports (no branding), custom assemblies, cloud sync, multi-device, portal links, company branding on PDFs
 
 **Premium Tier - Founder Pricing:**
 - Price: $79/mo or $790/yr (first 100 customers, locked forever)
 - Regular price: $199/mo or $1,990/yr
-- Features: Everything in Pro + company logo on PDFs, Quote Wizard, advanced analytics, team collaboration (future), priority support
+- Features: Everything in Pro + contracts, Drew AI quote building, web portal access, priority support
 
 **Price Increase Triggers:**
 - Primary: Hit customer cap (100 Pro = $49, 500 Pro = $99)
@@ -787,21 +793,85 @@ When launched, track:
 
 ---
 
-## 📧 TODO: Email Setup (Jan 6, 2026)
+## ✅ Email Setup (Completed Feb 2026)
 
-Stripe webhook is working - creates auth user + profile with correct tier. But emails come from Supabase's default servers instead of quotecat.ai.
+SMTP configured in Supabase with noreply@quotecat.ai. Users receive branded emails for signup confirmation and password reset.
 
-**Steps to complete:**
-1. Create `noreply@quotecat.ai` in GoDaddy (Email & Office → Create Email Address)
-2. Configure SMTP in Supabase (Authentication → Email → Set up SMTP):
-   - Host: `smtpout.secureserver.net`
-   - Port: `465` (SSL)
-   - Username: `noreply@quotecat.ai`
-   - Password: (set in GoDaddy)
-   - Sender email: `noreply@quotecat.ai`
-   - Sender name: `QuoteCat`
-3. Customize "Invite User" email template with QuoteCat branding
-4. Test full checkout → email → password setup → app login flow
+---
+
+## 🏗️ Supplier Pricing Pipeline (Feb 12, 2026)
+
+### Overview
+
+Real-time pricing data from Lowe's, Home Depot, and Menards via xByte API. Supports per-city pricing for Kalamazoo, Battle Creek, and Lansing (Michigan).
+
+### Database Schema
+
+**New tables/changes:**
+- `locations` - Service areas (kalamazoo, battle_creek, lansing)
+- `product_prices` extended with `location_id`, `supplier_id`, `week_of`
+- `current_prices` view - Latest price per product/location/supplier
+
+**Suppliers seeded:** lowes, homedepot, menards
+
+### Edge Functions
+
+**`sync-xbyte`** - Auto-fetches from xByte API, upserts products, inserts prices
+```bash
+curl -X POST "https://eouikzjzsartaabvlbee.supabase.co/functions/v1/sync-xbyte" \
+  -H "Authorization: Bearer <INGEST_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"date": "2026_02_13"}'
+```
+
+**`ingest-prices`** - Manual price ingestion endpoint
+
+**INGEST_API_KEY:** `a183195164bc49b1235db174638ecf37d8e560669ce0bbe08baab1aa6dd698d1`
+
+### xByte API Format
+
+```
+GET https://3690-multi-retailer.xbyteapi.com/api/products?feed=homedepot&date=2026_02_12&page=1&city=lansing
+```
+
+- `feed`: lowes, homedepot, menards
+- `date`: YYYY_MM_DD format
+- `page`: 100 items per page
+- `city`: lansing, kalamazoo, battle_creek (URL encoded for battle%20creek)
+
+### Data Retention Strategy
+
+- Keep all weekly data indefinitely (~80MB/year)
+- `current_prices` view auto-filters to latest
+- Historical data for analytics (price trends, comparison)
+
+### Mobile App Integration (Planned)
+
+See `docs/PORTAL-FEATURE-ROADMAP.md` for full plan:
+- Local SQLite cache for current prices only
+- Sync on app open, pull-to-refresh
+- User zip code for distance calculations
+- Expandable product rows with price comparisons
+
+---
+
+## 🔄 Change Orders Status (Feb 12, 2026)
+
+### Current State
+
+| Component | Status |
+|-----------|--------|
+| Mobile: Types, Diff, UI | ✅ Done |
+| Mobile: Storage | AsyncStorage (NOT SQLite) |
+| Mobile: Sync | ❌ Missing |
+| Supabase: Table | ❌ Missing |
+| Portal: Support | ❌ Missing |
+
+### Gap
+
+Change orders created on mobile don't sync to cloud, so portal can't display them.
+
+**Full implementation plan:** `docs/CHANGE-ORDERS-SYNC-PLAN.md`
 
 ---
 
@@ -872,7 +942,10 @@ Features to consider for future releases (not blockers for launch):
 - **Decline/Request Changes** - Allow clients to decline a contract or request changes via the web portal instead of just signing or doing nothing. Would add "declined" and "needs revision" statuses, plus a notes field for client feedback. (Discussed Jan 7, 2026)
 
 ### Quotes
-- **Quick Custom Items (Free Tier)** - Allow users to quickly add custom line items to quotes without browsing the catalog. Targets contractors who normally scribble on notepads - just type item name + price, done. Stored locally in SQLite `custom_line_items` table with `name`, `price`, `times_used`, `first_added`, `last_used`. Fuzzy deduplication ("Ceiling Fan Install" vs "Install Ceiling Fan"). Creates a "Temp Items" list the user can review later. Natural upsell: "You've added 'Ceiling Fan Install' to 7 quotes. Save to your pricebook?" (Pricebook is Pro feature). Also provides data on what products/services contractors actually quote that aren't in the catalog. (Discussed Jan 18, 2026)
+- **Quick Custom Items (Free Tier)** - ✅ SHIPPED (Build #141, Feb 8, 2026) - Users can add custom line items directly on quote edit screen. Tap "+ Add custom item", type name and price, tap off to save. Items stored locally with autocomplete for reuse. Amber tinted background distinguishes custom items from catalog items.
+
+### Internationalization
+- **Spanish Language Support** - Add i18n to support Spanish-speaking US contractors (~30% of market) and enable Costa Rica expansion. **Scope:** ~300-400 unique strings across 71 files, 149 alert dialogs, 66 form placeholders. **Effort:** 5-7 days. **Implementation:** expo-localization + i18next, JSON translation files, device language detection. **Bonus:** Once i18n infrastructure exists, adding more languages is just a new JSON file. Could partner with Costa Rican supplier (Colono) for local catalog. Regional pricing via Stripe (US $29/mo, CR ~$9/mo). WhatsApp sharing already works via iOS share sheet. (Discussed Feb 8, 2026)
 
 ### Invoices
 - *(Add ideas here)*
@@ -882,6 +955,9 @@ Features to consider for future releases (not blockers for launch):
 
 ### Integrations (Premium)
 - **QuickBooks Sync** - Two-way sync with QuickBooks Online for invoices, payments, and clients. Push QuoteCat invoices to QuickBooks, sync payment records, map customers. Uses OAuth 2.0 (tokens expire, need refresh handling). Consider unified API like Merge or Apideck to also support Xero/FreshBooks with same integration. ~2 weeks development. (Discussed Jan 17, 2026)
+
+### Local Supplier Network (Phase 2/3)
+- **Supplier Portal** - Self-service portal for local/regional suppliers to upload their catalogs. Differentiator vs competitors who only have big box store data. Creates two-sided marketplace with network effects. **Implementation:** (1) Supplier signup with business info, logo, service area ZIPs; (2) Catalog upload accepting CSV, Excel, JSON, or manual entry; (3) Admin column-mapper UI to normalize supplier data ("Their 'Item #' → our 'sku'"); (4) Saved mappings per supplier for future uploads; (5) Validation rules (price > 0, unit recognized); (6) Approval workflow before products go live. **Data-driven expansion:** Watch user ZIP concentration, research local suppliers in high-density areas, then outreach. Start with manual onboarding (3-5 suppliers), build self-service portal once model is proven. **Monetization (later):** Free tier (50 products), Pro tier $49/mo (unlimited + analytics), Premium $149/mo (lead notifications, featured placement). New tables: `local_suppliers`, `supplier_uploads`. Add `local_supplier_id` FK to products table. (Discussed Jan 23, 2026)
 
 ### Automations (Premium)
 - **Workflow Automations** - Automated email/SMS delivery for existing notifications. **Recommended: Use Knock.app** (10K messages/mo free, $250/mo for 50K). Knock handles workflow orchestration, delays, batching, and multi-channel delivery. We call Knock API when events happen (quote sent, invoice overdue), Knock handles the timing and delivery via our Twilio/SendGrid. Phase 1: Quote follow-up reminders, Invoice overdue reminders. Phase 2: Review requests, Appointment reminders. Phase 3: Custom automation builder. Cuts dev time from ~2 weeks to ~2-3 days. (Discussed Jan 17, 2026)

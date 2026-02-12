@@ -1,5 +1,5 @@
 // app/(main)/(tabs)/invoices.tsx
-// Invoices list - Pro feature
+// Invoices list - Free tier has limits with branding
 import { useTheme } from "@/contexts/ThemeContext";
 import { InvoiceStatusMeta } from "@/lib/types";
 import { calculateQuoteTotal } from "@/lib/calculations";
@@ -75,27 +75,6 @@ export default function InvoicesList() {
     handleBulkDelete,
     handleBulkUpdateStatus,
   } = useInvoiceList();
-
-  // If not Pro, show locked state
-  if (!isPro) {
-    return (
-      <>
-        <Stack.Screen options={{ title: "Invoices", headerTitleAlign: "center" }} />
-        <GradientBackground>
-          <View style={styles.lockedContainer}>
-            <Ionicons name="lock-closed" size={64} color={theme.colors.muted} />
-            <Text style={styles.lockedTitle}>Invoices</Text>
-            <Text style={styles.lockedDescription}>
-              Create, track, and manage invoices from your quotes.
-            </Text>
-            <Pressable style={styles.upgradeButton} onPress={handleSignIn}>
-              <Text style={styles.upgradeButtonText}>Sign In</Text>
-            </Pressable>
-          </View>
-        </GradientBackground>
-      </>
-    );
-  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

@@ -333,7 +333,7 @@ export default function Settings() {
           {/* Usage & Limits Section - Only show for free users */}
           {userState && !isPro && (
             <CollapsibleSection
-              title="Usage & Limits"
+              title="Usage This Month"
               isExpanded={expandedSections.usage}
               onToggle={() => toggleSection('usage')}
               theme={theme}
@@ -341,25 +341,34 @@ export default function Settings() {
               <View style={styles.card}>
                 <View style={styles.usageCompact}>
                   <View style={styles.usageCompactRow}>
-                    <Text style={styles.usageLabel}>Draft Quotes</Text>
+                    <Text style={styles.usageLabel}>Quotes (Draft)</Text>
                     <Text style={styles.usageValue}>Unlimited</Text>
                   </View>
                   <View style={styles.usageCompactRow}>
-                    <Text style={styles.usageLabel}>PDF Exports</Text>
+                    <Text style={styles.usageLabel}>Clients</Text>
+                    <Text style={styles.usageValue}>Unlimited</Text>
+                  </View>
+                  <View style={styles.usageCompactRow}>
+                    <Text style={styles.usageLabel}>Quote PDFs</Text>
                     <Text style={styles.usageValue}>
-                      {isPro
-                        ? `${userState.pdfsUsed} (Unlimited)`
-                        : `${userState.pdfsUsed} / ${FREE_LIMITS.pdfs}`}
+                      {userState.pdfsUsed} / {FREE_LIMITS.pdfs}
+                    </Text>
+                  </View>
+                  <View style={styles.usageCompactRow}>
+                    <Text style={styles.usageLabel}>Invoice PDFs</Text>
+                    <Text style={styles.usageValue}>
+                      {userState.invoicesUsed || 0} / {FREE_LIMITS.invoices}
                     </Text>
                   </View>
                   <View style={styles.usageCompactRow}>
                     <Text style={styles.usageLabel}>CSV Exports</Text>
                     <Text style={styles.usageValue}>
-                      {isPro
-                        ? `${userState.spreadsheetsUsed} (Unlimited)`
-                        : `${userState.spreadsheetsUsed} / ${FREE_LIMITS.spreadsheets}`}
+                      {userState.spreadsheetsUsed} / {FREE_LIMITS.spreadsheets}
                     </Text>
                   </View>
+                  <Text style={[styles.usageLabel, { fontSize: 12, marginTop: 8, color: theme.colors.muted }]}>
+                    Resets on the 1st of each month
+                  </Text>
                 </View>
               </View>
             </CollapsibleSection>

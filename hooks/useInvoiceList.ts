@@ -19,8 +19,8 @@ import { listQuotes, type Quote } from "@/lib/quotes";
 import type { Contract, InvoiceStatus } from "@/lib/types";
 import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
-import { canAccessAssemblies } from "@/lib/features";
-import { getUserState } from "@/lib/user";
+import { canAccessAssemblies, canAccessInvoices, canExportInvoice } from "@/lib/features";
+import { getUserState, incrementInvoiceCount } from "@/lib/user";
 import { getCompanyLogo } from "@/lib/logo";
 import { isSyncAvailable } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
@@ -52,32 +52,31 @@ export function useInvoiceList() {
   // Load data
   const load = useCallback(async () => {
     const user = await getUserState();
-    const hasAccess = canAccessAssemblies(user);
-    setIsPro(hasAccess);
+    const hasProAccess = canAccessAssemblies(user);
+    setIsPro(hasProAccess);
     const premium = user.tier === "premium";
     setIsPremium(premium);
 
-    if (hasAccess) {
-      const [invoiceData, quoteData] = await Promise.all([
-        listInvoices(),
-        listQuotes(),
-      ]);
-      setInvoices(invoiceData);
-      // Filter quotes that can be invoiced (approved or completed)
-      const invoiceable = quoteData.filter(
-        (q) => q.status === "approved" || q.status === "completed"
-      );
-      setAvailableQuotes(invoiceable);
+    // All users can access invoices now
+    const [invoiceData, quoteData] = await Promise.all([
+      listInvoices(),
+      listQuotes(),
+    ]);
+    setInvoices(invoiceData);
+    // Filter quotes that can be invoiced (approved or completed)
+    const invoiceable = quoteData.filter(
+      (q) => q.status === "approved" || q.status === "completed"
+    );
+    setAvailableQuotes(invoiceable);
 
-      // For Premium users, also load signed contracts
-      if (premium) {
-        const contractData = await listContracts();
-        // Filter to only signed contracts
-        const signedContracts = contractData.filter(
-          (c) => c.status === "signed"
-        );
-        setAvailableContracts(signedContracts);
-      }
+    // For Premium users, also load signed contracts
+    if (premium) {
+      const contractData = await listContracts();
+      // Filter to only signed contracts
+      const signedContracts = contractData.filter(
+        (c) => c.status === "signed"
+      );
+      setAvailableContracts(signedContracts);
     }
   }, []);
 
@@ -90,12 +89,12 @@ export function useInvoiceList() {
 
   // Watch for trigger param to open picker
   useEffect(() => {
-    if (trigger === "create" && isPro) {
+    if (trigger === "create") {
       // For Premium users with contracts available, show source picker
       if (isPremium && availableContracts.length > 0) {
         setShowSourcePicker(true);
       } else if (availableQuotes.length > 0) {
-        // Pro users or Premium without contracts go straight to quote picker
+        // All users can create invoices from quotes
         setShowQuotePicker(true);
       } else {
         Alert.alert(
@@ -106,7 +105,7 @@ export function useInvoiceList() {
       }
       router.setParams({ trigger: undefined });
     }
-  }, [trigger, isPro, isPremium, availableQuotes.length, availableContracts.length, router]);
+  }, [trigger, isPremium, availableQuotes.length, availableContracts.length, router]);
 
   // Pull-to-refresh handler - triggers cloud sync for Pro/Premium users
   const onRefresh = useCallback(async () => {
@@ -159,7 +158,20 @@ export function useInvoiceList() {
     try {
       const prefs = await loadPreferences();
       const user = await getUserState();
-      const userIsPro = canAccessAssemblies(user);
+      const exportCheck = canExportInvoice(user);
+
+      // Check if user can export
+      if (!exportCheck.allowed) {
+        Alert.alert(
+          "Export Limit Reached",
+          exportCheck.reason || "You've reached your monthly invoice export limit.",
+          [
+            { text: "OK" },
+            { text: "Upgrade", onPress: () => router.push("/(auth)/sign-in" as any) },
+          ]
+        );
+        return;
+      }
 
       let logoBase64: string | undefined;
       try {
@@ -172,12 +184,17 @@ export function useInvoiceList() {
       }
 
       const pdfOptions: PDFOptions = {
-        includeBranding: !userIsPro,
+        includeBranding: exportCheck.hasBranding, // Free tier gets branding
         companyDetails: prefs.company,
         logoBase64,
       };
 
       await generateAndShareInvoicePDF(invoice, pdfOptions);
+
+      // Increment counter for free users after successful export
+      if (exportCheck.hasBranding) {
+        await incrementInvoiceCount();
+      }
     } catch (error) {
       console.error("Failed to export invoice PDF:", error);
       Alert.alert(
@@ -185,7 +202,7 @@ export function useInvoiceList() {
         error instanceof Error ? error.message : "Failed to export PDF"
       );
     }
-  }, []);
+  }, [router]);
 
   // Status update handlers
   const handleUpdateStatus = useCallback((invoice: Invoice) => {

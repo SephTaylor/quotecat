@@ -7,8 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserState } from './user';
 
 const LOGO_STORAGE_KEY = '@quotecat/company-logo';
-const MAX_LOGO_WIDTH = 800;
-const LOGO_QUALITY = 0.85;
+const MAX_LOGO_WIDTH = 500;
+const LOGO_QUALITY = 0.7;
 
 export interface CompanyLogo {
   base64: string;

@@ -21,12 +21,14 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
   View,
   ScrollView,
 } from "react-native";
+import { syncPricebook } from "@/lib/pricebookSync";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import { Ionicons } from "@expo/vector-icons";
@@ -62,8 +64,20 @@ export default function PriceBookManager() {
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [showUnitPicker, setShowUnitPicker] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await syncPricebook();
+    } catch (error) {
+      console.error("Failed to sync pricebook:", error);
+    }
+    await loadItems();
+    setRefreshing(false);
+  }, [loadItems]);
 
   const loadItems = useCallback(async () => {
     const data = await getPricebookItems();
@@ -286,7 +300,12 @@ export default function PriceBookManager() {
       />
 
       <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
           {/* Description */}
           <View style={styles.descriptionContainer}>
             <Text style={styles.description}>

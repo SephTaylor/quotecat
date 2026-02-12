@@ -2,6 +2,8 @@
 // Pro tool for managing custom assemblies
 import { useTheme } from "@/contexts/ThemeContext";
 import { getUserState } from "@/lib/user";
+import { getPricebookItems } from "@/lib/pricebook";
+import type { PricebookItem } from "@/lib/types";
 import { saveAssembly, useAssemblies, deleteAssembly, validateAssembly } from "@/modules/assemblies";
 import type { Assembly } from "@/modules/assemblies";
 import { useProducts } from "@/modules/catalog";
@@ -20,6 +22,7 @@ import {
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/Swipeable";
+import { ShareAssemblyModal } from "@/components/ShareAssemblyModal";
 
 export default function AssemblyManager() {
   const router = useRouter();
@@ -31,14 +34,20 @@ export default function AssemblyManager() {
   const [assemblyName, setAssemblyName] = useState("");
   const [invalidAssemblies, setInvalidAssemblies] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [assemblyToShare, setAssemblyToShare] = useState<Assembly | null>(null);
+  const [pricebookItems, setPricebookItems] = useState<PricebookItem[]>([]);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-  // Load Pro status
+  // Load Pro status and pricebook items
   React.useEffect(() => {
     const load = async () => {
-      const user = await getUserState();
-      setIsPro(user.tier === "pro");
+      const [user, pbItems] = await Promise.all([
+        getUserState(),
+        getPricebookItems(),
+      ]);
+      setIsPro(user.tier === "pro" || user.tier === "premium");
+      setPricebookItems(pbItems);
     };
     load();
   }, []);
@@ -50,19 +59,20 @@ export default function AssemblyManager() {
     }, [reload])
   );
 
-  // Validate all assemblies when products load
+  // Validate all assemblies when products and pricebook items load
   React.useEffect(() => {
-    if (assemblies.length > 0 && products.length > 0) {
+    if (assemblies.length > 0 && (products.length > 0 || pricebookItems.length > 0)) {
       const invalid = new Set<string>();
       assemblies.forEach((asm) => {
-        const result = validateAssembly(asm, products);
+        // Pass both catalog products AND pricebook items for validation
+        const result = validateAssembly(asm, products, pricebookItems);
         if (!result.isValid) {
           invalid.add(asm.id);
         }
       });
       setInvalidAssemblies(invalid);
     }
-  }, [assemblies, products]);
+  }, [assemblies, products, pricebookItems]);
 
   const handleCreateAssembly = () => {
     if (!isPro) {
@@ -278,6 +288,15 @@ export default function AssemblyManager() {
                             {isInvalid && "⚠️ "}
                             {item.name}
                           </Text>
+                          <Pressable
+                            style={styles.shareButton}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              setAssemblyToShare(item);
+                            }}
+                          >
+                            <Text style={styles.shareButtonText}>Share</Text>
+                          </Pressable>
                         </View>
                         <Text style={styles.assemblyMeta}>
                           {(() => {
@@ -353,6 +372,16 @@ export default function AssemblyManager() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Share Assembly Modal */}
+      {assemblyToShare && (
+        <ShareAssemblyModal
+          visible={!!assemblyToShare}
+          onClose={() => setAssemblyToShare(null)}
+          assembly={assemblyToShare}
+          onSuccess={() => setAssemblyToShare(null)}
+        />
+      )}
     </GestureHandlerRootView>
   );
 }
@@ -465,6 +494,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "600",
       color: theme.colors.text,
       flex: 1,
+    },
+    shareButton: {
+      paddingHorizontal: theme.spacing(1.5),
+      paddingVertical: theme.spacing(0.5),
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.bg,
+      borderWidth: 1,
+      borderColor: theme.colors.accent,
+    },
+    shareButtonText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: theme.colors.accent,
     },
     assemblyMeta: {
       fontSize: 13,

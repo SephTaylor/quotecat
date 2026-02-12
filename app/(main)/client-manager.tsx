@@ -1,5 +1,5 @@
 // app/(main)/client-manager.tsx
-// Pro tool for managing saved clients
+// Manage saved clients for quick selection on quotes
 import { useTheme } from "@/contexts/ThemeContext";
 import { getUserState } from "@/lib/user";
 import {
@@ -90,11 +90,11 @@ export default function ClientManager() {
 
   // Auto-open create modal if createNew param is set
   React.useEffect(() => {
-    if (createNew === "true" && isPro) {
+    if (createNew === "true") {
       resetForm();
       setShowModal(true);
     }
-  }, [createNew, isPro]);
+  }, [createNew]);
 
   const filteredClients = React.useMemo(() => {
     if (!searchQuery.trim()) return clients;
@@ -133,10 +133,6 @@ export default function ClientManager() {
   };
 
   const handleAddClient = () => {
-    if (!isPro) {
-      // Pro feature - button should be disabled for free users
-      return;
-    }
     resetForm();
     setShowModal(true);
   };
@@ -320,9 +316,7 @@ export default function ClientManager() {
                 <Text style={styles.emptyTextSimple}>
                   {searchQuery
                     ? `No clients match "${searchQuery}"`
-                    : isPro
-                    ? "No clients yet. Tap + New to add your first client."
-                    : "No clients yet. Pro users can save clients."}
+                    : "No clients yet. Tap + New to add your first client."}
                 </Text>
               </View>
             ) : (

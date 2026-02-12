@@ -19,6 +19,8 @@ import {
 } from "react-native";
 import type { Assembly } from "@/modules/assemblies";
 
+type TabType = "my" | "community";
+
 // Memoized assembly list item for performance
 const AssemblyListItem = memo(
   ({
@@ -64,12 +66,13 @@ export default function AssembliesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isPro, setIsPro] = React.useState(false);
   const [checkingTier, setCheckingTier] = React.useState(true);
+  const [activeTab, setActiveTab] = useState<TabType>("my");
 
   // Check Pro tier on mount
   React.useEffect(() => {
     const checkTier = async () => {
       const userState = await getUserState();
-      setIsPro(userState.tier === "pro");
+      setIsPro(userState.tier === "pro" || userState.tier === "premium");
       setCheckingTier(false);
     };
     checkTier();
@@ -224,6 +227,29 @@ export default function AssembliesScreen() {
         }}
       />
       <Screen scroll={false} contentStyle={styles.container}>
+        {/* Tab bar */}
+        <View style={styles.tabBar}>
+          <Pressable
+            style={[styles.tab, activeTab === "my" && styles.tabActive]}
+            onPress={() => setActiveTab("my")}
+          >
+            <Text style={[styles.tabText, activeTab === "my" && styles.tabTextActive]}>
+              My Assemblies
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tab, activeTab === "community" && styles.tabActive]}
+            onPress={() => {
+              // Navigate to community screen
+              router.push("/(main)/community-assemblies");
+            }}
+          >
+            <Text style={[styles.tabText, activeTab === "community" && styles.tabTextActive]}>
+              Community
+            </Text>
+          </Pressable>
+        </View>
+
         <View style={styles.headerContainer}>
           <Text style={styles.headerDescription}>
             Your reusable material templates
@@ -285,6 +311,31 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     container: {
       flex: 1,
       backgroundColor: theme.colors.bg,
+    },
+    tabBar: {
+      flexDirection: "row",
+      backgroundColor: theme.colors.card,
+      marginHorizontal: theme.spacing(2),
+      marginTop: theme.spacing(2),
+      borderRadius: theme.radius.lg,
+      padding: 4,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: theme.spacing(1.5),
+      alignItems: "center",
+      borderRadius: theme.radius.md,
+    },
+    tabActive: {
+      backgroundColor: theme.colors.accent,
+    },
+    tabText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    tabTextActive: {
+      color: "#000",
     },
     headerContainer: {
       paddingHorizontal: theme.spacing(2),

@@ -18,6 +18,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
@@ -29,7 +30,12 @@ export default function SignContract() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const signatureRef = useRef<SignatureViewRef>(null);
+
+  // Calculate signature box dimensions - works better on iPad than flex
+  const signatureWidth = Math.min(screenWidth - 32, 600); // 16px padding each side, max 600
+  const signatureHeight = Math.min(signatureWidth * 0.5, 200); // 2:1 aspect ratio, max 200
 
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
@@ -202,14 +208,14 @@ export default function SignContract() {
 
         {/* Signature Area */}
         <View style={styles.signatureSection}>
-          <View style={styles.signatureHeader}>
+          <View style={[styles.signatureHeader, { width: signatureWidth }]}>
             <Text style={styles.label}>Signature</Text>
             <Pressable onPress={handleClear} style={styles.clearButton}>
               <Ionicons name="refresh-outline" size={16} color={theme.colors.muted} />
               <Text style={styles.clearText}>Clear</Text>
             </Pressable>
           </View>
-          <View style={styles.signatureBox}>
+          <View style={[styles.signatureBox, { width: signatureWidth, height: signatureHeight }]}>
             <SignatureScreen
               ref={signatureRef}
               onEnd={handleEnd}
@@ -219,19 +225,35 @@ export default function SignContract() {
                   box-shadow: none;
                   border: none;
                   background-color: transparent;
+                  width: 100%;
+                  height: 100%;
                 }
                 .m-signature-pad--body {
                   border: none;
+                  width: 100%;
+                  height: 100%;
+                }
+                .m-signature-pad--body canvas {
+                  width: 100% !important;
+                  height: 100% !important;
                 }
                 .m-signature-pad--footer {
                   display: none;
                 }
                 body, html {
                   background-color: ${theme.colors.bg};
+                  margin: 0;
+                  padding: 0;
+                  width: 100%;
+                  height: 100%;
+                  overflow: hidden;
+                  touch-action: none;
                 }
               `}
               backgroundColor={theme.colors.bg}
               penColor={theme.colors.text}
+              webviewContainerStyle={{ flex: 1 }}
+              autoClear={false}
             />
           </View>
           <Text style={styles.signatureHint}>Draw your signature above</Text>
@@ -356,6 +378,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     signatureSection: {
       flex: 1,
       marginBottom: theme.spacing(2),
+      alignItems: "center",
     },
     signatureHeader: {
       flexDirection: "row",
@@ -373,7 +396,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       color: theme.colors.muted,
     },
     signatureBox: {
-      flex: 1,
       backgroundColor: theme.colors.bg,
       borderRadius: theme.radius.lg,
       borderWidth: 2,

@@ -22,7 +22,10 @@ export type ReminderType =
   | "contract_signed"     // Client signed a contract
   | "contract_viewed"     // Client viewed a contract
   | "contract_declined"   // Client declined a contract
-  | "assembly_unhealthy"; // Assembly has unavailable products
+  | "assembly_unhealthy"  // Assembly has unavailable products
+  | "assembly_vote_up"    // Someone liked a shared assembly
+  | "assembly_copied"     // Someone copied a shared assembly
+  | "assembly_comment";   // Someone commented on a shared assembly
 
 export type Reminder = {
   id: string;
@@ -428,6 +431,7 @@ type SupabaseNotification = {
   message: string;
   contract_id: string | null;
   quote_id: string | null;
+  shared_assembly_id: string | null;
   read: boolean;
   read_at: string | null;
   created_at: string;
@@ -440,6 +444,7 @@ function getEntityType(type: string): "quote" | "invoice" | "contract" | "assemb
   if (type.startsWith("quote_")) return "quote";
   if (type.startsWith("invoice_")) return "invoice";
   if (type.startsWith("contract_")) return "contract";
+  if (type.startsWith("assembly_")) return "assembly";
   return "system";
 }
 
@@ -469,7 +474,7 @@ export async function getCloudNotifications(): Promise<Reminder[]> {
     // Convert to Reminder format
     return (data as SupabaseNotification[]).map((n) => {
       const entityType = getEntityType(n.type);
-      const entityId = n.quote_id || n.contract_id || "system";
+      const entityId = n.quote_id || n.contract_id || n.shared_assembly_id || "system";
 
       return {
         id: `notification_${n.id}`,

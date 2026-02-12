@@ -10,8 +10,10 @@ export type UserState = {
   email?: string;
   displayName?: string; // User's display name for contracts
   quotesUsed: number;
-  pdfsUsed: number; // Lifetime total
-  spreadsheetsUsed: number; // Lifetime total
+  pdfsUsed: number; // Monthly total (resets on 1st)
+  spreadsheetsUsed: number; // Monthly total (resets on 1st)
+  invoicesUsed: number; // Monthly total (resets on 1st)
+  lastUsageReset?: string; // ISO date string of last reset (YYYY-MM)
   // Pro user fields
   proActivatedAt?: string;
   proExpiresAt?: string; // For trial/subscription tracking
@@ -19,8 +21,9 @@ export type UserState = {
 
 export const FREE_LIMITS = {
   quotes: 10,
-  pdfs: 10,
-  spreadsheets: 5,
+  pdfs: 5,        // Per month
+  spreadsheets: 5, // Per month
+  invoices: 5,     // Per month (with QuoteCat branding)
 } as const;
 
 const USER_STATE_KEY = "@quotecat/user_state";
@@ -55,6 +58,14 @@ export async function saveUserState(state: UserState): Promise<void> {
 }
 
 /**
+ * Get current month as YYYY-MM string
+ */
+function getCurrentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
  * Default state for new users
  */
 function getDefaultUserState(): UserState {
@@ -63,15 +74,19 @@ function getDefaultUserState(): UserState {
     quotesUsed: 0,
     pdfsUsed: 0,
     spreadsheetsUsed: 0,
+    invoicesUsed: 0,
+    lastUsageReset: getCurrentMonth(),
   };
 }
 
 /**
- * Migrate old monthly fields to new lifetime fields
+ * Migrate and reset monthly usage if needed
  */
 function migrateUserState(state: UserState): UserState {
-  // Handle migration from old monthly fields
   const migrated = { ...state };
+  const currentMonth = getCurrentMonth();
+
+  // Handle migration from old fields
   if ('pdfsThisMonth' in state) {
     migrated.pdfsUsed = (state as any).pdfsThisMonth || 0;
     delete (migrated as any).pdfsThisMonth;
@@ -83,9 +98,21 @@ function migrateUserState(state: UserState): UserState {
   if ('lastPdfResetDate' in state) {
     delete (migrated as any).lastPdfResetDate;
   }
+
   // Ensure fields exist
   if (migrated.pdfsUsed === undefined) migrated.pdfsUsed = 0;
   if (migrated.spreadsheetsUsed === undefined) migrated.spreadsheetsUsed = 0;
+  if (migrated.invoicesUsed === undefined) migrated.invoicesUsed = 0;
+
+  // Monthly reset: if we're in a new month, reset usage counters
+  if (migrated.lastUsageReset !== currentMonth) {
+    console.log(`[user] Monthly reset: ${migrated.lastUsageReset} → ${currentMonth}`);
+    migrated.pdfsUsed = 0;
+    migrated.spreadsheetsUsed = 0;
+    migrated.invoicesUsed = 0;
+    migrated.lastUsageReset = currentMonth;
+  }
+
   return migrated;
 }
 
@@ -130,6 +157,17 @@ export async function incrementSpreadsheetCount(): Promise<void> {
   await saveUserState({
     ...state,
     spreadsheetsUsed: state.spreadsheetsUsed + 1,
+  });
+}
+
+/**
+ * Increment invoice export counter
+ */
+export async function incrementInvoiceCount(): Promise<void> {
+  const state = await getUserState();
+  await saveUserState({
+    ...state,
+    invoicesUsed: (state.invoicesUsed || 0) + 1,
   });
 }
 
