@@ -20,6 +20,13 @@ const LOCATION_MAP: Record<string, string> = {
   "battle_creek": "battle_creek",
 };
 
+// Map our city IDs to xByte API format (xByte expects spaces, not underscores)
+const CITY_API_MAP: Record<string, string> = {
+  "lansing": "lansing",
+  "kalamazoo": "kalamazoo",
+  "battle_creek": "battle creek",  // xByte expects space, gets URL-encoded
+};
+
 // Map xByte retailer names to our supplier IDs
 const SUPPLIER_MAP: Record<string, string> = {
   "Homedepot": "homedepot",
@@ -123,7 +130,9 @@ Deno.serve(async (req) => {
         let hasMore = true;
 
         while (hasMore && page <= max_pages) {
-          const url = `${XBYTE_BASE_URL}?feed=${feed}&date=${date}&page=${page}&city=${city}`;
+          // Convert our city ID to xByte API format (handles battle_creek -> "battle creek")
+          const apiCity = encodeURIComponent(CITY_API_MAP[city] || city);
+          const url = `${XBYTE_BASE_URL}?feed=${feed}&date=${date}&page=${page}&city=${apiCity}`;
 
           try {
             const response = await fetch(url);
@@ -142,24 +151,29 @@ Deno.serve(async (req) => {
               continue;
             }
 
-            // Process products
-            const products = data.data.map((item) => ({
-              id: `xbyte-${item["Retailer Identifier"].toLowerCase()}-${item["Product ID / SKU"]}`,
-              name: item["Product Name"],
-              sku: String(item["Product ID / SKU"]),
-              unit: item["Unit of Measure"] || "each",
-              unit_price: item["Price (USD)"], // Required field
-              currency: "USD",
-              description: item["Category"], // Store category path in description
-              brand: item["Brand"] || null,
-              supplier_id: SUPPLIER_MAP[item["Retailer Identifier"]] || item["Retailer Identifier"].toLowerCase(),
-              supplier_url: item["Product URL"],
-              product_url: item["Product URL"],
-              in_stock: item["In-Stock Status"] === "In Stock",
-              data_source: "retailer_scraped",
-              retailer: item["Retailer Identifier"],
-              last_synced_at: new Date().toISOString(),
-            }));
+            // Process products - dedupe by ID to avoid "cannot affect row a second time" error
+            const productMap = new Map();
+            for (const item of data.data) {
+              const id = `xbyte-${item["Retailer Identifier"].toLowerCase()}-${item["Product ID / SKU"]}`;
+              productMap.set(id, {
+                id,
+                name: item["Product Name"],
+                sku: String(item["Product ID / SKU"]),
+                unit: item["Unit of Measure"] || "each",
+                unit_price: item["Price (USD)"], // Required field
+                currency: "USD",
+                description: item["Category"], // Store category path in description
+                brand: item["Brand"] || null,
+                supplier_id: SUPPLIER_MAP[item["Retailer Identifier"]] || item["Retailer Identifier"].toLowerCase(),
+                supplier_url: item["Product URL"],
+                product_url: item["Product URL"],
+                in_stock: item["In-Stock Status"] === "In Stock",
+                data_source: "retailer_scraped",
+                retailer: item["Retailer Identifier"],
+                last_synced_at: new Date().toISOString(),
+              });
+            }
+            const products = Array.from(productMap.values());
 
             // Upsert products
             const { error: productError } = await supabase
@@ -173,21 +187,26 @@ Deno.serve(async (req) => {
               stats.productsUpserted += products.length;
             }
 
-            // Prepare price records
-            const prices = data.data.map((item) => ({
-              product_id: `xbyte-${item["Retailer Identifier"].toLowerCase()}-${item["Product ID / SKU"]}`,
-              supplier_id: SUPPLIER_MAP[item["Retailer Identifier"]] || item["Retailer Identifier"].toLowerCase(),
-              location_id: LOCATION_MAP[item["Location"]] || item["Location"].toLowerCase().replace(" ", "_"),
-              price: item["Price (USD)"],
-              currency: "USD",
-              effective_at: item["Last Update Timestamp"],
-              week_of: weekOf,
-            }));
+            // Prepare price records - dedupe by product_id (keep last occurrence)
+            const priceMap = new Map();
+            for (const item of data.data) {
+              const productId = `xbyte-${item["Retailer Identifier"].toLowerCase()}-${item["Product ID / SKU"]}`;
+              priceMap.set(productId, {
+                product_id: productId,
+                supplier_id: SUPPLIER_MAP[item["Retailer Identifier"]] || item["Retailer Identifier"].toLowerCase(),
+                location_id: LOCATION_MAP[item["Location"]] || item["Location"].toLowerCase().replace(" ", "_"),
+                price: item["Price (USD)"],
+                currency: "USD",
+                effective_at: item["Last Update Timestamp"],
+                week_of: weekOf,
+              });
+            }
+            const prices = Array.from(priceMap.values());
 
-            // Insert prices
+            // Upsert prices (update if exists, insert if not)
             const { error: priceError } = await supabase
               .from("product_prices")
-              .insert(prices);
+              .upsert(prices, { onConflict: "product_id,location_id,week_of" });
 
             if (priceError) {
               console.error(`[sync-xbyte] Price insert error:`, priceError);
