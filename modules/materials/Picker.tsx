@@ -1,16 +1,31 @@
 // modules/materials/Picker.tsx
 import { useTheme } from "@/contexts/ThemeContext";
 import { type Product, SUPPLIER_NAMES } from "@/modules/catalog/seed";
-import React, { useState, useRef, useCallback, memo, useMemo } from "react";
+import React, { useState, useRef, useCallback, memo, useMemo, useEffect } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View, ScrollView, RefreshControlProps, Keyboard, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import type { Selection } from "./types";
+import { searchProductsFTS } from "@/lib/database";
 
-export type Category = { id: string; name: string };
+export type Category = {
+  id: string;
+  name: string;
+  parentId?: string;
+  level?: number;
+};
+// Extended product type with optional location price flag
+export type ProductWithPrice = Product & { _hasLocationPrice?: boolean };
+
+export type ActiveFilter = {
+  type: "category" | "supplier" | "location";
+  id: string;
+  label: string;
+};
+
 export type MaterialsPickerProps = {
   categories: Category[];
-  itemsByCategory: Record<string, Product[]>;
+  itemsByCategory: Record<string, ProductWithPrice[]>;
   selection: Selection;
   onInc(product: Product): void;
   onDec(product: Product): void;
@@ -20,17 +35,18 @@ export type MaterialsPickerProps = {
   syncing?: boolean;
   refreshControl?: React.ReactElement<RefreshControlProps>;
   onFilterPress?: () => void;
-  activeFilterCount?: number;
+  activeFilters?: ActiveFilter[];
+  onRemoveFilter?: (filter: ActiveFilter) => void;
 };
 
 // List item types for FlashList
 type ListItem =
   | { type: "header"; categoryId: string; categoryName: string; count: number }
-  | { type: "product"; product: Product };
+  | { type: "product"; product: ProductWithPrice };
 
 // Memoized product row - only re-renders when its specific props change
 type ProductRowProps = {
-  product: Product;
+  product: ProductWithPrice;
   qty: number;
   isEditing: boolean;
   editingQty: string;
@@ -40,6 +56,7 @@ type ProductRowProps = {
   onQtyChange: (text: string) => void;
   onFinishEdit: () => void;
   styles: ReturnType<typeof createStyles>;
+  accentColor: string;
 };
 
 const ProductRow = memo(function ProductRow({
@@ -53,6 +70,7 @@ const ProductRow = memo(function ProductRow({
   onQtyChange,
   onFinishEdit,
   styles,
+  accentColor,
 }: ProductRowProps) {
   const active = qty > 0;
 
@@ -62,6 +80,7 @@ const ProductRow = memo(function ProductRow({
         <Text style={styles.itemName}>{product.name}</Text>
         <Text style={styles.itemSub}>
           ${product.unitPrice.toFixed(2)}/{product.unit}
+          {product._hasLocationPrice && <Text style={{ color: accentColor }}> (local)</Text>}
           {product.supplierId && SUPPLIER_NAMES[product.supplierId] && ` · ${SUPPLIER_NAMES[product.supplierId]}`}
         </Text>
       </View>
@@ -123,24 +142,37 @@ function MaterialsPicker({
   recentProductIds = [],
   refreshControl,
   onFilterPress,
-  activeFilterCount = 0,
+  activeFilters = [],
+  onRemoveFilter,
 }: MaterialsPickerProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const listRef = useRef<FlashListRef<ListItem>>(null);
 
-  // Selected category state
-  const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
-
-  // Scroll to top when category changes
-  const handleCategorySelect = useCallback((categoryId: string | "all") => {
-    setSelectedCategory(categoryId);
-    // Scroll list to top
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, []);
-
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
+  const [ftsMatchIds, setFtsMatchIds] = useState<Set<string> | null>(null);
+
+  // FTS search effect - calls SQLite FTS5 for synonym expansion and stemming
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFtsMatchIds(null);
+      return;
+    }
+
+    // Debounce search by 150ms
+    const timer = setTimeout(() => {
+      try {
+        const results = searchProductsFTS(searchQuery.trim(), 500);
+        setFtsMatchIds(new Set(results.map(p => p.id)));
+      } catch (error) {
+        console.error("FTS search error:", error);
+        setFtsMatchIds(null); // Fall back to showing all
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Sort categories alphabetically by name
   const sortedCategories = useMemo(() => {
@@ -196,43 +228,31 @@ function MaterialsPicker({
   const listData = useMemo(() => {
     const items: ListItem[] = [];
 
-    // Determine which categories to show
-    const categoriesToShow = selectedCategory === "all"
-      ? sortedCategories
-      : sortedCategories.filter(c => c.id === selectedCategory);
-
-    for (const cat of categoriesToShow) {
+    // Show all categories that have products (filtering done by parent component)
+    for (const cat of sortedCategories) {
       let products = itemsByCategory[cat.id] || [];
 
-      // Filter by search query
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        products = products.filter(p =>
-          p.name.toLowerCase().includes(query) ||
-          p.id.toLowerCase().includes(query)
-        );
+      // Filter by FTS search results
+      if (searchQuery.trim() && ftsMatchIds !== null) {
+        products = products.filter(p => ftsMatchIds.has(p.id));
       }
 
       if (products.length === 0) continue;
 
-      // Add category header (only in "all" view)
-      if (selectedCategory === "all") {
-        items.push({
-          type: "header",
-          categoryId: cat.id,
-          categoryName: cat.name,
-          count: products.length,
-        });
-      }
+      items.push({
+        type: "header",
+        categoryId: cat.id,
+        categoryName: cat.name,
+        count: products.length,
+      });
 
-      // Add products
       for (const product of products) {
         items.push({ type: "product", product });
       }
     }
 
     return items;
-  }, [itemsByCategory, selectedCategory, searchQuery, sortedCategories]);
+  }, [itemsByCategory, searchQuery, ftsMatchIds, sortedCategories]);
 
   // Render item for FlashList
   const renderItem = useCallback(({ item }: { item: ListItem }) => {
@@ -262,9 +282,10 @@ function MaterialsPicker({
         onQtyChange={handleQtyChange}
         onFinishEdit={handleFinishEditingQty}
         styles={styles}
+        accentColor={theme.colors.accent}
       />
     );
-  }, [selection, editingProductId, editingQty, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, styles]);
+  }, [selection, editingProductId, editingQty, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, styles, theme.colors.accent]);
 
   // Key extractor for FlashList
   const keyExtractor = useCallback((item: ListItem) => {
@@ -306,13 +327,14 @@ function MaterialsPicker({
                 onQtyChange={handleQtyChange}
                 onFinishEdit={handleFinishEditingQty}
                 styles={styles}
+                accentColor={theme.colors.accent}
               />
             );
           })}
         </View>
       </View>
     );
-  }, [recentProducts, selection, editingProductId, editingQty, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, styles]);
+  }, [recentProducts, selection, editingProductId, editingQty, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, styles, theme.colors.accent]);
 
   // Dismiss editing when tapping outside the input
   const handleContainerPress = useCallback(() => {
@@ -323,38 +345,8 @@ function MaterialsPicker({
 
   return (
     <View style={styles.container}>
-      {/* Sticky Header: Category Filter Chips */}
+      {/* Sticky Header: Search + Filters */}
       <View style={styles.stickyHeader}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterContainer}
-          style={styles.filterScrollView}
-          keyboardShouldPersistTaps="handled"
-        >
-          <TouchableOpacity
-            style={[styles.filterChip, selectedCategory === "all" && styles.filterChipActive]}
-            onPress={() => handleCategorySelect("all")}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.filterChipText, selectedCategory === "all" && styles.filterChipTextActive]}>
-              All
-            </Text>
-          </TouchableOpacity>
-          {sortedCategories.map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[styles.filterChip, selectedCategory === cat.id && styles.filterChipActive]}
-              onPress={() => handleCategorySelect(cat.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.filterChipText, selectedCategory === cat.id && styles.filterChipTextActive]}>
-                {cat.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
         {/* Search Bar with Filter Button */}
         <View style={styles.searchRow}>
           <TextInput
@@ -368,19 +360,36 @@ function MaterialsPicker({
           />
           {onFilterPress && (
             <TouchableOpacity
-              style={styles.filterButton}
+              style={[styles.filterButton, activeFilters.length > 0 && styles.filterButtonActive]}
               onPress={onFilterPress}
               activeOpacity={0.7}
             >
-              <Ionicons name="options-outline" size={22} color={theme.colors.text} />
-              {activeFilterCount > 0 && (
-                <View style={styles.filterBadge}>
-                  <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-                </View>
-              )}
+              <Ionicons name="options-outline" size={22} color={activeFilters.length > 0 ? "#000" : theme.colors.text} />
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Active Filters Row - Amazon style dismissible chips */}
+        {activeFilters.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.activeFiltersContainer}
+            keyboardShouldPersistTaps="handled"
+          >
+            {activeFilters.map((filter) => (
+              <TouchableOpacity
+                key={`${filter.type}-${filter.id}`}
+                style={styles.activeFilterChip}
+                onPress={() => onRemoveFilter?.(filter)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.activeFilterText}>{filter.label}</Text>
+                <Ionicons name="close" size={14} color={theme.colors.text} />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {/* Virtualized Product List - wrapped in View for proper FlashList layout */}
@@ -412,7 +421,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     stickyHeader: {
       backgroundColor: theme.colors.bg,
-      paddingTop: 0,
+      paddingTop: theme.spacing(1),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
@@ -423,42 +432,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingBottom: theme.spacing(8),
       paddingHorizontal: theme.spacing(2),
     },
-    filterScrollView: {
-      flexGrow: 0,
-      flexShrink: 0,
-    },
-    filterContainer: {
-      paddingHorizontal: theme.spacing(1.5),
-      paddingTop: theme.spacing(0.5),
-      paddingBottom: theme.spacing(0.5),
-      gap: theme.spacing(0.75),
-    },
-    filterChip: {
-      paddingHorizontal: theme.spacing(1.5),
-      paddingVertical: theme.spacing(0.5),
-      borderRadius: 999,
-      backgroundColor: theme.colors.card,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    filterChipActive: {
-      backgroundColor: theme.colors.accent,
-      borderColor: theme.colors.accent,
-    },
-    filterChipText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: theme.colors.muted,
-    },
-    filterChipTextActive: {
-      color: "#000",
-    },
     searchRow: {
       flexDirection: "row",
       alignItems: "center",
-      marginTop: theme.spacing(0.5),
       marginBottom: theme.spacing(1),
       marginHorizontal: theme.spacing(1.5),
       gap: theme.spacing(0.75),
@@ -484,22 +460,29 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       alignItems: "center",
       justifyContent: "center",
     },
-    filterBadge: {
-      position: "absolute",
-      top: -4,
-      right: -4,
+    filterButtonActive: {
       backgroundColor: theme.colors.accent,
-      borderRadius: 10,
-      minWidth: 18,
-      height: 18,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 4,
+      borderColor: theme.colors.accent,
     },
-    filterBadgeText: {
-      fontSize: 11,
-      fontWeight: "700",
-      color: "#000",
+    activeFiltersContainer: {
+      paddingHorizontal: theme.spacing(1.5),
+      paddingBottom: theme.spacing(1),
+      gap: theme.spacing(0.5),
+    },
+    activeFilterChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(0.5),
+      paddingHorizontal: theme.spacing(1),
+      paddingVertical: theme.spacing(0.5),
+      borderRadius: theme.radius.sm,
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    activeFilterText: {
+      fontSize: 13,
+      color: theme.colors.text,
     },
 
     recentCard: {

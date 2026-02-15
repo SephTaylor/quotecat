@@ -4,12 +4,13 @@
 
 import * as SQLite from "expo-sqlite";
 import type { Quote, Invoice, Client, QuoteItem, PricebookItem, InvoicePayment } from "./types";
+import type { Product, Category } from "@/modules/catalog/seed";
 
 // Database instance (lazy initialized)
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 9;
 
 /**
  * Get or create the database instance
@@ -275,6 +276,143 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     database.execSync(`
       CREATE INDEX IF NOT EXISTS idx_custom_line_items_times_used ON custom_line_items(times_used DESC);
     `);
+  }
+
+  if (fromVersion < 6) {
+    // Add products table for catalog with paginated sync from Supabase
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        category_id TEXT,
+        unit TEXT DEFAULT 'each',
+        unit_price REAL DEFAULT 0,
+        supplier_id TEXT,
+        description TEXT,
+        created_at TEXT,
+        updated_at TEXT
+      );
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_products_supplier ON products(supplier_id);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
+    `);
+
+    // Add categories table
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TEXT,
+        updated_at TEXT
+      );
+    `);
+
+    // Add sync metadata table for tracking last sync time
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS sync_metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TEXT
+      );
+    `);
+  }
+
+  if (fromVersion < 7) {
+    // Add FTS5 full-text search for products
+    // product_id is UNINDEXED (stored but not searchable)
+    // name is tokenized with porter stemmer for better matching
+    database.execSync(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
+        product_id UNINDEXED,
+        name,
+        tokenize='porter unicode61'
+      );
+    `);
+
+    // Search synonyms table for construction term aliases
+    // Maps common terms to canonical forms (e.g., "2x4" → "2 in x 4 in")
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS search_synonyms (
+        term TEXT PRIMARY KEY COLLATE NOCASE,
+        canonical TEXT NOT NULL
+      );
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_search_synonyms_canonical
+      ON search_synonyms(canonical COLLATE NOCASE);
+    `);
+
+    // Rebuild FTS index if products already exist (migration scenario)
+    const productCount = database.getFirstSync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM products"
+    );
+    if (productCount && productCount.count > 0) {
+      console.log(`📚 Rebuilding FTS index for ${productCount.count} existing products...`);
+      database.execSync(`
+        INSERT INTO products_fts (product_id, name)
+        SELECT id, name FROM products;
+      `);
+      console.log(`✅ FTS index rebuilt`);
+    }
+  }
+
+  if (fromVersion < 8) {
+    // Add hierarchical category support (parent/child relationships)
+    // Check if columns exist first to handle partial migrations safely
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(categories)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("parent_id")) {
+      database.execSync(`ALTER TABLE categories ADD COLUMN parent_id TEXT;`);
+    }
+    if (!columnNames.has("level")) {
+      database.execSync(`ALTER TABLE categories ADD COLUMN level INTEGER DEFAULT 0;`);
+    }
+    if (!columnNames.has("sort_order")) {
+      database.execSync(`ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 999;`);
+    }
+
+    // Index for efficient parent lookups
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_categories_level ON categories(level);
+    `);
+
+    console.log(`📁 Category hierarchy columns added`);
+  }
+
+  if (fromVersion < 9) {
+    // Add canonical_category column to products for keyword-based category mapping
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(products)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("canonical_category")) {
+      database.execSync(`ALTER TABLE products ADD COLUMN canonical_category TEXT DEFAULT 'Other';`);
+    }
+
+    // Index for efficient canonical category lookups
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_products_canonical ON products(canonical_category);
+    `);
+
+    console.log(`📦 Canonical category column added to products`);
   }
 
   // Update version
@@ -1316,6 +1454,521 @@ export function closeDatabase(): void {
   }
 }
 
+// ==========================================
+// PRODUCTS
+// ==========================================
+
+/**
+ * Convert database row to Product type
+ */
+function rowToProduct(row: any): Product {
+  return {
+    id: row.id,
+    name: row.name,
+    categoryId: row.category_id || "Other",
+    canonicalCategory: row.canonical_category || "Other",
+    unit: row.unit || "each",
+    unitPrice: row.unit_price || 0,
+    supplierId: row.supplier_id || undefined,
+  };
+}
+
+/**
+ * List products with optional pagination and filtering
+ */
+export function listProductsDB(options?: {
+  limit?: number;
+  offset?: number;
+  categoryId?: string;
+  supplierId?: string;
+}): Product[] {
+  try {
+    const database = getDatabase();
+    const { limit, offset, categoryId, supplierId } = options || {};
+
+    let sql = "SELECT * FROM products WHERE 1=1";
+    const params: any[] = [];
+
+    if (categoryId) {
+      sql += " AND category_id = ?";
+      params.push(categoryId);
+    }
+
+    if (supplierId) {
+      sql += " AND supplier_id = ?";
+      params.push(supplierId);
+    }
+
+    sql += " ORDER BY name ASC";
+
+    if (limit !== undefined) {
+      sql += " LIMIT ?";
+      params.push(limit);
+    }
+
+    if (offset !== undefined) {
+      sql += " OFFSET ?";
+      params.push(offset);
+    }
+
+    const rows = database.getAllSync(sql, params);
+    return rows.map(rowToProduct);
+  } catch (error) {
+    console.error("Failed to list products from SQLite:", error);
+    return [];
+  }
+}
+
+/**
+ * Get total product count
+ */
+export function getProductCountDB(): number {
+  try {
+    const database = getDatabase();
+    const result = database.getFirstSync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM products"
+    );
+    return result?.count || 0;
+  } catch (error) {
+    console.error("Failed to get product count from SQLite:", error);
+    return 0;
+  }
+}
+
+/**
+ * Get product by ID
+ */
+export function getProductByIdDB(id: string): Product | null {
+  try {
+    const database = getDatabase();
+    const row = database.getFirstSync(
+      "SELECT * FROM products WHERE id = ?",
+      [id]
+    );
+    return row ? rowToProduct(row) : null;
+  } catch (error) {
+    console.error(`Failed to get product ${id} from SQLite:`, error);
+    return null;
+  }
+}
+
+/**
+ * Save a single product
+ */
+export function saveProductDB(product: Product): void {
+  try {
+    const database = getDatabase();
+    const now = new Date().toISOString();
+
+    database.runSync(
+      `INSERT OR REPLACE INTO products (
+        id, name, category_id, unit, unit_price, supplier_id, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        product.id,
+        product.name,
+        product.categoryId,
+        product.unit,
+        product.unitPrice,
+        product.supplierId || null,
+        now,
+      ]
+    );
+  } catch (error) {
+    console.error(`Failed to save product ${product.id} to SQLite:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Save multiple products in a transaction (efficient batch operation)
+ * FTS index is rebuilt separately via rebuildProductsFTS()
+ */
+export function saveProductsBatchDB(products: Product[]): void {
+  if (products.length === 0) return;
+
+  try {
+    const database = getDatabase();
+    const now = new Date().toISOString();
+
+    database.withTransactionSync(() => {
+      for (const product of products) {
+        // Insert/update product
+        database.runSync(
+          `INSERT OR REPLACE INTO products (
+            id, name, category_id, canonical_category, unit, unit_price, supplier_id, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            product.id,
+            product.name,
+            product.categoryId,
+            product.canonicalCategory || "Other",
+            product.unit,
+            product.unitPrice,
+            product.supplierId || null,
+            now,
+          ]
+        );
+      }
+    });
+  } catch (error) {
+    console.error(`Failed to batch save ${products.length} products to SQLite:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Clear all products (for full resync)
+ * Also clears the FTS5 search index
+ */
+export function clearProductsDB(): void {
+  try {
+    const database = getDatabase();
+    database.withTransactionSync(() => {
+      database.runSync("DELETE FROM products");
+      database.runSync("DELETE FROM products_fts");
+    });
+  } catch (error) {
+    console.error("Failed to clear products from SQLite:", error);
+    throw error;
+  }
+}
+
+/**
+ * Rebuild FTS index from existing products
+ * Call this if FTS search returns no results but products exist
+ */
+export function rebuildProductsFTS(): void {
+  try {
+    const database = getDatabase();
+    const productCount = getProductCountDB();
+
+    if (productCount === 0) {
+      console.log("No products to index");
+      return;
+    }
+
+    console.log(`🔄 Rebuilding FTS index for ${productCount} products...`);
+
+    database.withTransactionSync(() => {
+      // Clear existing FTS data
+      database.runSync("DELETE FROM products_fts");
+
+      // Rebuild from products table
+      database.runSync(`
+        INSERT INTO products_fts (product_id, name)
+        SELECT id, name FROM products
+      `);
+    });
+
+    console.log(`✅ FTS index rebuilt`);
+  } catch (error) {
+    console.error("Failed to rebuild FTS index:", error);
+    throw error;
+  }
+}
+
+/**
+ * Check if FTS index needs rebuilding (products exist but FTS is empty)
+ */
+export function needsFTSRebuild(): boolean {
+  try {
+    const database = getDatabase();
+    const productCount = getProductCountDB();
+    const ftsCount = database.getFirstSync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM products_fts"
+    );
+
+    return productCount > 0 && (ftsCount?.count || 0) === 0;
+  } catch (error) {
+    console.error("Failed to check FTS status:", error);
+    return false;
+  }
+}
+
+/**
+ * Get synonym expansion for a search term
+ */
+export function getSynonymDB(term: string): string | null {
+  try {
+    const database = getDatabase();
+    const row = database.getFirstSync<{ canonical: string }>(
+      "SELECT canonical FROM search_synonyms WHERE term = ? COLLATE NOCASE",
+      [term]
+    );
+    return row?.canonical || null;
+  } catch (error) {
+    console.error("Failed to get synonym:", error);
+    return null;
+  }
+}
+
+/**
+ * Add or update a search synonym
+ */
+export function setSynonymDB(term: string, canonical: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync(
+      "INSERT OR REPLACE INTO search_synonyms (term, canonical) VALUES (?, ?)",
+      [term.toLowerCase(), canonical.toLowerCase()]
+    );
+  } catch (error) {
+    console.error("Failed to set synonym:", error);
+    throw error;
+  }
+}
+
+/**
+ * Batch insert synonyms
+ */
+export function setSynonymsBatchDB(synonyms: Array<{ term: string; canonical: string }>): void {
+  if (synonyms.length === 0) return;
+
+  try {
+    const database = getDatabase();
+    database.withTransactionSync(() => {
+      for (const { term, canonical } of synonyms) {
+        database.runSync(
+          "INSERT OR REPLACE INTO search_synonyms (term, canonical) VALUES (?, ?)",
+          [term.toLowerCase(), canonical.toLowerCase()]
+        );
+      }
+    });
+  } catch (error) {
+    console.error("Failed to batch insert synonyms:", error);
+    throw error;
+  }
+}
+
+/**
+ * Search products using FTS5 full-text search
+ * Supports:
+ * - Word stemming (running → run)
+ * - Prefix matching (dry* → drywall)
+ * - Synonym expansion (2x4 → 2 in x 4 in)
+ * - Relevance ranking
+ */
+export function searchProductsFTS(query: string, limit = 100): Product[] {
+  if (!query.trim()) return [];
+
+  try {
+    const database = getDatabase();
+    const originalQuery = query.trim().toLowerCase();
+
+    // Check for synonym expansion first (e.g., "2x4" → "2 in x 4 in")
+    const synonym = getSynonymDB(originalQuery);
+
+    // Use synonym if available, otherwise use original
+    const searchText = synonym || originalQuery;
+
+    // Clean and tokenize for FTS
+    const terms = searchText
+      .replace(/[^\w\s]/g, ' ')  // Replace punctuation with spaces
+      .split(/\s+/)
+      .filter(t => t.length > 0);
+
+    if (terms.length === 0) return [];
+
+    // Build FTS query: all terms with prefix matching, joined by AND
+    // This ensures all terms must be present
+    const ftsQuery = terms.map(t => `${t}*`).join(' AND ');
+
+    // Search FTS5 and join with products for full data
+    const rows = database.getAllSync(
+      `SELECT p.*, fts.rank
+       FROM products_fts fts
+       JOIN products p ON p.id = fts.product_id
+       WHERE products_fts MATCH ?
+       ORDER BY fts.rank
+       LIMIT ?`,
+      [ftsQuery, limit]
+    );
+
+    return rows.map(rowToProduct);
+  } catch (error) {
+    console.error("[FTS] Search failed, falling back to LIKE:", error);
+    // Fallback to simple LIKE search if FTS fails
+    return searchProductsLike(query, limit);
+  }
+}
+
+/**
+ * Fallback LIKE-based search (used if FTS5 fails)
+ */
+function searchProductsLike(query: string, limit = 100): Product[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      `SELECT * FROM products
+       WHERE LOWER(name) LIKE ?
+       ORDER BY name ASC
+       LIMIT ?`,
+      [`%${query.toLowerCase()}%`, limit]
+    );
+    return rows.map(rowToProduct);
+  } catch (error) {
+    console.error("Failed to search products:", error);
+    return [];
+  }
+}
+
+/**
+ * Legacy function name for compatibility
+ * @deprecated Use searchProductsFTS instead
+ */
+export function searchProductsDB(query: string, limit = 100): Product[] {
+  return searchProductsFTS(query, limit);
+}
+
+// ==========================================
+// CATEGORIES
+// ==========================================
+
+/**
+ * Convert database row to Category type
+ */
+function rowToCategory(row: any): Category {
+  return {
+    id: row.id,
+    name: row.name,
+    parentId: row.parent_id || undefined,
+    level: row.level ?? 0,
+    sortOrder: row.sort_order ?? 999,
+  };
+}
+
+/**
+ * List all categories ordered by level then name
+ */
+export function listCategoriesDB(): Category[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT * FROM categories ORDER BY level ASC, sort_order ASC, name ASC"
+    );
+    return rows.map(rowToCategory);
+  } catch (error) {
+    console.error("Failed to list categories from SQLite:", error);
+    return [];
+  }
+}
+
+/**
+ * List only parent categories (level 0)
+ */
+export function listParentCategoriesDB(): Category[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT * FROM categories WHERE level = 0 OR parent_id IS NULL ORDER BY sort_order ASC, name ASC"
+    );
+    return rows.map(rowToCategory);
+  } catch (error) {
+    console.error("Failed to list parent categories from SQLite:", error);
+    return [];
+  }
+}
+
+/**
+ * List child categories for a given parent
+ */
+export function listChildCategoriesDB(parentId: string): Category[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT * FROM categories WHERE parent_id = ? ORDER BY sort_order ASC, name ASC",
+      [parentId]
+    );
+    return rows.map(rowToCategory);
+  } catch (error) {
+    console.error(`Failed to list child categories for ${parentId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Save multiple categories in a transaction (with hierarchy support)
+ */
+export function saveCategoriesBatchDB(categories: Category[]): void {
+  if (categories.length === 0) return;
+
+  try {
+    const database = getDatabase();
+    const now = new Date().toISOString();
+
+    database.withTransactionSync(() => {
+      for (const category of categories) {
+        database.runSync(
+          `INSERT OR REPLACE INTO categories (id, name, parent_id, level, sort_order, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            category.id,
+            category.name,
+            category.parentId || null,
+            category.level ?? 0,
+            category.sortOrder ?? 999,
+            now
+          ]
+        );
+      }
+    });
+  } catch (error) {
+    console.error(`Failed to batch save ${categories.length} categories to SQLite:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Clear all categories (for full resync)
+ */
+export function clearCategoriesDB(): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM categories");
+  } catch (error) {
+    console.error("Failed to clear categories from SQLite:", error);
+    throw error;
+  }
+}
+
+// ==========================================
+// SYNC METADATA
+// ==========================================
+
+/**
+ * Get sync metadata value
+ */
+export function getSyncMetadataDB(key: string): string | null {
+  try {
+    const database = getDatabase();
+    const row = database.getFirstSync<{ value: string }>(
+      "SELECT value FROM sync_metadata WHERE key = ?",
+      [key]
+    );
+    return row?.value || null;
+  } catch (error) {
+    console.error(`Failed to get sync metadata ${key} from SQLite:`, error);
+    return null;
+  }
+}
+
+/**
+ * Set sync metadata value
+ */
+export function setSyncMetadataDB(key: string, value: string): void {
+  try {
+    const database = getDatabase();
+    const now = new Date().toISOString();
+    database.runSync(
+      `INSERT OR REPLACE INTO sync_metadata (key, value, updated_at) VALUES (?, ?, ?)`,
+      [key, value, now]
+    );
+  } catch (error) {
+    console.error(`Failed to set sync metadata ${key} in SQLite:`, error);
+    throw error;
+  }
+}
+
 /**
  * Clear all data (for testing/reset)
  */
@@ -1328,6 +1981,9 @@ export function clearAllDataDB(): void {
       database.runSync("DELETE FROM invoices");
       database.runSync("DELETE FROM clients");
       database.runSync("DELETE FROM pricebook_items");
+      database.runSync("DELETE FROM products");
+      database.runSync("DELETE FROM categories");
+      database.runSync("DELETE FROM sync_metadata");
       database.runSync("DELETE FROM migration_status");
     });
   } catch (error) {

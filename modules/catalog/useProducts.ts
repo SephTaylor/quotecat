@@ -7,19 +7,25 @@ import {
   getCategories,
   needsSync,
   refreshProducts,
-  syncProducts,
+  syncAllProducts,
   syncCategories,
 } from "./productService";
 
+export type SyncProgress = {
+  loaded: number;
+  total: number;
+};
+
 /**
  * Hook for loading and syncing products.
- * Automatically syncs on mount if needed.
+ * Automatically syncs on mount if needed (weekly sync for xByte data).
  */
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   const [lastSync, setLastSync] = useState<Date | null>(null);
 
   const loadProducts = useCallback(async () => {
@@ -29,7 +35,29 @@ export function useProducts() {
         getCategories(),
       ]);
       setProducts(productData);
-      setCategories(categoryData);
+
+      // Build categories from actual product categoryIds to ensure all are included
+      // The categories table may not have all categories that products reference
+      const categorySet = new Map<string, Category>();
+
+      // First add categories from the categories table
+      categoryData.forEach(cat => {
+        categorySet.set(cat.id, cat);
+      });
+
+      // Then add any missing categories from products
+      productData.forEach(product => {
+        if (product.categoryId && !categorySet.has(product.categoryId)) {
+          categorySet.set(product.categoryId, {
+            id: product.categoryId,
+            name: product.categoryId
+          });
+        }
+      });
+
+      const allCategories = Array.from(categorySet.values());
+      console.log(`[useProducts] Loaded ${productData.length} products, ${allCategories.length} categories (${categoryData.length} from table, ${allCategories.length - categoryData.length} from products)`);
+      setCategories(allCategories);
 
       const syncTime = await getLastSyncTime();
       setLastSync(syncTime);
@@ -43,11 +71,20 @@ export function useProducts() {
   const backgroundSync = useCallback(async () => {
     const shouldSync = await needsSync();
     if (shouldSync) {
-      console.log("🔄 Background sync triggered");
+      console.log("🔄 Background sync triggered (weekly sync)");
       setSyncing(true);
-      // Sync both products and categories
-      await Promise.all([syncProducts(), syncCategories()]);
+      setSyncProgress({ loaded: 0, total: 0 });
+
+      // Sync products with progress callback, categories in parallel
+      await Promise.all([
+        syncAllProducts((loaded, total) => {
+          setSyncProgress({ loaded, total });
+        }),
+        syncCategories(),
+      ]);
+
       setSyncing(false);
+      setSyncProgress(null);
 
       // Reload after sync
       await loadProducts();
@@ -56,12 +93,18 @@ export function useProducts() {
 
   const manualRefresh = useCallback(async () => {
     setSyncing(true);
-    // Refresh both products and categories
+    setSyncProgress({ loaded: 0, total: 0 });
+
+    // Refresh products with progress callback, categories in parallel
     const [productSuccess, categorySuccess] = await Promise.all([
-      refreshProducts(),
+      refreshProducts((loaded, total) => {
+        setSyncProgress({ loaded, total });
+      }),
       syncCategories(),
     ]);
+
     setSyncing(false);
+    setSyncProgress(null);
 
     if (productSuccess || categorySuccess) {
       await loadProducts();
@@ -72,7 +115,7 @@ export function useProducts() {
 
   useEffect(() => {
     loadProducts();
-    // Background sync after initial load
+    // Background sync after initial load (checks if >7 days since last sync)
     backgroundSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -82,6 +125,7 @@ export function useProducts() {
     categories,
     loading,
     syncing,
+    syncProgress,
     lastSync,
     refresh: manualRefresh,
   };

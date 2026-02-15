@@ -2,17 +2,19 @@ import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from "expo-rou
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getQuoteById, saveQuote } from "@/lib/quotes";
-import { useProducts } from "@/modules/catalog";
+import { useProducts, usePrices } from "@/modules/catalog";
+import { loadPreferences } from "@/lib/preferences";
 import { BottomBar, Button } from "@/modules/core/ui";
 import {
   MaterialsPicker,
   transformSelectionToItems,
   useSelection,
+  type ActiveFilter,
 } from "@/modules/materials";
 import { mergeById } from "@/modules/quotes/merge";
 import type { Product } from "@/modules/catalog/seed";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Text, View, StyleSheet, Pressable, Alert, RefreshControl, Modal, TouchableOpacity, TouchableWithoutFeedback, Keyboard, ScrollView, Linking } from "react-native";
+import { Text, View, StyleSheet, Pressable, Alert, RefreshControl, Modal, TouchableOpacity, TouchableWithoutFeedback, Keyboard, ScrollView, Linking, FlatList, TextInput, SafeAreaView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { QuoteItem, PricebookItem } from "@/lib/types";
 import { trackProductUsage } from "@/lib/analytics";
@@ -33,7 +35,8 @@ export default function QuoteMaterials() {
   // Memoize styles to avoid recreating StyleSheet on every render
   const themedStyles = useMemo(() => createStyles(theme), [theme]);
 
-  const { products, categories, loading, syncing, lastSync, refresh } = useProducts();
+  const { products, categories, loading, syncing, syncProgress, lastSync, refresh } = useProducts();
+
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [initialSelectionLoaded, setInitialSelectionLoaded] = useState(false);
@@ -71,13 +74,41 @@ export default function QuoteMaterials() {
 
   // Filter state
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]); // empty = all suppliers
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]); // empty = all categories
+  const [expandedParents, setExpandedParents] = useState<string[]>([]); // for collapsible category sections
 
   const supplierOptions = [
     { id: "lowes", name: "Lowe's" },
     { id: "homedepot", name: "Home Depot" },
     { id: "menards", name: "Menards" },
   ];
+
+  const locationOptions = [
+    { id: "", name: "None (Base prices)" },
+    { id: "kalamazoo", name: "Kalamazoo" },
+    { id: "battle_creek", name: "Battle Creek" },
+    { id: "lansing", name: "Lansing" },
+  ];
+
+  // Location pricing state
+  const [defaultLocationId, setDefaultLocationId] = useState("");
+  const [selectedLocationId, setSelectedLocationId] = useState("");
+  const { priceMap, getPriceForProduct, setLocationId: setPriceLocationId, loading: pricesLoading, refresh: refreshPrices } = usePrices(selectedLocationId);
+
+  // Load default location from preferences
+  useEffect(() => {
+    const loadDefaultLocation = async () => {
+      const prefs = await loadPreferences();
+      const locationId = prefs.pricing?.locationId || "";
+      setDefaultLocationId(locationId);
+      setSelectedLocationId(locationId);
+      setPriceLocationId(locationId);
+    };
+    loadDefaultLocation();
+  }, [setPriceLocationId]);
 
   const toggleSupplier = (supplierId: string) => {
     setSelectedSuppliers(prev =>
@@ -87,11 +118,83 @@ export default function QuoteMaterials() {
     );
   };
 
-  const clearFilters = () => {
-    setSelectedSuppliers([]);
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(c => c !== categoryId)
+        : [...prev, categoryId]
+    );
   };
 
-  const activeFilterCount = selectedSuppliers.length;
+  const toggleParentExpanded = (parentId: string) => {
+    setExpandedParents(prev =>
+      prev.includes(parentId)
+        ? prev.filter(id => id !== parentId)
+        : [...prev, parentId]
+    );
+  };
+
+  const clearFilters = () => {
+    setSelectedSuppliers([]);
+    setSelectedCategories([]);
+    setSelectedLocationId(defaultLocationId);
+    setPriceLocationId(defaultLocationId);
+  };
+
+  const activeFilterCount = selectedSuppliers.length + selectedCategories.length + (selectedLocationId !== defaultLocationId ? 1 : 0);
+
+  // Build active filters array for Picker display
+  const activeFilters = useMemo((): ActiveFilter[] => {
+    const filters: ActiveFilter[] = [];
+
+    // Add category filters
+    selectedCategories.forEach(catId => {
+      const cat = categories.find(c => c.id === catId);
+      filters.push({
+        type: "category",
+        id: catId,
+        label: cat?.name || catId,
+      });
+    });
+
+    // Add supplier filters
+    selectedSuppliers.forEach(supplierId => {
+      const supplier = supplierOptions.find(s => s.id === supplierId);
+      filters.push({
+        type: "supplier",
+        id: supplierId,
+        label: supplier?.name || supplierId,
+      });
+    });
+
+    // Add location filter if different from default
+    if (selectedLocationId !== defaultLocationId) {
+      const location = locationOptions.find(l => l.id === selectedLocationId);
+      filters.push({
+        type: "location",
+        id: selectedLocationId,
+        label: location?.name || selectedLocationId || "No location",
+      });
+    }
+
+    return filters;
+  }, [selectedCategories, selectedSuppliers, selectedLocationId, defaultLocationId, categories]);
+
+  // Handle removing individual filters
+  const handleRemoveFilter = useCallback((filter: ActiveFilter) => {
+    switch (filter.type) {
+      case "category":
+        setSelectedCategories(prev => prev.filter(c => c !== filter.id));
+        break;
+      case "supplier":
+        setSelectedSuppliers(prev => prev.filter(s => s !== filter.id));
+        break;
+      case "location":
+        setSelectedLocationId(defaultLocationId);
+        setPriceLocationId(defaultLocationId);
+        break;
+    }
+  }, [defaultLocationId, setPriceLocationId]);
 
   // Load quote items function
   const loadQuote = useCallback(async () => {
@@ -193,14 +296,163 @@ export default function QuoteMaterials() {
     }, [id])
   );
 
-  // Group products by category for MaterialsPicker (with supplier filter)
+  // Products with location prices overlaid
+  const productsWithPrices = useMemo(() => {
+    if (!selectedLocationId || priceMap.size === 0) return products;
+
+    return products.map((p) => {
+      const locationPrice = getPriceForProduct(p.id, p.supplierId);
+      if (locationPrice !== null) {
+        return { ...p, unitPrice: locationPrice, _hasLocationPrice: true };
+      }
+      return { ...p, _hasLocationPrice: false };
+    });
+  }, [products, selectedLocationId, priceMap, getPriceForProduct]);
+
+  // Calculate product counts per category (for category picker display)
+  const productCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    productsWithPrices.forEach((p) => {
+      counts[p.categoryId] = (counts[p.categoryId] || 0) + 1;
+    });
+    return counts;
+  }, [productsWithPrices]);
+
+  // Filtered category list for the category picker (alphabetized, filtered by search)
+  // Used when search is active (flat view)
+  const filteredCategoryList = useMemo(() => {
+    // Get leaf categories only (ones that have products)
+    const leafCategories = categories.filter(c => productCounts[c.id] > 0);
+
+    // Sort alphabetically
+    const sorted = leafCategories.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Filter by search
+    if (!categorySearch.trim()) return sorted;
+    const search = categorySearch.toLowerCase();
+    return sorted.filter(c => c.name.toLowerCase().includes(search));
+  }, [categories, productCounts, categorySearch]);
+
+  // Canonical category keywords for on-the-fly classification
+  // (Used when products don't have canonicalCategory set yet)
+  const CANONICAL_KEYWORDS: Record<string, string[]> = {
+    "Lumber": ["lumber", "dimensional", "plywood", "osb", "stud", "board", "timber", "mdf"],
+    "Electrical": ["electrical", "wire", "wiring", "outlet", "switch", "breaker", "panel", "conduit"],
+    "Plumbing": ["plumbing", "pipe", "fitting", "faucet", "toilet", "valve", "drain", "pvc", "pex"],
+    "Drywall": ["drywall", "sheetrock", "gypsum", "joint compound"],
+    "Hardware": ["hardware", "fastener", "screw", "nail", "bolt", "anchor", "bracket", "hinge"],
+    "Paint": ["paint", "primer", "stain", "coating", "sealer"],
+    "Flooring": ["flooring", "tile", "laminate", "vinyl floor", "hardwood floor", "carpet"],
+    "Roofing": ["roofing", "shingle", "flashing", "gutter", "soffit", "fascia"],
+    "Insulation": ["insulation", "foam board", "fiberglass", "weatherstrip"],
+    "HVAC": ["hvac", "duct", "vent", "furnace", "thermostat"],
+    "Doors & Windows": ["door", "window", "threshold", "screen"],
+    "Decking": ["deck", "decking", "railing", "composite deck", "pergola"],
+    "Fencing": ["fence", "fencing", "gate", "picket"],
+    "Concrete & Masonry": ["concrete", "cement", "mortar", "brick", "block", "paver", "rebar"],
+    "Tools": ["tool", "saw", "drill", "hammer", "level", "blade"],
+    "Safety": ["safety", "glove", "glasses", "mask", "harness"],
+    "Lighting": ["lighting", "light fixture", "bulb", "led", "lamp"],
+    "Outdoor & Landscaping": ["outdoor", "landscape", "garden", "lawn", "sprinkler"],
+  };
+
+  // Get canonical category for a product (from stored value or computed on-the-fly)
+  const getCanonical = useCallback((product: Product): string => {
+    // Use stored canonicalCategory if available
+    if (product.canonicalCategory && product.canonicalCategory !== "Other") {
+      return product.canonicalCategory;
+    }
+    // Compute on-the-fly from categoryId (last segment of supplier path)
+    const lowerCat = product.categoryId.toLowerCase();
+    for (const [category, keywords] of Object.entries(CANONICAL_KEYWORDS)) {
+      if (keywords.some(kw => lowerCat.includes(kw))) {
+        return category;
+      }
+    }
+    return "Other";
+  }, []);
+
+  // Grouped categories for collapsible sections (Amazon-style canonical categories)
+  type CategoryGroup = {
+    parent: { id: string; name: string };
+    children: { id: string; name: string }[];
+    totalProducts: number;
+    selectedCount: number;
+  };
+
+  const groupedCategories = useMemo((): CategoryGroup[] => {
+    // Group products by canonical category, then by sub-category (categoryId)
+    const canonicalGroups = new Map<string, Map<string, number>>();
+
+    productsWithPrices.forEach(product => {
+      const canonical = getCanonical(product);
+      const subCat = product.categoryId;
+
+      if (!canonicalGroups.has(canonical)) {
+        canonicalGroups.set(canonical, new Map());
+      }
+      const subCats = canonicalGroups.get(canonical)!;
+      subCats.set(subCat, (subCats.get(subCat) || 0) + 1);
+    });
+
+    // Convert to CategoryGroup array
+    const groups: CategoryGroup[] = [];
+
+    for (const [canonical, subCats] of canonicalGroups) {
+      const children = Array.from(subCats.entries())
+        .map(([name, count]) => ({ id: name, name, count }))
+        .filter(c => c.count > 0)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      const totalProducts = Array.from(subCats.values()).reduce((sum, c) => sum + c, 0);
+      const selectedCount = children.filter(c => selectedCategories.includes(c.id)).length;
+
+      groups.push({
+        parent: { id: canonical, name: canonical },
+        children: children.map(c => ({ id: c.id, name: c.name })),
+        totalProducts,
+        selectedCount,
+      });
+    }
+
+    // Sort by product count (most products first), then alphabetically
+    return groups.sort((a, b) => {
+      if (b.totalProducts !== a.totalProducts) {
+        return b.totalProducts - a.totalProducts;
+      }
+      return a.parent.name.localeCompare(b.parent.name);
+    });
+  }, [productsWithPrices, selectedCategories, getCanonical]);
+
+  // Helper to get all category IDs that should be included when filtering
+  // Includes selected categories AND all children of selected parent categories
+  const getFilteredCategoryIds = useMemo(() => {
+    if (selectedCategories.length === 0) return null; // null = no filter (show all)
+
+    const allowed = new Set<string>();
+    selectedCategories.forEach((id) => {
+      allowed.add(id);
+      // Also add children if this is a parent
+      categories
+        .filter((c) => c.parentId === id)
+        .forEach((child) => allowed.add(child.id));
+    });
+    return allowed;
+  }, [selectedCategories, categories]);
+
+  // Group products by category for MaterialsPicker (with supplier + category filters)
   const productsByCategory = useMemo(() => {
-    const grouped: Record<string, Product[]> = {};
+    const grouped: Record<string, (Product & { _hasLocationPrice?: boolean })[]> = {};
 
     // Filter by supplier if any selected
-    const filteredProducts = selectedSuppliers.length > 0
-      ? products.filter(p => p.supplierId && selectedSuppliers.includes(p.supplierId))
-      : products;
+    let filteredProducts = selectedSuppliers.length > 0
+      ? productsWithPrices.filter(p => p.supplierId && selectedSuppliers.includes(p.supplierId))
+      : productsWithPrices;
+
+    // Filter by category if any selected
+    if (getFilteredCategoryIds !== null) {
+      filteredProducts = filteredProducts.filter(p => getFilteredCategoryIds.has(p.categoryId));
+    }
 
     filteredProducts.forEach((product) => {
       if (!grouped[product.categoryId]) {
@@ -210,7 +462,7 @@ export default function QuoteMaterials() {
     });
 
     return grouped;
-  }, [products, selectedSuppliers]);
+  }, [productsWithPrices, selectedSuppliers, selectedCategories, getFilteredCategoryIds]);
 
   // Convert pricebook items to Product format for the picker
   const pricebookAsProducts = useMemo((): Product[] => {
@@ -359,17 +611,29 @@ export default function QuoteMaterials() {
 
   // Calculate status text for header
   const statusText = React.useMemo(() => {
-    if (syncing) return "Syncing";
+    if (syncing) {
+      if (syncProgress && syncProgress.total > 0) {
+        const pct = Math.round((syncProgress.loaded / syncProgress.total) * 100);
+        return `${pct}%`;
+      }
+      return "Syncing";
+    }
     if (lastSync) {
       const hoursAgo = Math.floor((Date.now() - lastSync.getTime()) / (1000 * 60 * 60));
       if (hoursAgo < 24) return "Online";
       return "Refresh";
     }
     return "Offline";
-  }, [syncing, lastSync]);
+  }, [syncing, syncProgress, lastSync]);
 
   const statusMessage = React.useMemo(() => {
-    if (syncing) return "Syncing product catalog from cloud...";
+    if (syncing) {
+      if (syncProgress && syncProgress.total > 0) {
+        const pct = Math.round((syncProgress.loaded / syncProgress.total) * 100);
+        return `Syncing products... ${syncProgress.loaded.toLocaleString()} / ${syncProgress.total.toLocaleString()} (${pct}%)`;
+      }
+      return "Syncing product catalog from cloud...";
+    }
     if (lastSync) {
       const hoursAgo = Math.floor((Date.now() - lastSync.getTime()) / (1000 * 60 * 60));
       if (hoursAgo < 1) return "Online (Up to date)\n\nProduct catalog is current.";
@@ -378,7 +642,7 @@ export default function QuoteMaterials() {
       return `Sync recommended\n\nLast updated ${daysAgo} day${daysAgo > 1 ? 's' : ''} ago.\nPull down to refresh.`;
     }
     return "Not synced\n\nPull down to sync product catalog from cloud.";
-  }, [syncing, lastSync]);
+  }, [syncing, syncProgress, lastSync]);
 
   const showStatusInfo = () => {
     Alert.alert(
@@ -543,7 +807,8 @@ export default function QuoteMaterials() {
             onSetQty={setQty}
             recentProductIds={[]}
             onFilterPress={handleFilterPress}
-            activeFilterCount={activeFilterCount}
+            activeFilters={activeFilters}
+            onRemoveFilter={handleRemoveFilter}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -617,6 +882,23 @@ export default function QuoteMaterials() {
           </View>
         )}
 
+        {/* Sync Progress Banner */}
+        {syncing && syncProgress && syncProgress.total > 0 && (
+          <View style={themedStyles.syncProgressBanner}>
+            <Text style={themedStyles.syncProgressText}>
+              Syncing products... {syncProgress.loaded.toLocaleString()} / {syncProgress.total.toLocaleString()}
+            </Text>
+            <View style={themedStyles.syncProgressBarBg}>
+              <View
+                style={[
+                  themedStyles.syncProgressBarFill,
+                  { width: `${Math.round((syncProgress.loaded / syncProgress.total) * 100)}%` },
+                ]}
+              />
+            </View>
+          </View>
+        )}
+
         {/* Source Toggle */}
         <SourceToggle />
 
@@ -633,7 +915,8 @@ export default function QuoteMaterials() {
             onSetQty={setQty}
             recentProductIds={[]}
             onFilterPress={activeSource === "catalog" ? handleFilterPress : undefined}
-            activeFilterCount={activeSource === "catalog" ? activeFilterCount : 0}
+            activeFilters={activeSource === "catalog" ? activeFilters : []}
+            onRemoveFilter={activeSource === "catalog" ? handleRemoveFilter : undefined}
             refreshControl={
               activeSource === "catalog" ? (
                 <RefreshControl
@@ -671,76 +954,288 @@ export default function QuoteMaterials() {
         </BottomBar>
       </View>
 
-      {/* Filter Bottom Sheet Modal */}
+      {/* Filter Modal - Full screen for better UX */}
+      {filterModalVisible && (
       <Modal
-        visible={filterModalVisible}
-        transparent
+        visible={true}
         animationType="slide"
         onRequestClose={() => setFilterModalVisible(false)}
       >
-        <TouchableWithoutFeedback onPress={() => setFilterModalVisible(false)}>
-          <View style={themedStyles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={themedStyles.modalContent}>
-                {/* Handle bar */}
-                <View style={themedStyles.modalHandle} />
+        <SafeAreaView style={themedStyles.filterModalContainer}>
+          {/* Header */}
+          <View style={themedStyles.filterModalHeader}>
+            <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+              <Text style={themedStyles.filterModalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={themedStyles.filterModalTitle}>Filters</Text>
+            {activeFilterCount > 0 ? (
+              <TouchableOpacity onPress={clearFilters}>
+                <Text style={themedStyles.filterModalClear}>Clear</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 50 }} />
+            )}
+          </View>
 
-                {/* Header */}
-                <View style={themedStyles.modalHeader}>
-                  <Text style={themedStyles.modalTitle}>Filters</Text>
-                  {activeFilterCount > 0 && (
-                    <TouchableOpacity onPress={clearFilters}>
-                      <Text style={themedStyles.clearButton}>Clear All</Text>
+          <View style={themedStyles.filterModalContent}>
+            {/* Supplier Filter - Horizontal chips */}
+            <View style={themedStyles.filterSection}>
+              <Text style={themedStyles.filterSectionTitle}>Supplier</Text>
+              <View style={themedStyles.chipRow}>
+                {supplierOptions.map((supplier) => {
+                  const isSelected = selectedSuppliers.includes(supplier.id);
+                  return (
+                    <TouchableOpacity
+                      key={supplier.id}
+                      style={[
+                        themedStyles.filterChip,
+                        isSelected && themedStyles.filterChipSelected,
+                      ]}
+                      onPress={() => toggleSupplier(supplier.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          themedStyles.filterChipText,
+                          isSelected && themedStyles.filterChipTextSelected,
+                        ]}
+                      >
+                        {supplier.name}
+                      </Text>
                     </TouchableOpacity>
-                  )}
-                </View>
+                  );
+                })}
+              </View>
+            </View>
 
-                {/* Supplier Filter */}
-                <View style={themedStyles.filterSection}>
-                  <Text style={themedStyles.filterSectionTitle}>Supplier</Text>
-                  <View style={themedStyles.filterOptions}>
-                    {supplierOptions.map((supplier) => {
-                      const isSelected = selectedSuppliers.includes(supplier.id);
+            {/* Location Filter - Horizontal chips */}
+            <View style={themedStyles.filterSection}>
+              <Text style={themedStyles.filterSectionTitle}>Location</Text>
+              <View style={themedStyles.chipRow}>
+                {locationOptions.map((location) => {
+                  const isSelected = selectedLocationId === location.id;
+                  return (
+                    <TouchableOpacity
+                      key={location.id}
+                      style={[
+                        themedStyles.filterChip,
+                        isSelected && themedStyles.filterChipSelected,
+                      ]}
+                      onPress={() => {
+                        setSelectedLocationId(location.id);
+                        setPriceLocationId(location.id);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          themedStyles.filterChipText,
+                          isSelected && themedStyles.filterChipTextSelected,
+                        ]}
+                      >
+                        {location.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Category Filter - Row that opens category picker */}
+            <TouchableOpacity
+              style={themedStyles.categorySelectRow}
+              onPress={() => {
+                setFilterModalVisible(false);
+                setCategoryPickerVisible(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <View>
+                <Text style={themedStyles.categorySelectLabel}>Category</Text>
+                <Text style={themedStyles.categorySelectValue}>
+                  {selectedCategories.length === 0
+                    ? "All categories"
+                    : `${selectedCategories.length} selected`}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Done Button */}
+          <View style={themedStyles.filterModalFooter}>
+            <TouchableOpacity
+              style={themedStyles.applyButton}
+              onPress={() => setFilterModalVisible(false)}
+            >
+              <Text style={themedStyles.applyButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
+      )}
+
+      {/* Category Picker Modal - Separate for performance */}
+      {categoryPickerVisible && (
+      <Modal
+        visible={true}
+        animationType="slide"
+        onRequestClose={() => setCategoryPickerVisible(false)}
+      >
+        <SafeAreaView style={themedStyles.categoryPickerContainer}>
+          {/* Header */}
+          <View style={themedStyles.categoryPickerHeader}>
+            <TouchableOpacity onPress={() => setCategoryPickerVisible(false)}>
+              <Text style={themedStyles.categoryPickerCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={themedStyles.categoryPickerTitle}>Categories</Text>
+            <TouchableOpacity onPress={() => setSelectedCategories([])}>
+              <Text style={themedStyles.categoryPickerClear}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Search */}
+          <View style={themedStyles.categorySearchContainer}>
+            <Ionicons name="search" size={18} color={theme.colors.muted} />
+            <TextInput
+              style={themedStyles.categorySearchInput}
+              placeholder="Search categories..."
+              placeholderTextColor={theme.colors.muted}
+              value={categorySearch}
+              onChangeText={setCategorySearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {categorySearch.length > 0 && (
+              <TouchableOpacity onPress={() => setCategorySearch("")}>
+                <Ionicons name="close-circle" size={18} color={theme.colors.muted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Category List - Grouped when no search, flat when searching */}
+          {categorySearch.trim() ? (
+            // Flat list when searching
+            <FlatList
+              data={filteredCategoryList}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => {
+                const isSelected = selectedCategories.includes(item.id);
+                return (
+                  <TouchableOpacity
+                    style={themedStyles.categoryListItem}
+                    onPress={() => toggleCategory(item.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        themedStyles.checkbox,
+                        isSelected && themedStyles.checkboxSelected,
+                      ]}
+                    >
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={14} color="#000" />
+                      )}
+                    </View>
+                    <Text style={themedStyles.categoryListItemText} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={themedStyles.categoryListItemCount}>
+                      {productCounts[item.id] || 0}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+              ItemSeparatorComponent={() => <View style={themedStyles.categoryListSeparator} />}
+              initialNumToRender={20}
+              maxToRenderPerBatch={20}
+              windowSize={10}
+            />
+          ) : (
+            // Grouped list when not searching
+            <FlatList
+              data={groupedCategories}
+              keyExtractor={(item) => item.parent.id}
+              renderItem={({ item: group }) => {
+                const isExpanded = expandedParents.includes(group.parent.id);
+                return (
+                  <View>
+                    {/* Parent row - tap to expand/collapse */}
+                    <TouchableOpacity
+                      style={themedStyles.parentRow}
+                      onPress={() => toggleParentExpanded(group.parent.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={isExpanded ? "chevron-down" : "chevron-forward"}
+                        size={20}
+                        color={theme.colors.muted}
+                        style={{ width: 24 }}
+                      />
+                      <Text style={themedStyles.parentRowText} numberOfLines={1}>
+                        {group.parent.name}
+                      </Text>
+                      <Text style={themedStyles.parentRowCount}>
+                        {group.totalProducts}
+                        {group.selectedCount > 0 && ` · ${group.selectedCount} selected`}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Children - only show if expanded */}
+                    {isExpanded && group.children.map((child) => {
+                      const isSelected = selectedCategories.includes(child.id);
                       return (
                         <TouchableOpacity
-                          key={supplier.id}
-                          style={[
-                            themedStyles.filterOption,
-                            isSelected && themedStyles.filterOptionSelected,
-                          ]}
-                          onPress={() => toggleSupplier(supplier.id)}
+                          key={child.id}
+                          style={themedStyles.childRow}
+                          onPress={() => toggleCategory(child.id)}
+                          activeOpacity={0.7}
                         >
-                          <Text
+                          <View style={{ width: 24 }} />
+                          <View
                             style={[
-                              themedStyles.filterOptionText,
-                              isSelected && themedStyles.filterOptionTextSelected,
+                              themedStyles.checkbox,
+                              isSelected && themedStyles.checkboxSelected,
                             ]}
                           >
-                            {supplier.name}
+                            {isSelected && (
+                              <Ionicons name="checkmark" size={14} color="#000" />
+                            )}
+                          </View>
+                          <Text style={themedStyles.categoryListItemText} numberOfLines={1}>
+                            {child.name}
                           </Text>
-                          {isSelected && (
-                            <Ionicons name="checkmark" size={18} color="#000" />
-                          )}
+                          <Text style={themedStyles.categoryListItemCount}>
+                            {productCounts[child.id] || 0}
+                          </Text>
                         </TouchableOpacity>
                       );
                     })}
                   </View>
-                </View>
+                );
+              }}
+              initialNumToRender={30}
+              maxToRenderPerBatch={20}
+              windowSize={10}
+            />
+          )}
 
-                {/* Apply Button */}
-                <TouchableOpacity
-                  style={themedStyles.applyButton}
-                  onPress={() => setFilterModalVisible(false)}
-                >
-                  <Text style={themedStyles.applyButtonText}>
-                    {activeFilterCount > 0 ? `Apply (${activeFilterCount})` : "Done"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
+          {/* Done Button */}
+          <View style={themedStyles.categoryPickerFooter}>
+            <TouchableOpacity
+              style={themedStyles.applyButton}
+              onPress={() => setCategoryPickerVisible(false)}
+            >
+              <Text style={themedStyles.applyButtonText}>
+                {selectedCategories.length > 0
+                  ? `Done (${selectedCategories.length} selected)`
+                  : "Done"}
+              </Text>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
+        </SafeAreaView>
       </Modal>
+      )}
     </>
   );
 }
@@ -898,6 +1393,34 @@ const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
       fontWeight: "700",
       color: "#000", // Black on orange accent (good contrast)
     },
+    // Sync progress banner
+    syncProgressBanner: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing(2),
+      marginHorizontal: theme.spacing(2),
+      marginBottom: theme.spacing(1),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    syncProgressText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+      textAlign: "center",
+    },
+    syncProgressBarBg: {
+      height: 6,
+      backgroundColor: theme.colors.bg,
+      borderRadius: 3,
+      overflow: "hidden",
+    },
+    syncProgressBarFill: {
+      height: "100%",
+      backgroundColor: theme.colors.accent,
+      borderRadius: 3,
+    },
     // Filter modal styles
     modalOverlay: {
       flex: 1,
@@ -911,6 +1434,10 @@ const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
       paddingHorizontal: theme.spacing(3),
       paddingBottom: theme.spacing(4),
       paddingTop: theme.spacing(1.5),
+      maxHeight: "85%",
+    },
+    modalScrollView: {
+      flexGrow: 0,
     },
     modalHandle: {
       width: 36,
@@ -945,33 +1472,261 @@ const createStyles = (theme: ReturnType<typeof useTheme>["theme"]) =>
       color: theme.colors.muted,
       textTransform: "uppercase",
       letterSpacing: 0.5,
-      marginBottom: theme.spacing(1.5),
     },
     filterOptions: {
       gap: theme.spacing(1),
     },
-    filterOption: {
+    filterSectionHeader: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: theme.spacing(1.5),
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(1.5),
+    },
+    filterBadge: {
+      backgroundColor: theme.colors.accent,
+      color: "#000",
+      fontSize: 12,
+      fontWeight: "700",
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 10,
+      overflow: "hidden",
+    },
+    checkboxRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.25),
+      gap: theme.spacing(1.5),
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.bg,
+    },
+    checkboxSelected: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    checkboxLabel: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: theme.colors.text,
+    },
+    radioButton: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.bg,
+    },
+    radioButtonSelected: {
+      borderColor: theme.colors.accent,
+    },
+    radioButtonInner: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: theme.colors.accent,
+    },
+    // Chip row styles
+    chipRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: theme.spacing(1),
+    },
+    filterChip: {
+      paddingVertical: theme.spacing(1),
+      paddingHorizontal: theme.spacing(2),
+      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.bg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    filterChipSelected: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    filterChipText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    filterChipTextSelected: {
+      color: "#000",
+    },
+    // Category select row
+    categorySelectRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: theme.spacing(2),
       paddingHorizontal: theme.spacing(2),
       backgroundColor: theme.colors.bg,
       borderRadius: theme.radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      marginBottom: theme.spacing(2),
     },
-    filterOptionSelected: {
-      backgroundColor: theme.colors.accent,
-      borderColor: theme.colors.accent,
+    categorySelectLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.muted,
+      marginBottom: 4,
     },
-    filterOptionText: {
+    categorySelectValue: {
       fontSize: 16,
       fontWeight: "500",
       color: theme.colors.text,
     },
-    filterOptionTextSelected: {
-      color: "#000",
+    // Full-screen filter modal styles
+    filterModalContainer: {
+      flex: 1,
+      backgroundColor: theme.colors.card,
+    },
+    filterModalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    filterModalCancel: {
+      fontSize: 16,
+      color: theme.colors.text,
+      minWidth: 50,
+    },
+    filterModalTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    filterModalClear: {
+      fontSize: 16,
+      color: theme.colors.accent,
+      minWidth: 50,
+      textAlign: "right",
+    },
+    filterModalContent: {
+      flex: 1,
+      paddingHorizontal: theme.spacing(3),
+      paddingTop: theme.spacing(3),
+    },
+    filterModalFooter: {
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(2),
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    // Category picker modal styles
+    categoryPickerContainer: {
+      flex: 1,
+      backgroundColor: theme.colors.card,
+    },
+    categoryPickerHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    categoryPickerCancel: {
+      fontSize: 16,
+      color: theme.colors.text,
+    },
+    categoryPickerTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    categoryPickerClear: {
+      fontSize: 16,
+      color: theme.colors.accent,
+    },
+    categorySearchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.colors.bg,
+      marginHorizontal: theme.spacing(2),
+      marginVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(1.5),
+      borderRadius: theme.radius.md,
+      gap: theme.spacing(1),
+    },
+    categorySearchInput: {
+      flex: 1,
+      paddingVertical: theme.spacing(1.5),
+      fontSize: 16,
+      color: theme.colors.text,
+    },
+    categoryListItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      gap: theme.spacing(1.5),
+    },
+    categoryListItemText: {
+      flex: 1,
+      fontSize: 16,
+      color: theme.colors.text,
+    },
+    categoryListItemCount: {
+      fontSize: 14,
+      color: theme.colors.muted,
+    },
+    categoryListSeparator: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginLeft: theme.spacing(2),
+    },
+    // Parent/child row styles for grouped categories
+    parentRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      backgroundColor: theme.colors.bg,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    parentRowText: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginLeft: theme.spacing(0.5),
+    },
+    parentRowCount: {
+      fontSize: 14,
+      color: theme.colors.muted,
+    },
+    childRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.25),
+      paddingHorizontal: theme.spacing(2),
+      paddingLeft: theme.spacing(3),
+      gap: theme.spacing(1),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    categoryPickerFooter: {
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(2),
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
     },
     applyButton: {
       backgroundColor: theme.colors.accent,
