@@ -76,6 +76,7 @@ serve(async (req) => {
       payment_method_types: ["card"],
       customer: customerId,
       customer_email: customerId ? undefined : email,
+      currency: "usd", // Force USD only, no local currency conversion
       line_items: [
         {
           price: priceId,
