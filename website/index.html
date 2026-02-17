@@ -1759,13 +1759,13 @@
             // Hide error
             emailError.style.display = 'none';
 
-            // Determine price ID based on tier and period
+            // Determine price ID based on tier and period (LIVE MODE)
             // Founder prices: Pro $29/mo, $290/yr | Premium $79/mo, $790/yr
             let priceId;
             if (currentTier === 'pro') {
-                priceId = selectedPeriod === 'monthly' ? 'price_1SRYudEJ6nOeXQImORnpOn57' : 'price_1Sqdi0EJ6nOeXQImgNqqgXe3';
+                priceId = selectedPeriod === 'monthly' ? 'price_1T1uXbCz2LFZfwAIva1Pfr7y' : 'price_1T1uYyCz2LFZfwAIPyDQTA28';
             } else {
-                priceId = selectedPeriod === 'monthly' ? 'price_1SRYzJEJ6nOeXQImUR9ZE9dg' : 'price_1Sqdi1EJ6nOeXQImyT9xgVwB';
+                priceId = selectedPeriod === 'monthly' ? 'price_1T1uYzCz2LFZfwAIgnNYeAi4' : 'price_1T1uYzCz2LFZfwAIWloEKf1W';
             }
 
             // Show loading state

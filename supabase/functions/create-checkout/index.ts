@@ -37,23 +37,19 @@ serve(async (req) => {
       );
     }
 
-    // Validate price ID is one of our known prices
+    // Validate price ID is one of our known prices (LIVE MODE)
     const validPriceIds = [
       // === FOUNDER PRICES (limited: 100 Pro, 50 Premium) ===
-      "price_1SRYudEJ6nOeXQImORnpOn57", // Founder Pro Monthly - $29/mo
-      "price_1Sqdi0EJ6nOeXQImgNqqgXe3", // Founder Pro Yearly - $290/yr
-      "price_1SRYzJEJ6nOeXQImUR9ZE9dg", // Founder Premium Monthly - $79/mo
-      "price_1Sqdi1EJ6nOeXQImyT9xgVwB", // Founder Premium Yearly - $790/yr
+      "price_1T1uXbCz2LFZfwAIva1Pfr7y", // Founder Pro Monthly - $29/mo
+      "price_1T1uYyCz2LFZfwAIPyDQTA28", // Founder Pro Yearly - $290/yr
+      "price_1T1uYzCz2LFZfwAIgnNYeAi4", // Founder Premium Monthly - $79/mo
+      "price_1T1uYzCz2LFZfwAIWloEKf1W", // Founder Premium Yearly - $790/yr
 
       // === REGULAR PRICES ===
-      "price_1Sqdi1EJ6nOeXQImkAgDKGax", // Pro Monthly - $39/mo
-      "price_1Sqdi2EJ6nOeXQImK5BZmdv9", // Pro Yearly - $372/yr
-      "price_1Sqdi2EJ6nOeXQImXnZGM8ff", // Premium Monthly - $99/mo
-      "price_1Sqdi2EJ6nOeXQImpve8MWHO", // Premium Yearly - $948/yr
-
-      // === LEGACY (deprecated one-time annual) ===
-      "price_1SRYxvEJ6nOeXQImgcguc1Tb", // Pro Yearly (one-time)
-      "price_1SRYzpEJ6nOeXQImLJcob9DI", // Premium Yearly (one-time)
+      "price_1T1uZ0Cz2LFZfwAI552310fx", // Pro Monthly - $39/mo
+      "price_1T1uZ0Cz2LFZfwAInEPGan4F", // Pro Yearly - $372/yr
+      "price_1T1uZ1Cz2LFZfwAIQ94BNZ02", // Premium Monthly - $99/mo
+      "price_1T1uZ1Cz2LFZfwAIuqAtNru0", // Premium Yearly - $948/yr
     ];
 
     if (!validPriceIds.includes(priceId)) {
