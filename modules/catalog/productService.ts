@@ -237,6 +237,7 @@ export async function syncAllProducts(
             categoryId: categoryId || "Other",
             canonicalCategory: getCanonicalCategory(row.description || ""),
             name: row.name,
+            searchName: row.search_name || undefined, // Normalized search name from sync-xbyte
             unit: row.unit || "each",
             unitPrice: parseFloat(row.unit_price) || 0,
             supplierId: row.supplier_id || undefined,

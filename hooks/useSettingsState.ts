@@ -11,8 +11,10 @@ import {
   savePreferences,
   updateDashboardPreferences,
   updateNotificationPreferences,
+  updatePricingSettings,
   resetPreferences,
   type DashboardPreferences,
+  type PricingSettings,
   type UserPreferences,
 } from "@/lib/preferences";
 import {
@@ -36,6 +38,7 @@ export type ExpandedSections = {
   dashboard: boolean;
   notifications: boolean;
   privacy: boolean;
+  pricing: boolean;
   about: boolean;
 };
 
@@ -66,6 +69,7 @@ export function useSettingsState() {
     dashboard: false,
     notifications: false,
     privacy: false,
+    pricing: false,
     about: false,
   });
 
@@ -473,6 +477,15 @@ export function useSettingsState() {
     [preferences]
   );
 
+  const handleUpdatePricing = useCallback(
+    async (updates: Partial<PricingSettings>): Promise<UserPreferences> => {
+      const updated = await updatePricingSettings(updates);
+      setPreferences(updated);
+      return updated;
+    },
+    []
+  );
+
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteAccount = useCallback(async () => {
@@ -594,6 +607,7 @@ export function useSettingsState() {
     handleForceSync,
     handleUpdateNotifications,
     handleUpdatePrivacy,
+    handleUpdatePricing,
     handleDeleteAccount,
     deleting,
   };

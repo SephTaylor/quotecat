@@ -20,6 +20,13 @@ import { GradientBackground } from "@/components/GradientBackground";
 import { useSettingsState, formatSyncTime } from "@/hooks/useSettingsState";
 import { useTechContext } from "@/contexts/TechContext";
 
+const LOCATION_OPTIONS = [
+  { id: "", name: "None (Use base prices)" },
+  { id: "kalamazoo", name: "Kalamazoo" },
+  { id: "battle_creek", name: "Battle Creek" },
+  { id: "lansing", name: "Lansing" },
+];
+
 export default function Settings() {
   const { mode, theme, setThemeMode } = useTheme();
   const router = useRouter();
@@ -56,6 +63,7 @@ export default function Settings() {
     handleForceSync,
     handleUpdateNotifications,
     handleUpdatePrivacy,
+    handleUpdatePricing,
     handleDeleteAccount,
     deleting,
   } = useSettingsState();
@@ -579,6 +587,35 @@ export default function Settings() {
                   thumbColor="#FFFFFF"
                 />
               </View>
+            </View>
+          </CollapsibleSection>
+
+          {/* Pricing Location Section */}
+          <CollapsibleSection
+            title="Pricing Location"
+            isExpanded={expandedSections.pricing}
+            onToggle={() => toggleSection('pricing')}
+            theme={theme}
+          >
+            <View style={styles.card}>
+              <Text style={styles.pricingDescription}>
+                Select your area to see local supplier prices from Lowe's, Home Depot, and Menards.
+              </Text>
+              {LOCATION_OPTIONS.map((option, index) => (
+                <Pressable
+                  key={option.id}
+                  style={[
+                    styles.locationOption,
+                    index === LOCATION_OPTIONS.length - 1 && styles.settingButtonLast,
+                  ]}
+                  onPress={() => handleUpdatePricing({ locationId: option.id })}
+                >
+                  <Text style={styles.locationOptionText}>{option.name}</Text>
+                  {preferences.pricing?.locationId === option.id && (
+                    <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+                  )}
+                </Pressable>
+              ))}
             </View>
           </CollapsibleSection>
 
@@ -1289,6 +1326,27 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 13,
       color: theme.colors.muted,
       textDecorationLine: "underline",
+    },
+    // Pricing location styles
+    pricingDescription: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      padding: theme.spacing(2),
+      paddingBottom: theme.spacing(1),
+      lineHeight: 20,
+    },
+    locationOption: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    locationOptionText: {
+      fontSize: 16,
+      color: theme.colors.text,
     },
   });
 }

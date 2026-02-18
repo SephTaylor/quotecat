@@ -53,6 +53,7 @@ export type NotificationPreferences = {
 
 export type PricingSettings = {
   zipCode: string; // User's zip code for regional pricing
+  locationId: string; // Location for supplier pricing: 'kalamazoo' | 'battle_creek' | 'lansing' | ''
   defaultTaxPercent: number; // Default tax % for new quotes
   defaultMarkupPercent: number; // Default markup % for new quotes
   defaultLaborRate: number; // Default hourly labor rate
@@ -134,6 +135,7 @@ export function getDefaultPreferences(): UserPreferences {
     },
     pricing: {
       zipCode: "",
+      locationId: "",
       defaultTaxPercent: 0,
       defaultMarkupPercent: 0,
       defaultLaborRate: 0,

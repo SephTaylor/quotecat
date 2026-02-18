@@ -10,7 +10,7 @@ import type { Product, Category } from "@/modules/catalog/seed";
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 /**
  * Get or create the database instance
@@ -352,18 +352,8 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
       ON search_synonyms(canonical COLLATE NOCASE);
     `);
 
-    // Rebuild FTS index if products already exist (migration scenario)
-    const productCount = database.getFirstSync<{ count: number }>(
-      "SELECT COUNT(*) as count FROM products"
-    );
-    if (productCount && productCount.count > 0) {
-      console.log(`📚 Rebuilding FTS index for ${productCount.count} existing products...`);
-      database.execSync(`
-        INSERT INTO products_fts (product_id, name)
-        SELECT id, name FROM products;
-      `);
-      console.log(`✅ FTS index rebuilt`);
-    }
+    // NOTE: FTS rebuild moved to migration v10 which uses search_name column
+    // Do not rebuild here - v10 will handle it with the correct schema
   }
 
   if (fromVersion < 8) {
@@ -413,6 +403,46 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     `);
 
     console.log(`📦 Canonical category column added to products`);
+  }
+
+  if (fromVersion < 10) {
+    // Add search_name column for normalized FTS search
+    // This column contains all search variations (e.g., "2x8 2-in x 8-in pressure treated lumber")
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(products)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("search_name")) {
+      database.execSync(`ALTER TABLE products ADD COLUMN search_name TEXT;`);
+    }
+
+    // Update FTS to use search_name instead of name
+    // First, drop and recreate the FTS table with the new column
+    database.execSync(`DROP TABLE IF EXISTS products_fts;`);
+    database.execSync(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
+        product_id UNINDEXED,
+        search_name,
+        tokenize='porter unicode61'
+      );
+    `);
+
+    // Rebuild FTS index if products already exist
+    const productCount = database.getFirstSync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM products"
+    );
+    if (productCount && productCount.count > 0) {
+      console.log(`📚 Rebuilding FTS index for ${productCount.count} products with search_name...`);
+      // Use search_name if available, fall back to name
+      database.execSync(`
+        INSERT INTO products_fts (product_id, search_name)
+        SELECT id, COALESCE(search_name, name) FROM products;
+      `);
+      console.log(`✅ FTS index rebuilt with search_name`);
+    }
+
+    console.log(`🔍 Added search_name column and updated FTS index`);
   }
 
   // Update version
@@ -1465,6 +1495,7 @@ function rowToProduct(row: any): Product {
   return {
     id: row.id,
     name: row.name,
+    searchName: row.search_name || undefined,
     categoryId: row.category_id || "Other",
     canonicalCategory: row.canonical_category || "Other",
     unit: row.unit || "each",
@@ -1596,11 +1627,12 @@ export function saveProductsBatchDB(products: Product[]): void {
         // Insert/update product
         database.runSync(
           `INSERT OR REPLACE INTO products (
-            id, name, category_id, canonical_category, unit, unit_price, supplier_id, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            id, name, search_name, category_id, canonical_category, unit, unit_price, supplier_id, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             product.id,
             product.name,
+            product.searchName || null, // Normalized search name from Supabase
             product.categoryId,
             product.canonicalCategory || "Other",
             product.unit,
@@ -1637,6 +1669,7 @@ export function clearProductsDB(): void {
 /**
  * Rebuild FTS index from existing products
  * Call this if FTS search returns no results but products exist
+ * Uses search_name if available, falls back to name
  */
 export function rebuildProductsFTS(): void {
   try {
@@ -1654,10 +1687,10 @@ export function rebuildProductsFTS(): void {
       // Clear existing FTS data
       database.runSync("DELETE FROM products_fts");
 
-      // Rebuild from products table
+      // Rebuild from products table - use search_name if available, fall back to name
       database.runSync(`
-        INSERT INTO products_fts (product_id, name)
-        SELECT id, name FROM products
+        INSERT INTO products_fts (product_id, search_name)
+        SELECT id, COALESCE(search_name, name) FROM products
       `);
     });
 

@@ -37,6 +37,128 @@ const SUPPLIER_MAP: Record<string, string> = {
   "menards": "menards",
 };
 
+// =============================================================================
+// PRODUCT NAME NORMALIZATION
+// Generates search_name with all search variations baked in
+// =============================================================================
+
+// Dimensional lumber patterns - expand to include all search variations
+const DIMENSION_PATTERNS = [
+  // "2-in x 8-in" format (dashes)
+  { regex: /(\d+)-in x (\d+)-in/gi, expand: (w: string, h: string) =>
+    `${w}x${h} ${w}-in x ${h}-in ${w} in x ${h} in ${w} x ${h}` },
+  // "2 in. x 8 in." format (periods - common in xByte)
+  { regex: /(\d+) in\. x (\d+) in\./gi, expand: (w: string, h: string) =>
+    `${w}x${h} ${w}-in x ${h}-in ${w} in x ${h} in ${w} x ${h}` },
+  // "2 in x 8 in" format (no periods)
+  { regex: /(\d+) in x (\d+) in/gi, expand: (w: string, h: string) =>
+    `${w}x${h} ${w}-in x ${h}-in ${w} in x ${h} in ${w} x ${h}` },
+  // "4 x 4" format (no units - common for post bases, hangers)
+  { regex: /(\d+) x (\d+)(?!\d| in| ft)/gi, expand: (w: string, h: string) =>
+    `${w}x${h} ${w} x ${h}` },
+  // Length patterns like "x 8 ft" or "x 12 ft"
+  { regex: /x (\d+) ft/gi, expand: (len: string) =>
+    `x ${len} ft ${len}ft ${len} foot` },
+];
+
+// Material synonym expansions
+const MATERIAL_SYNONYMS: Record<string, string> = {
+  'pressure treated': 'pressure treated pt treated lumber exterior',
+  'pressure-treated': 'pressure treated pt treated lumber exterior',
+  'galvanized': 'galvanized galv zinc coated',
+  'southern yellow pine': 'southern yellow pine syp pine',
+  'douglas fir': 'douglas fir df fir',
+  'stainless steel': 'stainless steel ss stainless',
+  'prime': 'prime #2 number 2 grade',
+  'ground contact': 'ground contact gc burial underground',
+};
+
+// Unit expansions
+const UNIT_EXPANSIONS: Record<string, string> = {
+  'lb': 'lb pound pounds lbs',
+  'oz': 'oz ounce ounces',
+  'ft': 'ft foot feet',
+  'in': 'in inch inches',
+  'gal': 'gal gallon gallons',
+  'qt': 'qt quart quarts',
+  'sq ft': 'sq ft sqft square feet square foot',
+};
+
+// Category-specific term expansions (helps cross-match search terms)
+const CATEGORY_TERMS: Record<string, string> = {
+  'baluster': 'baluster spindle railing deck porch',
+  'joist hanger': 'joist hanger bracket simpson lus hardware',
+  'concrete mix': 'concrete mix cement bag',
+  'quikrete': 'quikrete quickcrete concrete cement mix',
+  'sakrete': 'sakrete concrete cement mix',
+  'deck screw': 'deck screw fastener exterior wood',
+  'drywall screw': 'drywall screw sheetrock gypsum',
+  'stringer': 'stringer stair stairs step deck',
+  'tread': 'tread stair stairs step',
+  'post base': 'post base anchor bracket simpson',
+  'ledger': 'ledger board deck attachment',
+  'rim joist': 'rim joist band board perimeter',
+  'joist': 'joist floor deck framing',
+  'rafter': 'rafter roof framing',
+  'stud': 'stud wall framing',
+  'plate': 'plate top bottom wall framing',
+  'header': 'header door window framing',
+  'sheathing': 'sheathing plywood osb wall roof',
+  'underlayment': 'underlayment subfloor floor',
+  'lvp': 'lvp luxury vinyl plank flooring',
+  'laminate': 'laminate flooring floor',
+  'hardwood': 'hardwood flooring floor wood',
+  'tile': 'tile flooring floor ceramic porcelain',
+  'grout': 'grout tile floor',
+  'thinset': 'thinset mortar tile adhesive',
+  'romex': 'romex nm-b wire electrical',
+  'pex': 'pex tubing pipe plumbing',
+  'cpvc': 'cpvc pipe plumbing',
+  'copper': 'copper pipe tubing plumbing',
+};
+
+/**
+ * Normalize a product name to include all searchable variations.
+ * This is the core function that enables users to search "2x8" and find "2-in x 8-in" products.
+ */
+function normalizeProductName(name: string): string {
+  let result = name.toLowerCase();
+
+  // Expand dimensional patterns
+  for (const pattern of DIMENSION_PATTERNS) {
+    result = result.replace(pattern.regex, (match, ...groups) => {
+      const expansion = pattern.expand(...groups);
+      return `${match} ${expansion}`;
+    });
+  }
+
+  // Add material synonyms
+  for (const [term, expansion] of Object.entries(MATERIAL_SYNONYMS)) {
+    if (result.includes(term.toLowerCase())) {
+      result += ' ' + expansion;
+    }
+  }
+
+  // Add unit expansions
+  for (const [term, expansion] of Object.entries(UNIT_EXPANSIONS)) {
+    // Match unit at word boundary (e.g., "60 lb" but not "bulb")
+    const unitRegex = new RegExp(`\\b${term}\\b`, 'gi');
+    if (unitRegex.test(result)) {
+      result += ' ' + expansion;
+    }
+  }
+
+  // Add category-specific terms
+  for (const [term, expansion] of Object.entries(CATEGORY_TERMS)) {
+    if (result.includes(term.toLowerCase())) {
+      result += ' ' + expansion;
+    }
+  }
+
+  // Clean up: remove extra whitespace
+  return result.replace(/\s+/g, ' ').trim();
+}
+
 interface XByteProduct {
   "Product ID / SKU": number;
   "Product Name": string;
@@ -69,7 +191,7 @@ interface SyncPayload {
 Deno.serve(async (req) => {
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, content-type",
+    "Access-Control-Allow-Headers": "authorization, content-type, x-ingest-key",
     "Content-Type": "application/json",
   };
 
@@ -77,10 +199,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth check
-  const authHeader = req.headers.get("Authorization");
-  if (!INGEST_API_KEY || authHeader !== `Bearer ${INGEST_API_KEY}`) {
-    console.error("[sync-xbyte] Unauthorized request");
+  // Auth check - use x-ingest-key header to avoid conflict with Supabase JWT
+  const ingestKey = req.headers.get("x-ingest-key");
+  if (!INGEST_API_KEY || ingestKey !== INGEST_API_KEY) {
+    console.error("[sync-xbyte] Unauthorized request - invalid or missing x-ingest-key");
     return new Response(
       JSON.stringify({ success: false, error: "Unauthorized" }),
       { status: 401, headers: corsHeaders }
@@ -155,9 +277,11 @@ Deno.serve(async (req) => {
             const productMap = new Map();
             for (const item of data.data) {
               const id = `xbyte-${item["Retailer Identifier"].toLowerCase()}-${item["Product ID / SKU"]}`;
+              const productName = item["Product Name"];
               productMap.set(id, {
                 id,
-                name: item["Product Name"],
+                name: productName,
+                search_name: normalizeProductName(productName), // Normalized for FTS
                 sku: String(item["Product ID / SKU"]),
                 unit: item["Unit of Measure"] || "each",
                 unit_price: item["Price (USD)"], // Required field

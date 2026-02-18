@@ -52,8 +52,9 @@ export default function ProTools() {
         router.push("/(main)/(tabs)/contracts" as any);
       } else if (featureName === "Price Book") {
         router.push("/(main)/price-book" as any);
+      } else if (featureName === "Job Calculator") {
+        router.push("/(main)/job-calculator" as any);
       }
-      // Add other pro features here
     } else {
       // Show sign in prompt
       handleSignIn();
@@ -111,6 +112,17 @@ export default function ProTools() {
               description="Save and manage your client list"
               locked={false}
               onPress={() => handleFeatureTap("Client Manager", false, true)}
+              details={[]}
+              theme={theme}
+            />
+
+            {/* Job Calculator - Pro feature */}
+            <ProFeatureCard
+              icon=""
+              title="Job Calculator"
+              description="Calculate materials from job dimensions"
+              locked={!isPro}
+              onPress={() => handleFeatureTap("Job Calculator")}
               details={[]}
               theme={theme}
             />
