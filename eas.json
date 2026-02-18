@@ -31,6 +31,10 @@
         "ascApiKeyIssuerId": "c9d4edf4-5f05-4a5b-84e0-0203f00b921a",
         "ascApiKeyId": "XRMPFXY7DD",
         "ascAppId": "6754611668"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./keys/google-play-service-account.json",
+        "track": "internal"
       }
     }
   }
