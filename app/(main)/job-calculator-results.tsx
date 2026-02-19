@@ -5,6 +5,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState, useMemo } from "react";
 import {
   Alert,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,7 @@ import {
 } from "@/modules/job-calculator";
 import { createQuote, updateQuote } from "@/lib/quotes";
 import type { QuoteItem } from "@/lib/types";
+import { openProductUrl, getStoreName } from "@/lib/browser";
 
 export default function JobCalculatorResults() {
   const router = useRouter();
@@ -43,27 +45,39 @@ export default function JobCalculatorResults() {
 
   const [materials, setMaterials] = useState(initialMaterials);
   const [creating, setCreating] = useState(false);
+  const [removedCategories, setRemovedCategories] = useState<Set<string>>(new Set());
 
-  // Calculate total from current materials
+  // Filter out removed categories
+  const visibleMaterials = useMemo(
+    () => materials.filter((m) => !removedCategories.has(m.requirement.category)),
+    [materials, removedCategories]
+  );
+
+  // Handle category deletion
+  const handleDeleteCategory = (category: string) => {
+    setRemovedCategories((prev) => new Set([...prev, category]));
+  };
+
+  // Calculate total from visible materials only
   const totalCost = useMemo(() => {
-    return materials.reduce((total, m) => {
+    return visibleMaterials.reduce((total, m) => {
       if (!m.selectedProductId) return total;
       const product = m.products.find((p) => p.id === m.selectedProductId);
       if (!product) return total;
       return total + product.unitPrice * m.selectedQty;
     }, 0);
-  }, [materials]);
+  }, [visibleMaterials]);
 
-  // Group materials by category
+  // Group visible materials by category
   const groupedMaterials = useMemo(
-    () => groupMaterialsByCategory(materials),
-    [materials]
+    () => groupMaterialsByCategory(visibleMaterials),
+    [visibleMaterials]
   );
 
   // Get unmatched materials for warning
   const unmatchedMaterials = useMemo(
-    () => getUnmatchedMaterials(materials),
-    [materials]
+    () => getUnmatchedMaterials(visibleMaterials),
+    [visibleMaterials]
   );
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -187,7 +201,11 @@ export default function JobCalculatorResults() {
         }}
       />
       <GradientBackground>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
+        >
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Calculated Materials</Text>
@@ -211,9 +229,22 @@ export default function JobCalculatorResults() {
           {/* Materials by category */}
           {Object.entries(groupedMaterials).map(([category, items]) => (
             <View key={category} style={styles.categorySection}>
-              <Text style={styles.categoryTitle}>
-                {categoryLabels[category] || category}
-              </Text>
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryTitle}>
+                  {categoryLabels[category] || category}
+                </Text>
+                <Pressable
+                  style={styles.categoryDeleteButton}
+                  onPress={() => handleDeleteCategory(category)}
+                  hitSlop={8}
+                >
+                  <Ionicons
+                    name="close-circle"
+                    size={20}
+                    color={theme.colors.muted}
+                  />
+                </Pressable>
+              </View>
 
               {items.map((material) => (
                 <MaterialCard
@@ -310,7 +341,10 @@ function MaterialCard({
       {/* Material header */}
       <Pressable
         style={styles.materialHeader}
-        onPress={() => setExpanded(!expanded)}
+        onPress={() => {
+          Keyboard.dismiss();
+          setExpanded(!expanded);
+        }}
       >
         <View style={styles.materialInfo}>
           <Text style={styles.materialName}>{material.requirement.name}</Text>
@@ -329,12 +363,26 @@ function MaterialCard({
       {selectedProduct && (
         <View style={styles.selectedProductRow}>
           <View style={styles.productInfo}>
-            <Text style={styles.productName} numberOfLines={1}>
+            <Text
+              style={styles.productName}
+              numberOfLines={expanded ? undefined : 1}
+            >
               {selectedProduct.name}
             </Text>
             <Text style={styles.productPrice}>
               {formatPrice(selectedProduct.unitPrice)} / {selectedProduct.unit}
             </Text>
+            {/* Show store link when expanded */}
+            {expanded && selectedProduct.productUrl && (
+              <Pressable
+                style={styles.storeLink}
+                onPress={() => openProductUrl(selectedProduct.productUrl!)}
+              >
+                <Text style={styles.storeLinkText}>
+                  View on {getStoreName(selectedProduct.supplierId)} →
+                </Text>
+              </Pressable>
+            )}
           </View>
 
           {/* Quantity stepper */}
@@ -357,40 +405,52 @@ function MaterialCard({
         <View style={styles.productOptions}>
           <Text style={styles.productOptionsLabel}>Alternative Products:</Text>
           {material.products.map((product, index) => (
-            <Pressable
-              key={`${product.id}-${index}`}
-              style={[
-                styles.productOption,
-                product.id === material.selectedProductId &&
-                  styles.productOptionSelected,
-              ]}
-              onPress={() => onSelectProduct(product.id)}
-            >
-              <View style={styles.productOptionInfo}>
+            <View key={`${product.id}-${index}`} style={styles.productOptionWrapper}>
+              <Pressable
+                style={[
+                  styles.productOption,
+                  product.id === material.selectedProductId &&
+                    styles.productOptionSelected,
+                ]}
+                onPress={() => onSelectProduct(product.id)}
+              >
+                <View style={styles.productOptionInfo}>
+                  <Text
+                    style={[
+                      styles.productOptionName,
+                      product.id === material.selectedProductId &&
+                        styles.productOptionNameSelected,
+                    ]}
+                  >
+                    {product.name}
+                  </Text>
+                  <View style={styles.productOptionMeta}>
+                    {product.supplierId && (
+                      <Text style={styles.productSupplier}>
+                        {getStoreName(product.supplierId)}
+                      </Text>
+                    )}
+                    {product.productUrl && (
+                      <Pressable
+                        onPress={() => openProductUrl(product.productUrl!)}
+                        hitSlop={8}
+                      >
+                        <Text style={styles.productOptionLink}>View →</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </View>
                 <Text
                   style={[
-                    styles.productOptionName,
+                    styles.productOptionPrice,
                     product.id === material.selectedProductId &&
-                      styles.productOptionNameSelected,
+                      styles.productOptionPriceSelected,
                   ]}
-                  numberOfLines={2}
                 >
-                  {product.name}
+                  {formatPrice(product.unitPrice)}
                 </Text>
-                {product.supplierId && (
-                  <Text style={styles.productSupplier}>{product.supplierId}</Text>
-                )}
-              </View>
-              <Text
-                style={[
-                  styles.productOptionPrice,
-                  product.id === material.selectedProductId &&
-                    styles.productOptionPriceSelected,
-                ]}
-              >
-                {formatPrice(product.unitPrice)}
-              </Text>
-            </Pressable>
+              </Pressable>
+            </View>
           ))}
         </View>
       )}
@@ -434,13 +494,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     categorySection: {
       marginBottom: theme.spacing(2),
     },
+    categoryHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: theme.spacing(1),
+    },
     categoryTitle: {
       fontSize: 14,
       fontWeight: "700",
       color: theme.colors.muted,
       textTransform: "uppercase",
       letterSpacing: 0.5,
-      marginBottom: theme.spacing(1),
+    },
+    categoryDeleteButton: {
+      padding: theme.spacing(0.5),
     },
     materialCard: {
       backgroundColor: theme.colors.card,
@@ -495,6 +563,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 12,
       color: theme.colors.muted,
     },
+    storeLink: {
+      marginTop: theme.spacing(0.5),
+    },
+    storeLinkText: {
+      fontSize: 13,
+      color: theme.colors.accent,
+      fontWeight: "600",
+    },
     quantitySection: {
       flexDirection: "row",
       alignItems: "center",
@@ -544,6 +620,18 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     productSupplier: {
       fontSize: 11,
       color: theme.colors.muted,
+    },
+    productOptionWrapper: {},
+    productOptionMeta: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+      marginTop: 2,
+    },
+    productOptionLink: {
+      fontSize: 11,
+      color: theme.colors.accent,
+      fontWeight: "600",
     },
     productOptionPrice: {
       fontSize: 14,

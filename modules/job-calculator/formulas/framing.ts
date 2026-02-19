@@ -13,7 +13,7 @@ import type { FramingInputs, MaterialRequirement } from '../types';
  * - Exterior walls need sheathing and house wrap
  */
 export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequirement[] {
-  const { totalLinearFt, heightFt, openingCount, isExterior } = inputs;
+  const { totalLinearFt, heightFt, openingCount, avgOpeningWidthFt, isExterior } = inputs;
 
   // Studs: 16" OC = 0.75 studs per foot, plus corners and extras
   // Standard formula: (linear feet × 0.75) + (corners × 2) + openings × 2
@@ -28,8 +28,31 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
   // Plates: 3 plates per wall length (bottom + double top OR double bottom + top)
   const plateCount = Math.ceil((totalLinearFt * 3) / 8); // 8ft boards
 
-  // Headers: 2x10 or 2x12 depending on opening width, 2 per opening
+  // Headers: sized by opening span - 2 boards per opening (sandwiched with plywood for exterior)
   const headerCount = openingCount * 2;
+
+  // Determine header lumber size based on wall type and opening width
+  // Exterior (load-bearing): ≤4ft → 2x8, 5-6ft → 2x10, 7ft+ → 2x12
+  // Interior (partition): doubled 2x4 flat is sufficient
+  const openingWidth = avgOpeningWidthFt || 3;
+  let headerSize: string;
+  let headerDimension: string;
+  let headerSearchTerms: string[];
+
+  if (isExterior) {
+    // Load-bearing exterior walls need properly sized headers
+    headerSize = openingWidth <= 4 ? '2x8' : openingWidth <= 6 ? '2x10' : '2x12';
+    headerDimension = openingWidth <= 4 ? '8' : openingWidth <= 6 ? '10' : '12';
+    headerSearchTerms = [
+      `2 in. x ${headerDimension} in. x 8 ft. Premium Grade Fir`,
+      `2 in. x ${headerDimension} in. x 10 ft. Premium Grade`,
+    ];
+  } else {
+    // Interior partition walls just need doubled 2x4
+    headerSize = '2x4';
+    headerDimension = '4';
+    headerSearchTerms = ['2 in. x 4 in. x 8 ft. lumber', '2 in. x 4 in. SPF Dimensional'];
+  }
 
   // Plywood/OSB sheathing for exterior walls
   const sheathingSheets = isExterior ? Math.ceil((totalLinearFt * heightFt) / 32) : 0; // 4x8 = 32 sqft
@@ -39,7 +62,7 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
     {
       category: 'studs',
       name: `2x4x${studLength} Studs`,
-      searchTerms: [`2x4x${studLength}`, '2x4 stud', '2x4 framing lumber'],
+      searchTerms: [`2 in. x 4 in. x ${studLength} ft. lumber`, '2 in. x 4 in. SPF Dimensional'],
       qty: totalStuds,
       unit: 'ea',
       notes: `${heightFt}ft walls, 16" OC spacing`,
@@ -49,7 +72,7 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
     {
       category: 'plates',
       name: '2x4x8 Plates',
-      searchTerms: ['2x4x8', '2x4 lumber', '2x4 framing'],
+      searchTerms: ['2 in. x 4 in. x 8 ft. lumber', '2 in. x 4 in. SPF Dimensional'],
       qty: plateCount,
       unit: 'ea',
       notes: '3 plates per wall (top + bottom)',
@@ -58,24 +81,28 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
 
   // Headers for openings
   if (openingCount > 0) {
-    materials.push(
-      {
+    materials.push({
+      category: 'headers',
+      name: `${headerSize} Lumber (for headers)`,
+      searchTerms: headerSearchTerms,
+      qty: headerCount,
+      unit: 'ea',
+      notes: isExterior
+        ? `${openingCount} openings @ ~${openingWidth}ft wide × 2 boards each`
+        : `${openingCount} openings × doubled 2x4 (partition wall)`,
+    });
+
+    // Plywood spacer only needed for built-up headers on exterior/load-bearing walls
+    if (isExterior) {
+      materials.push({
         category: 'headers',
-        name: '2x10 Headers',
-        searchTerms: ['2x10', '2x10 lumber', 'header lumber'],
-        qty: headerCount,
-        unit: 'ea',
-        notes: `${openingCount} openings × 2 boards each`,
-      },
-      {
-        category: 'hardware',
-        name: 'Header Hangers',
-        searchTerms: ['header hanger', 'simpson hanger', 'HUS26'],
-        qty: openingCount * 2,
-        unit: 'ea',
-        notes: '2 hangers per opening',
-      }
-    );
+        name: '1/2" Plywood (header spacer)',
+        searchTerms: ['1/2 in. x 2 ft. x 4 ft. BCX Sanded Plywood', '1/2 in. x 2 ft. x 4 ft. Sande Plywood'],
+        qty: Math.ceil(openingCount / 4), // 1 sheet makes ~4 header spacers
+        unit: 'sheet',
+        notes: 'Cut strips to sandwich between 2x lumber',
+      });
+    }
   }
 
   // Common hardware
@@ -83,7 +110,7 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
     {
       category: 'fasteners',
       name: 'Framing Nails 3"',
-      searchTerms: ['framing nail', '16d nail', '3 inch nail'],
+      searchTerms: ['3 in. Common Nails lb', '16d Common Nail lb'],
       qty: Math.ceil((totalStuds * 6) / 1000), // ~6 nails per stud, boxes of 1000
       unit: 'box',
       notes: '~6 nails per stud connection',
@@ -91,7 +118,7 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
     {
       category: 'hardware',
       name: 'Nail Plates',
-      searchTerms: ['nail plate', 'mending plate', 'tie plate'],
+      searchTerms: ['Steel Nail Plate', 'Tie Plate G90'],
       qty: Math.ceil(totalLinearFt / 4), // Every 4ft for code compliance
       unit: 'ea',
       notes: 'For protecting wiring/plumbing',
@@ -104,7 +131,7 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
       {
         category: 'sheathing',
         name: '7/16" OSB Sheathing',
-        searchTerms: ['osb sheathing', '7/16 osb', 'wall sheathing'],
+        searchTerms: ['7/16-in x 4-ft x 8-ft OSB Sheathing', '7/16 in. x 4 ft. x 8 ft. OSB'],
         qty: sheathingSheets,
         unit: 'sheet',
         notes: `${Math.ceil(totalLinearFt * heightFt)} sqft of wall area`,
@@ -119,8 +146,8 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
       },
       {
         category: 'fasteners',
-        name: 'Sheathing Nails 2"',
-        searchTerms: ['sheathing nail', '8d nail', 'osb nail'],
+        name: 'Sheathing Nails 2-1/2"',
+        searchTerms: ['8D Hot-Dipped Galvanized Siding Nail', '8D Ring Shank Siding Nail'],
         qty: Math.ceil(sheathingSheets * 50 / 1000), // ~50 nails per sheet
         unit: 'box',
         notes: '~50 nails per 4x8 sheet',
@@ -128,7 +155,7 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
       {
         category: 'tape',
         name: 'Seam Tape',
-        searchTerms: ['house wrap tape', 'sheathing tape', 'tyvek tape'],
+        searchTerms: ['Housewrap Tape', 'Super Stick Building Tape'],
         qty: Math.ceil(totalLinearFt / 50), // 1 roll per ~50 linear ft
         unit: 'roll',
         notes: 'For sealing sheathing joints',
@@ -142,7 +169,7 @@ export function calculateFramingMaterials(inputs: FramingInputs): MaterialRequir
     materials.push({
       category: 'blocking',
       name: '2x4 Blocking',
-      searchTerms: ['2x4', '2x4 lumber', 'fire blocking'],
+      searchTerms: ['2 in. x 4 in. x 8 ft. lumber', '2 in. x 4 in. SPF'],
       qty: blockingCount,
       unit: 'ea',
       notes: 'Mid-height blocking for tall walls',

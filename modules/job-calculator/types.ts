@@ -32,6 +32,7 @@ export interface FramingInputs {
   totalLinearFt: number;
   heightFt: number;
   openingCount: number;
+  avgOpeningWidthFt: number;
   isExterior: boolean;
 }
 
@@ -64,6 +65,7 @@ export interface MatchedProduct {
   unitPrice: number;
   unit: string;
   supplierId?: string;
+  productUrl?: string;
 }
 
 export interface MaterialWithProducts {
@@ -133,7 +135,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
         label: 'Total Square Footage',
         type: 'number',
         unit: 'sq ft',
-        placeholder: '320',
+        placeholder: '0',
         min: 10,
         max: 5000,
       },
@@ -142,7 +144,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
         label: 'Total Perimeter',
         type: 'number',
         unit: 'linear ft',
-        placeholder: '80',
+        placeholder: '0',
         min: 10,
         max: 1000,
       },
@@ -151,7 +153,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
         label: 'Deck Height',
         type: 'number',
         unit: 'ft',
-        placeholder: '3',
+        placeholder: '0',
         min: 1,
         max: 20,
       },
@@ -187,7 +189,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
     defaultValues: {
       totalSqFt: 0,
       totalPerimeter: 0,
-      heightFt: 3,
+      heightFt: 0,
       joistSpacing: 16,
       boardType: 'treated',
       hasRailing: true,
@@ -205,7 +207,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
         label: 'Total Square Footage',
         type: 'number',
         unit: 'sq ft',
-        placeholder: '500',
+        placeholder: '0',
         min: 10,
         max: 10000,
       },
@@ -214,7 +216,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
         label: 'Total Perimeter',
         type: 'number',
         unit: 'linear ft',
-        placeholder: '100',
+        placeholder: '0',
         min: 10,
         max: 2000,
       },
@@ -222,7 +224,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
         key: 'roomCount',
         label: 'Number of Rooms',
         type: 'number',
-        placeholder: '1',
+        placeholder: '0',
         min: 1,
         max: 20,
       },
@@ -241,7 +243,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
     defaultValues: {
       totalSqFt: 0,
       totalPerimeter: 0,
-      roomCount: 1,
+      roomCount: 0,
       floorType: 'lvp',
     },
   },
@@ -256,7 +258,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
         label: 'Total Wall Length',
         type: 'number',
         unit: 'linear ft',
-        placeholder: '50',
+        placeholder: '0',
         min: 4,
         max: 1000,
       },
@@ -265,7 +267,7 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
         label: 'Wall Height',
         type: 'number',
         unit: 'ft',
-        placeholder: '8',
+        placeholder: '0',
         min: 7,
         max: 20,
       },
@@ -273,9 +275,18 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
         key: 'openingCount',
         label: 'Door/Window Openings',
         type: 'number',
-        placeholder: '2',
+        placeholder: '0',
         min: 0,
         max: 50,
+      },
+      {
+        key: 'avgOpeningWidthFt',
+        label: 'Avg Opening Width',
+        type: 'number',
+        unit: 'ft',
+        placeholder: '0',
+        min: 1,
+        max: 12,
       },
       {
         key: 'isExterior',
@@ -285,8 +296,9 @@ export const JOB_TYPE_CONFIGS: JobTypeConfig[] = [
     ],
     defaultValues: {
       totalLinearFt: 0,
-      heightFt: 8,
+      heightFt: 0,
       openingCount: 0,
+      avgOpeningWidthFt: 0,
       isExterior: false,
     },
   },

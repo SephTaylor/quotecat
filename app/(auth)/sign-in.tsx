@@ -11,13 +11,18 @@ import {
   Platform,
   ActivityIndicator,
   Linking,
+  Modal,
+  Animated,
+  Easing,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier } from "@/lib/user";
+import { needsSync, syncAllProducts, hasProductCache } from "@/modules/catalog/productService";
 
 const LAST_EMAIL_KEY = "@quotecat/last-email";
 
@@ -28,7 +33,46 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ loaded: 0, total: 0 });
   const isMountedRef = useRef(true);
+  const spinValue = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  // Spin animation while syncing
+  useEffect(() => {
+    if (syncing) {
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      spinValue.setValue(0);
+    }
+  }, [syncing, spinValue]);
+
+  // Animate progress bar
+  useEffect(() => {
+    if (syncProgress.total > 0) {
+      const percent = syncProgress.loaded / syncProgress.total;
+      Animated.timing(progressAnim, {
+        toValue: percent,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      progressAnim.setValue(0);
+    }
+  }, [syncProgress.loaded, syncProgress.total, progressAnim]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
 
   // Track mounted state to avoid state updates on unmounted component
   useEffect(() => {
@@ -85,9 +129,46 @@ export default function SignInScreen() {
             await activateProTier(profile.email);
           }
 
-          // Show success - sync will happen via initializeAuth on next launch
-          // or when dashboard loads (avoids OOM from double-loading data)
           Alert.alert("Success", "Signed in successfully");
+        }
+
+        // Ensure product catalog is available (sync if needed)
+        const hasCache = await hasProductCache();
+        const shouldSyncProducts = await needsSync();
+
+        if (shouldSyncProducts) {
+          if (!hasCache) {
+            // First-time user - wait for sync with progress bar
+            console.log("📦 First-time sync: downloading product catalog...");
+            setSyncing(true);
+            setSyncProgress({ loaded: 0, total: 100 });
+            progressAnim.setValue(0);
+
+            const success = await syncAllProducts((loaded, total) => {
+              if (isMountedRef.current) {
+                setSyncProgress({ loaded, total });
+              }
+            });
+
+            // Brief pause to show completion
+            await new Promise((r) => setTimeout(r, 300));
+            setSyncing(false);
+
+            if (success) {
+              console.log("✅ Product catalog synced successfully");
+            } else {
+              console.log("⚠️ Product catalog sync failed");
+              Alert.alert("Warning", "Could not download product catalog. Some features may be limited.");
+            }
+          } else {
+            // Existing user with stale cache - sync in background
+            console.log("📦 Background sync: refreshing product catalog...");
+            syncAllProducts().then((success) => {
+              if (success) {
+                console.log("✅ Product catalog refreshed");
+              }
+            });
+          }
         }
 
         // Navigate to main app
@@ -239,6 +320,46 @@ export default function SignInScreen() {
           </View>
         </KeyboardAvoidingView>
       </GradientBackground>
+
+      {/* Product sync progress modal */}
+      <Modal
+        visible={syncing}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+      >
+        <View style={styles.syncOverlay}>
+          <View style={styles.syncContainer}>
+            <View style={styles.syncHeader}>
+              <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                <Ionicons
+                  name="sync-outline"
+                  size={18}
+                  color={theme.colors.accent}
+                />
+              </Animated.View>
+              <Text style={styles.syncText}>Downloading product catalog...</Text>
+              <Text style={styles.syncCount}>
+                {syncProgress.loaded.toLocaleString()} / {syncProgress.total.toLocaleString()}
+              </Text>
+            </View>
+            <View style={styles.syncBarBg}>
+              <Animated.View
+                style={[
+                  styles.syncBarFill,
+                  {
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ["0%", "100%"],
+                    }),
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.syncSubtext}>This only happens once</Text>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -333,6 +454,52 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 14,
       color: theme.colors.muted,
       fontWeight: "600",
+    },
+    // Sync progress modal styles
+    syncOverlay: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: "transparent",
+    },
+    syncContainer: {
+      backgroundColor: theme.colors.card,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      padding: 16,
+      paddingBottom: 32,
+    },
+    syncHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 12,
+      gap: 8,
+    },
+    syncText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+      flex: 1,
+    },
+    syncCount: {
+      fontSize: 12,
+      color: theme.colors.muted,
+    },
+    syncBarBg: {
+      height: 6,
+      backgroundColor: theme.colors.border,
+      borderRadius: 3,
+      overflow: "hidden",
+    },
+    syncBarFill: {
+      height: "100%",
+      backgroundColor: theme.colors.accent,
+      borderRadius: 3,
+    },
+    syncSubtext: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: 8,
+      textAlign: "center",
     },
   });
 }

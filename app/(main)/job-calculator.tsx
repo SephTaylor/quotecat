@@ -34,17 +34,19 @@ export default function JobCalculator() {
     calculator.selectJobType(type);
   };
 
+  // Track if we've already navigated to prevent double-push
+  const hasNavigatedRef = React.useRef(false);
+
   // Handle calculate button
   const handleCalculate = async () => {
+    hasNavigatedRef.current = false; // Reset on new calculation
     await calculator.calculate();
-    if (calculator.step === 'results' || calculator.materials.length > 0) {
-      router.push("/(main)/job-calculator-results" as any);
-    }
   };
 
-  // Watch for successful calculation and navigate
+  // Watch for successful calculation and navigate (only once)
   React.useEffect(() => {
-    if (calculator.step === 'results' && calculator.materials.length > 0) {
+    if (calculator.step === 'results' && calculator.materials.length > 0 && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true;
       router.push({
         pathname: "/(main)/job-calculator-results",
         params: {
@@ -67,8 +69,9 @@ export default function JobCalculator() {
             headerTitleAlign: "center",
             headerBackTitle: "Back",
             headerStyle: { backgroundColor: theme.colors.bg },
-            headerTintColor: theme.colors.accent,
+            headerTintColor: theme.colors.text, // Black for system back button
             headerTitleStyle: { color: theme.colors.text },
+            headerLeft: undefined, // Clear any cached custom back button
           }}
         />
         <GradientBackground>
@@ -194,6 +197,22 @@ function InputField({
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
+  // Local string state for number inputs - prevents flash and allows proper editing
+  const [localValue, setLocalValue] = useState(() => {
+    if (field.type === "number") {
+      // Start empty if value is 0 or undefined, otherwise show the value
+      return value && value !== 0 ? String(value) : "";
+    }
+    return "";
+  });
+
+  // Sync local state when external value changes (e.g., reset)
+  React.useEffect(() => {
+    if (field.type === "number") {
+      setLocalValue(value && value !== 0 ? String(value) : "");
+    }
+  }, [value, field.type]);
+
   if (field.type === "boolean") {
     return (
       <View style={styles.switchRow}>
@@ -237,7 +256,7 @@ function InputField({
     );
   }
 
-  // Number input
+  // Number input - use local string state for smooth editing
   return (
     <View style={styles.fieldContainer}>
       <Text style={styles.fieldLabel}>
@@ -248,17 +267,22 @@ function InputField({
       </Text>
       <TextInput
         style={styles.textInput}
-        value={value !== undefined ? String(value) : ""}
+        value={localValue}
         onChangeText={(text) => {
-          const num = parseFloat(text);
+          // Allow empty string and valid numbers only
+          const cleaned = text.replace(/[^0-9.]/g, "");
+          setLocalValue(cleaned);
+
+          // Update parent with parsed number
+          const num = parseFloat(cleaned);
           if (!isNaN(num)) {
             onChange(num);
-          } else if (text === "") {
+          } else if (cleaned === "") {
             onChange(0);
           }
         }}
-        placeholder={field.placeholder}
-        placeholderTextColor={theme.colors.muted}
+        placeholder={field.placeholder || "0"}
+        placeholderTextColor="#999999"
         keyboardType="numeric"
       />
     </View>

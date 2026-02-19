@@ -17,13 +17,18 @@ async function findProductsForMaterial(
     const products = await searchProductsFTS(term);
 
     if (products.length > 0) {
-      // Map to MatchedProduct format, taking top results
-      return products.slice(0, maxResults).map((p) => ({
+      // Sort by price (cheapest first) then take top results
+      // This ensures we don't accidentally select expensive specialty items
+      const sortedByPrice = [...products].sort((a, b) => a.unitPrice - b.unitPrice);
+
+      // Map to MatchedProduct format, taking cheapest options
+      return sortedByPrice.slice(0, maxResults).map((p) => ({
         id: p.id,
         name: p.name,
         unitPrice: p.unitPrice,
         unit: p.unit,
         supplierId: p.supplierId,
+        productUrl: p.productUrl,
       }));
     }
   }
@@ -46,7 +51,7 @@ export async function matchProductsToMaterials(
       return {
         requirement,
         products,
-        // Auto-select the first product if available (cheapest is usually first)
+        // Auto-select the first product (cheapest, since we sort by price)
         selectedProductId: products.length > 0 ? products[0].id : null,
         selectedQty: requirement.qty,
       };

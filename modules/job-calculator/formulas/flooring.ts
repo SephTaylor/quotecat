@@ -49,50 +49,42 @@ function calculateLVPMaterials(
     {
       category: 'flooring',
       name: 'Luxury Vinyl Plank Flooring',
-      searchTerms: ['lvp flooring', 'vinyl plank', 'luxury vinyl', 'lifeproof'],
+      searchTerms: ['Waterproof Click Lock Vinyl Plank', 'Luxury Vinyl Plank case'],
       qty: boxesNeeded,
-      unit: 'box',
+      unit: 'case',
       notes: `${totalSqFt} sqft + 10% waste = ${Math.ceil(sqftNeeded)} sqft needed`,
     },
     {
       category: 'underlayment',
       name: 'LVP Underlayment',
-      searchTerms: ['lvp underlayment', 'vinyl underlayment', 'flooring pad'],
+      searchTerms: ['Floating Floor Underlayment', 'Moisture Barrier Underlayment roll'],
       qty: Math.ceil(totalSqFt / 100), // Rolls cover ~100 sqft
       unit: 'roll',
       notes: 'Check if flooring has attached pad',
     },
     {
       category: 'trim',
-      name: 'Baseboards',
-      searchTerms: ['baseboard', 'base moulding', 'mdf baseboard'],
-      qty: Math.ceil(totalPerimeter / 8), // 8ft lengths
+      name: 'Wall Base',
+      searchTerms: ['VPI vinyl wall base', '4 x 48 vinyl wall base'],
+      qty: Math.ceil(totalPerimeter / 4), // 4ft lengths
       unit: 'ea',
-      notes: `${totalPerimeter} linear ft of baseboard`,
+      notes: `${totalPerimeter} linear ft of wall base`,
     },
     {
       category: 'trim',
       name: 'Transition Strips',
-      searchTerms: ['transition strip', 't-molding', 'floor transition'],
+      searchTerms: ['Vinyl 4-in-1 Molding', 'MultiFloor Transition'],
       qty: roomCount,
       unit: 'ea',
       notes: '1 transition per room/doorway',
     },
     {
       category: 'adhesive',
-      name: 'Construction Adhesive',
-      searchTerms: ['construction adhesive', 'liquid nails', 'loctite'],
-      qty: Math.ceil(totalPerimeter / 50), // 1 tube per ~50 linear ft of baseboard
+      name: 'Wall Base Adhesive',
+      searchTerms: ['wall base adhesive', 'wall base mastic'],
+      qty: Math.ceil(totalPerimeter / 100), // 1 tube per ~100 linear ft
       unit: 'tube',
-      notes: 'For baseboards',
-    },
-    {
-      category: 'fasteners',
-      name: 'Finish Nails',
-      searchTerms: ['finish nail', '18 gauge nail', 'brad nail'],
-      qty: 1,
-      unit: 'box',
-      notes: 'For baseboards',
+      notes: 'For wall base',
     },
   ];
 }

@@ -10,6 +10,7 @@ import { createNewQuote } from "@/lib/quotes";
 import { signOut as authSignOut, getCurrentUserEmail, isAuthenticated } from "@/lib/auth";
 import { HeaderIconButton } from "@/components/HeaderIconButton";
 import { NotificationBell } from "@/components/NotificationBell";
+import { RefreshButton } from "@/components/RefreshButton";
 
 type IconProps = { color: string; size: number };
 
@@ -71,6 +72,7 @@ export default function DrawerLayout() {
           ),
           headerRight: () => (
             <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <RefreshButton />
               <NotificationBell side="right" />
               <HeaderIconButton
                 onPress={handleCreateNewQuote}

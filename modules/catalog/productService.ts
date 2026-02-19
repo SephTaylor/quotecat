@@ -241,6 +241,8 @@ export async function syncAllProducts(
             unit: row.unit || "each",
             unitPrice: parseFloat(row.unit_price) || 0,
             supplierId: row.supplier_id || undefined,
+            coverageSqft: row.coverage_sqft ? parseFloat(row.coverage_sqft) : undefined,
+            productUrl: row.product_url || row.supplier_url || undefined,
           });
         } catch (parseError) {
           console.error(`Failed to parse product ${row?.id}:`, parseError);

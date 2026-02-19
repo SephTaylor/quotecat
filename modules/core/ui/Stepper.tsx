@@ -1,6 +1,6 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 export function Stepper({
   value,
@@ -45,7 +45,7 @@ export function Stepper({
 
   return (
     <View style={styles.wrap}>
-      <Pressable style={styles.btn} onPress={onDec}>
+      <Pressable style={styles.btn} onPress={() => { Keyboard.dismiss(); onDec(); }}>
         <Text style={styles.txt}>–</Text>
       </Pressable>
       {isEditing && onChange ? (
@@ -63,7 +63,7 @@ export function Stepper({
           <Text style={styles.value}>{value}</Text>
         </Pressable>
       )}
-      <Pressable style={styles.btn} onPress={onInc}>
+      <Pressable style={styles.btn} onPress={() => { Keyboard.dismiss(); onInc(); }}>
         <Text style={styles.txt}>+</Text>
       </Pressable>
     </View>

@@ -19,6 +19,8 @@ export type Product = {
   unit: string; // "ea", "sheet", "10ft", "box"
   unitPrice: number;
   supplierId?: string; // references suppliers table in Supabase
+  coverageSqft?: number; // sq ft per carton/case/piece (flooring products)
+  productUrl?: string; // URL to product page on retailer's site
 };
 
 // Supplier display names lookup

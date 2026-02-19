@@ -10,7 +10,7 @@ import type { Product, Category } from "@/modules/catalog/seed";
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 12;
 
 /**
  * Get or create the database instance
@@ -443,6 +443,32 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     }
 
     console.log(`🔍 Added search_name column and updated FTS index`);
+  }
+
+  if (fromVersion < 11) {
+    // Add coverage_sqft column for flooring products (sq ft per carton/case/piece)
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(products)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("coverage_sqft")) {
+      database.execSync(`ALTER TABLE products ADD COLUMN coverage_sqft REAL;`);
+      console.log(`📐 Added coverage_sqft column for flooring products`);
+    }
+  }
+
+  if (fromVersion < 12) {
+    // Add product_url column for linking to retailer product pages
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(products)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("product_url")) {
+      database.execSync(`ALTER TABLE products ADD COLUMN product_url TEXT;`);
+      console.log(`🔗 Added product_url column for retailer links`);
+    }
   }
 
   // Update version
@@ -1501,6 +1527,8 @@ function rowToProduct(row: any): Product {
     unit: row.unit || "each",
     unitPrice: row.unit_price || 0,
     supplierId: row.supplier_id || undefined,
+    coverageSqft: row.coverage_sqft || undefined,
+    productUrl: row.product_url || undefined,
   };
 }
 
@@ -1627,8 +1655,8 @@ export function saveProductsBatchDB(products: Product[]): void {
         // Insert/update product
         database.runSync(
           `INSERT OR REPLACE INTO products (
-            id, name, search_name, category_id, canonical_category, unit, unit_price, supplier_id, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            id, name, search_name, category_id, canonical_category, unit, unit_price, supplier_id, coverage_sqft, product_url, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             product.id,
             product.name,
@@ -1638,6 +1666,8 @@ export function saveProductsBatchDB(products: Product[]): void {
             product.unit,
             product.unitPrice,
             product.supplierId || null,
+            product.coverageSqft || null, // sq ft per carton/case for flooring
+            product.productUrl || null, // URL to retailer product page
             now,
           ]
         );
