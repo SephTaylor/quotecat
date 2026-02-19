@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import type { Selection } from "./types";
 import { searchProductsFTS } from "@/lib/database";
+import { openProductUrl, getStoreName } from "@/lib/browser";
 
 export type Category = {
   id: string;
@@ -50,13 +51,16 @@ type ProductRowProps = {
   qty: number;
   isEditing: boolean;
   editingQty: string;
+  expanded: boolean;
   onInc: () => void;
   onDec: () => void;
   onStartEdit: () => void;
   onQtyChange: (text: string) => void;
   onFinishEdit: () => void;
+  onToggleExpand: () => void;
   styles: ReturnType<typeof createStyles>;
   accentColor: string;
+  mutedColor: string;
 };
 
 const ProductRow = memo(function ProductRow({
@@ -64,29 +68,57 @@ const ProductRow = memo(function ProductRow({
   qty,
   isEditing,
   editingQty,
+  expanded,
   onInc,
   onDec,
   onStartEdit,
   onQtyChange,
   onFinishEdit,
+  onToggleExpand,
   styles,
   accentColor,
+  mutedColor,
 }: ProductRowProps) {
   const active = qty > 0;
 
   return (
     <View style={[styles.itemRow, active && styles.itemRowActive]}>
-      <View style={styles.itemMeta}>
-        <Text style={styles.itemName}>{product.name}</Text>
+      <Pressable style={styles.itemMeta} onPress={onToggleExpand}>
+        <View style={styles.itemNameRow}>
+          <Text style={styles.itemName} numberOfLines={expanded ? undefined : 1}>
+            {product.name}
+          </Text>
+          <Ionicons
+            name={expanded ? "chevron-up" : "chevron-down"}
+            size={16}
+            color={mutedColor}
+            style={styles.expandIcon}
+          />
+        </View>
         <Text style={styles.itemSub}>
           ${product.unitPrice.toFixed(2)}/{product.unit}
           {product._hasLocationPrice && <Text style={{ color: accentColor }}> (local)</Text>}
           {product.supplierId && SUPPLIER_NAMES[product.supplierId] && ` · ${SUPPLIER_NAMES[product.supplierId]}`}
         </Text>
-      </View>
+        {product.coverageSqft && (
+          <Text style={[styles.itemSub, { color: accentColor }]}>
+            {product.coverageSqft} sq ft / {product.unit === 'case' ? 'case' : product.unit === 'piece' ? 'piece' : 'carton'}
+          </Text>
+        )}
+        {expanded && product.productUrl && (
+          <Pressable
+            style={styles.storeLink}
+            onPress={() => openProductUrl(product.productUrl!)}
+          >
+            <Text style={styles.storeLinkText}>
+              View on {getStoreName(product.supplierId)} →
+            </Text>
+          </Pressable>
+        )}
+      </Pressable>
 
       <View style={styles.stepper}>
-        <Pressable style={styles.stepBtn} onPress={onDec}>
+        <Pressable style={styles.stepBtn} onPress={() => { Keyboard.dismiss(); onDec(); }}>
           <Text style={styles.stepText}>–</Text>
         </Pressable>
         {isEditing ? (
@@ -106,7 +138,7 @@ const ProductRow = memo(function ProductRow({
             <Text style={[styles.qtyText, styles.qtyTextTappable]}>{qty}</Text>
           </Pressable>
         )}
-        <Pressable style={styles.stepBtn} onPress={onInc}>
+        <Pressable style={styles.stepBtn} onPress={() => { Keyboard.dismiss(); onInc(); }}>
           <Text style={styles.stepText}>+</Text>
         </Pressable>
       </View>
@@ -184,6 +216,25 @@ function MaterialsPicker({
   const [editingQty, setEditingQty] = useState<string>("");
   const editingProductRef = useRef<Product | null>(null);
   const editingQtyRef = useRef<string>("");
+
+  // State for expanded product (show full name + store link)
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+
+  const handleToggleExpand = useCallback((productId: string) => {
+    setExpandedProductId((prev) => (prev === productId ? null : productId));
+  }, []);
+
+  // State for scroll-to-top button visibility
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowScrollTop(offsetY > 300);
+  }, []);
+
+  const handleScrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
   // Handlers for inline quantity editing
   const handleStartEditingQty = useCallback((productId: string, product: Product) => {
@@ -269,6 +320,7 @@ function MaterialsPicker({
     const p = item.product;
     const qty = selection.get(p.id)?.qty ?? 0;
     const isEditing = editingProductId === p.id;
+    const isExpanded = expandedProductId === p.id;
 
     return (
       <ProductRow
@@ -276,16 +328,19 @@ function MaterialsPicker({
         qty={qty}
         isEditing={isEditing}
         editingQty={isEditing ? editingQty : ""}
+        expanded={isExpanded}
         onInc={() => onInc(p)}
         onDec={() => onDec(p)}
         onStartEdit={() => handleStartEditingQty(p.id, p)}
         onQtyChange={handleQtyChange}
         onFinishEdit={handleFinishEditingQty}
+        onToggleExpand={() => handleToggleExpand(p.id)}
         styles={styles}
         accentColor={theme.colors.accent}
+        mutedColor={theme.colors.muted}
       />
     );
-  }, [selection, editingProductId, editingQty, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, styles, theme.colors.accent]);
+  }, [selection, editingProductId, editingQty, expandedProductId, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, handleToggleExpand, styles, theme.colors.accent, theme.colors.muted]);
 
   // Key extractor for FlashList
   const keyExtractor = useCallback((item: ListItem) => {
@@ -314,6 +369,7 @@ function MaterialsPicker({
           {recentProducts.map((p) => {
             const qty = selection.get(p.id)?.qty ?? 0;
             const isEditing = editingProductId === p.id;
+            const isExpanded = expandedProductId === p.id;
             return (
               <ProductRow
                 key={p.id}
@@ -321,20 +377,23 @@ function MaterialsPicker({
                 qty={qty}
                 isEditing={isEditing}
                 editingQty={isEditing ? editingQty : ""}
+                expanded={isExpanded}
                 onInc={() => onInc(p)}
                 onDec={() => onDec(p)}
                 onStartEdit={() => handleStartEditingQty(p.id, p)}
                 onQtyChange={handleQtyChange}
                 onFinishEdit={handleFinishEditingQty}
+                onToggleExpand={() => handleToggleExpand(p.id)}
                 styles={styles}
                 accentColor={theme.colors.accent}
+                mutedColor={theme.colors.muted}
               />
             );
           })}
         </View>
       </View>
     );
-  }, [recentProducts, selection, editingProductId, editingQty, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, styles, theme.colors.accent]);
+  }, [recentProducts, selection, editingProductId, editingQty, expandedProductId, onInc, onDec, handleStartEditingQty, handleQtyChange, handleFinishEditingQty, handleToggleExpand, styles, theme.colors.accent, theme.colors.muted]);
 
   // Dismiss editing when tapping outside the input
   const handleContainerPress = useCallback(() => {
@@ -406,9 +465,18 @@ function MaterialsPicker({
           keyboardShouldPersistTaps="handled"
           onScrollBeginDrag={handleScrollBeginDrag}
           onTouchStart={handleContainerPress}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
           refreshControl={refreshControl}
           drawDistance={250}
         />
+
+        {/* Scroll to top button */}
+        {showScrollTop && (
+          <Pressable style={styles.scrollTopButton} onPress={handleScrollToTop}>
+            <Ionicons name="chevron-up" size={24} color="#000" />
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -539,8 +607,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderColor: theme.colors.accent,
     },
     itemMeta: { flexShrink: 1, paddingRight: theme.spacing(1) },
-    itemName: { color: theme.colors.text, fontWeight: "600" },
+    itemNameRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 4,
+    },
+    itemName: { color: theme.colors.text, fontWeight: "600", flex: 1 },
+    expandIcon: { marginTop: 2 },
     itemSub: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
+    storeLink: { marginTop: 6 },
+    storeLinkText: {
+      fontSize: 13,
+      color: theme.colors.accent,
+      fontWeight: "600",
+    },
 
     stepper: { flexDirection: "row", alignItems: "center", gap: theme.spacing(1) },
     stepBtn: {
@@ -583,6 +663,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingHorizontal: 4,
       paddingVertical: 0,
       textAlignVertical: "center",
+    },
+    scrollTopButton: {
+      position: "absolute",
+      bottom: 80,
+      right: 16,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: theme.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
     },
   });
 }

@@ -1,26 +1,22 @@
 // lib/browser.ts
-// In-app browser utility for opening product URLs
+// Browser utility for opening product URLs
 
-import * as WebBrowser from 'expo-web-browser';
 import { Linking } from 'react-native';
 
 /**
- * Open a URL in the in-app browser (Safari View Controller / Chrome Custom Tab).
- * Falls back to external browser if in-app browser fails.
+ * Open a URL in external Safari/Chrome.
+ *
+ * Note: We use external browser instead of in-app browser (Safari View Controller)
+ * because retailer sites (Lowe's, Home Depot, Menards) block embedded browsers
+ * with "Access Denied" or error pages due to bot protection.
  */
 export async function openProductUrl(url: string): Promise<void> {
   if (!url) return;
 
   try {
-    await WebBrowser.openBrowserAsync(url, {
-      dismissButtonStyle: 'close',
-      presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-      controlsColor: '#FF9500', // Match app accent color
-    });
+    await Linking.openURL(url);
   } catch (error) {
-    // Fallback to external browser if WebBrowser fails
-    console.warn('In-app browser failed, falling back to external:', error);
-    Linking.openURL(url);
+    console.warn('Failed to open URL:', error);
   }
 }
 
