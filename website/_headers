@@ -1,0 +1,7 @@
+# Apple App Site Association - Required for iOS Universal Links
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+
+# Android Asset Links - Required for App Links
+/.well-known/assetlinks.json
+  Content-Type: application/json
