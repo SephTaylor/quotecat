@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "97QV8J8XS7.ai.quotecat.app",
+        "paths": ["/auth/*", "/callback*"]
+      }
+    ]
+  }
+}

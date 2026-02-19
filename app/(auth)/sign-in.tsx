@@ -128,7 +128,7 @@ export default function SignInScreen() {
             setResetLoading(true);
             try {
               const { error } = await supabase.auth.resetPasswordForEmail(emailToReset, {
-                redirectTo: "https://quotecat.ai/callback.html",
+                redirectTo: "https://quotecat.ai/auth/callback",
               });
 
               if (error) throw error;
