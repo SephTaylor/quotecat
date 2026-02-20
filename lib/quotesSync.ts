@@ -658,7 +658,14 @@ export async function syncQuotes(): Promise<{
  */
 export async function isSyncAvailable(): Promise<boolean> {
   const userId = await getCurrentUserId();
-  return !!userId;
+  if (!userId) return false;
+
+  // Check user tier - only Pro/Premium can sync
+  const { getUserState } = await import("./user");
+  const userState = await getUserState();
+  const hasSyncAccess = userState?.tier === "pro" || userState?.tier === "premium";
+
+  return hasSyncAccess;
 }
 
 /**

@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import type { Selection } from "./types";
 import { searchProductsFTS } from "@/lib/database";
-import { openProductUrl, getStoreName } from "@/lib/browser";
+import { openProductSearch, getStoreName } from "@/lib/browser";
 
 export type Category = {
   id: string;
@@ -105,10 +105,10 @@ const ProductRow = memo(function ProductRow({
             {product.coverageSqft} sq ft / {product.unit === 'case' ? 'case' : product.unit === 'piece' ? 'piece' : 'carton'}
           </Text>
         )}
-        {expanded && product.productUrl && (
+        {expanded && product.supplierId && (
           <Pressable
             style={styles.storeLink}
-            onPress={() => openProductUrl(product.productUrl!)}
+            onPress={() => openProductSearch(product.name, product.supplierId)}
           >
             <Text style={styles.storeLinkText}>
               View on {getStoreName(product.supplierId)} →

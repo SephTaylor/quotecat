@@ -23,7 +23,7 @@ import {
 } from "@/modules/job-calculator";
 import { createQuote, updateQuote } from "@/lib/quotes";
 import type { QuoteItem } from "@/lib/types";
-import { openProductUrl, getStoreName } from "@/lib/browser";
+import { openProductSearch, getStoreName } from "@/lib/browser";
 
 export default function JobCalculatorResults() {
   const router = useRouter();
@@ -373,10 +373,10 @@ function MaterialCard({
               {formatPrice(selectedProduct.unitPrice)} / {selectedProduct.unit}
             </Text>
             {/* Show store link when expanded */}
-            {expanded && selectedProduct.productUrl && (
+            {expanded && selectedProduct.supplierId && (
               <Pressable
                 style={styles.storeLink}
-                onPress={() => openProductUrl(selectedProduct.productUrl!)}
+                onPress={() => openProductSearch(selectedProduct.name, selectedProduct.supplierId)}
               >
                 <Text style={styles.storeLinkText}>
                   View on {getStoreName(selectedProduct.supplierId)} →
@@ -430,9 +430,9 @@ function MaterialCard({
                         {getStoreName(product.supplierId)}
                       </Text>
                     )}
-                    {product.productUrl && (
+                    {product.supplierId && (
                       <Pressable
-                        onPress={() => openProductUrl(product.productUrl!)}
+                        onPress={() => openProductSearch(product.name, product.supplierId)}
                         hitSlop={8}
                       >
                         <Text style={styles.productOptionLink}>View →</Text>

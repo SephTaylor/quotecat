@@ -1,4 +1,4 @@
-// app/(auth)/sign-in.tsx
+// app/(auth)/sign-up.tsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -20,18 +20,17 @@ import { Stack, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
-import { activateProTier, activatePremiumTier } from "@/lib/user";
 import { needsSync, syncAllProducts, hasProductCache } from "@/modules/catalog/productService";
 
 const LAST_EMAIL_KEY = "@quotecat/last-email";
 
-export default function SignInScreen() {
+export default function SignUpScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ loaded: 0, total: 0 });
   const isMountedRef = useRef(true);
@@ -73,7 +72,7 @@ export default function SignInScreen() {
     outputRange: ["0deg", "360deg"],
   });
 
-  // Track mounted state to avoid state updates on unmounted component
+  // Track mounted state
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -81,64 +80,51 @@ export default function SignInScreen() {
     };
   }, []);
 
-  // Load last used email on mount
-  useEffect(() => {
-    AsyncStorage.getItem(LAST_EMAIL_KEY).then((savedEmail) => {
-      if (savedEmail && isMountedRef.current) setEmail(savedEmail);
-    });
-  }, []);
-
-  const handleSignIn = async () => {
-    if (!email.trim() || !password) {
-      Alert.alert("Error", "Please enter your email and password");
+  const handleSignUp = async () => {
+    // Validation
+    if (!email.trim()) {
+      Alert.alert("Error", "Please enter your email address");
+      return;
+    }
+    if (!password) {
+      Alert.alert("Error", "Please enter a password");
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          emailRedirectTo: "https://quotecat.ai/confirmed.html",
+        },
       });
 
       if (error) throw error;
 
       if (data.user) {
-        // Fetch user's tier from Supabase profiles table
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("tier, email")
-          .eq("id", data.user.id)
-          .single();
-
         // Save email for next time
         await AsyncStorage.setItem(LAST_EMAIL_KEY, email.trim());
 
-        if (profileError) {
-          // Profile doesn't exist yet - user is on free tier
-          // Profile will be created by database trigger or on first paid subscription
-          console.log("No profile found, defaulting to free tier");
-          Alert.alert("Success", "Signed in successfully");
-        } else if (profile) {
-          // Update local user state based on Supabase tier
-          const isPaidTier = profile.tier === "premium" || profile.tier === "pro";
+        // Check if email confirmation is required
+        if (data.session) {
+          // User is signed in immediately (email confirmation disabled)
+          Alert.alert("Success", "Account created successfully!");
 
-          if (profile.tier === "premium") {
-            await activatePremiumTier(profile.email);
-          } else if (profile.tier === "pro") {
-            await activateProTier(profile.email);
-          }
+          // Sync product catalog for new user
+          const hasCache = await hasProductCache();
+          const shouldSyncProducts = await needsSync();
 
-          Alert.alert("Success", "Signed in successfully");
-        }
-
-        // Ensure product catalog is available (sync if needed)
-        const hasCache = await hasProductCache();
-        const shouldSyncProducts = await needsSync();
-
-        if (shouldSyncProducts) {
-          if (!hasCache) {
-            // First-time user - wait for sync with progress bar
+          if (shouldSyncProducts && !hasCache) {
             console.log("📦 First-time sync: downloading product catalog...");
             setSyncing(true);
             setSyncProgress({ loaded: 0, total: 100 });
@@ -150,89 +136,41 @@ export default function SignInScreen() {
               }
             });
 
-            // Brief pause to show completion
             await new Promise((r) => setTimeout(r, 300));
             setSyncing(false);
 
-            if (success) {
-              console.log("✅ Product catalog synced successfully");
-            } else {
-              console.log("⚠️ Product catalog sync failed");
+            if (!success) {
               Alert.alert("Warning", "Could not download product catalog. Some features may be limited.");
             }
-          } else {
-            // Existing user with stale cache - sync in background
-            console.log("📦 Background sync: refreshing product catalog...");
-            syncAllProducts().then((success) => {
-              if (success) {
-                console.log("✅ Product catalog refreshed");
-              }
-            });
           }
-        }
 
-        // Navigate to main app
-        router.replace("/(main)/(tabs)/dashboard");
+          // Navigate to main app
+          router.replace("/(main)/(tabs)/dashboard");
+        } else {
+          // Email confirmation required
+          Alert.alert(
+            "Check Your Email",
+            "We sent you a confirmation link. Please check your email to verify your account, then sign in.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/(auth)/sign-in"),
+              },
+            ]
+          );
+        }
       }
     } catch (error) {
-      console.error("Sign in error:", error);
+      console.error("Sign up error:", error);
       Alert.alert(
-        "Sign In Failed",
-        error instanceof Error ? error.message : "Please check your credentials and try again"
+        "Sign Up Failed",
+        error instanceof Error ? error.message : "Please try again"
       );
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
       }
     }
-  };
-
-  const handleForgotPassword = async () => {
-    const emailToReset = email.trim();
-
-    if (!emailToReset) {
-      Alert.alert(
-        "Enter Your Email",
-        "Please enter your email address first, then tap Forgot Password."
-      );
-      return;
-    }
-
-    Alert.alert(
-      "Reset Password",
-      `Send a password reset link to ${emailToReset}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Send",
-          onPress: async () => {
-            setResetLoading(true);
-            try {
-              const { error } = await supabase.auth.resetPasswordForEmail(emailToReset, {
-                redirectTo: "https://quotecat.ai/auth/callback",
-              });
-
-              if (error) throw error;
-
-              Alert.alert(
-                "Check Your Email",
-                "If an account exists with that email, you'll receive a password reset link shortly."
-              );
-            } catch (error) {
-              console.error("Password reset error:", error);
-              Alert.alert(
-                "Error",
-                "Unable to send reset email. Please try again later."
-              );
-            } finally {
-              if (isMountedRef.current) {
-                setResetLoading(false);
-              }
-            }
-          },
-        },
-      ]
-    );
   };
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -246,8 +184,8 @@ export default function SignInScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
           <View style={styles.content}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in with your QuoteCat account</Text>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Sign up for a free QuoteCat account</Text>
 
             <View style={styles.form}>
               <View style={styles.inputGroup}>
@@ -271,41 +209,45 @@ export default function SignInScreen() {
                   style={styles.input}
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="Enter your password"
+                  placeholder="At least 6 characters"
                   placeholderTextColor={theme.colors.muted}
                   secureTextEntry
                   editable={!loading}
                 />
-                <Pressable
-                  onPress={handleForgotPassword}
-                  disabled={loading || resetLoading}
-                  style={styles.forgotPassword}
-                >
-                  <Text style={styles.forgotPasswordText}>
-                    {resetLoading ? "Sending..." : "Forgot Password?"}
-                  </Text>
-                </Pressable>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Confirm Password</Text>
+                <TextInput
+                  style={styles.input}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Re-enter your password"
+                  placeholderTextColor={theme.colors.muted}
+                  secureTextEntry
+                  editable={!loading}
+                />
               </View>
 
               <Pressable
                 style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleSignIn}
+                onPress={handleSignUp}
                 disabled={loading}
               >
                 {loading ? (
                   <ActivityIndicator color="#000" />
                 ) : (
-                  <Text style={styles.buttonText}>Sign In</Text>
+                  <Text style={styles.buttonText}>Create Account</Text>
                 )}
               </Pressable>
 
               <View style={styles.footer}>
-                <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+                <Text style={styles.footerText}>Already have an account? </Text>
                 <Pressable
-                  onPress={() => router.replace("/(auth)/sign-up")}
+                  onPress={() => router.replace("/(auth)/sign-in")}
                   disabled={loading}
                 >
-                  <Text style={styles.footerLink}>Sign Up</Text>
+                  <Text style={styles.footerLink}>Sign In</Text>
                 </Pressable>
               </View>
 
@@ -407,15 +349,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingVertical: theme.spacing(1.5),
       fontSize: 16,
       color: theme.colors.text,
-    },
-    forgotPassword: {
-      alignSelf: "flex-end",
-      marginTop: theme.spacing(0.5),
-    },
-    forgotPasswordText: {
-      fontSize: 14,
-      color: theme.colors.accent,
-      fontWeight: "500",
     },
     button: {
       backgroundColor: theme.colors.accent,

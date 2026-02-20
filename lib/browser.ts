@@ -4,11 +4,44 @@
 import { Linking } from 'react-native';
 
 /**
- * Open a URL in external Safari/Chrome.
+ * Site-specific Google search patterns.
+ * We route through Google because retailers block direct links from apps,
+ * but they can't block traffic that comes from Google search results.
+ */
+const GOOGLE_SITE_SEARCH: Record<string, string> = {
+  homedepot: 'site:homedepot.com',
+  lowes: 'site:lowes.com',
+  menards: 'site:menards.com',
+};
+
+/**
+ * Open a Google search scoped to the retailer's site.
  *
- * Note: We use external browser instead of in-app browser (Safari View Controller)
- * because retailer sites (Lowe's, Home Depot, Menards) block embedded browsers
- * with "Access Denied" or error pages due to bot protection.
+ * We route through Google because retailers (Lowe's, Home Depot, Menards)
+ * aggressively block any direct links from apps - even to search pages.
+ * By using Google as an intermediary, the retailer sees traffic from Google,
+ * not from our app.
+ */
+export async function openProductSearch(
+  productName: string,
+  supplierId?: string
+): Promise<void> {
+  if (!productName) return;
+
+  try {
+    const siteFilter = GOOGLE_SITE_SEARCH[supplierId || ''] || '';
+    const query = siteFilter
+      ? `${siteFilter} ${productName}`
+      : productName;
+    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    await Linking.openURL(googleUrl);
+  } catch (error) {
+    console.warn('Failed to open search URL:', error);
+  }
+}
+
+/**
+ * @deprecated Use openProductSearch instead - direct URLs are blocked by retailers
  */
 export async function openProductUrl(url: string): Promise<void> {
   if (!url) return;
