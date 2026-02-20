@@ -176,6 +176,8 @@ const styles = StyleSheet.create({
     borderRadius: FAB_SIZE / 2,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F97316', // Match Drew avatar for clean Android elevation
+    overflow: 'hidden',
     // Shadow for iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
