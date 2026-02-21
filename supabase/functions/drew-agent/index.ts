@@ -1517,12 +1517,12 @@ async function handleSupportIntent(
     };
   }
 
-  // Topic: Invoices (Pro/Premium)
+  // Topic: Invoices (Free: 5/month, Pro/Premium: unlimited)
   if (normalized.includes('invoice')) {
     return {
-      message: "Create invoices from approved quotes. This is a Pro/Premium feature - upgrade to unlock it.",
+      message: "Create invoices from approved quotes. Open drawer menu (☰) → Invoices → tap + → 'From Quote'. Free users get 5 invoices per month.",
       state: { messages: [], quoteItems: [] },
-      quickReplies: ['How do I upgrade?', 'Back to topics'],
+      quickReplies: ['Take me there', 'Back to topics'],
     };
   }
 
@@ -1531,7 +1531,7 @@ async function handleSupportIntent(
     return {
       message: "Assemblies are reusable templates that add all materials for a job at once. This is a Pro/Premium feature.",
       state: { messages: [], quoteItems: [] },
-      quickReplies: ['How do I upgrade?', 'Back to topics'],
+      quickReplies: ['Back to topics'],
     };
   }
 
@@ -1540,7 +1540,7 @@ async function handleSupportIntent(
     return {
       message: "Send contracts for clients to sign digitally before work begins. This is a Premium feature.",
       state: { messages: [], quoteItems: [] },
-      quickReplies: ['How do I upgrade?', 'Back to topics'],
+      quickReplies: ['Back to topics'],
     };
   }
 
@@ -1559,7 +1559,7 @@ async function handleSupportIntent(
     return {
       message: "Save your own products with custom pricing for quick access. This is a Pro/Premium feature.",
       state: { messages: [], quoteItems: [] },
-      quickReplies: ['How do I upgrade?', 'Back to topics'],
+      quickReplies: ['Back to topics'],
     };
   }
 
@@ -1602,10 +1602,10 @@ async function handleSupportIntent(
     };
   }
 
-  // Handle Pro features / upgrade questions
-  if (normalized.includes('pro feature') || normalized.includes('premium') || normalized.includes('upgrade') || normalized.includes('pricing')) {
+  // Handle Pro features / upgrade questions (Apple-compliant - no pricing/URLs)
+  if (normalized.includes('pro') || normalized.includes('premium') || normalized.includes('upgrade') || normalized.includes('pricing') || normalized.includes('subscri') || normalized.includes('tier')) {
     return {
-      message: "**Free** — Unlimited quotes, 5 exports/month\n**Pro** — Invoices, sync, assemblies, unlimited exports\n**Premium** — Contracts, client portal, Drew AI\n\nUpgrade anytime at quotecat.ai",
+      message: "QuoteCat offers different tiers with features like cloud sync, unlimited exports, contracts, and more. You can see your current plan in Settings.",
       state: { messages: [], quoteItems: [] },
       quickReplies: ['Back to topics', 'I\'m good, thanks'],
     };

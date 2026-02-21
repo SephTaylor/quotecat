@@ -6,6 +6,7 @@ import { getUserState } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -54,6 +55,8 @@ export default function ProTools() {
         router.push("/(main)/price-book" as any);
       } else if (featureName === "Job Calculator") {
         router.push("/(main)/job-calculator" as any);
+      } else if (featureName === "Premium Portal") {
+        Linking.openURL("https://portal.quotecat.ai/");
       }
     } else {
       // Show sign in prompt
@@ -126,6 +129,17 @@ export default function ProTools() {
               details={[]}
               theme={theme}
             />
+
+            {/* Price Book - Pro feature */}
+            <ProFeatureCard
+              icon=""
+              title="Price Book"
+              description="Create and manage your custom products and pricing"
+              locked={!isPro}
+              onPress={() => handleFeatureTap("Price Book")}
+              details={[]}
+              theme={theme}
+            />
           </View>
 
           {/* Premium Features Section */}
@@ -144,13 +158,13 @@ export default function ProTools() {
               isPremium
             />
 
-            {/* Price Book */}
+            {/* Premium Portal */}
             <ProFeatureCard
               icon=""
-              title="Price Book"
-              description="Create and manage your custom products and pricing"
+              title="Premium Portal"
+              description="Your full business suite on the web - everything in the app and more"
               locked={!isPremium}
-              onPress={() => handleFeatureTap("Price Book", true)}
+              onPress={() => handleFeatureTap("Premium Portal", true)}
               details={[]}
               theme={theme}
               isPremium

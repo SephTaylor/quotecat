@@ -799,6 +799,40 @@ SMTP configured in Supabase with noreply@quotecat.ai. Users receive branded emai
 
 ---
 
+## 📱 Google Play Store (Feb 2026)
+
+### Data Safety Form Answers
+
+When submitting to Google Play, use these answers for the Data Safety section:
+
+| Question | Answer | Notes |
+|----------|--------|-------|
+| Data encrypted in transit? | ✅ Yes | All connections use HTTPS/TLS |
+| Data encrypted at rest? | ✅ Yes | Supabase uses encrypted storage |
+| Users can request deletion? | ✅ Yes | Via app settings or hello@quotecat.ai |
+
+### Data Collected
+
+- **Account info**: Email, name, company details
+- **User content**: Quotes, invoices, clients, assemblies
+- **Device info**: Device type, OS version, app version
+- **Analytics**: Anonymized usage patterns (PostHog)
+
+### Third Parties to Disclose
+
+- Supabase (database, auth)
+- Stripe (payments)
+- Anthropic/Claude (AI features)
+- OpenAI (embeddings)
+- X-Byte (supplier pricing)
+- PostHog (analytics)
+
+### Privacy Policy
+
+URL: https://quotecat.ai/privacy (Last updated: Feb 5, 2026)
+
+---
+
 ## 🏗️ Supplier Pricing Pipeline (Feb 12, 2026)
 
 ### Overview
@@ -948,7 +982,7 @@ Features to consider for future releases (not blockers for launch):
 - **Spanish Language Support** - Add i18n to support Spanish-speaking US contractors (~30% of market) and enable Costa Rica expansion. **Scope:** ~300-400 unique strings across 71 files, 149 alert dialogs, 66 form placeholders. **Effort:** 5-7 days. **Implementation:** expo-localization + i18next, JSON translation files, device language detection. **Bonus:** Once i18n infrastructure exists, adding more languages is just a new JSON file. Could partner with Costa Rican supplier (Colono) for local catalog. Regional pricing via Stripe (US $29/mo, CR ~$9/mo). WhatsApp sharing already works via iOS share sheet. (Discussed Feb 8, 2026)
 
 ### Invoices
-- *(Add ideas here)*
+- **Payment Reminders for Overdue Invoices** - Add a "Send Reminder" button on overdue invoices that opens a pre-filled email/text to the client. Could also auto-send reminders at configurable intervals (3 days, 7 days, 14 days overdue). Simple feature, high value for getting paid faster. (Added Feb 13, 2026)
 
 ### Communication (Premium)
 - **Two-Way SMS Texting** - Real SMS/MMS messaging with clients from within the app, similar to Jobber's Grow plan feature. Each business gets a dedicated phone number. Clients can text that number and replies show up in QuoteCat. Supports images (before/after photos, on-site updates). Requires Twilio integration, 10DLC registration for compliance. Keeps business/personal communication separate. (Discussed Jan 17, 2026)

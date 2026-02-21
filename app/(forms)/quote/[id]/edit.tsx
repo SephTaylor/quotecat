@@ -41,7 +41,15 @@ export default function EditQuote() {
   // Use the extracted form hook - pass effectiveId so it uses the real ID after first save
   const form = useQuoteForm({
     quoteId: effectiveId,
-    onNavigateBack: () => router.back(),
+    onNavigateBack: () => {
+      // Check if we can go back (handles case where router.replace() was used to get here)
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        // No navigation stack (e.g., came from job calculator via replace) - go to quotes list
+        router.replace("/(main)/(tabs)/quotes" as any);
+      }
+    },
     onNavigateToQuotes: () => router.replace("/(main)/(tabs)/quotes" as any),
   });
 

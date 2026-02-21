@@ -159,6 +159,30 @@ function normalizeProductName(name: string): string {
   return result.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Extract coverage (sq ft per carton/case/piece) from flooring product names.
+ * Returns null for non-flooring products or products without coverage info.
+ *
+ * Matches patterns like:
+ * - ( 21.26-sq ft / Carton )  - Lowe's laminate
+ * - (24 sqft/case)            - Home Depot
+ * - (31.09 sq.ft/ctn)         - Menards
+ * - ( 1.937-sq ft Piece )     - Individual tiles
+ */
+function extractCoverageSqft(name: string, category: string): number | null {
+  // Only extract for flooring categories
+  const isFlooring = /flooring|tile|vinyl|laminate|hardwood|carpet/i.test(category);
+  if (!isFlooring) return null;
+
+  // Match coverage patterns: number followed by sq ft and container type
+  const match = name.match(/(\d+\.?\d*)\s*-?sq\.?\s*ft\s*\/?\s*(Carton|case|ctn|box|Piece)/i);
+  if (match) {
+    const value = parseFloat(match[1]);
+    return isNaN(value) ? null : value;
+  }
+  return null;
+}
+
 interface XByteProduct {
   "Product ID / SKU": number;
   "Product Name": string;
@@ -278,6 +302,7 @@ Deno.serve(async (req) => {
             for (const item of data.data) {
               const id = `xbyte-${item["Retailer Identifier"].toLowerCase()}-${item["Product ID / SKU"]}`;
               const productName = item["Product Name"];
+              const category = item["Category"] || "";
               productMap.set(id, {
                 id,
                 name: productName,
@@ -286,7 +311,7 @@ Deno.serve(async (req) => {
                 unit: item["Unit of Measure"] || "each",
                 unit_price: item["Price (USD)"], // Required field
                 currency: "USD",
-                description: item["Category"], // Store category path in description
+                description: category, // Store category path in description
                 brand: item["Brand"] || null,
                 supplier_id: SUPPLIER_MAP[item["Retailer Identifier"]] || item["Retailer Identifier"].toLowerCase(),
                 supplier_url: item["Product URL"],
@@ -294,6 +319,7 @@ Deno.serve(async (req) => {
                 in_stock: item["In-Stock Status"] === "In Stock",
                 data_source: "retailer_scraped",
                 retailer: item["Retailer Identifier"],
+                coverage_sqft: extractCoverageSqft(productName, category), // sq ft per carton/case for flooring
                 last_synced_at: new Date().toISOString(),
               });
             }

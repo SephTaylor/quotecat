@@ -35,7 +35,8 @@ import { calculateInvoiceTotals } from "@/lib/calculations";
 import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
-import { canAccessAssemblies } from "@/lib/features";
+import { canAccessAssemblies, canExportInvoice } from "@/lib/features";
+import { incrementInvoiceCount } from "@/lib/user";
 import { getCompanyLogo } from "@/lib/logo";
 import { FormScreen } from "@/modules/core/ui";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
@@ -147,6 +148,13 @@ export default function InvoiceDetailScreen() {
       const user = await getUserState();
       const isPro = canAccessAssemblies(user);
 
+      // Check if user can export (free tier has limits)
+      const { allowed, reason, remaining } = canExportInvoice(user);
+      if (!allowed) {
+        Alert.alert("Limit Reached", reason);
+        return;
+      }
+
       // Load logo
       let logoBase64: string | undefined;
       try {
@@ -168,6 +176,11 @@ export default function InvoiceDetailScreen() {
       };
 
       await generateAndShareInvoicePDF(invoice, pdfOptions);
+
+      // Increment counter for free users after successful export
+      if (!isPro) {
+        await incrementInvoiceCount();
+      }
     } catch (error) {
       console.error("Failed to export invoice PDF:", error);
       Alert.alert(

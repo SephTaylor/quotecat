@@ -3,6 +3,7 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { FREE_LIMITS } from "@/lib/user";
 import { Stack, useRouter } from "expo-router";
+import Constants from "expo-constants";
 import React from "react";
 import {
   Linking,
@@ -656,7 +657,7 @@ export default function Settings() {
             <View style={styles.card}>
               <View style={styles.settingButton}>
                 <Text style={styles.settingButtonText}>Version</Text>
-                <Text style={styles.settingValue}>1.0.0</Text>
+                <Text style={styles.settingValue}>{Constants.expoConfig?.version ?? "1.0.0"}</Text>
               </View>
 
               <Pressable
@@ -1111,9 +1112,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderWidth: 1,
       borderColor: theme.colors.border,
       textAlign: "center",
+      textAlignVertical: "center",
       fontSize: 15,
       fontWeight: "600",
       color: theme.colors.text,
+      padding: 0,
     },
     notifDaysLabel: {
       fontSize: 15,
