@@ -11,7 +11,6 @@ Prioritized based on [COMPETITOR-ANALYSIS.md](./COMPETITOR-ANALYSIS.md) gap anal
 | Feature | Priority | Status | Competitor Gap |
 |---------|----------|--------|----------------|
 | **Two-Way SMS** | Critical | Planned | Yes - all competitors have this |
-| **GPS Tracking** | Critical | Planned | Yes - standard at $59/mo tier |
 | **Online Booking** | High | Planned | Yes - customer self-scheduling |
 | **Time Tracking** | High | Planned | Yes - employee hours |
 | **Job Costing** | Medium | Planned | Yes - profitability tracking |
@@ -76,37 +75,9 @@ Prioritized based on [COMPETITOR-ANALYSIS.md](./COMPETITOR-ANALYSIS.md) gap anal
 
 ---
 
-### 2. GPS Tracking
-
-**Gap:** No technician location tracking. Standard feature at mid-tier pricing.
-
-**Why It Matters:**
-- Owners need visibility into where their team is
-- Enables "on my way" customer notifications
-- Proves attendance (important for billing disputes)
-- Foundation for route optimization
-
-**Solution:**
-- Track worker location when clocked into a job
-- Show tech locations on map in portal
-- "On My Way" auto-texts client with ETA
-- Location history for job verification
-- Privacy: only track when on the clock
-
-**Competitor Benchmark:**
-- Jobber Connect ($119): GPS tracking included
-- Housecall Pro Basic ($59): GPS tracking included
-- Workiz Standard ($225): GPS tracking included
-
-**Tier:** Pro (basic), Premium (map view + history)
-
-**Effort:** ~1 week
-
----
-
 ## High Priority
 
-### 3. Online Booking
+### 2. Online Booking
 
 **Gap:** Customers can't self-schedule appointments.
 
@@ -133,7 +104,7 @@ Prioritized based on [COMPETITOR-ANALYSIS.md](./COMPETITOR-ANALYSIS.md) gap anal
 
 ---
 
-### 4. Time Tracking
+### 3. Time Tracking
 
 **Gap:** No employee hour tracking.
 
@@ -162,7 +133,7 @@ Prioritized based on [COMPETITOR-ANALYSIS.md](./COMPETITOR-ANALYSIS.md) gap anal
 
 ## Medium Priority
 
-### 5. Job Costing (Profitability Tracking)
+### 4. Job Costing (Profitability Tracking)
 
 **Gap:** No way to track actual costs vs quoted amounts.
 
@@ -187,7 +158,7 @@ Prioritized based on [COMPETITOR-ANALYSIS.md](./COMPETITOR-ANALYSIS.md) gap anal
 
 ---
 
-### 6. Review Request Automation
+### 5. Review Request Automation
 
 **Gap:** No automated Google review requests.
 
@@ -214,7 +185,7 @@ Prioritized based on [COMPETITOR-ANALYSIS.md](./COMPETITOR-ANALYSIS.md) gap anal
 
 ---
 
-### 7. Service Plans / Memberships
+### 6. Service Plans / Memberships
 
 **Gap:** No recurring maintenance agreement management.
 
@@ -242,7 +213,7 @@ Prioritized based on [COMPETITOR-ANALYSIS.md](./COMPETITOR-ANALYSIS.md) gap anal
 
 ---
 
-### 8. Price Data Integration
+### 7. Price Data Integration
 
 **Problem:** Pricebook is disconnected from real-time supplier pricing.
 
@@ -329,16 +300,34 @@ Based on impact vs effort:
 
 | Order | Feature | Effort | Impact | Notes |
 |-------|---------|--------|--------|-------|
-| 1 | GPS Tracking | 1 week | High | Foundation for SMS "On My Way" |
-| 2 | Two-Way SMS | 2 weeks | Critical | Requires Twilio setup |
-| 3 | Time Tracking | 1 week | High | Pairs with GPS |
-| 4 | Review Requests | 3 days | Medium | Quick win |
-| 5 | Online Booking | 1.5 weeks | High | Lead capture |
-| 6 | Job Costing | 1 week | Medium | Uses time tracking data |
-| 7 | Service Plans | 2 weeks | Medium | Complex, recurring billing |
-| 8 | Price Data | 1 week | Medium | Unique differentiator |
+| 1 | Two-Way SMS | 2 weeks | Critical | Twilio, includes "On My Way" button |
+| 2 | Time Tracking | 1 week | High | Web-based via worker portal |
+| 3 | Review Requests | 3 days | Medium | Quick win |
+| 4 | Online Booking | 1.5 weeks | High | Lead capture |
+| 5 | Job Costing | 1 week | Medium | Uses time tracking data |
+| 6 | Service Plans | 2 weeks | Medium | Complex, recurring billing |
+| 7 | Price Data | 1 week | Medium | Unique differentiator |
 
-**Total to close all major competitor gaps:** ~10 weeks
+**Total to close major competitor gaps:** ~9 weeks
+
+---
+
+## Future (Post-Launch)
+
+### QuoteCat Crew App
+
+**Deferred:** Build after main app is live on App Store.
+
+A lightweight companion app for workers/technicians:
+- View assigned jobs
+- Clock in/out with GPS stamp
+- "On My Way" with real location
+- Add notes/photos
+- Push notifications for new assignments
+
+This unlocks full GPS tracking without requiring workers to use the main QuoteCat app.
+
+**Effort:** ~3 weeks + App Store approval process
 
 ---
 
