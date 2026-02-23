@@ -21,6 +21,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { needsSync, syncAllProducts, hasProductCache } from "@/modules/catalog/productService";
+import { setUserEmail } from "@/lib/user";
 
 const LAST_EMAIL_KEY = "@quotecat/last-email";
 
@@ -118,6 +119,8 @@ export default function SignUpScreen() {
         // Check if email confirmation is required
         if (data.session) {
           // User is signed in immediately (email confirmation disabled)
+          // Save email to user state so Delete Account works
+          await setUserEmail(email.trim());
           Alert.alert("Success", "Account created successfully!");
 
           // Sync product catalog for new user

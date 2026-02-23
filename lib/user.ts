@@ -198,6 +198,17 @@ export async function activatePremiumTier(email: string): Promise<void> {
 }
 
 /**
+ * Set user email (for any signed-in user, including free tier)
+ */
+export async function setUserEmail(email: string): Promise<void> {
+  const state = await getUserState();
+  await saveUserState({
+    ...state,
+    email,
+  });
+}
+
+/**
  * Deactivate Pro tier (subscription ended)
  */
 export async function deactivateProTier(): Promise<void> {

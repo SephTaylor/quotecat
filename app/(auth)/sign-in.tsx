@@ -20,7 +20,7 @@ import { Stack, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
-import { activateProTier, activatePremiumTier } from "@/lib/user";
+import { activateProTier, activatePremiumTier, setUserEmail } from "@/lib/user";
 import { needsSync, syncAllProducts, hasProductCache } from "@/modules/catalog/productService";
 
 const LAST_EMAIL_KEY = "@quotecat/last-email";
@@ -118,15 +118,18 @@ export default function SignInScreen() {
           // Profile doesn't exist yet - user is on free tier
           // Profile will be created by database trigger or on first paid subscription
           console.log("No profile found, defaulting to free tier");
+          // Still save email so Delete Account works for free users
+          await setUserEmail(email.trim());
           Alert.alert("Success", "Signed in successfully");
         } else if (profile) {
           // Update local user state based on Supabase tier
-          const isPaidTier = profile.tier === "premium" || profile.tier === "pro";
-
           if (profile.tier === "premium") {
             await activatePremiumTier(profile.email);
           } else if (profile.tier === "pro") {
             await activateProTier(profile.email);
+          } else {
+            // Free tier - still save email so Delete Account works
+            await setUserEmail(profile.email);
           }
 
           Alert.alert("Success", "Signed in successfully");
