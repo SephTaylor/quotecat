@@ -331,6 +331,30 @@ This unlocks full GPS tracking without requiring workers to use the main QuoteCa
 
 ---
 
+## Infrastructure / Ops (Internal)
+
+### Service Health Monitoring
+
+**Problem:** Multiple service providers (Netlify, Supabase, Resend, Stripe, PostHog) - if any hits rate limits or has billing issues, app could break for users.
+
+**Solution:**
+- Health check endpoint (`/api/health`) that verifies all services
+- UptimeRobot or Better Stack to monitor the endpoint
+- Single dashboard showing status of all dependencies
+- Alerts before users notice problems
+
+**Services to monitor:**
+- Supabase (database, auth, edge functions)
+- Resend (email delivery, quota)
+- Stripe (payments, webhooks)
+- Netlify (deploys, functions)
+- PostHog (analytics)
+- xByte (supplier pricing API)
+
+**Status:** Planned (not urgent, do before scaling)
+
+---
+
 ## Competitive Position After Roadmap
 
 Once complete, QuoteCat Premium will match or exceed:
