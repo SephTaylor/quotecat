@@ -49,7 +49,7 @@
           "name": "Free",
           "price": "0",
           "priceCurrency": "USD",
-          "description": "25 quotes/month, 5 PDF exports, full product catalog, zero transaction fees"
+          "description": "Unlimited quotes (local), unlimited clients, 5 quote PDFs/month, 5 invoice PDFs/month, full product catalog, zero transaction fees"
         },
         {
           "@type": "Offer",
@@ -586,13 +586,22 @@
             border-radius: 16px;
             border: 2px solid rgba(249, 115, 22, 0.1);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(249, 115, 22, 0.15);
-            border-color: rgba(249, 115, 22, 0.3);
+            transform: translateY(-6px);
+            box-shadow: 0 16px 40px rgba(249, 115, 22, 0.2);
+            border-color: rgba(249, 115, 22, 0.4);
+        }
+
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1);
+            box-shadow: 0 8px 24px rgba(249, 115, 22, 0.4);
+        }
+
+        .feature-card .feature-icon {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
         }
 
         .feature-header {
@@ -615,6 +624,26 @@
             color: white;
             box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
             flex-shrink: 0;
+        }
+
+        .feature-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* App Store Badges */
+        .store-badge {
+            display: inline-block;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .store-badge:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+
+        .store-badge svg {
+            display: block;
         }
 
         .feature-card h3 {
@@ -653,13 +682,18 @@
             padding: 36px 28px;
             text-align: center;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
         }
 
         .tier-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        .tier-card:hover .tier-button {
+            transform: scale(1.02);
         }
 
         .tier-card.featured {
@@ -772,7 +806,7 @@
             font-weight: 700;
             font-size: 16px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
             margin-top: 24px;
             text-decoration: none;
@@ -781,12 +815,12 @@
         }
 
         .tier-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 28px rgba(249, 115, 22, 0.5);
         }
 
         .tier-button:active {
-            transform: translateY(0);
+            transform: translateY(0) scale(0.98);
         }
 
         .tier-button-secondary {
@@ -861,13 +895,13 @@
             padding: 24px;
             border-radius: 16px;
             border: 2px solid rgba(249, 115, 22, 0.1);
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .faq-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(249, 115, 22, 0.15);
-            border-color: rgba(249, 115, 22, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(249, 115, 22, 0.18);
+            border-color: rgba(249, 115, 22, 0.35);
         }
 
         .faq-question {
@@ -990,6 +1024,17 @@
             .status-badge {
                 font-size: 11px;
                 padding: 6px 12px;
+            }
+
+            /* Drew hero mobile */
+            .drew-hero-img {
+                width: 64px;
+                height: 64px;
+            }
+
+            .drew-speech-bubble {
+                font-size: 13px;
+                padding: 8px 14px;
             }
 
             /* Typography */
@@ -1346,6 +1391,262 @@
             font-size: 14px;
             margin-top: 8px;
         }
+
+        /* Scroll animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+        }
+
+        .fade-in-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Allow hover transforms to override fade-in after animation completes */
+        .feature-card.fade-in.visible:hover {
+            transform: translateY(-6px);
+        }
+
+        .tier-card.fade-in-up.visible:hover {
+            transform: translateY(-8px);
+        }
+
+        .tier-card.featured.fade-in-up.visible:hover {
+            transform: scale(1.05) translateY(-4px);
+        }
+
+        .faq-item.fade-in.visible:hover {
+            transform: translateY(-4px);
+        }
+
+        /* Staggered animations for grid items */
+        .stagger-1 { transition-delay: 0.1s; }
+        .stagger-2 { transition-delay: 0.2s; }
+        .stagger-3 { transition-delay: 0.3s; }
+        .stagger-4 { transition-delay: 0.4s; }
+        .stagger-5 { transition-delay: 0.5s; }
+        .stagger-6 { transition-delay: 0.6s; }
+
+        /* Hero Layout */
+        .hero-layout {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 60px;
+        }
+
+        .hero-layout .hero-content {
+            flex: 1;
+            text-align: left;
+        }
+
+        .hero-layout .hero-content .drew-hero {
+            justify-content: flex-start;
+        }
+
+        /* Phone Mockup */
+        .hero-phone-wrapper {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .hero-phone-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 400px;
+            background: radial-gradient(ellipse at center, rgba(249, 115, 22, 0.35) 0%, rgba(249, 115, 22, 0.1) 40%, transparent 70%);
+            filter: blur(40px);
+            z-index: 0;
+        }
+
+        .hero-phone {
+            position: relative;
+            z-index: 1;
+            width: 280px;
+            background: #000;
+            border-radius: 40px;
+            padding: 12px;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            transform: perspective(1000px) rotateY(-5deg) rotateX(2deg);
+        }
+
+        .hero-phone-notch {
+            position: absolute;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 28px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 10;
+        }
+
+        .hero-phone-screen {
+            width: 100%;
+            border-radius: 28px;
+            display: block;
+        }
+
+        /* Floating Badges */
+        .hero-floating-badge {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2937;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            z-index: 2;
+        }
+
+        .hero-floating-badge svg {
+            color: #f97316;
+        }
+
+        .badge-1 {
+            top: 10%;
+            right: -20px;
+        }
+
+        .badge-2 {
+            top: 45%;
+            left: -40px;
+        }
+
+        .badge-3 {
+            bottom: 15%;
+            right: -30px;
+        }
+
+        /* Mobile: Stack layout */
+        @media (max-width: 900px) {
+            .hero-layout {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .hero-layout .hero-content {
+                text-align: center;
+            }
+
+            .hero-layout .hero-content .drew-hero {
+                justify-content: center;
+            }
+
+            .hero-phone-wrapper {
+                margin-top: 40px;
+            }
+
+            .hero-phone {
+                width: 240px;
+                transform: perspective(1000px) rotateY(0deg) rotateX(0deg);
+                animation: phoneFloatMobile 6s ease-in-out infinite;
+            }
+
+            @keyframes phoneFloatMobile {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
+            }
+
+            .hero-floating-badge {
+                font-size: 11px;
+                padding: 8px 12px;
+            }
+
+            .badge-1 { right: -10px; }
+            .badge-2 { left: -20px; }
+            .badge-3 { right: -10px; }
+
+            .hero-phone-glow {
+                width: 250px;
+                height: 350px;
+            }
+        }
+
+        /* Drew Hero */
+        .drew-hero {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .drew-hero-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            box-shadow: 0 8px 32px rgba(249, 115, 22, 0.3);
+        }
+
+        .drew-speech-bubble {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            position: relative;
+            box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+        }
+
+        .drew-speech-bubble::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 8px;
+            border-style: solid;
+            border-color: transparent #f97316 transparent transparent;
+        }
+
+        /* Hero section animation */
+        .hero-animate {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: heroFadeIn 0.8s ease-out forwards;
+        }
+
+        .hero-animate-delay {
+            animation-delay: 0.2s;
+        }
+
+        .hero-animate-delay-2 {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes heroFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -1403,17 +1704,34 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
-            <div class="hero-content">
-                <h1>Quote Faster. Win More Bids. <span class="highlight">Keep 100%.</span></h1>
-                <p class="subtitle">
-                    The mobile quoting app built for contractors. Create professional quotes in 5 minutes on-site, send a link to your client, and keep every dollar — no transaction fees, ever.
-                </p>
-                <div class="value-props">
-                    <span class="value-prop">Zero transaction fees</span>
-                    <span class="value-prop">Quote in 5 minutes</span>
-                    <span class="value-prop">Send links, get notified</span>
+            <div class="hero-layout">
+                <div class="hero-content">
+                    <div class="drew-hero hero-animate">
+                        <img src="drew-avatar.png" alt="Drew - Your AI Assistant" class="drew-hero-img">
+                        <div class="drew-speech-bubble">
+                            <span>Let me help you quote faster!</span>
+                        </div>
+                    </div>
+                    <h1 class="hero-animate">Quote Faster. Win More Bids. <span class="highlight">Keep 100%.</span></h1>
+                    <p class="subtitle hero-animate hero-animate-delay">
+                        The mobile quoting app built for contractors. Create professional quotes in 5 minutes on-site, send a link to your client, and keep every dollar — no transaction fees, ever.
+                    </p>
+                    <div class="value-props hero-animate hero-animate-delay">
+                        <span class="value-prop">Zero transaction fees</span>
+                        <span class="value-prop">Quote in 5 minutes</span>
+                        <span class="value-prop">Send links, get notified</span>
+                    </div>
+                    <div style="text-align: center; margin-top: 8px;">
+                        <a href="#pricing" class="cta-button hero-animate hero-animate-delay-2">Start Free Today</a>
+                    </div>
                 </div>
-                <a href="#pricing" class="cta-button">Start Free Today</a>
+                <div class="hero-phone-wrapper hero-animate hero-animate-delay">
+                    <div class="hero-phone-glow"></div>
+                    <div class="hero-phone">
+                        <div class="hero-phone-notch"></div>
+                        <img src="app-screenshot.png" alt="QuoteCat Dashboard showing $91K in quotes sent" class="hero-phone-screen">
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -1422,16 +1740,16 @@
     <section class="problem-section">
         <div class="container">
             <div class="problem-content">
-                <h2 class="problem-title">You're Losing Money Two Ways</h2>
-                <p class="problem-text">
+                <h2 class="problem-title fade-in">You're Losing Money Two Ways</h2>
+                <p class="problem-text fade-in">
                     <strong style="color: #f97316;">Slow quotes cost you jobs.</strong><br>
                     Going home, booting up the laptop, spending hours in spreadsheets — by then, your client already hired someone faster.
                 </p>
-                <p class="problem-text">
+                <p class="problem-text fade-in">
                     <strong style="color: #f97316;">Payment fees cost you thousands.</strong><br>
                     Other apps take 2.9% of every payment. On a $10,000 job, that's $290 gone. Do $300K/year? You're giving away $8,700.
                 </p>
-                <p class="problem-text">
+                <p class="problem-text fade-in">
                     QuoteCat fixes both. Quote on-site in 5 minutes. Clients pay you directly — no middleman, no processing fees. <strong style="color: #ffffff;">You keep 100%.</strong>
                 </p>
             </div>
@@ -1442,22 +1760,22 @@
     <section style="padding: 50px 0;">
         <div class="container">
             <div style="max-width: 800px; margin: 0 auto; text-align: center;">
-                <h2 class="section-title" style="margin-bottom: 32px;">Your Subscription Pays for Itself</h2>
+                <h2 class="section-title fade-in" style="margin-bottom: 32px;">Your Subscription Pays for Itself</h2>
                 <div style="display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-bottom: 32px;">
-                    <div style="background: rgba(255,255,255,0.08); border: 1px solid rgba(249,115,22,0.3); border-radius: 16px; padding: 28px 32px; flex: 1; min-width: 220px; max-width: 320px;">
+                    <div class="fade-in stagger-1" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(249,115,22,0.3); border-radius: 16px; padding: 28px 32px; flex: 1; min-width: 220px; max-width: 320px;">
                         <p style="font-size: 14px; color: #9ca3af; margin-bottom: 8px; font-weight: 600;">Other Apps</p>
                         <p style="font-size: 36px; font-weight: 800; color: #ef4444; margin-bottom: 4px;">-$435</p>
                         <p style="font-size: 14px; color: #9ca3af;">/month in processing fees</p>
                         <p style="font-size: 12px; color: #6b7280; margin-top: 4px;">on $15K/month volume</p>
                     </div>
-                    <div style="background: rgba(249,115,22,0.1); border: 2px solid rgba(249,115,22,0.5); border-radius: 16px; padding: 28px 32px; flex: 1; min-width: 220px; max-width: 320px;">
+                    <div class="fade-in stagger-2" style="background: rgba(249,115,22,0.1); border: 2px solid rgba(249,115,22,0.5); border-radius: 16px; padding: 28px 32px; flex: 1; min-width: 220px; max-width: 320px;">
                         <p style="font-size: 14px; color: #9ca3af; margin-bottom: 8px; font-weight: 600;">QuoteCat Pro</p>
                         <p style="font-size: 36px; font-weight: 800; color: #22c55e; margin-bottom: 4px;">$29</p>
                         <p style="font-size: 14px; color: #9ca3af;">/month flat. No fees.</p>
                         <p style="font-size: 12px; color: #6b7280; margin-top: 4px;">you save $400+/month</p>
                     </div>
                 </div>
-                <p style="font-size: 18px; color: #d1d5db; max-width: 600px; margin: 0 auto; line-height: 1.6;">
+                <p class="fade-in" style="font-size: 18px; color: #d1d5db; max-width: 600px; margin: 0 auto; line-height: 1.6;">
                     Most apps cost you money. QuoteCat <strong style="color: #f97316;">saves</strong> you money. Simple as that.
                 </p>
             </div>
@@ -1465,49 +1783,61 @@
     </section>
 
     <!-- Features Section -->
-    <section class="features">
+    <section class="features" id="features">
         <div class="container">
-            <h2 class="section-title">Everything You Need, Nothing You Don't</h2>
-            <p class="section-subtitle">Built for contractors who want to quote fast, look professional, and keep every dollar they earn.</p>
+            <h2 class="section-title fade-in">Everything You Need, Nothing You Don't</h2>
+            <p class="section-subtitle fade-in">Built for contractors who want to quote fast, look professional, and keep every dollar they earn.</p>
             <div class="features-grid">
-                <div class="feature-card">
+                <div class="feature-card fade-in stagger-1">
                     <div class="feature-header">
-                        <div class="feature-icon">$0</div>
+                        <div class="feature-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        </div>
                         <h3>Keep 100% of Payments</h3>
                     </div>
                     <p>No payment processing fees. Ever. Set your payment preferences once, and clients pay you directly. No middleman. You keep every dollar.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in stagger-2">
                     <div class="feature-header">
-                        <div class="feature-icon">5m</div>
+                        <div class="feature-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
                         <h3>Quote in 5 Minutes</h3>
                     </div>
                     <p>Pick products from the catalog, add labor and markup, done. Send a professional quote while you're still on-site. Win bids before competitors get home.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in stagger-3">
                     <div class="feature-header">
-                        <div class="feature-icon" style="font-size: 22px;">&#128279;</div>
+                        <div class="feature-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                        </div>
                         <h3>Share Quotes as Links</h3>
                     </div>
                     <p>Text your client a link. They accept or decline right from their phone. You get notified the moment they view it, approve it, or decline it.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in stagger-4">
                     <div class="feature-header">
-                        <div class="feature-icon" style="font-size: 22px;">&#9733;</div>
+                        <div class="feature-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        </div>
                         <h3>Good / Better / Best</h3>
                     </div>
                     <p>Present multiple pricing tiers in one link. Clients pick the option that fits their budget. You close more deals with tiered pricing.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in stagger-5">
                     <div class="feature-header">
-                        <div class="feature-icon" style="font-size: 22px;">&#128276;</div>
+                        <div class="feature-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        </div>
                         <h3>Real-Time Notifications</h3>
                     </div>
                     <p>Know the moment a client opens your quote, accepts it, or declines it. No more wondering "did they see it?" — you'll always know.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in stagger-6">
                     <div class="feature-header">
-                        <div class="feature-icon" style="font-size: 22px;">&#9889;</div>
+                        <div class="feature-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        </div>
                         <h3>Works Offline</h3>
                     </div>
                     <p>No internet at the job site? No problem. QuoteCat works offline and syncs when you're back online. No other app at this price does that.</p>
@@ -1517,27 +1847,28 @@
     </section>
 
     <!-- Tiers Section -->
-    <section class="tiers">
+    <section class="tiers" id="pricing">
         <div class="container">
-            <h2 class="section-title">Start Free, Upgrade When You're Ready</h2>
-            <p class="section-subtitle">Every plan includes zero transaction fees. Your clients pay you directly — you keep 100%.</p>
+            <h2 class="section-title fade-in">Start Free, Upgrade When You're Ready</h2>
+            <p class="section-subtitle fade-in">Every plan includes zero transaction fees. Your clients pay you directly — you keep 100%.</p>
             <div class="tiers-grid">
-                <div class="tier-card">
+                <div class="tier-card fade-in-up stagger-1">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <div class="tier-name">Free</div>
                     <div class="tier-description">Perfect for testing the waters</div>
                     <div class="tier-price">$0</div>
                     <div class="tier-price-period">Forever</div>
                     <ul class="tier-features">
-                        <li>25 quotes/month</li>
-                        <li>5 PDF exports</li>
+                        <li>Unlimited quotes (local)</li>
+                        <li>Unlimited clients</li>
+                        <li>5 quote PDFs/month</li>
+                        <li>5 invoice PDFs/month</li>
                         <li>Full product catalog</li>
-                        <li>Professional templates</li>
                         <li>Zero transaction fees</li>
                     </ul>
                     <a href="#download" class="tier-button tier-button-outline">Get Started Free</a>
                 </div>
-                <div class="tier-card featured">
+                <div class="tier-card featured fade-in-up stagger-2">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <span class="tier-badge">Most Popular</span>
                     <div class="tier-name">Pro</div>
@@ -1557,7 +1888,7 @@
                     <button onclick="handleGetPro()" class="tier-button">Get Pro Now</button>
                     <div class="tier-note">Regular price: $39/mo after 50 spots filled</div>
                 </div>
-                <div class="tier-card">
+                <div class="tier-card fade-in-up stagger-3">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <div class="tier-name">Premium</div>
                     <div class="tier-description">Complete business toolkit</div>
@@ -1567,10 +1898,11 @@
                         <li>Everything in Pro</li>
                         <li>AI Quote Wizard (Drew)</li>
                         <li>Contracts & e-signatures</li>
+                        <li>Job scheduling & calendar</li>
+                        <li>SMS & email notifications</li>
                         <li>Web portal with analytics</li>
                         <li>Team & worker management</li>
                         <li>QuickBooks sync</li>
-                        <li>Priority support</li>
                         <li>Zero transaction fees</li>
                     </ul>
                     <button onclick="handleGetPremium()" class="tier-button">Get Premium Now</button>
@@ -1583,18 +1915,42 @@
     <!-- Download Section -->
     <section class="cta-section" id="download">
         <div class="container">
-            <div class="cta-box">
+            <div class="cta-box fade-in">
                 <h2>Stop Paying Fees. Start Keeping 100%.</h2>
                 <p>Download QuoteCat free. Create professional quotes in minutes. Keep every dollar you earn.</p>
 
                 <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 32px;">
-                    <a href="https://apps.apple.com/app/quotecat" target="_blank" class="cta-button-white" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                        App Store
+                    <a href="https://apps.apple.com/app/quotecat" target="_blank" class="store-badge" title="Download on the App Store">
+                        <svg width="135" height="40" viewBox="0 0 135 40" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="135" height="40" rx="5" fill="#000"/>
+                            <path d="M30.128 19.784c-.029-3.223 2.639-4.791 2.761-4.864-1.511-2.203-3.853-2.504-4.676-2.528-1.967-.207-3.875 1.177-4.877 1.177-1.022 0-2.565-1.157-4.228-1.123-2.14.033-4.142 1.272-5.24 3.196-2.266 3.923-.576 9.688 1.595 12.859 1.086 1.553 2.355 3.287 4.016 3.226 1.625-.067 2.232-1.036 4.193-1.036 1.943 0 2.513 1.036 4.207.997 1.744-.028 2.842-1.56 3.89-3.127 1.255-1.78 1.759-3.533 1.779-3.623-.041-.014-3.387-1.291-3.42-5.154zM26.928 10.306c.874-1.093 1.472-2.58 1.306-4.089-1.265.056-2.847.875-3.758 1.944-.806.942-1.526 2.486-1.34 3.938 1.421.106 2.88-.717 3.792-1.793z" fill="#fff"/>
+                            <path d="M53.645 31.504h-2.271l-1.244-3.909h-4.324l-1.185 3.909h-2.211l4.284-13.308h2.646l4.305 13.308zm-3.89-5.549l-1.125-3.475c-.119-.355-.343-1.191-.671-2.507h-.04c-.131.566-.343 1.402-.635 2.507l-1.105 3.475h3.576zM64.662 26.588c0 1.632-.441 2.922-1.323 3.869-.79.848-1.771 1.271-2.942 1.271-1.264 0-2.172-.454-2.725-1.362h-.04v5.055h-2.132V25.067c0-1.026-.027-2.079-.079-3.159h1.875l.119 1.521h.04c.711-1.146 1.79-1.718 3.238-1.718 1.132 0 2.077.447 2.833 1.342.758.896 1.136 2.074 1.136 3.535zm-2.172.078c0-.934-.212-1.704-.635-2.31-.461-.632-1.078-.948-1.856-.948-.526 0-1.004.176-1.431.523-.428.35-.708.807-.839 1.373-.066.264-.099.48-.099.65v1.6c0 .698.214 1.287.642 1.768.428.48.984.721 1.668.721.803 0 1.428-.31 1.875-.928.448-.619.675-1.442.675-2.449zM75.699 26.588c0 1.632-.441 2.922-1.324 3.869-.789.848-1.77 1.271-2.941 1.271-1.264 0-2.172-.454-2.724-1.362h-.04v5.055h-2.132V25.067c0-1.026-.027-2.079-.079-3.159h1.875l.119 1.521h.04c.71-1.146 1.789-1.718 3.238-1.718 1.131 0 2.076.447 2.834 1.342.755.896 1.134 2.074 1.134 3.535zm-2.172.078c0-.934-.211-1.704-.635-2.31-.462-.632-1.078-.948-1.855-.948-.527 0-1.004.176-1.432.523-.428.35-.707.807-.838 1.373-.065.264-.099.48-.099.65v1.6c0 .698.214 1.287.641 1.768.428.48.985.721 1.668.721.804 0 1.429-.31 1.876-.928.448-.619.674-1.442.674-2.449zM88.039 27.772c0 1.132-.393 2.053-1.182 2.764-.867.777-2.074 1.165-3.625 1.165-1.432 0-2.58-.276-3.449-.829l.494-1.777c.936.566 1.963.85 3.082.85.803 0 1.428-.182 1.877-.544.448-.362.672-.848.672-1.454 0-.54-.184-.994-.553-1.362-.369-.369-.979-.711-1.836-1.028-2.33-.869-3.494-2.142-3.494-3.816 0-1.094.405-1.991 1.215-2.69.809-.7 1.888-1.049 3.238-1.049 1.197 0 2.195.209 2.992.628l-.533 1.738c-.75-.395-1.598-.593-2.54-.593-.75 0-1.336.184-1.756.553-.355.329-.533.73-.533 1.205 0 .526.203.961.611 1.303.355.315 1.004.658 1.954 1.028 1.145.462 1.986 1.001 2.521 1.619.535.617.805 1.388.805 2.289zM95.088 23.508h-2.35v4.659c0 1.185.414 1.777 1.244 1.777.382 0 .697-.033.947-.099l.059 1.619c-.42.157-.973.236-1.658.236-.842 0-1.5-.257-1.975-.77-.473-.514-.711-1.376-.711-2.587v-4.837h-1.4v-1.6h1.4v-1.757l2.094-.632v2.389h2.35v1.602zM105.691 26.627c0 1.475-.422 2.686-1.264 3.633-.882.974-2.055 1.461-3.516 1.461-1.408 0-2.529-.467-3.365-1.401s-1.254-2.113-1.254-3.534c0-1.488.43-2.705 1.293-3.652.862-.948 2.024-1.422 3.484-1.422 1.408 0 2.541.467 3.396 1.402.818.907 1.226 2.078 1.226 3.513zm-2.212.069c0-.885-.189-1.644-.572-2.278-.447-.766-1.086-1.148-1.914-1.148-.857 0-1.508.383-1.955 1.148-.383.634-.572 1.405-.572 2.317 0 .884.189 1.644.572 2.276.461.766 1.105 1.148 1.936 1.148.814 0 1.453-.39 1.914-1.168.393-.645.591-1.412.591-2.295zM112.621 23.783c-.211-.039-.436-.059-.672-.059-.75 0-1.33.283-1.738.85-.355.5-.533 1.132-.533 1.895v5.035h-2.131l.02-6.574c0-1.106-.027-2.113-.08-3.021h1.857l.078 1.836h.059c.225-.631.58-1.139 1.066-1.52.473-.343.986-.514 1.541-.514.197 0 .375.014.533.039v1.993zM122.156 26.252c0 .382-.025.704-.078.967h-6.396c.025.948.334 1.673.928 2.173.539.447 1.236.671 2.092.671.947 0 1.811-.151 2.588-.454l.334 1.48c-.908.395-1.98.593-3.217.593-1.488 0-2.656-.438-3.504-1.313-.846-.875-1.271-2.05-1.271-3.524 0-1.447.395-2.652 1.186-3.613.828-1.026 1.947-1.539 3.355-1.539 1.383 0 2.43.513 3.139 1.539.563.814.844 1.82.844 3.02zm-2.033-.553c.014-.632-.125-1.178-.414-1.639-.369-.593-.936-.889-1.699-.889-.697 0-1.264.289-1.697.868-.355.461-.566 1.014-.631 1.658l4.441.002z" fill="#fff"/>
+                            <path d="M49.05 10.009c0 1.177-.353 2.063-1.058 2.658-.652.549-1.581.824-2.788.824-.601 0-1.117-.025-1.549-.075V7.629c.564-.1 1.173-.149 1.83-.149 1.144 0 2.005.247 2.585.741.646.553.969 1.357.969 2.412v-.624zm-1.105.029c0-.763-.202-1.348-.606-1.756-.404-.407-.994-.611-1.771-.611-.332 0-.613.022-.845.065v4.9c.129.021.365.03.71.03.801 0 1.421-.223 1.86-.671.438-.447.658-1.09.658-1.926l-.006-.031zM54.909 11.037c0 .725-.207 1.319-.621 1.785-.433.479-1.009.718-1.727.718-.692 0-1.243-.229-1.654-.689-.409-.459-.615-1.038-.615-1.736 0-.731.211-1.329.635-1.794.423-.466.994-.698 1.712-.698.692 0 1.248.229 1.669.688.402.446.601 1.022.601 1.726zm-1.087.034c0-.435-.093-.808-.281-1.119-.22-.376-.533-.564-.94-.564-.421 0-.741.188-.96.564-.188.311-.281.69-.281 1.138 0 .435.094.808.281 1.119.227.376.543.564.951.564.4 0 .714-.191.94-.574.194-.318.29-.693.29-1.128zM62.828 8.59l-1.478 4.726h-.975l-.612-2.042c-.153-.504-.28-1.004-.379-1.502h-.019c-.091.51-.217 1.011-.378 1.502l-.651 2.042h-.985l-1.389-4.726h1.086l.533 2.223c.129.528.235 1.028.32 1.502h.019c.078-.428.209-.926.391-1.493l.67-2.232h.865l.641 2.182c.155.535.282 1.046.378 1.533h.029c.071-.474.178-.985.32-1.533l.572-2.182h1.042zM68.129 13.316h-1.048v-2.709c0-.833-.316-1.25-.951-1.25-.31 0-.562.114-.757.343-.193.229-.291.499-.291.808v2.808h-1.048v-3.375c0-.415-.013-.864-.038-1.349h.921l.049.737h.029c.122-.229.303-.418.543-.569.284-.176.602-.265.95-.265.44 0 .806.142 1.097.427.363.349.544.87.544 1.563v2.831zM71.075 13.316h-1.048V6.273h1.048v7.043zM77.248 11.037c0 .725-.207 1.319-.621 1.785-.433.479-1.009.718-1.727.718-.693 0-1.244-.229-1.654-.689-.41-.459-.615-1.038-.615-1.736 0-.731.211-1.329.635-1.794.424-.466.994-.698 1.712-.698.692 0 1.248.229 1.669.688.401.446.601 1.022.601 1.726zm-1.086.034c0-.435-.094-.808-.281-1.119-.221-.376-.534-.564-.941-.564-.421 0-.741.188-.96.564-.188.311-.281.69-.281 1.138 0 .435.094.808.281 1.119.227.376.543.564.951.564.4 0 .714-.191.94-.574.193-.318.291-.693.291-1.128zM82.313 13.316h-.941l-.078-.543h-.029c-.322.433-.781.649-1.379.649-.449 0-.815-.144-1.097-.433-.256-.264-.384-.596-.384-.996 0-.599.249-1.056.749-1.37.5-.314 1.206-.468 2.119-.461v-.086c0-.608-.32-.911-.961-.911-.458 0-.861.115-1.21.343l-.21-.689c.432-.264.964-.396 1.596-.396 1.218 0 1.828.643 1.828 1.929v1.764c0 .477.023.856.068 1.138l-.071.062zm-1.096-1.677v-.738c-1.2-.02-1.801.298-1.801.951 0 .248.067.434.201.558.135.124.307.186.514.186.231 0 .446-.072.643-.216.197-.144.318-.331.363-.562.052-.114.08-.238.08-.371v.192zM88.157 13.316h-.931l-.049-.757h-.029c-.298.576-.793.864-1.48.864-.557 0-1.021-.218-1.389-.654-.369-.436-.553-1.002-.553-1.698 0-.744.2-1.349.601-1.815.386-.431.858-.647 1.418-.647.611 0 1.038.205 1.281.616h.019V6.273h1.048v5.736c0 .471.013.906.039 1.307h.025zm-1.086-2.06v-.8c0-.137-.009-.247-.029-.331-.064-.258-.192-.476-.382-.652-.191-.177-.422-.265-.693-.265-.388 0-.694.158-.916.473-.223.315-.334.725-.334 1.227 0 .482.107.871.321 1.168.227.314.533.472.916.472.342 0 .616-.132.823-.397.199-.241.294-.532.294-.874v-.021zM97.418 11.037c0 .725-.207 1.319-.621 1.785-.432.479-1.008.718-1.727.718-.691 0-1.242-.229-1.654-.689-.409-.459-.614-1.038-.614-1.736 0-.731.211-1.329.635-1.794.423-.466.993-.698 1.711-.698.693 0 1.248.229 1.67.688.402.446.6 1.022.6 1.726zm-1.086.034c0-.435-.094-.808-.281-1.119-.22-.376-.534-.564-.94-.564-.422 0-.742.188-.961.564-.188.311-.281.69-.281 1.138 0 .435.094.808.281 1.119.228.376.543.564.951.564.4 0 .715-.191.941-.574.193-.318.29-.693.29-1.128zM102.891 13.316h-1.047v-2.709c0-.833-.316-1.25-.951-1.25-.31 0-.562.114-.756.343-.194.229-.292.499-.292.808v2.808h-1.047v-3.375c0-.415-.013-.864-.039-1.349h.922l.049.737h.029c.122-.229.304-.418.543-.569.285-.176.603-.265.951-.265.44 0 .806.142 1.097.427.362.349.543.87.543 1.563l.018 2.831zM109.902 9.385h-1.155v2.291c0 .582.204.874.611.874.188 0 .344-.016.467-.049l.028.796c-.207.078-.479.117-.814.117-.414 0-.736-.126-.971-.378-.234-.253-.352-.677-.352-1.271V9.385h-.689v-.786h.689v-.864l1.028-.311v1.175h1.155l.003.786zM115.207 13.316h-1.047v-2.689c0-.845-.316-1.269-.951-1.269-.486 0-.818.245-1.001.735-.032.104-.049.231-.049.381v2.843h-1.047V6.273h1.047v2.908h.02c.33-.517.803-.776 1.418-.776.436 0 .797.142 1.085.427.358.355.537.884.537 1.583l-.012 2.901zM120.867 10.871c0 .188-.013.346-.039.475h-3.143c.014.466.164.822.455 1.068.265.22.608.33 1.028.33.466 0 .89-.074 1.271-.223l.164.728c-.446.194-.973.291-1.582.291-.731 0-1.305-.215-1.721-.645-.416-.43-.623-1.008-.623-1.732 0-.711.193-1.303.582-1.775.407-.505.957-.757 1.65-.757.68 0 1.193.252 1.541.757.278.4.417.895.417 1.483zm-.998-.271c.007-.311-.061-.579-.203-.805-.182-.292-.461-.437-.834-.437-.343 0-.622.142-.834.427-.174.227-.277.498-.311.814l2.182.001z" fill="#fff"/>
+                        </svg>
                     </a>
-                    <a href="https://play.google.com/store/apps/details?id=com.quotecat.app" target="_blank" class="cta-button-white" style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/></svg>
-                        Google Play
+                    <a href="https://play.google.com/store/apps/details?id=com.quotecat.app" target="_blank" class="store-badge" title="Get it on Google Play">
+                        <svg width="135" height="40" viewBox="0 0 135 40" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="135" height="40" rx="5" fill="#000"/>
+                            <path d="M68.135 21.636c-2.144 0-3.893 1.631-3.893 3.878 0 2.23 1.749 3.877 3.893 3.877 2.146 0 3.893-1.647 3.893-3.877 0-2.247-1.747-3.878-3.893-3.878zm0 6.226c-1.175 0-2.188-.97-2.188-2.348 0-1.394 1.013-2.348 2.188-2.348 1.174 0 2.188.954 2.188 2.348 0 1.378-1.014 2.348-2.188 2.348zm-8.493-6.226c-2.144 0-3.893 1.631-3.893 3.878 0 2.23 1.749 3.877 3.893 3.877 2.145 0 3.893-1.647 3.893-3.877 0-2.247-1.748-3.878-3.893-3.878zm0 6.226c-1.175 0-2.188-.97-2.188-2.348 0-1.394 1.013-2.348 2.188-2.348 1.175 0 2.188.954 2.188 2.348 0 1.378-1.013 2.348-2.188 2.348zm-10.106-5.035v1.64h3.926c-.118.921-.423 1.596-.89 2.063-.57.57-1.46 1.191-3.036 1.191-2.421 0-4.314-1.953-4.314-4.375 0-2.42 1.893-4.374 4.314-4.374 1.305 0 2.261.515 2.966 1.175l1.159-1.159c-.99-.943-2.304-1.667-4.125-1.667-3.32 0-6.112 2.703-6.112 6.025 0 3.323 2.792 6.025 6.112 6.025 1.794 0 3.143-.59 4.2-1.692 1.086-1.086 1.424-2.616 1.424-3.85 0-.382-.029-.735-.088-1.002h-5.536zm41.352 1.27c-.322-.868-1.307-2.461-3.318-2.461-1.995 0-3.654 1.567-3.654 3.878 0 2.173 1.643 3.877 3.845 3.877 1.776 0 2.804-1.086 3.23-1.717l-1.321-.882c-.44.647-1.043 1.072-1.909 1.072-.866 0-1.482-.397-1.879-1.175l5.185-2.144-.179-.448zm-5.287 1.292c-.044-1.495 1.159-2.26 2.025-2.26.676 0 1.247.339 1.438.823l-3.463 1.437zm-4.216 3.759h1.705V14.636h-1.705v14.512zm-2.795-8.476h-.059c-.382-.456-1.116-.868-2.042-.868-1.939 0-3.716 1.704-3.716 3.894 0 2.173 1.777 3.861 3.716 3.861.926 0 1.66-.412 2.042-.882h.059v.559c0 1.484-.794 2.28-2.071 2.28-1.043 0-1.689-.75-1.955-1.381l-1.484.617c.427 1.028 1.557 2.291 3.439 2.291 1.998 0 3.687-1.175 3.687-4.037V21.86h-1.616v.812zm-1.953 5.368c-1.175 0-2.157-.986-2.157-2.333 0-1.364.982-2.363 2.157-2.363 1.159 0 2.071 1 2.071 2.363 0 1.347-.912 2.333-2.071 2.333zm22.256-10.113h-4.08v14.512h1.7v-5.499h2.38c1.889 0 3.743-1.367 3.743-3.506 0-2.14-1.858-3.507-3.743-3.507zm.044 5.444h-2.424v-3.877h2.424c1.275 0 1.999 1.055 1.999 1.938 0 .867-.724 1.939-1.999 1.939zm10.532-1.62c-1.233 0-2.51.543-3.038 1.748l1.51.63c.322-.63.924-.838 1.556-.838.882 0 1.778.53 1.793 1.469v.118c-.309-.176-1.043-.441-1.793-.441-1.645 0-3.32.905-3.32 2.594 0 1.543 1.35 2.537 2.86 2.537 1.159 0 1.793-.514 2.194-1.116h.059v.882h1.645v-4.418c0-2.048-1.527-3.2-3.466-3.2v.035zm-.206 6.32c-.558 0-1.35-.279-1.35-.97 0-.882.97-1.22 1.805-1.22.748 0 1.1.162 1.556.381-.132 1.058-1.058 1.809-2.011 1.809zm9.663-6.055l-1.954 4.949h-.059l-2.026-4.949h-1.835l3.04 6.92-1.732 3.845h1.777l4.683-10.765h-1.894zm-15.42 7.318h1.705V14.636h-1.705v14.512z" fill="#fff"/>
+                            <path d="M10.435 7.538c-.334.363-.53.924-.53 1.643v21.633c0 .72.196 1.28.53 1.643l.086.084 12.117-12.117v-.286L10.521 7.454l-.086.084z" fill="url(#google-play-a)"/>
+                            <path d="M26.677 24.495l-4.039-4.039v-.286l4.039-4.039.091.053 4.784 2.72c1.366.777 1.366 2.047 0 2.823l-4.784 2.72-.091.048z" fill="url(#google-play-b)"/>
+                            <path d="M26.768 24.447l-4.13-4.13-12.203 12.203c.451.476 1.194.535 2.042.06l14.291-8.133" fill="url(#google-play-c)"/>
+                            <path d="M26.768 16.178L12.477 8.046c-.848-.476-1.59-.417-2.042.06l12.203 12.203 4.13-4.131z" fill="url(#google-play-d)"/>
+                            <defs>
+                                <linearGradient id="google-play-a" x1="21.8" y1="8.708" x2="5.017" y2="25.491" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#00A0FF"/><stop offset=".007" stop-color="#00A1FF"/><stop offset=".26" stop-color="#00BEFF"/><stop offset=".512" stop-color="#00D2FF"/><stop offset=".76" stop-color="#00DFFF"/><stop offset="1" stop-color="#00E3FF"/>
+                                </linearGradient>
+                                <linearGradient id="google-play-b" x1="33.834" y1="20.313" x2="9.637" y2="20.313" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#FFE000"/><stop offset=".409" stop-color="#FFBD00"/><stop offset=".775" stop-color="#FFA500"/><stop offset="1" stop-color="#FF9C00"/>
+                                </linearGradient>
+                                <linearGradient id="google-play-c" x1="24.827" y1="22.296" x2="2.069" y2="45.054" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#FF3A44"/><stop offset="1" stop-color="#C31162"/>
+                                </linearGradient>
+                                <linearGradient id="google-play-d" x1="7.297" y1="-.883" x2="17.46" y2="9.28" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#32A071"/><stop offset=".069" stop-color="#2DA771"/><stop offset=".476" stop-color="#15CF74"/><stop offset=".801" stop-color="#06E775"/><stop offset="1" stop-color="#00F076"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
                     </a>
                 </div>
             </div>
@@ -1621,6 +1977,29 @@
     </footer>
 
     <script>
+        // Intersection Observer for scroll animations
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const fadeInObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    fadeInObserver.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        // Observe all fade-in elements when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.fade-in, .fade-in-up').forEach(el => {
+                fadeInObserver.observe(el);
+            });
+        });
+
         function toggleMenu() {
             const menu = document.getElementById('mobileMenu');
             const backdrop = document.getElementById('menuBackdrop');
