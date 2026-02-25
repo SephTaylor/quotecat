@@ -48,8 +48,18 @@
             margin: 0 auto;
             padding: 0 24px;
         }
-        .logo { height: 36px; }
-        .logo img { height: 100%; width: auto; }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            text-decoration: none;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            padding: 0 14px 0 0;
+            border-radius: 8px;
+        }
+        .logo:hover { opacity: 0.9; }
+        .logo img { height: 44px; width: auto; margin-right: -6px; }
+        .logo-text { font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px; }
         .header-nav { display: flex; gap: 32px; align-items: center; }
         .header-link {
             color: var(--text-light);
@@ -201,7 +211,7 @@
 <body>
     <header>
         <div class="header-content">
-            <a href="/" class="logo"><img src="/logo.png" alt="QuoteCat"></a>
+            <a href="/" class="logo"><img src="/qc-splash.png" alt="QuoteCat"><span class="logo-text">QuoteCat</span></a>
             <nav class="header-nav">
                 <a href="/" class="header-link">App</a>
                 <a href="/resources" class="header-link">Resources</a>
