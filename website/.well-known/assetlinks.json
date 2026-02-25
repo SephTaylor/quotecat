@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "ai.quotecat.app",
-      "sha256_cert_fingerprints": ["PLACEHOLDER_SHA256_FINGERPRINT"]
+      "sha256_cert_fingerprints": [
+        "E2:CE:D6:05:37:87:A7:D9:C2:CB:A3:81:EB:E2:F4:AC:BD:E6:8B:F7:15:D3:97:7C:53:4F:86:4E:87:82:C9:C1"
+      ]
     }
   }
 ]

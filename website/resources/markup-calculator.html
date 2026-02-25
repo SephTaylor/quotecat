@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Markup Calculator - QuoteCat</title>
+    <meta name="description" content="Free markup calculator for contractors. Enter your cost, choose your markup, and see your selling price and profit margin instantly.">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://quotecat.ai/resources/markup-calculator">
+    <meta property="og:title" content="Contractor Markup Calculator - QuoteCat">
+    <meta property="og:description" content="Free markup calculator for contractors. See your selling price and profit margin instantly.">
+    <link rel="canonical" href="https://quotecat.ai/resources/markup-calculator">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --text: #ffffff;
+            --text-light: #9ca3af;
+            --text-muted: #6b7280;
+            --bg: #111111;
+            --card-bg: #1a1a1a;
+            --border: #2a2a2a;
+            --success: #22c55e;
+            --warning: #eab308;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 16px 0;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .logo {
+            height: 36px;
+        }
+
+        .logo img {
+            height: 100%;
+            width: auto;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .header-link {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .header-link:hover {
+            color: var(--text);
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .breadcrumb a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .breadcrumb a:hover {
+            color: var(--text-light);
+        }
+
+        .breadcrumb span {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin: 0 8px;
+        }
+
+        .breadcrumb-current {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Page Header */
+        .page-header {
+            padding: 48px 0 32px;
+        }
+
+        .page-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            color: var(--text-light);
+            font-size: 16px;
+        }
+
+        /* Calculator */
+        .calculator {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper .prefix {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 16px 16px 16px 36px;
+            font-size: 24px;
+            font-weight: 600;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper input:focus {
+            border-color: var(--primary);
+        }
+
+        .markup-options {
+            margin-bottom: 32px;
+        }
+
+        .markup-options label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-light);
+        }
+
+        .markup-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .markup-btn {
+            padding: 12px 20px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .markup-btn:hover {
+            border-color: var(--text-muted);
+            color: var(--text);
+        }
+
+        .markup-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .custom-markup {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .custom-markup input {
+            width: 80px;
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            outline: none;
+            text-align: center;
+        }
+
+        .custom-markup input:focus {
+            border-color: var(--primary);
+        }
+
+        .custom-markup span {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        /* Results */
+        .results {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .result-row:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .result-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .result-value.primary {
+            color: var(--primary);
+            font-size: 28px;
+        }
+
+        .result-value.success {
+            color: var(--success);
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 24px;
+        }
+
+        .info-box-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--warning);
+            margin-bottom: 8px;
+        }
+
+        .info-box p {
+            font-size: 14px;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        .info-box code {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        /* CTA */
+        .cta-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .cta-section h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .cta-section p {
+            color: var(--text-light);
+            margin-bottom: 20px;
+            font-size: 15px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cta-btn {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .cta-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .cta-btn.secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+        }
+
+        .cta-btn.secondary:hover {
+            border-color: var(--text-muted);
+            color: var(--text);
+        }
+
+        /* Footer */
+        footer {
+            padding: 32px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--text-light);
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .page-header h1 {
+                font-size: 24px;
+            }
+
+            .calculator {
+                padding: 24px 16px;
+            }
+
+            .input-wrapper input {
+                font-size: 20px;
+            }
+
+            .markup-buttons {
+                flex-direction: column;
+            }
+
+            .markup-btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .result-value.primary {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="/" class="logo">
+                <img src="/logo.png" alt="QuoteCat">
+            </a>
+            <nav class="header-nav">
+                <a href="/" class="header-link">App</a>
+                <a href="/resources" class="header-link">Resources</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="breadcrumb">
+            <a href="/resources">Resources</a>
+            <span>/</span>
+            <span class="breadcrumb-current">Markup Calculator</span>
+        </nav>
+
+        <div class="page-header">
+            <h1>Markup Calculator</h1>
+            <p>Calculate your selling price and profit margin from your job costs.</p>
+        </div>
+
+        <div class="calculator">
+            <div class="input-group">
+                <label>Your Total Cost</label>
+                <div class="input-wrapper">
+                    <span class="prefix">$</span>
+                    <input type="number" id="cost-input" placeholder="0.00" min="0" step="0.01" value="1000">
+                </div>
+            </div>
+
+            <div class="markup-options">
+                <label>Select Markup Percentage</label>
+                <div class="markup-buttons">
+                    <button class="markup-btn" data-markup="10">10%</button>
+                    <button class="markup-btn" data-markup="20">20%</button>
+                    <button class="markup-btn" data-markup="35">35%</button>
+                    <button class="markup-btn active" data-markup="50">50%</button>
+                    <div class="custom-markup">
+                        <input type="number" id="custom-markup" placeholder="75" min="0" max="500">
+                        <span>% custom</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results">
+                <div class="result-row">
+                    <span class="result-label">Selling Price</span>
+                    <span class="result-value primary" id="selling-price">$1,500.00</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Gross Profit</span>
+                    <span class="result-value success" id="gross-profit">$500.00</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Profit Margin</span>
+                    <span class="result-value" id="profit-margin">33.3%</span>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <div class="info-box-title">Markup vs Margin</div>
+                <p>
+                    <strong>50% markup does not equal 50% margin.</strong><br>
+                    Markup is based on cost: <code>$1,000 + 50% = $1,500</code><br>
+                    Margin is based on selling price: <code>$500 / $1,500 = 33.3%</code><br><br>
+                    This is one of the most common pricing mistakes contractors make.
+                </p>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <h2>Want to master contractor pricing?</h2>
+            <p>The Contractor Pricing Guide covers markup, margin, labor rates, and how to price jobs profitably.</p>
+            <div class="cta-buttons">
+                <a href="/resources" class="cta-btn">View All Resources</a>
+                <a href="/" class="cta-btn secondary">Get QuoteCat App</a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p><a href="/">QuoteCat</a> &middot; <a href="/resources">Resources</a> &middot; <a href="/privacy">Privacy</a></p>
+        </div>
+    </footer>
+
+    <script>
+        const costInput = document.getElementById('cost-input');
+        const customMarkup = document.getElementById('custom-markup');
+        const markupBtns = document.querySelectorAll('.markup-btn');
+        const sellingPriceEl = document.getElementById('selling-price');
+        const grossProfitEl = document.getElementById('gross-profit');
+        const profitMarginEl = document.getElementById('profit-margin');
+
+        let currentMarkup = 50;
+
+        function formatCurrency(amount) {
+            return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function calculate() {
+            const cost = parseFloat(costInput.value) || 0;
+            const markup = currentMarkup / 100;
+
+            const sellingPrice = cost * (1 + markup);
+            const grossProfit = sellingPrice - cost;
+            const margin = sellingPrice > 0 ? (grossProfit / sellingPrice) * 100 : 0;
+
+            sellingPriceEl.textContent = formatCurrency(sellingPrice);
+            grossProfitEl.textContent = formatCurrency(grossProfit);
+            profitMarginEl.textContent = margin.toFixed(1) + '%';
+        }
+
+        // Preset markup buttons
+        markupBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                markupBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMarkup = parseInt(btn.dataset.markup);
+                customMarkup.value = '';
+                calculate();
+            });
+        });
+
+        // Custom markup input
+        customMarkup.addEventListener('input', () => {
+            const value = parseFloat(customMarkup.value);
+            if (!isNaN(value) && value >= 0) {
+                markupBtns.forEach(b => b.classList.remove('active'));
+                currentMarkup = value;
+                calculate();
+            }
+        });
+
+        // Cost input
+        costInput.addEventListener('input', calculate);
+
+        // Initial calculation
+        calculate();
+    </script>
+</body>
+</html>
