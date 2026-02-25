@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Contractor Startup Kit - QuoteCat</title>
+    <meta name="description" content="The 90-Day Contractor Startup Kit: A free checklist for starting your contracting business the right way. Licensing, insurance, pricing, and more.">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://quotecat.ai/resources/startup-kit">
+    <meta property="og:title" content="Free Contractor Startup Kit - QuoteCat">
+    <meta property="og:description" content="The 90-Day Contractor Startup Kit: A free checklist for starting your contracting business the right way.">
+    <meta property="og:image" content="https://quotecat.ai/logo.png">
+    <link rel="canonical" href="https://quotecat.ai/resources/startup-kit">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --text: #ffffff;
+            --text-light: #a0a0a0;
+            --bg-dark: #1a1a1a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: linear-gradient(to bottom, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 16px 0;
+            background: rgba(20, 20, 20, 0.95);
+            border-bottom: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            height: 40px;
+        }
+
+        .logo img {
+            height: 100%;
+            width: auto;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 60px 0 40px;
+            text-align: center;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(249, 115, 22, 0.2);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        h1 span {
+            color: var(--primary);
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: var(--text-light);
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Benefits */
+        .benefits {
+            padding: 40px 0;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .benefit {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .benefit-icon {
+            font-size: 28px;
+            margin-bottom: 12px;
+        }
+
+        .benefit h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .benefit p {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        /* What's Inside */
+        .whats-inside {
+            padding: 40px 0;
+        }
+
+        .whats-inside h2 {
+            font-size: 28px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .inside-list {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 12px;
+            padding: 32px;
+        }
+
+        .inside-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .inside-item:last-child {
+            border-bottom: none;
+        }
+
+        .check {
+            color: var(--primary);
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .inside-item p {
+            font-size: 16px;
+        }
+
+        .inside-item strong {
+            color: var(--primary);
+        }
+
+        /* Form Section */
+        .form-section {
+            padding: 60px 0;
+        }
+
+        .form-card {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .form-card h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .form-card .subtext {
+            color: var(--text-light);
+            margin-bottom: 32px;
+        }
+
+        .email-form {
+            display: flex;
+            gap: 12px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .email-form input[type="email"] {
+            flex: 1;
+            padding: 16px 20px;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+        }
+
+        .email-form input[type="email"]::placeholder {
+            color: #666;
+        }
+
+        .email-form input[type="email"]:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .email-form button {
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .email-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+        }
+
+        .privacy-note {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 16px;
+        }
+
+        /* Stats */
+        .stats {
+            padding: 40px 0;
+            text-align: center;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        footer p {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 32px;
+            }
+
+            .benefits-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .email-form {
+                flex-direction: column;
+            }
+
+            .stat-row {
+                gap: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <img src="/logo.png" alt="QuoteCat">
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <span class="badge">FREE DOWNLOAD</span>
+                <h1>The 90-Day <span>Contractor Startup Kit</span></h1>
+                <p class="subtitle">A no-BS checklist for starting your contracting business the right way. Licensing, insurance, pricing, first customers, and more.</p>
+            </div>
+        </section>
+
+        <section class="benefits">
+            <div class="container">
+                <div class="benefits-grid">
+                    <div class="benefit">
+                        <div class="benefit-icon">&#x2705;</div>
+                        <h3>Step-by-Step Checklists</h3>
+                        <p>Know exactly what to do in your first 90 days</p>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">&#x1F4B0;</div>
+                        <h3>Pricing Guidance</h3>
+                        <p>Stop undercharging and leaving money on the table</p>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">&#x1F4CB;</div>
+                        <h3>50-State Licensing Guide</h3>
+                        <p>Know your state's requirements at a glance</p>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">&#x1F6E1;</div>
+                        <h3>Insurance Breakdown</h3>
+                        <p>What you need, what it costs, and how to get it</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="whats-inside">
+            <div class="container">
+                <h2>What's Inside</h2>
+                <div class="inside-list">
+                    <div class="inside-item">
+                        <span class="check">&#x2713;</span>
+                        <p><strong>Legal Setup Checklist</strong> - LLC, EIN, licenses, bonds</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check">&#x2713;</span>
+                        <p><strong>Insurance Guide</strong> - GL, workers comp, commercial auto with cost estimates</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check">&#x2713;</span>
+                        <p><strong>Money Setup</strong> - Bank accounts, payment terms, cash flow basics</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check">&#x2713;</span>
+                        <p><strong>Tools & Equipment Lists</strong> - Starter kits by trade with costs</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check">&#x2713;</span>
+                        <p><strong>First 10 Customers</strong> - How to get work without a marketing budget</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check">&#x2713;</span>
+                        <p><strong>90-Day Action Plan</strong> - Week-by-week roadmap</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check">&#x2713;</span>
+                        <p><strong>BONUS: 50-State Licensing Reference</strong> - Requirements for every state</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="form-section">
+            <div class="container">
+                <div class="form-card">
+                    <h2>Get Your Free Kit</h2>
+                    <p class="subtext">Enter your email and we'll send it right over.</p>
+                    <form class="email-form" name="startup-kit" method="POST" data-netlify="true" action="/resources/startup-kit-thanks">
+                        <input type="hidden" name="form-name" value="startup-kit">
+                        <input type="email" name="email" placeholder="you@example.com" required>
+                        <button type="submit">Send It</button>
+                    </form>
+                    <p class="privacy-note">No spam, ever. Unsubscribe anytime.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="stats">
+            <div class="container">
+                <div class="stat-row">
+                    <div class="stat">
+                        <div class="stat-number">80%</div>
+                        <div class="stat-label">of new businesses survive year 1</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">82%</div>
+                        <div class="stat-label">of failures cite cash flow</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 QuoteCat. <a href="/privacy">Privacy Policy</a></p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resources for Contractors - QuoteCat</title>
+    <meta name="description" content="Guides, checklists, and tools to help contractors run a better business. From startup to pricing to getting paid faster.">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://quotecat.ai/resources">
+    <meta property="og:title" content="Resources for Contractors - QuoteCat">
+    <meta property="og:description" content="Guides, checklists, and tools to help contractors run a better business.">
+    <meta property="og:image" content="https://quotecat.ai/logo.png">
+    <link rel="canonical" href="https://quotecat.ai/resources">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --text: #ffffff;
+            --text-light: #9ca3af;
+            --text-muted: #6b7280;
+            --bg: #111111;
+            --card-bg: #1a1a1a;
+            --border: #2a2a2a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 16px 0;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            height: 36px;
+        }
+
+        .logo img {
+            height: 100%;
+            width: auto;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .header-link {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .header-link:hover {
+            color: var(--text);
+        }
+
+        /* Page Header */
+        .page-header {
+            padding: 48px 0 32px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            color: var(--text-light);
+            font-size: 16px;
+        }
+
+        /* Filter Tabs */
+        .filter-tabs {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-light);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            border-color: var(--text-muted);
+            color: var(--text);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Product Grid */
+        .products {
+            padding: 32px 0;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .product-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .product-card:hover {
+            border-color: var(--text-muted);
+        }
+
+        .product-image {
+            height: 160px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .product-image-text {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.9;
+        }
+
+        .product-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .product-badge.free {
+            background: #22c55e;
+            color: white;
+        }
+
+        .product-badge.paid {
+            background: white;
+            color: #111;
+        }
+
+        .product-badge.soon {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .product-content {
+            padding: 20px;
+        }
+
+        .product-category {
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .product-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .product-card p {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .product-bonus {
+            font-size: 12px;
+            color: #22c55e;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .product-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .product-price {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .product-price.free {
+            color: #22c55e;
+        }
+
+        .product-btn {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .product-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .product-btn.secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+        }
+
+        .product-btn.secondary:hover {
+            border-color: var(--text-muted);
+            color: var(--text);
+            background: transparent;
+        }
+
+        /* Footer */
+        footer {
+            padding: 48px 0;
+            border-top: 1px solid var(--border);
+            margin-top: 48px;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-light);
+        }
+
+        .footer-copy {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Mobile */
+        @media (max-width: 640px) {
+            .page-header h1 {
+                font-size: 24px;
+            }
+
+            .product-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .header-nav {
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <img src="/logo.png" alt="QuoteCat">
+                </a>
+                <nav class="header-nav">
+                    <a href="/" class="header-link">App</a>
+                    <a href="/resources" class="header-link" style="color: var(--text);">Resources</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="page-header">
+            <div class="container">
+                <h1>Resources</h1>
+                <p>Guides and tools to help you run a better contracting business.</p>
+            </div>
+        </section>
+
+        <section class="filter-tabs">
+            <div class="container">
+                <div class="tabs">
+                    <button class="tab active" data-filter="all">All</button>
+                    <button class="tab" data-filter="free">Free</button>
+                    <button class="tab" data-filter="guide">Guides</button>
+                    <button class="tab" data-filter="tool">Tools</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="products">
+            <div class="container">
+                <div class="product-grid">
+
+                    <!-- Startup Kit -->
+                    <div class="product-card" data-price="free" data-type="guide">
+                        <div class="product-image">
+                            <span class="product-image-text">PDF Guide</span>
+                            <span class="product-badge free">Free</span>
+                        </div>
+                        <div class="product-content">
+                            <div class="product-category">Getting Started</div>
+                            <h3>The 90-Day Contractor Startup Kit</h3>
+                            <p>Complete checklist for starting your contracting business. Licensing, insurance, pricing, and a week-by-week action plan.</p>
+                            <div class="product-bonus">Includes: 50-State Licensing Reference</div>
+                            <div class="product-footer">
+                                <span class="product-price free">Free</span>
+                                <a href="/resources/startup-kit" class="product-btn">Download</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pricing Guide -->
+                    <div class="product-card" data-price="paid" data-type="guide">
+                        <div class="product-image">
+                            <span class="product-image-text">PDF Guide</span>
+                            <span class="product-badge paid">$29</span>
+                        </div>
+                        <div class="product-content">
+                            <div class="product-category">Pricing</div>
+                            <h3>The Contractor Pricing Guide</h3>
+                            <p>Stop leaving money on the table. Learn to price jobs profitably, understand markup vs margin, and win more work.</p>
+                            <div class="product-footer">
+                                <span class="product-price">$29</span>
+                                <a href="#" class="product-btn secondary">Coming Soon</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder for future -->
+                    <!--
+                    <div class="product-card">
+                        <div class="product-image">
+                            <span class="product-image-text">Template</span>
+                            <span class="product-badge free">Free</span>
+                        </div>
+                        <div class="product-content">
+                            <div class="product-category">Templates</div>
+                            <h3>Quote Template Pack</h3>
+                            <p>Professional quote templates for different trades. Customize with your logo and start sending today.</p>
+                            <div class="product-footer">
+                                <span class="product-price free">Free</span>
+                                <a href="#" class="product-btn">Download</a>
+                            </div>
+                        </div>
+                    </div>
+                    -->
+
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="/">QuoteCat App</a>
+                    <a href="/privacy">Privacy</a>
+                    <a href="/terms">Terms</a>
+                </div>
+                <span class="footer-copy">&copy; 2026 QuoteCat</span>
+            </div>
+        </div>
+    </footer>
+    <script>
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                const filter = tab.dataset.filter;
+                const cards = document.querySelectorAll('.product-card');
+
+                cards.forEach(card => {
+                    if (filter === 'all') {
+                        card.style.display = '';
+                    } else if (filter === 'free') {
+                        card.style.display = card.dataset.price === 'free' ? '' : 'none';
+                    } else {
+                        card.style.display = card.dataset.type === filter ? '' : 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
