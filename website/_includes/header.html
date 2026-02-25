@@ -1,0 +1,59 @@
+<header>
+    <div class="header-container">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <img src="/qc-splash.png" alt="QuoteCat Logo">
+                <span class="logo-text">QuoteCat</span>
+            </a>
+            <div class="header-nav">
+                <a href="/resources/" class="nav-link">Resources</a>
+                <a href="https://portal.quotecat.ai/login" class="nav-link" style="color: #f97316;">Login</a>
+                <a href="/#pricing" class="status-badge">Get Started</a>
+                <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Menu Backdrop -->
+<div class="menu-backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+    <div class="mobile-menu-header">
+        <span class="mobile-menu-title">Menu</span>
+        <button class="close-menu" onclick="toggleMenu()" aria-label="Close">&times;</button>
+    </div>
+    <div class="mobile-menu-content">
+        <div class="menu-section">
+            <div class="menu-section-title">Navigation</div>
+            <a href="/" class="menu-link">Home</a>
+            <a href="/#pricing" class="menu-link">Pricing</a>
+            <a href="https://portal.quotecat.ai/login" class="menu-link" style="color: #f97316;">Login</a>
+        </div>
+        <div class="menu-section">
+            <div class="menu-section-title">Free Tools</div>
+            <a href="/resources/" class="menu-link" style="color: #22c55e;">All Resources</a>
+            <a href="/resources/markup-calculator/" class="menu-link">Markup Calculator</a>
+            <a href="/resources/labor-rate-calculator/" class="menu-link">Labor Rate Calculator</a>
+            <a href="/resources/profit-margin-calculator/" class="menu-link">Profit Margin Calculator</a>
+        </div>
+        <div class="menu-section">
+            <div class="menu-section-title">Company</div>
+            <a href="/privacy/" class="menu-link">Privacy Policy</a>
+            <a href="/terms/" class="menu-link">Terms of Service</a>
+            <a href="mailto:hello@quotecat.ai" class="menu-link">Contact Us</a>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleMenu() {
+    document.getElementById('mobileMenu').classList.toggle('open');
+    document.getElementById('menuBackdrop').classList.toggle('open');
+}
+</script>

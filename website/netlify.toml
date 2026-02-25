@@ -1,0 +1,52 @@
+[build]
+  command = "npx @11ty/eleventy"
+  publish = "_site"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Redirect rules for clean URLs
+[[redirects]]
+  from = "/resources/markup-calculator"
+  to = "/resources/markup-calculator.html"
+  status = 200
+
+[[redirects]]
+  from = "/resources/labor-rate-calculator"
+  to = "/resources/labor-rate-calculator.html"
+  status = 200
+
+[[redirects]]
+  from = "/resources/profit-margin-calculator"
+  to = "/resources/profit-margin-calculator.html"
+  status = 200
+
+[[redirects]]
+  from = "/resources/startup-kit"
+  to = "/resources/startup-kit.html"
+  status = 200
+
+[[redirects]]
+  from = "/resources"
+  to = "/resources.html"
+  status = 200
+
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy.html"
+  status = 200
+
+[[redirects]]
+  from = "/terms"
+  to = "/terms.html"
+  status = 200
+
+[[redirects]]
+  from = "/faq"
+  to = "/faq.html"
+  status = 200
+
+[[redirects]]
+  from = "/support"
+  to = "/support.html"
+  status = 200

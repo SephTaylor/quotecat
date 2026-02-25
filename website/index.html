@@ -1651,60 +1651,10 @@
             }
         }
     </style>
+    {% include "header-styles.html" %}
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="header-container">
-            <div class="header-content">
-                <a href="/" class="logo">
-                    <img src="qc-splash.png" alt="QuoteCat Logo">
-                    <span class="logo-text">QuoteCat</span>
-                </a>
-                <div class="header-nav">
-                    <a href="/resources.html" class="nav-link" style="color: #d1d5db; text-decoration: none; font-weight: 500; margin-right: 16px;">Resources</a>
-                    <a href="https://portal.quotecat.ai/login" class="nav-link" style="color: #f97316; text-decoration: none; font-weight: 500; margin-right: 16px;">Login</a>
-                    <a href="#pricing" class="status-badge" style="text-decoration: none; cursor: pointer;">Get Started</a>
-                    <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
-                        <span class="hamburger-line"></span>
-                        <span class="hamburger-line"></span>
-                        <span class="hamburger-line"></span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Menu Backdrop -->
-    <div class="menu-backdrop" id="menuBackdrop" onclick="toggleMenu()"></div>
-
-    <!-- Mobile Menu -->
-    <div class="mobile-menu" id="mobileMenu">
-        <div class="mobile-menu-header">
-            <span class="mobile-menu-title">Menu</span>
-            <button class="close-menu" onclick="toggleMenu()" aria-label="Close">&times;</button>
-        </div>
-        <div class="mobile-menu-content">
-            <div class="menu-section">
-                <div class="menu-section-title">Navigation</div>
-                <a href="index.html" class="menu-link">Home</a>
-                <a href="#pricing" class="menu-link" onclick="toggleMenu()">Pricing</a>
-                <a href="faq.html" class="menu-link">FAQ</a>
-                <a href="https://portal.quotecat.ai/login" class="menu-link" style="color: #f97316;">Login</a>
-            </div>
-            <div class="menu-section">
-                <div class="menu-section-title">Resources</div>
-                <a href="/resources.html" class="menu-link" style="color: #22c55e;">Free Tools & Guides</a>
-                <a href="privacy.html" class="menu-link">Privacy Policy</a>
-                <a href="terms.html" class="menu-link">Terms of Service</a>
-                <a href="support.html" class="menu-link">Support</a>
-            </div>
-            <div class="menu-section">
-                <div class="menu-section-title">Contact</div>
-                <a href="mailto:hello@quotecat.ai" class="menu-link">Email Support</a>
-            </div>
-        </div>
-    </div>
+    {% include "header.html" %}
 
     <!-- Hero Section -->
     <section class="hero">
