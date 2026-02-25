@@ -751,15 +751,9 @@ export default function WizardScreen() {
               <View style={styles.buttonRow}>
                 <Pressable
                   style={[styles.button, styles.primaryButton]}
-                  onPress={() => Linking.openURL('https://quotecat.ai/#pricing')}
-                >
-                  <Text style={styles.primaryButtonText}>Learn More</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.button, styles.secondaryButton]}
                   onPress={() => router.back()}
                 >
-                  <Text style={styles.secondaryButtonText}>Maybe later</Text>
+                  <Text style={styles.primaryButtonText}>Got it</Text>
                 </Pressable>
               </View>
             </View>

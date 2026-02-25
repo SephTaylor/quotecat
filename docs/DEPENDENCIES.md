@@ -26,6 +26,8 @@ Last Updated: Feb 23, 2026
 |---------|---------|---------|-----------|
 | **Resend** | Transactional email delivery | Portal, Supabase SMTP | resend.com |
 | **Twilio** | SMS notifications to workers | Portal | twilio.com/console |
+
+> **Twilio Status (Feb 23, 2026):** Toll-free verification submitted, pending approval (2-5 business days). SMS will work once approved.
 | **GoDaddy** | Email hosting (@quotecat.ai inboxes) | Team | email.godaddy.com |
 
 ## AI / APIs

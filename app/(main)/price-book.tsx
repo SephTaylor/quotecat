@@ -162,11 +162,8 @@ export default function PriceBookManager() {
     if (!isPremium) {
       Alert.alert(
         "Pro Feature",
-        "Price Book lets you create and manage your own custom products with your pricing.",
-        [
-          { text: "OK", style: "cancel" },
-          { text: "Learn More", onPress: () => Linking.openURL("https://quotecat.ai/#pricing") },
-        ]
+        "Price Book lets you create and manage your own custom products with your pricing. Upgrade to Pro to unlock this feature.",
+        [{ text: "OK", style: "cancel" }]
       );
       return;
     }

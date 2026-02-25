@@ -36,6 +36,12 @@
         "serviceAccountKeyPath": "./keys/google-play-service-account.json",
         "track": "internal"
       }
+    },
+    "beta": {
+      "android": {
+        "serviceAccountKeyPath": "./keys/google-play-service-account.json",
+        "track": "beta"
+      }
     }
   }
 }

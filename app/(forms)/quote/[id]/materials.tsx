@@ -508,22 +508,16 @@ export default function QuoteMaterials() {
     if (source === "pricebook" && !hasPricebookAccess) {
       Alert.alert(
         "Pro Feature",
-        "Price Book lets you create and manage your own custom products with your pricing.",
-        [
-          { text: "OK", style: "cancel" },
-          { text: "Learn More", onPress: () => Linking.openURL("https://quotecat.ai/#pricing") },
-        ]
+        "Price Book lets you create and manage your own custom products with your pricing. Upgrade to Pro to unlock this feature.",
+        [{ text: "OK", style: "cancel" }]
       );
       return;
     }
     if (source === "assemblies" && !hasAssembliesAccess) {
       Alert.alert(
         "Pro Feature",
-        "Assemblies let you save groups of materials as reusable templates for faster quoting.",
-        [
-          { text: "OK", style: "cancel" },
-          { text: "Learn More", onPress: () => Linking.openURL("https://quotecat.ai/#pricing") },
-        ]
+        "Assemblies let you save groups of materials as reusable templates for faster quoting. Upgrade to Pro to unlock this feature.",
+        [{ text: "OK", style: "cancel" }]
       );
       return;
     }
