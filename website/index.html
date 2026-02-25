@@ -380,16 +380,41 @@
             text-decoration: none;
             cursor: pointer;
             transition: opacity 0.2s;
+            position: relative;
         }
 
         .logo:hover {
             opacity: 0.85;
         }
 
+        .logo-glow {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-glow::before {
+            content: '';
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            background: radial-gradient(circle, rgba(249, 115, 22, 0.6) 0%, rgba(249, 115, 22, 0.3) 40%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+            animation: logoGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes logoGlow {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+
         .logo img {
-            height: 100px;
+            height: 80px;
             width: auto;
-            margin-right: -20px;
+            position: relative;
+            z-index: 1;
         }
 
         .logo-text {
@@ -397,6 +422,7 @@
             font-weight: 400;
             color: #ffffff;
             letter-spacing: -0.5px;
+            margin-left: -8px;
         }
 
         .status-badge {
@@ -1507,6 +1533,32 @@
             display: block;
         }
 
+        /* Peeking Cat */
+        .hero-peek-cat {
+            position: absolute;
+            bottom: -20px;
+            right: -60px;
+            width: 120px;
+            height: auto;
+            z-index: 3;
+            transform: rotate(15deg);
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+            animation: catPeek 4s ease-in-out infinite;
+        }
+
+        @keyframes catPeek {
+            0%, 100% { transform: rotate(15deg) translateY(0); }
+            50% { transform: rotate(15deg) translateY(-8px); }
+        }
+
+        @media (max-width: 900px) {
+            .hero-peek-cat {
+                width: 80px;
+                bottom: -15px;
+                right: -30px;
+            }
+        }
+
         /* Floating Badges */
         .hero-floating-badge {
             position: absolute;
@@ -1655,8 +1707,9 @@
         <div class="header-container">
             <div class="header-content">
                 <a href="/" class="logo">
-                    <img src="logo.png" alt="QuoteCat Logo">
-                    <span class="logo-text">QuoteCat</span>
+                    <div class="logo-glow">
+                        <img src="cat-full-body.png" alt="QuoteCat Logo">
+                    </div>
                 </a>
                 <div class="header-nav">
                     <a href="/resources.html" class="nav-link" style="color: #d1d5db; text-decoration: none; font-weight: 500; margin-right: 16px;">Resources</a>
@@ -1733,6 +1786,7 @@
                         <div class="hero-phone-notch"></div>
                         <img src="app-screenshot.png" alt="QuoteCat Dashboard showing $91K in quotes sent" class="hero-phone-screen">
                     </div>
+                    <img src="cat-peek.png" alt="QuoteCat Cat" class="hero-peek-cat">
                 </div>
             </div>
         </div>
