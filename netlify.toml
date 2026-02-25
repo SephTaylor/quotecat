@@ -1,12 +1,31 @@
 [build]
-  publish = "website"
-  command = "echo 'Static site - no build needed'"
+  base = "website"
+  publish = "website/_site"
+  command = "npx @11ty/eleventy"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  force = false
+[build.environment]
+  NODE_VERSION = "20"
 
 [functions]
   directory = "website/netlify/functions"
+
+# Redirect rules for clean URLs
+[[redirects]]
+  from = "/resources/markup-calculator"
+  to = "/resources/markup-calculator/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/resources/labor-rate-calculator"
+  to = "/resources/labor-rate-calculator/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/resources/profit-margin-calculator"
+  to = "/resources/profit-margin-calculator/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/resources/startup-kit"
+  to = "/resources/startup-kit/index.html"
+  status = 200
