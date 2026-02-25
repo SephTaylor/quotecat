@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Profit Margin Calculator - QuoteCat</title>
+    <meta name="description" content="Calculate what you can afford to spend on a job based on your selling price and target profit margin. Essential for profitable bidding.">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://quotecat.ai/resources/profit-margin-calculator">
+    <meta property="og:title" content="Contractor Profit Margin Calculator - QuoteCat">
+    <meta property="og:description" content="Calculate what you can afford to spend based on your target profit margin.">
+    <link rel="canonical" href="https://quotecat.ai/resources/profit-margin-calculator">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --text: #ffffff;
+            --text-light: #9ca3af;
+            --text-muted: #6b7280;
+            --bg: #111111;
+            --card-bg: #1a1a1a;
+            --border: #2a2a2a;
+            --success: #22c55e;
+            --warning: #eab308;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+            min-height: 100vh;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+        header {
+            padding: 16px 0;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        .logo { height: 36px; }
+        .logo img { height: 100%; width: auto; }
+        .header-nav { display: flex; gap: 32px; align-items: center; }
+        .header-link {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .header-link:hover { color: var(--text); }
+        .breadcrumb { padding: 16px 0; border-bottom: 1px solid var(--border); }
+        .breadcrumb a { color: var(--text-muted); text-decoration: none; font-size: 14px; }
+        .breadcrumb a:hover { color: var(--text-light); }
+        .breadcrumb span { color: var(--text-muted); font-size: 14px; margin: 0 8px; }
+        .breadcrumb-current { color: var(--text-light); font-size: 14px; }
+        .page-header { padding: 48px 0 32px; }
+        .page-header h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+        .page-header p { color: var(--text-light); font-size: 16px; }
+        .calculator {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+        .input-group { margin-bottom: 24px; }
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .input-wrapper { position: relative; }
+        .input-wrapper .prefix {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .input-wrapper .suffix {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        .input-wrapper input {
+            width: 100%;
+            padding: 14px 16px 14px 36px;
+            font-size: 18px;
+            font-weight: 600;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-wrapper input.no-prefix { padding-left: 16px; padding-right: 50px; }
+        .input-wrapper input:focus { border-color: var(--primary); }
+        .input-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+        .results {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .result-main {
+            text-align: center;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .result-main-label { font-size: 14px; color: var(--text-light); margin-bottom: 4px; }
+        .result-main-value { font-size: 48px; font-weight: 800; color: var(--primary); }
+        .result-main-sub { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+        .result-label { font-size: 14px; color: var(--text-light); }
+        .result-value { font-size: 16px; font-weight: 600; }
+        .result-value.success { color: var(--success); }
+        .result-value.warning { color: var(--warning); }
+        .info-box {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 24px;
+        }
+        .info-box-title { font-size: 14px; font-weight: 700; color: var(--success); margin-bottom: 8px; }
+        .info-box p { font-size: 14px; color: var(--text-light); line-height: 1.6; }
+        .cta-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .cta-section h2 { font-size: 20px; margin-bottom: 8px; }
+        .cta-section p { color: var(--text-light); margin-bottom: 20px; font-size: 15px; }
+        .cta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .cta-btn {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .cta-btn:hover { background: var(--primary-dark); }
+        .cta-btn.secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+        }
+        .cta-btn.secondary:hover { border-color: var(--text-muted); color: var(--text); }
+        footer {
+            padding: 32px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        footer p { color: var(--text-muted); font-size: 14px; }
+        footer a { color: var(--text-muted); text-decoration: none; }
+        footer a:hover { color: var(--text-light); }
+        @media (max-width: 600px) {
+            .page-header h1 { font-size: 24px; }
+            .calculator { padding: 24px 16px; }
+            .input-row { grid-template-columns: 1fr; }
+            .result-main-value { font-size: 36px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="/" class="logo"><img src="/logo.png" alt="QuoteCat"></a>
+            <nav class="header-nav">
+                <a href="/" class="header-link">App</a>
+                <a href="/resources" class="header-link">Resources</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="breadcrumb">
+            <a href="/resources">Resources</a>
+            <span>/</span>
+            <span class="breadcrumb-current">Profit Margin Calculator</span>
+        </nav>
+
+        <div class="page-header">
+            <h1>Profit Margin Calculator</h1>
+            <p>Calculate what you can afford to spend based on your target profit margin.</p>
+        </div>
+
+        <div class="calculator">
+            <div class="input-row">
+                <div class="input-group">
+                    <label>Job Selling Price</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="selling-price" placeholder="5,000" value="5000" min="0">
+                    </div>
+                    <p class="input-hint">What you're charging the customer</p>
+                </div>
+                <div class="input-group">
+                    <label>Target Profit Margin</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="target-margin" class="no-prefix" placeholder="25" value="25" min="0" max="100">
+                        <span class="suffix">%</span>
+                    </div>
+                    <p class="input-hint">Industry average is 20-35%</p>
+                </div>
+            </div>
+
+            <div class="results">
+                <div class="result-main">
+                    <div class="result-main-label">Maximum You Can Spend</div>
+                    <div class="result-main-value" id="max-cost">$3,750</div>
+                    <div class="result-main-sub">on materials, labor, and overhead</div>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Your Profit</span>
+                    <span class="result-value success" id="profit">$1,250</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Equivalent Markup</span>
+                    <span class="result-value" id="markup">33.3%</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Cost per $1,000 Revenue</span>
+                    <span class="result-value" id="cost-per-thousand">$750</span>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <div class="info-box-title">Use This Before Every Bid</div>
+                <p>
+                    Before you price a job, know your target margin. Then work backwards: if you can't deliver it for the max cost, you need to either raise your price or walk away.<br><br>
+                    <strong>Rule of thumb:</strong> If your total costs (materials + labor + overhead) are more than $3,750 on a $5,000 job, you're not making 25% margin, you're working for less.
+                </p>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <h2>More free tools for contractors</h2>
+            <p>Check out our other calculators to help you price jobs right.</p>
+            <div class="cta-buttons">
+                <a href="/resources/markup-calculator" class="cta-btn">Markup Calculator</a>
+                <a href="/resources/labor-rate-calculator" class="cta-btn secondary">Labor Rate Calculator</a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p><a href="/">QuoteCat</a> &middot; <a href="/resources">Resources</a> &middot; <a href="/privacy">Privacy</a></p>
+        </div>
+    </footer>
+
+    <script>
+        const sellingPriceInput = document.getElementById('selling-price');
+        const targetMarginInput = document.getElementById('target-margin');
+        const maxCostEl = document.getElementById('max-cost');
+        const profitEl = document.getElementById('profit');
+        const markupEl = document.getElementById('markup');
+        const costPerThousandEl = document.getElementById('cost-per-thousand');
+
+        function formatCurrency(amount) {
+            return '$' + Math.round(amount).toLocaleString('en-US');
+        }
+
+        function calculate() {
+            const sellingPrice = parseFloat(sellingPriceInput.value) || 0;
+            const targetMargin = parseFloat(targetMarginInput.value) || 0;
+
+            const marginDecimal = targetMargin / 100;
+            const profit = sellingPrice * marginDecimal;
+            const maxCost = sellingPrice - profit;
+            const markup = maxCost > 0 ? (profit / maxCost) * 100 : 0;
+            const costPerThousand = sellingPrice > 0 ? (maxCost / sellingPrice) * 1000 : 0;
+
+            maxCostEl.textContent = formatCurrency(maxCost);
+            profitEl.textContent = formatCurrency(profit);
+            markupEl.textContent = markup.toFixed(1) + '%';
+            costPerThousandEl.textContent = formatCurrency(costPerThousand);
+        }
+
+        [sellingPriceInput, targetMarginInput].forEach(input => {
+            input.addEventListener('input', calculate);
+        });
+
+        calculate();
+    </script>
+</body>
+</html>
