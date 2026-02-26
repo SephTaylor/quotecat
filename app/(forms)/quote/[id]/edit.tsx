@@ -72,9 +72,6 @@ export default function EditQuote() {
   // Track if we've already prompted to save client this session
   const hasPromptedSaveClient = React.useRef(false);
 
-  // SMS consent for client notifications
-  const [smsConsent, setSmsConsent] = useState(false);
-
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   // Destructure commonly used values from form hook
@@ -878,41 +875,6 @@ export default function EditQuote() {
           onChangeText={(text) => setClientPhone(formatPhoneNumber(text))}
           keyboardType="phone-pad"
         />
-
-        {/* SMS Consent Checkbox - Required for Twilio compliance */}
-        {clientPhone.length >= 10 && (
-          <Pressable
-            onPress={() => setSmsConsent(!smsConsent)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              marginTop: theme.spacing(1.5),
-              paddingVertical: theme.spacing(1),
-            }}
-          >
-            <View
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 4,
-                borderWidth: 2,
-                borderColor: smsConsent ? theme.colors.accent : theme.colors.border,
-                backgroundColor: smsConsent ? theme.colors.accent : 'transparent',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: theme.spacing(1.5),
-                marginTop: 2,
-              }}
-            >
-              {smsConsent && (
-                <Ionicons name="checkmark" size={16} color="#fff" />
-              )}
-            </View>
-            <Text style={{ flex: 1, fontSize: 14, color: theme.colors.muted, lineHeight: 20 }}>
-              I agree to send text message updates about this quote to the client (status changes, reminders). Standard rates may apply.
-            </Text>
-          </Pressable>
-        )}
 
         <View style={{ height: theme.spacing(2) }} />
 
