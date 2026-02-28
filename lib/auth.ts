@@ -10,6 +10,7 @@ import { syncPricebook } from "./pricebookSync";
 import { syncAssemblies, hasAssembliesMigrated, migrateLocalAssembliesToCloud } from "./assembliesSync";
 import { syncBusinessSettings, downloadBusinessSettings } from "./businessSettingsSync";
 import { markSyncComplete } from "./syncState";
+import { identifyUser, logOutRevenueCat } from "./revenuecat";
 
 // Re-export auth utilities for backwards compatibility
 export { isAuthenticated, getCurrentUserEmail, getCurrentUserId } from "./authUtils";
@@ -23,6 +24,12 @@ let authListenerSetup = false;
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
   await signOutUser(); // Clear local user state
+  // Clear RevenueCat user identity
+  try {
+    await logOutRevenueCat();
+  } catch (e) {
+    console.error("RevenueCat logout error:", e);
+  }
 }
 
 /**
@@ -52,6 +59,13 @@ export async function initializeAuth(): Promise<void> {
     const { data } = await supabase.auth.getSession();
 
     if (data.session?.user) {
+      // Link RevenueCat to this user
+      try {
+        await identifyUser(data.session.user.id);
+      } catch (e) {
+        console.error("RevenueCat identify error:", e);
+      }
+
       // User is authenticated, fetch their profile
       const { data: profile } = await supabase
         .from("profiles")
@@ -97,6 +111,13 @@ export async function initializeAuth(): Promise<void> {
  */
 async function handleAuthChange(userId: string): Promise<void> {
   console.log("🔐 Handling auth change for user:", userId);
+
+  // Link RevenueCat to this user (for subscription sync)
+  try {
+    await identifyUser(userId);
+  } catch (e) {
+    console.error("RevenueCat identify error:", e);
+  }
 
   // Fetch their profile
   const { data: profile } = await supabase

@@ -1,0 +1,178 @@
+{
+  "identifier" : "F3D5D9B0-8E3A-4A5F-9A4C-1B2C3D4E5F6A",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6502601498",
+    "_developerTeamID" : "VL3CP28P6J",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21659941",
+      "localizations" : [
+
+      ],
+      "name" : "QuoteCat Subscriptions",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "79.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "premium_monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full access to QuoteCat Premium features",
+              "displayName" : "QuoteCat Premium Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "ai.quotecat.app.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "QuoteCat Premium Monthly",
+          "subscriptionGroupID" : "21659941",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "790.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "premium_yearly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full access to QuoteCat Premium features",
+              "displayName" : "QuoteCat Premium Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "ai.quotecat.app.premium.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "QuoteCat Premium Yearly",
+          "subscriptionGroupID" : "21659941",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "29.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "pro_monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full access to QuoteCat Pro features",
+              "displayName" : "QuoteCat Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "ai.quotecat.app.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "QuoteCat Pro Monthly",
+          "subscriptionGroupID" : "21659941",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "290.00",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "pro_yearly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full access to QuoteCat Pro features",
+              "displayName" : "QuoteCat Pro Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "ai.quotecat.app.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "QuoteCat Pro Yearly",
+          "subscriptionGroupID" : "21659941",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
