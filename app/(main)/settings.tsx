@@ -20,6 +20,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 import { useSettingsState, formatSyncTime } from "@/hooks/useSettingsState";
 import { useTechContext } from "@/contexts/TechContext";
+import RevenueCatUI from "react-native-purchases-ui";
+import { restorePurchases } from "@/lib/revenuecat";
 
 const LOCATION_OPTIONS = [
   { id: "", name: "None (Use base prices)" },
@@ -126,22 +128,32 @@ export default function Settings() {
                   <Text style={styles.accountEmail}>
                     {userEmail || "Not signed in"}
                   </Text>
-                  <View
-                    style={[
-                      styles.tierBadge,
-                      userState?.tier === 'pro' && styles.tierBadgePro,
-                      userState?.tier === 'premium' && styles.tierBadgePremium,
-                    ]}
-                  >
-                    <Text
+                  <View style={styles.tierRow}>
+                    <View
                       style={[
-                        styles.tierBadgeText,
-                        userState?.tier === 'pro' && styles.tierBadgeTextPro,
-                        userState?.tier === 'premium' && styles.tierBadgeTextPremium,
+                        styles.tierBadge,
+                        userState?.tier === 'pro' && styles.tierBadgePro,
+                        userState?.tier === 'premium' && styles.tierBadgePremium,
                       ]}
                     >
-                      {userState?.tier === 'premium' ? "PREMIUM" : userState?.tier === 'pro' ? "PRO" : "FREE"}
-                    </Text>
+                      <Text
+                        style={[
+                          styles.tierBadgeText,
+                          userState?.tier === 'pro' && styles.tierBadgeTextPro,
+                          userState?.tier === 'premium' && styles.tierBadgeTextPremium,
+                        ]}
+                      >
+                        {userState?.tier === 'premium' ? "PREMIUM" : userState?.tier === 'pro' ? "PRO" : "FREE"}
+                      </Text>
+                    </View>
+                    {!isPro && (
+                      <Pressable
+                        style={styles.upgradeButton}
+                        onPress={() => RevenueCatUI.presentPaywall()}
+                      >
+                        <Text style={styles.upgradeButtonText}>Upgrade</Text>
+                      </Pressable>
+                    )}
                   </View>
                 </View>
                 {isTech && ownerCompanyName && (
@@ -227,8 +239,8 @@ export default function Settings() {
             </View>
           </View>
 
-          {/* Cloud Sync Section (Pro/Premium only) */}
-          {isPro && (
+          {/* Cloud Sync Section */}
+          {isPro ? (
             <CollapsibleSection
               title="Cloud Sync"
               isExpanded={expandedSections.cloudSync}
@@ -334,10 +346,51 @@ export default function Settings() {
                 )}
               </View>
             </CollapsibleSection>
+          ) : (
+            <View style={styles.section}>
+              <Pressable
+                style={styles.sectionHeader}
+                onPress={() => toggleSection('cloudSync')}
+              >
+                <View style={styles.lockedSectionTitle}>
+                  <Text style={styles.sectionTitle}>Cloud Sync</Text>
+                  <Ionicons name="lock-closed" size={12} color={theme.colors.accent} style={{ marginLeft: 6 }} />
+                </View>
+                <View style={styles.lockedSectionRight}>
+                  {!expandedSections.cloudSync && (
+                    <Pressable
+                      style={styles.upgradeButtonSmall}
+                      onPress={() => RevenueCatUI.presentPaywall()}
+                    >
+                      <Text style={styles.upgradeButtonSmallText}>Upgrade</Text>
+                    </Pressable>
+                  )}
+                  <Ionicons
+                    name={expandedSections.cloudSync ? "chevron-down" : "chevron-forward"}
+                    size={20}
+                    color={theme.colors.muted}
+                  />
+                </View>
+              </Pressable>
+              {expandedSections.cloudSync && (
+                <View style={styles.card}>
+                  <View style={styles.lockedFeatureContainer}>
+                    <Ionicons name="cloud-outline" size={32} color={theme.colors.muted} />
+                    <Text style={styles.lockedFeatureTitle}>Backup & Sync Across Devices</Text>
+                    <Text style={styles.lockedFeatureDescription}>
+                      Keep your quotes, invoices, and clients safely backed up to the cloud. Access them from any device.
+                    </Text>
+                    <Pressable
+                      style={styles.lockedFeatureButton}
+                      onPress={() => RevenueCatUI.presentPaywall()}
+                    >
+                      <Text style={styles.lockedFeatureButtonText}>Upgrade to Pro</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            </View>
           )}
-
-          {/* Free User Prompt */}
-          {/* Cloud Sync section only shown for Pro users */}
 
           {/* Usage & Limits Section - Only show for free users */}
           {userState && !isPro && (
@@ -681,12 +734,28 @@ export default function Settings() {
               </Pressable>
 
               <Pressable
-                style={[styles.settingButton, styles.settingButtonLast]}
+                style={styles.settingButton}
                 onPress={() => {
                   Linking.openURL("https://quotecat.ai/support");
                 }}
               >
                 <Text style={styles.settingButtonText}>Support</Text>
+                <Text style={styles.settingButtonIcon}>→</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.settingButton, styles.settingButtonLast]}
+                onPress={async () => {
+                  try {
+                    await restorePurchases();
+                    // Refresh the page to reflect any restored purchases
+                    router.replace("/(main)/settings");
+                  } catch (error) {
+                    console.error("Restore purchases failed:", error);
+                  }
+                }}
+              >
+                <Text style={styles.settingButtonText}>Restore Purchases</Text>
                 <Text style={styles.settingButtonIcon}>→</Text>
               </Pressable>
             </View>
@@ -878,6 +947,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "600",
       color: theme.colors.text,
     },
+    tierRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+    },
     tierBadge: {
       paddingHorizontal: 8,
       paddingVertical: 4,
@@ -900,6 +974,17 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     tierBadgeTextPremium: {
       color: "#FFF",
+    },
+    upgradeButton: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: theme.radius.sm,
+      backgroundColor: theme.colors.accent,
+    },
+    upgradeButtonText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#000",
     },
     techIndicator: {
       flexDirection: "row",
@@ -1274,6 +1359,56 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     proFeatureButtonText: {
       fontSize: 16,
+      fontWeight: "600",
+      color: "#000",
+    },
+    lockedFeatureContainer: {
+      alignItems: "center",
+      padding: theme.spacing(3),
+    },
+    lockedFeatureTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginTop: theme.spacing(1.5),
+      marginBottom: theme.spacing(1),
+      textAlign: "center",
+    },
+    lockedFeatureDescription: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      lineHeight: 20,
+      textAlign: "center",
+      marginBottom: theme.spacing(2),
+    },
+    lockedFeatureButton: {
+      backgroundColor: theme.colors.accent,
+      paddingVertical: theme.spacing(1.25),
+      paddingHorizontal: theme.spacing(2.5),
+      borderRadius: theme.radius.md,
+    },
+    lockedFeatureButtonText: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: "#000",
+    },
+    lockedSectionTitle: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    lockedSectionRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1.5),
+    },
+    upgradeButtonSmall: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.accent,
+    },
+    upgradeButtonSmallText: {
+      fontSize: 13,
       fontWeight: "600",
       color: "#000",
     },

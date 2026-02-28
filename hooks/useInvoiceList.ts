@@ -24,6 +24,7 @@ import { getUserState, incrementInvoiceCount } from "@/lib/user";
 import { getCompanyLogo } from "@/lib/logo";
 import { isSyncAvailable } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
+import RevenueCatUI from "react-native-purchases-ui";
 
 export function useInvoiceList() {
   const router = useRouter();
@@ -166,34 +167,51 @@ export function useInvoiceList() {
           "Export Limit Reached",
           exportCheck.reason || "You've reached your monthly invoice export limit.",
           [
-            { text: "OK" },
-            { text: "Upgrade", onPress: () => router.push("/(auth)/sign-in" as any) },
+            { text: "OK", style: "cancel" },
+            { text: "Upgrade", onPress: () => RevenueCatUI.presentPaywall() },
           ]
         );
         return;
       }
 
-      let logoBase64: string | undefined;
-      try {
-        const logo = await getCompanyLogo();
-        if (logo?.base64) {
-          logoBase64 = logo.base64.replace(/^data:image\/\w+;base64,/, "");
+      const doExport = async () => {
+        let logoBase64: string | undefined;
+        try {
+          const logo = await getCompanyLogo();
+          if (logo?.base64) {
+            logoBase64 = logo.base64.replace(/^data:image\/\w+;base64,/, "");
+          }
+        } catch {
+          // Logo loading failed, continue without it
         }
-      } catch {
-        // Logo loading failed, continue without it
-      }
 
-      const pdfOptions: PDFOptions = {
-        includeBranding: exportCheck.hasBranding, // Free tier gets branding
-        companyDetails: prefs.company,
-        logoBase64,
+        const pdfOptions: PDFOptions = {
+          includeBranding: exportCheck.hasBranding, // Free tier gets branding
+          companyDetails: prefs.company,
+          logoBase64,
+        };
+
+        await generateAndShareInvoicePDF(invoice, pdfOptions);
+
+        // Increment counter for free users after successful export
+        if (exportCheck.hasBranding) {
+          await incrementInvoiceCount();
+        }
       };
 
-      await generateAndShareInvoicePDF(invoice, pdfOptions);
-
-      // Increment counter for free users after successful export
-      if (exportCheck.hasBranding) {
-        await incrementInvoiceCount();
+      // Show confirmation for free users with remaining count
+      if (exportCheck.hasBranding && exportCheck.remaining !== undefined) {
+        Alert.alert(
+          "Export Invoice PDF",
+          `This will use 1 of your ${exportCheck.remaining} remaining invoice exports this month.`,
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Export", onPress: doExport }
+          ]
+        );
+      } else {
+        // Pro user - just export
+        await doExport();
       }
     } catch (error) {
       console.error("Failed to export invoice PDF:", error);

@@ -6,13 +6,14 @@ import { getUserState } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Linking,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import RevenueCatUI from "react-native-purchases-ui";
 import { GradientBackground } from "@/components/GradientBackground";
 
 export default function ProTools() {
@@ -37,7 +38,7 @@ export default function ProTools() {
     router.push("/(auth)/sign-in" as any);
   };
 
-  const handleFeatureTap = (featureName: string, requiresPremium: boolean = false, freeAccess: boolean = false) => {
+  const handleFeatureTap = async (featureName: string, requiresPremium: boolean = false, freeAccess: boolean = false) => {
     // Check if user has the required tier (or if feature is free for all)
     const hasAccess = freeAccess || (requiresPremium ? isPremium : isPro);
 
@@ -56,11 +57,26 @@ export default function ProTools() {
       } else if (featureName === "Job Calculator") {
         router.push("/(main)/job-calculator" as any);
       } else if (featureName === "Premium Portal") {
-        Linking.openURL("https://portal.quotecat.ai/");
+        // Premium users can access the web portal
+        Alert.alert(
+          "Premium Portal",
+          "Access your full business suite at portal.quotecat.ai",
+          [{ text: "OK" }]
+        );
       }
     } else {
-      // Show sign in prompt
-      handleSignIn();
+      // Show RevenueCat paywall for non-subscribers
+      try {
+        const result = await RevenueCatUI.presentPaywall();
+        if (result === "PURCHASED" || result === "RESTORED") {
+          // Refresh subscription status
+          load();
+        }
+      } catch (e) {
+        console.error("Paywall error:", e);
+        // Fallback to sign in if paywall fails
+        handleSignIn();
+      }
     }
   };
 
@@ -173,9 +189,22 @@ export default function ProTools() {
 
           {!isPro && (
             <View style={styles.upgradeSection}>
-              <Pressable style={styles.upgradeButton} onPress={handleSignIn}>
+              <Pressable
+                style={styles.upgradeButton}
+                onPress={async () => {
+                  try {
+                    const result = await RevenueCatUI.presentPaywall();
+                    if (result === "PURCHASED" || result === "RESTORED") {
+                      load();
+                    }
+                  } catch (e) {
+                    console.error("Paywall error:", e);
+                    handleSignIn();
+                  }
+                }}
+              >
                 <Text style={styles.upgradeButtonText}>
-                  Sign In
+                  Upgrade
                 </Text>
               </Pressable>
             </View>
@@ -224,9 +253,9 @@ function ProFeatureCard({
         <Text style={styles.featureDescription}>{description}</Text>
       </View>
 
-      <View style={[styles.launchButton, locked && styles.launchButtonLocked, isPremium && !locked && styles.launchButtonPremium]}>
-        <Text style={[styles.launchButtonText, isPremium && !locked && styles.launchButtonTextPremium]}>
-          {locked ? "Unlock" : "Launch"}
+      <View style={[styles.launchButton, locked && styles.launchButtonLocked, isPremium && styles.launchButtonPremium]}>
+        <Text style={[styles.launchButtonText, isPremium && styles.launchButtonTextPremium]}>
+          {locked ? "Upgrade" : "Launch"}
         </Text>
       </View>
     </Pressable>

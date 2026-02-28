@@ -222,6 +222,24 @@ export async function deactivateProTier(): Promise<void> {
 }
 
 /**
+ * Set user tier directly (used for RevenueCat sync)
+ */
+export async function setUserTier(tier: UserTier): Promise<void> {
+  const state = await getUserState();
+  const previousTier = state.tier;
+
+  // Only update if tier actually changed
+  if (previousTier === tier) return;
+
+  console.log(`[user] Tier updated: ${previousTier} → ${tier}`);
+  await saveUserState({
+    ...state,
+    tier,
+    proActivatedAt: tier !== "free" ? (state.proActivatedAt || new Date().toISOString()) : undefined,
+  });
+}
+
+/**
  * Sign out user
  */
 export async function signOutUser(): Promise<void> {
@@ -233,4 +251,18 @@ export async function signOutUser(): Promise<void> {
     proActivatedAt: undefined,
     proExpiresAt: undefined,
   });
+}
+
+/**
+ * Reset usage counters (for testing)
+ */
+export async function resetUsageCounters(): Promise<void> {
+  const state = await getUserState();
+  await saveUserState({
+    ...state,
+    pdfsUsed: 0,
+    spreadsheetsUsed: 0,
+    invoicesUsed: 0,
+  });
+  console.log('✅ Usage counters reset');
 }

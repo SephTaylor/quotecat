@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import RevenueCatUI from "react-native-purchases-ui";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -151,35 +152,59 @@ export default function InvoiceDetailScreen() {
       // Check if user can export (free tier has limits)
       const { allowed, reason, remaining } = canExportInvoice(user);
       if (!allowed) {
-        Alert.alert("Limit Reached", reason);
+        Alert.alert(
+          "Limit Reached",
+          reason,
+          [
+            { text: "OK", style: "cancel" },
+            { text: "Upgrade", onPress: () => RevenueCatUI.presentPaywall() }
+          ]
+        );
         return;
       }
 
-      // Load logo
-      let logoBase64: string | undefined;
-      try {
-        const logo = await getCompanyLogo();
-        if (logo?.base64) {
-          // Strip data URL prefix - PDF template adds it back
-          logoBase64 = logo.base64.replace(/^data:image\/\w+;base64,/, '');
+      const doExport = async () => {
+        // Load logo
+        let logoBase64: string | undefined;
+        try {
+          const logo = await getCompanyLogo();
+          if (logo?.base64) {
+            // Strip data URL prefix - PDF template adds it back
+            logoBase64 = logo.base64.replace(/^data:image\/\w+;base64,/, '');
+          }
+        } catch {
+          // Logo loading failed, continue without it
         }
-      } catch {
-        // Logo loading failed, continue without it
-      }
 
-      const pdfOptions: PDFOptions = {
-        includeBranding: !isPro, // Free tier shows branding
-        companyDetails: prefs.company,
-        logoBase64,
-        // Pro/Premium users can add payment methods to invoices
-        paymentMethods: isPro ? prefs.paymentMethods : undefined,
+        const pdfOptions: PDFOptions = {
+          includeBranding: !isPro, // Free tier shows branding
+          companyDetails: prefs.company,
+          logoBase64,
+          // Pro/Premium users can add payment methods to invoices
+          paymentMethods: isPro ? prefs.paymentMethods : undefined,
+        };
+
+        await generateAndShareInvoicePDF(invoice, pdfOptions);
+
+        // Increment counter for free users after successful export
+        if (!isPro) {
+          await incrementInvoiceCount();
+        }
       };
 
-      await generateAndShareInvoicePDF(invoice, pdfOptions);
-
-      // Increment counter for free users after successful export
-      if (!isPro) {
-        await incrementInvoiceCount();
+      // Show confirmation for free users with remaining count
+      if (!isPro && remaining !== undefined) {
+        Alert.alert(
+          "Export Invoice PDF",
+          `This will use 1 of your ${remaining} remaining invoice exports this month.`,
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Export", onPress: doExport }
+          ]
+        );
+      } else {
+        // Pro user - just export
+        await doExport();
       }
     } catch (error) {
       console.error("Failed to export invoice PDF:", error);

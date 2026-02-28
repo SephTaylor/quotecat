@@ -5,6 +5,7 @@ import { useAssemblies } from "@/modules/assemblies";
 import { deleteAssembly } from "@/modules/assemblies/storage";
 import { getUserState } from "@/lib/user";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
+import RevenueCatUI from "react-native-purchases-ui";
 import React, { memo, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -199,9 +200,16 @@ export default function AssembliesScreen() {
 
             <Pressable
               style={styles.upgradeButton}
-              onPress={() => router.push("/(auth)/sign-in")}
+              onPress={async () => {
+                const result = await RevenueCatUI.presentPaywall();
+                if (result === "PURCHASED" || result === "RESTORED") {
+                  // Re-check tier after purchase
+                  const userState = await getUserState();
+                  setIsPro(userState.tier === "pro" || userState.tier === "premium");
+                }
+              }}
             >
-              <Text style={styles.upgradeButtonText}>Sign In</Text>
+              <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
             </Pressable>
           </View>
         </Screen>

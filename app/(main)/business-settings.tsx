@@ -32,6 +32,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
+import RevenueCatUI from "react-native-purchases-ui";
 
 export default function BusinessSettings() {
   const { theme } = useTheme();
@@ -103,7 +104,7 @@ export default function BusinessSettings() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const handleLearnMore = () => Linking.openURL("https://quotecat.ai");
+  const handleLearnMore = () => RevenueCatUI.presentPaywall();
 
   const styles = React.useMemo(() => createStyles(theme, insets), [theme, insets]);
 

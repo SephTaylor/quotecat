@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { initAnalytics, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import { initializeAuth } from "@/lib/auth";
+import { initializeRevenueCat, syncTierFromRevenueCat } from "@/lib/revenuecat";
 import {
   checkCrashLoopAndReset,
   performStartupIntegrityCheck,
@@ -82,6 +83,15 @@ export default function RootLayout() {
           trackEvent(AnalyticsEvents.APP_OPENED);
         } catch (e) {
           console.error("Analytics init error:", e);
+        }
+
+        // Step 1.1: Initialize RevenueCat for in-app purchases
+        try {
+          await initializeRevenueCat();
+          // Sync local tier with RevenueCat entitlements
+          await syncTierFromRevenueCat();
+        } catch (e) {
+          console.error("RevenueCat init error:", e);
         }
 
         // Step 1.5: Migrate from AsyncStorage to SQLite (one-time)

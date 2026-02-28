@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SwipeableContractItem } from "@/components/SwipeableContractItem";
+import RevenueCatUI from "react-native-purchases-ui";
 
 export default function ContractsScreen() {
   const { theme } = useTheme();
@@ -233,9 +234,14 @@ export default function ContractsScreen() {
           </View>
           <Pressable
             style={styles.upgradeButton}
-            onPress={() => router.push("/(auth)/sign-in" as never)}
+            onPress={async () => {
+              const result = await RevenueCatUI.presentPaywall();
+              if (result === "PURCHASED" || result === "RESTORED") {
+                load(); // Re-check tier after purchase
+              }
+            }}
           >
-            <Text style={styles.upgradeButtonText}>Sign In</Text>
+            <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
           </Pressable>
         </View>
       </View>
