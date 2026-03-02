@@ -5,6 +5,7 @@ import { updateQuote, getQuoteById } from "@/lib/quotes";
 import { getClients, getAndClearLastCreatedClientId, getClientById, createClient, type Client } from "@/lib/clients";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies } from "@/lib/features";
+import { loadPreferences } from "@/lib/preferences";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { getItemId } from "@/lib/validation";
 import type { QuoteStatus, QuoteItem } from "@/lib/types";
@@ -59,6 +60,7 @@ export default function EditQuote() {
 
   // Client picker state
   const [isPro, setIsPro] = useState(false);
+  const [targetMaterialsMarginPercent, setTargetMaterialsMarginPercent] = useState(0);
   const [savedClients, setSavedClients] = useState<Client[]>([]);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -111,7 +113,7 @@ export default function EditQuote() {
     getFormData,
   } = form;
 
-  // Load Pro status and saved clients
+  // Load Pro status, saved clients, and target materials margin
   useEffect(() => {
     const loadProAndClients = async () => {
       try {
@@ -119,8 +121,12 @@ export default function EditQuote() {
         const proStatus = canAccessAssemblies(user);
         setIsPro(proStatus);
         if (proStatus) {
-          const clients = await getClients();
+          const [clients, prefs] = await Promise.all([
+            getClients(),
+            loadPreferences(),
+          ]);
           setSavedClients(clients);
+          setTargetMaterialsMarginPercent(prefs.pricing?.targetMaterialsMarginPercent || 0);
         }
       } catch (error) {
         console.error("Failed to load Pro status or clients:", error);
@@ -1184,6 +1190,38 @@ export default function EditQuote() {
                 <Text style={styles.totalsValue}>
                   ${calculations.markupAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
+              </View>
+            )}
+
+            {/* Materials Margin - Pro+ only, when markup > 0 */}
+            {isPro && calculations.markupAmount > 0 && (
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>Materials Margin</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  {targetMaterialsMarginPercent > 0 && (
+                    <View style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: calculations.materialsMarginPercent >= targetMaterialsMarginPercent
+                        ? '#22c55e'
+                        : calculations.materialsMarginPercent >= targetMaterialsMarginPercent - 5
+                          ? '#eab308'
+                          : '#ef4444',
+                    }}>
+                      <Ionicons
+                        name={calculations.materialsMarginPercent >= targetMaterialsMarginPercent ? 'checkmark' : 'warning'}
+                        size={12}
+                        color="white"
+                      />
+                    </View>
+                  )}
+                  <Text style={styles.totalsValue}>
+                    {calculations.materialsMarginPercent.toFixed(1)}%
+                  </Text>
+                </View>
               </View>
             )}
 

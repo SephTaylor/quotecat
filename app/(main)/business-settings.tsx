@@ -340,7 +340,22 @@ export default function BusinessSettings() {
               theme={theme}
               readOnly={isTech}
             />
+            <View style={styles.divider} />
+            <InlineField
+              label="Target Materials Margin"
+              value={String(preferences.pricing?.targetMaterialsMarginPercent || 0)}
+              suffix="%"
+              keyboardType="decimal-pad"
+              enabled={hasProAccess && canEdit}
+              onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0 && n <= 100) setPreferences(await updatePricingSettings({ targetMaterialsMarginPercent: n })); }}
+              onLocked={handleLearnMore}
+              theme={theme}
+              readOnly={isTech}
+            />
           </View>
+          <Text style={styles.sectionHint}>
+            Materials margin is your profit on materials before overhead
+          </Text>
         </Pressable>
 
       </ScrollView>

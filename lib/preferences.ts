@@ -57,6 +57,7 @@ export type PricingSettings = {
   defaultTaxPercent: number; // Default tax % for new quotes
   defaultMarkupPercent: number; // Default markup % for new quotes
   defaultLaborRate: number; // Default hourly labor rate
+  targetMaterialsMarginPercent: number; // Target materials margin % (0 = not set)
 };
 
 export type PaymentMethod = {
@@ -139,6 +140,7 @@ export function getDefaultPreferences(): UserPreferences {
       defaultTaxPercent: 0,
       defaultMarkupPercent: 0,
       defaultLaborRate: 0,
+      targetMaterialsMarginPercent: 0,
     },
     paymentMethods: {
       zelle: { enabled: false, value: "" },

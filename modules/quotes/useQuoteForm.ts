@@ -43,6 +43,7 @@ export type QuoteCalculations = {
   laborValue: number;
   subtotal: number;
   markupAmount: number;
+  materialsMarginPercent: number;
   taxAmount: number;
   total: number;
 };
@@ -101,6 +102,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       laborValue: calc.labor,
       subtotal: calc.subtotal,
       markupAmount: calc.markupAmount,
+      materialsMarginPercent: calc.materialsMarginPercent,
       taxAmount: calc.taxAmount,
       total: calc.total,
     };

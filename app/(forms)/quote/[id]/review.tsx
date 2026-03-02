@@ -1,6 +1,7 @@
 // app/(forms)/quote/[id]/review.tsx
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
+import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -55,6 +56,7 @@ export default function QuoteReviewScreen() {
   const [selectedDueDate, setSelectedDueDate] = useState<Date>(new Date());
   const [pendingInvoicePercentage, setPendingInvoicePercentage] = useState<number>(100);
   const [isCreatingContract, setIsCreatingContract] = useState(false);
+  const [targetMaterialsMarginPercent, setTargetMaterialsMarginPercent] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -68,6 +70,7 @@ export default function QuoteReviewScreen() {
         setQuote(q ?? null);
         setUserState(user);
         setCompanyDetails(prefs.company);
+        setTargetMaterialsMarginPercent(prefs.pricing?.targetMaterialsMarginPercent || 0);
 
         // Load logo from local storage
         try {
@@ -91,6 +94,7 @@ export default function QuoteReviewScreen() {
   const labor = totals?.labor ?? 0;
   const markupPercent = totals?.markupPercent ?? 0;
   const markupAmount = totals?.markupAmount ?? 0;
+  const materialsMarginPercent = totals?.materialsMarginPercent ?? 0;
   const subtotal = totals?.subtotal ?? 0;
   const taxAmount = totals?.taxAmount ?? 0;
   const grandTotal = totals?.total ?? 0;
@@ -623,6 +627,36 @@ export default function QuoteReviewScreen() {
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Markup ({markupPercent}%)</Text>
                 <Text style={styles.totalValue}>${markupAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              </View>
+            )}
+
+            {/* Materials Margin - Pro+ only, when markup > 0 */}
+            {(isPro || isPremium) && markupAmount > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Materials Margin</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  {targetMaterialsMarginPercent > 0 && (
+                    <View style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: materialsMarginPercent >= targetMaterialsMarginPercent
+                        ? '#22c55e'
+                        : materialsMarginPercent >= targetMaterialsMarginPercent - 5
+                          ? '#eab308'
+                          : '#ef4444',
+                    }}>
+                      <Ionicons
+                        name={materialsMarginPercent >= targetMaterialsMarginPercent ? 'checkmark' : 'warning'}
+                        size={12}
+                        color="white"
+                      />
+                    </View>
+                  )}
+                  <Text style={styles.totalValue}>{materialsMarginPercent.toFixed(1)}%</Text>
+                </View>
               </View>
             )}
 

@@ -28,6 +28,7 @@ export function calculateQuoteTotals(quote: Quote): {
   subtotal: number;
   markupPercent: number;
   markupAmount: number;
+  materialsMarginPercent: number;
   taxPercent: number;
   taxAmount: number;
   total: number;
@@ -46,6 +47,12 @@ export function calculateQuoteTotals(quote: Quote): {
   const taxAmount = (subtotal * taxPercent) / 100;
   const total = subtotal + taxAmount;
 
+  // Calculate materials margin from markup
+  // Formula: margin% = markup% / (100 + markup%) * 100
+  const materialsMarginPercent = markupPercent > 0
+    ? (markupPercent / (100 + markupPercent)) * 100
+    : 0;
+
   return {
     materialsFromItems,
     materialEstimate,
@@ -53,6 +60,7 @@ export function calculateQuoteTotals(quote: Quote): {
     subtotal,
     markupPercent,
     markupAmount,
+    materialsMarginPercent,
     taxPercent,
     taxAmount,
     total,
