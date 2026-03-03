@@ -1,5 +1,5 @@
 // app/(main)/(tabs)/pro-tools.tsx
-// Pro Tools tab - Shows locked features for free users, unlocked for pro users
+// Toolbox tab - Business tools for all users (free, pro, premium)
 import { useTheme } from "@/contexts/ThemeContext";
 import { canAccessAssemblies } from "@/lib/features";
 import { getUserState } from "@/lib/user";
@@ -65,6 +65,10 @@ export default function ProTools() {
         );
       } else if (featureName === "Team Members") {
         router.push("/(main)/team-members" as any);
+      } else if (featureName === "Labor Rate Calculator") {
+        router.push("/(main)/labor-rate-calculator" as any);
+      } else if (featureName === "Overhead Calculator") {
+        router.push("/(main)/overhead-calculator" as any);
       }
     } else {
       // Show RevenueCat paywall for non-subscribers
@@ -87,117 +91,131 @@ export default function ProTools() {
   return (
     <>
       <Stack.Screen
-        options={{ title: "Pro Tools", headerBackVisible: false, headerTitleAlign: 'center' }}
+        options={{ title: "Toolbox", headerBackVisible: false, headerTitleAlign: 'center' }}
       />
       <GradientBackground>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {!isPro && (
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Pro Features</Text>
+              <Text style={styles.headerTitle}>Toolbox</Text>
               <Text style={styles.headerSubtitle}>
-                Unlock powerful tools for professional quoting
+                Business tools to help you price profitably
               </Text>
             </View>
           )}
 
-          {/* Available Tools Section */}
+          {/* Free Tools Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Available Now</Text>
+            <Text style={styles.sectionTitle}>Free Tools</Text>
 
-            {/* Assembly Manager */}
+            {/* Labor Rate Calculator - Free for all */}
             <ProFeatureCard
-              icon=""
-              title="Assembly Manager"
-              description="Create and manage your custom assemblies"
-              locked={!isPro}
-              onPress={() => handleFeatureTap("Assembly Manager")}
-              details={[]}
+              title="Labor Rate Calculator"
+              description="Calculate your true hourly rate from salary, benefits, and overhead"
+              locked={false}
+              onPress={() => handleFeatureTap("Labor Rate Calculator", false, true)}
               theme={theme}
-            />
-
-            {/* Assembly Library */}
-            <ProFeatureCard
-              icon=""
-              title="Assembly Library"
-              description="Browse your pre-built assembly templates"
-              locked={!isPro}
-              onPress={() => handleFeatureTap("Assembly Library")}
-              details={[]}
-              theme={theme}
+              tier="free"
             />
 
             {/* Client Manager - Free for all users */}
             <ProFeatureCard
-              icon=""
               title="Client Manager"
               description="Save and manage your client list"
               locked={false}
               onPress={() => handleFeatureTap("Client Manager", false, true)}
-              details={[]}
               theme={theme}
+              tier="free"
+            />
+          </View>
+
+          {/* Pro Tools Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pro Tools</Text>
+
+            {/* Overhead Calculator - Pro feature */}
+            <ProFeatureCard
+              title="Overhead Calculator"
+              description="Calculate your true overhead costs step by step"
+              locked={!isPro}
+              onPress={() => handleFeatureTap("Overhead Calculator")}
+              theme={theme}
+              tier="pro"
+            />
+
+            {/* Assembly Manager */}
+            <ProFeatureCard
+              title="Assembly Manager"
+              description="Create and manage your custom assemblies"
+              locked={!isPro}
+              onPress={() => handleFeatureTap("Assembly Manager")}
+              theme={theme}
+              tier="pro"
+            />
+
+            {/* Assembly Library */}
+            <ProFeatureCard
+              title="Assembly Library"
+              description="Browse your pre-built assembly templates"
+              locked={!isPro}
+              onPress={() => handleFeatureTap("Assembly Library")}
+              theme={theme}
+              tier="pro"
             />
 
             {/* Job Calculator - Pro feature */}
             <ProFeatureCard
-              icon=""
               title="Job Calculator"
               description="Calculate materials from job dimensions"
               locked={!isPro}
               onPress={() => handleFeatureTap("Job Calculator")}
-              details={[]}
               theme={theme}
+              tier="pro"
             />
 
             {/* Price Book - Pro feature */}
             <ProFeatureCard
-              icon=""
               title="Price Book"
               description="Create and manage your custom products and pricing"
               locked={!isPro}
               onPress={() => handleFeatureTap("Price Book")}
-              details={[]}
               theme={theme}
+              tier="pro"
             />
           </View>
 
           {/* Premium Features Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Premium Features</Text>
+            <Text style={styles.sectionTitle}>Premium Tools</Text>
 
             {/* Team Members */}
             <ProFeatureCard
-              icon=""
               title="Team Members"
               description="Manage your crew and track labor costs per worker"
               locked={!isPremium}
               onPress={() => handleFeatureTap("Team Members", true)}
-              details={[]}
               theme={theme}
-              isPremium
+              tier="premium"
             />
 
             {/* Contracts */}
             <ProFeatureCard
-              icon=""
               title="Contracts"
               description="Create legally-binding contracts with digital signatures"
               locked={!isPremium}
               onPress={() => handleFeatureTap("Contracts", true)}
-              details={[]}
               theme={theme}
-              isPremium
+              tier="premium"
             />
 
             {/* Premium Portal */}
             <ProFeatureCard
-              icon=""
               title="Premium Portal"
               description="Your full business suite on the web - everything in the app and more"
               locked={!isPremium}
               onPress={() => handleFeatureTap("Premium Portal", true)}
-              details={[]}
               theme={theme}
-              isPremium
+              tier="premium"
             />
           </View>
 
@@ -230,45 +248,83 @@ export default function ProTools() {
 }
 
 function ProFeatureCard({
-  icon,
   title,
   description,
   locked,
   onPress,
-  details,
   theme,
-  isPremium = false,
+  tier = "pro",
 }: {
-  icon: string;
   title: string;
   description: string;
   locked: boolean;
   onPress: () => void;
-  details: string[];
   theme: ReturnType<typeof useTheme>["theme"];
-  isPremium?: boolean;
+  tier?: "free" | "pro" | "premium";
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
+  const getBadgeStyle = () => {
+    switch (tier) {
+      case "free":
+        return styles.freeBadge;
+      case "premium":
+        return styles.premiumBadge;
+      default:
+        return styles.proBadge;
+    }
+  };
+
+  const getBadgeTextStyle = () => {
+    switch (tier) {
+      case "free":
+        return styles.freeBadgeText;
+      case "premium":
+        return styles.premiumBadgeText;
+      default:
+        return styles.proBadgeText;
+    }
+  };
+
+  const getBadgeLabel = () => {
+    switch (tier) {
+      case "free":
+        return "FREE";
+      case "premium":
+        return "PREMIUM";
+      default:
+        return "PRO";
+    }
+  };
+
   return (
     <Pressable
-      style={[styles.featureCard, locked && styles.featureCardLocked, isPremium && styles.featureCardPremium]}
+      style={[
+        styles.featureCard,
+        locked && styles.featureCardLocked,
+        tier === "premium" && styles.featureCardPremium,
+      ]}
       onPress={onPress}
     >
       <View style={styles.featureInfo}>
         <View style={styles.featureTitleRow}>
           <Text style={styles.featureTitle}>{title}</Text>
-          {isPremium && (
-            <View style={styles.premiumBadge}>
-              <Text style={styles.premiumBadgeText}>Premium</Text>
-            </View>
-          )}
+          <View style={getBadgeStyle()}>
+            <Text style={getBadgeTextStyle()}>{getBadgeLabel()}</Text>
+          </View>
         </View>
         <Text style={styles.featureDescription}>{description}</Text>
       </View>
 
-      <View style={[styles.launchButton, locked && styles.launchButtonLocked, isPremium && styles.launchButtonPremium]}>
-        <Text style={[styles.launchButtonText, isPremium && styles.launchButtonTextPremium]}>
+      <View style={[
+        styles.launchButton,
+        locked && styles.launchButtonLocked,
+        tier === "premium" && styles.launchButtonPremium,
+      ]}>
+        <Text style={[
+          styles.launchButtonText,
+          tier === "premium" && styles.launchButtonTextPremium,
+        ]}>
           {locked ? "Upgrade" : "Launch"}
         </Text>
       </View>
@@ -342,6 +398,30 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
+    },
+    freeBadge: {
+      backgroundColor: "#22c55e20",
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    freeBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#22c55e",
+      textTransform: "uppercase",
+    },
+    proBadge: {
+      backgroundColor: theme.colors.accent + "30",
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    proBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: theme.colors.accent,
+      textTransform: "uppercase",
     },
     premiumBadge: {
       backgroundColor: "#5856D620",

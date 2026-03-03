@@ -142,10 +142,10 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="pro-tools"
         options={{
-          title: "Pro Tools",
-          drawerLabel: "Pro Tools",
+          title: "Toolbox",
+          drawerLabel: "Toolbox",
           drawerIcon: ({ color, size }: IconProps) => (
-            <Ionicons name="sparkles-outline" size={size} color={color} />
+            <Ionicons name="construct-outline" size={size} color={color} />
           ),
         }}
       />
@@ -277,8 +277,8 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         style={styles.drawerItem}
       />
       <DrawerItem
-        label="Pro Tools"
-        icon={({ color, size }) => <Ionicons name="sparkles-outline" size={size} color={color} />}
+        label="Toolbox"
+        icon={({ color, size }) => <Ionicons name="construct-outline" size={size} color={color} />}
         onPress={() => props.navigation.navigate("pro-tools")}
         activeTintColor={theme.colors.accent}
         inactiveTintColor={theme.colors.muted}
