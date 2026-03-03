@@ -63,6 +63,8 @@ export default function ProTools() {
           "Access your full business suite at portal.quotecat.ai",
           [{ text: "OK" }]
         );
+      } else if (featureName === "Team Members") {
+        router.push("/(main)/team-members" as any);
       }
     } else {
       // Show RevenueCat paywall for non-subscribers
@@ -161,6 +163,18 @@ export default function ProTools() {
           {/* Premium Features Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Premium Features</Text>
+
+            {/* Team Members */}
+            <ProFeatureCard
+              icon=""
+              title="Team Members"
+              description="Manage your crew and track labor costs per worker"
+              locked={!isPremium}
+              onPress={() => handleFeatureTap("Team Members", true)}
+              details={[]}
+              theme={theme}
+              isPremium
+            />
 
             {/* Contracts */}
             <ProFeatureCard

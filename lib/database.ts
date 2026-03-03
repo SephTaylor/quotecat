@@ -3,14 +3,14 @@
 // This solves the OOM crashes by loading data row-by-row instead of all at once
 
 import * as SQLite from "expo-sqlite";
-import type { Quote, Invoice, Client, QuoteItem, PricebookItem, InvoicePayment } from "./types";
+import type { Quote, Invoice, Client, QuoteItem, PricebookItem, InvoicePayment, LaborEntry, TeamMember } from "./types";
 import type { Product, Category } from "@/modules/catalog/seed";
 
 // Database instance (lazy initialized)
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 
 /**
  * Get or create the database instance
@@ -471,6 +471,60 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     }
   }
 
+  if (fromVersion < 13) {
+    // Add team_members table for Premium users (mirrors Supabase team_members)
+    // This allows tracking labor costs per worker on quotes
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS team_members (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        name TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
+        role TEXT,
+        default_rate REAL DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        synced_at TEXT
+      );
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_team_members_name ON team_members(name);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_team_members_is_active ON team_members(is_active);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_team_members_user_id ON team_members(user_id);
+    `);
+
+    // Add labor_entries column to quotes table (stored as JSON like items)
+    const quoteColumns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(quotes)"
+    );
+    const quoteColumnNames = new Set(quoteColumns.map((c) => c.name));
+
+    if (!quoteColumnNames.has("labor_entries")) {
+      database.execSync(`ALTER TABLE quotes ADD COLUMN labor_entries TEXT;`);
+    }
+
+    // Add labor_entries column to invoices table as well
+    const invoiceColumns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(invoices)"
+    );
+    const invoiceColumnNames = new Set(invoiceColumns.map((c) => c.name));
+
+    if (!invoiceColumnNames.has("labor_entries")) {
+      database.execSync(`ALTER TABLE invoices ADD COLUMN labor_entries TEXT;`);
+    }
+
+    console.log(`👷 Added team_members table and labor_entries columns`);
+  }
+
   // Update version
   database.runSync(
     "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
@@ -498,6 +552,7 @@ function rowToQuote(row: any): Quote {
     clientAddress: row.client_address || undefined,
     items: JSON.parse(row.items || "[]") as QuoteItem[],
     labor: row.labor || 0,
+    laborEntries: row.labor_entries ? JSON.parse(row.labor_entries) as LaborEntry[] : undefined,
     materialEstimate: row.material_estimate || undefined,
     overhead: row.overhead || undefined,
     markupPercent: row.markup_percent || undefined,
@@ -607,10 +662,10 @@ export function saveQuoteDB(quote: Quote): void {
     database.runSync(
       `INSERT OR REPLACE INTO quotes (
         id, quote_number, name, client_name, client_email, client_phone, client_address,
-        items, labor, material_estimate, overhead, markup_percent, tax_percent,
+        items, labor, labor_entries, material_estimate, overhead, markup_percent, tax_percent,
         notes, change_history, approved_snapshot, follow_up_date, currency, status, pinned, tier, linked_quote_ids,
         created_at, updated_at, deleted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         quote.id,
         quote.quoteNumber || null,
@@ -621,6 +676,7 @@ export function saveQuoteDB(quote: Quote): void {
         quote.clientAddress || null,
         JSON.stringify(quote.items || []),
         quote.labor || 0,
+        quote.laborEntries ? JSON.stringify(quote.laborEntries) : null,
         quote.materialEstimate || null,
         quote.overhead || null,
         quote.markupPercent || null,
@@ -735,6 +791,7 @@ function rowToInvoice(row: any): Invoice {
     clientAddress: row.client_address || undefined,
     items: JSON.parse(row.items || "[]") as QuoteItem[],
     labor: row.labor || 0,
+    laborEntries: row.labor_entries ? JSON.parse(row.labor_entries) as LaborEntry[] : undefined,
     materialEstimate: row.material_estimate || undefined,
     overhead: row.overhead || undefined,
     markupPercent: row.markup_percent || undefined,
@@ -835,11 +892,11 @@ export function saveInvoiceDB(invoice: Invoice): void {
     database.runSync(
       `INSERT OR REPLACE INTO invoices (
         id, quote_id, contract_id, invoice_number, name, client_name,
-        client_email, client_phone, client_address, items, labor,
+        client_email, client_phone, client_address, items, labor, labor_entries,
         material_estimate, overhead, markup_percent, tax_percent, notes,
         invoice_date, due_date, status, paid_date, paid_amount,
         percentage, is_partial_invoice, currency, created_at, updated_at, deleted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         invoice.id,
         invoice.quoteId || null,
@@ -852,6 +909,7 @@ export function saveInvoiceDB(invoice: Invoice): void {
         invoice.clientAddress || null,
         JSON.stringify(invoice.items || []),
         invoice.labor || 0,
+        invoice.laborEntries ? JSON.stringify(invoice.laborEntries) : null,
         invoice.materialEstimate || null,
         invoice.overhead || null,
         invoice.markupPercent || null,
@@ -2046,11 +2104,188 @@ export function clearAllDataDB(): void {
       database.runSync("DELETE FROM pricebook_items");
       database.runSync("DELETE FROM products");
       database.runSync("DELETE FROM categories");
+      database.runSync("DELETE FROM team_members");
       database.runSync("DELETE FROM sync_metadata");
       database.runSync("DELETE FROM migration_status");
     });
   } catch (error) {
     console.error("Failed to clear all data from SQLite:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// TEAM MEMBERS (Premium Feature - synced from Supabase)
+// ============================================
+
+/**
+ * Convert database row to TeamMember object
+ */
+function rowToTeamMember(row: any): TeamMember {
+  return {
+    id: row.id,
+    userId: row.user_id || undefined,
+    name: row.name || "",
+    phone: row.phone || undefined,
+    email: row.email || undefined,
+    role: row.role || undefined,
+    defaultRate: row.default_rate || 0,
+    isActive: row.is_active === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * List all team members (active only by default)
+ */
+export function listTeamMembersDB(options?: {
+  activeOnly?: boolean;
+  limit?: number;
+}): TeamMember[] {
+  try {
+    const database = getDatabase();
+    const { activeOnly = true, limit } = options || {};
+
+    let sql = "SELECT * FROM team_members WHERE 1=1";
+    const params: any[] = [];
+
+    if (activeOnly) {
+      sql += " AND is_active = 1";
+    }
+
+    sql += " ORDER BY name ASC";
+
+    if (limit !== undefined) {
+      sql += " LIMIT ?";
+      params.push(limit);
+    }
+
+    const rows = database.getAllSync(sql, params);
+    return rows.map(rowToTeamMember);
+  } catch (error) {
+    console.error("Failed to list team members from SQLite:", error);
+    return [];
+  }
+}
+
+/**
+ * Get a single team member by ID
+ */
+export function getTeamMemberByIdDB(id: string): TeamMember | null {
+  try {
+    const database = getDatabase();
+    const row = database.getFirstSync(
+      "SELECT * FROM team_members WHERE id = ?",
+      [id]
+    );
+    return row ? rowToTeamMember(row) : null;
+  } catch (error) {
+    console.error(`Failed to get team member ${id} from SQLite:`, error);
+    return null;
+  }
+}
+
+/**
+ * Save a team member (insert or update)
+ */
+export function saveTeamMemberDB(member: TeamMember): void {
+  try {
+    const database = getDatabase();
+
+    database.runSync(
+      `INSERT OR REPLACE INTO team_members (
+        id, user_id, name, phone, email, role, default_rate,
+        is_active, created_at, updated_at, synced_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        member.id,
+        member.userId || null,
+        member.name,
+        member.phone || null,
+        member.email || null,
+        member.role || null,
+        member.defaultRate || 0,
+        member.isActive === false ? 0 : 1,
+        member.createdAt,
+        member.updatedAt,
+        new Date().toISOString(),
+      ]
+    );
+  } catch (error) {
+    console.error(`Failed to save team member ${member.id} to SQLite:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Save multiple team members in a transaction (for sync)
+ */
+export function saveTeamMembersBatchDB(members: TeamMember[]): void {
+  if (members.length === 0) return;
+
+  try {
+    const database = getDatabase();
+
+    database.withTransactionSync(() => {
+      for (const member of members) {
+        saveTeamMemberDB(member);
+      }
+    });
+  } catch (error) {
+    console.error(`Failed to batch save ${members.length} team members:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a team member (soft delete by setting inactive)
+ */
+export function deleteTeamMemberDB(id: string): void {
+  try {
+    const database = getDatabase();
+    const now = new Date().toISOString();
+    database.runSync(
+      "UPDATE team_members SET is_active = 0, updated_at = ? WHERE id = ?",
+      [now, id]
+    );
+  } catch (error) {
+    console.error(`Failed to delete team member ${id} from SQLite:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Search team members by name
+ */
+export function searchTeamMembersDB(query: string, limit = 10): TeamMember[] {
+  if (!query.trim()) return listTeamMembersDB({ limit });
+
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      `SELECT * FROM team_members
+       WHERE is_active = 1 AND LOWER(name) LIKE ?
+       ORDER BY name ASC
+       LIMIT ?`,
+      [`%${query.toLowerCase()}%`, limit]
+    );
+    return rows.map(rowToTeamMember);
+  } catch (error) {
+    console.error("Failed to search team members:", error);
+    return [];
+  }
+}
+
+/**
+ * Clear all team members (for full resync)
+ */
+export function clearTeamMembersDB(): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM team_members");
+  } catch (error) {
+    console.error("Failed to clear team members:", error);
     throw error;
   }
 }

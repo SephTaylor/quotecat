@@ -532,8 +532,19 @@ export default function Settings() {
                   handleUpdatePreference({ showRecentContracts: value })
                 }
                 theme={theme}
-                isLast
+                isLast={!isPro}
               />
+              {isPro && (
+                <SettingRow
+                  label="Margin"
+                  value={preferences.dashboard.showMargin}
+                  onToggle={(value) =>
+                    handleUpdatePreference({ showMargin: value })
+                  }
+                  theme={theme}
+                  isLast
+                />
+              )}
 
               {/* Recent Quotes Count */}
               {preferences.dashboard.showRecentQuotes && (

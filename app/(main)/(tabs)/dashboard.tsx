@@ -3,8 +3,8 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { listQuotes, type Quote } from "@/lib/quotes";
 import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, type Contract } from "@/lib/types";
-import { calculateQuoteTotal, calculateInvoiceTotal } from "@/lib/calculations";
-import { loadPreferences, type DashboardPreferences } from "@/lib/preferences";
+import { calculateQuoteTotal, calculateInvoiceTotal, calculateInvoiceProfitability, getMarginColor } from "@/lib/calculations";
+import { loadPreferences, type DashboardPreferences, type OverheadSettings } from "@/lib/preferences";
 import { deleteQuote, saveQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
 import { listInvoices, getToInvoiceStats, deleteInvoice } from "@/lib/invoices";
 import { listContracts, deleteContract } from "@/lib/contracts";
@@ -63,8 +63,10 @@ export default function Dashboard() {
     showQuickActions: true,
     showRecentInvoices: true,
     showRecentContracts: true,
+    showMargin: true,
     recentQuotesCount: 5,
   });
+  const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
   const [showUndo, setShowUndo] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
@@ -100,6 +102,7 @@ export default function Dashboard() {
       // This is critical when background sync may also be running
       const prefs = await loadPreferences();
       setPreferences(prefs.dashboard);
+      setOverheadSettings(prefs.overhead);
 
       const syncTime = await getLastSyncTime();
       setLastSyncTime(syncTime);
@@ -333,6 +336,46 @@ export default function Dashboard() {
     });
     return sorted.slice(0, 5);
   }, [contracts]);
+
+  // Calculate average margin from paid invoices (Pro+ only, requires overhead)
+  const marginStats = React.useMemo(() => {
+    if (!isPro || !overheadSettings?.overheadPercent) {
+      return null;
+    }
+
+    // Get paid invoices for margin calculation
+    const paidInvoices = invoices.filter(inv => inv.status === 'paid');
+    if (paidInvoices.length === 0) {
+      return null;
+    }
+
+    let totalProfit = 0;
+    let totalRevenue = 0;
+    let validCount = 0;
+
+    for (const inv of paidInvoices) {
+      const profitability = calculateInvoiceProfitability(inv, overheadSettings);
+      if (profitability) {
+        totalProfit += profitability.profit;
+        totalRevenue += profitability.revenue;
+        validCount++;
+      }
+    }
+
+    if (validCount === 0 || totalRevenue === 0) {
+      return null;
+    }
+
+    const avgMargin = (totalProfit / totalRevenue) * 100;
+    const targetMargin = overheadSettings.targetProfitMarginPercent;
+
+    return {
+      avgMargin,
+      targetMargin,
+      totalProfit,
+      invoiceCount: validCount,
+    };
+  }, [isPro, overheadSettings, invoices]);
 
   const handleDelete = useCallback(async (quote: Quote) => {
     // Store deleted quote for undo
@@ -600,6 +643,38 @@ export default function Dashboard() {
             </View>
           )}
 
+          {/* Margin Card (Pro+ only, requires overhead setup) */}
+          {isPro && preferences.showMargin && marginStats && (
+            <View style={styles.marginSection}>
+              <Text style={styles.valueSectionTitle}>Profit Margin</Text>
+              <View style={styles.marginCard}>
+                <View style={styles.marginMainRow}>
+                  <View style={[styles.marginIndicator, { backgroundColor: getMarginColor(marginStats.avgMargin, marginStats.targetMargin) }]} />
+                  <Text style={styles.marginValue}>{marginStats.avgMargin.toFixed(1)}%</Text>
+                  <Text style={styles.marginLabel}>avg margin</Text>
+                </View>
+                <View style={styles.marginDetailsRow}>
+                  <Text style={styles.marginDetailText}>
+                    ${marginStats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} profit from {marginStats.invoiceCount} paid invoice{marginStats.invoiceCount !== 1 ? 's' : ''}
+                  </Text>
+                </View>
+                {marginStats.targetMargin && marginStats.targetMargin > 0 && (
+                  <View style={styles.marginTargetRow}>
+                    <Text style={[
+                      styles.marginTargetText,
+                      { color: getMarginColor(marginStats.avgMargin, marginStats.targetMargin) }
+                    ]}>
+                      {marginStats.avgMargin >= marginStats.targetMargin
+                        ? `At target (${marginStats.targetMargin}%)`
+                        : marginStats.avgMargin >= marginStats.targetMargin - 5
+                          ? `Close to target (${marginStats.targetMargin}%)`
+                          : `Below target (${marginStats.targetMargin}%)`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Recent Activity */}
           {preferences.showRecentQuotes && (
@@ -819,6 +894,50 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
+    },
+    marginSection: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(1.5),
+      marginBottom: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    marginCard: {
+      gap: 8,
+    },
+    marginMainRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    marginIndicator: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+    },
+    marginValue: {
+      fontSize: 28,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    marginLabel: {
+      fontSize: 14,
+      color: theme.colors.muted,
+    },
+    marginDetailsRow: {
+      paddingLeft: 20,
+    },
+    marginDetailText: {
+      fontSize: 13,
+      color: theme.colors.muted,
+    },
+    marginTargetRow: {
+      paddingLeft: 20,
+    },
+    marginTargetText: {
+      fontSize: 13,
+      fontWeight: "600",
     },
     sectionTitle: {
       fontSize: 18,

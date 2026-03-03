@@ -611,3 +611,80 @@ export type ItemMatchResult = {
  * Sort options for browsing shared assemblies
  */
 export type SharedAssemblySortOption = "popular" | "newest" | "top_rated";
+
+// =============================================================================
+// LABOR TRACKING TYPES (Pro/Premium)
+// =============================================================================
+
+/**
+ * Worker roles for labor entries
+ */
+export type WorkerRole = "apprentice" | "journeyman" | "master" | "custom";
+
+/**
+ * Worker role metadata for UI display
+ */
+export const WorkerRoleMeta: Record<WorkerRole, { label: string; defaultRate?: number }> = {
+  apprentice: { label: "Apprentice", defaultRate: 25 },
+  journeyman: { label: "Journeyman", defaultRate: 45 },
+  master: { label: "Master", defaultRate: 65 },
+  custom: { label: "Custom" },
+};
+
+/**
+ * Individual labor entry within a quote
+ * Supports flat amount OR hours × rate calculation
+ */
+export type LaborEntry = {
+  id: string;
+  workerId?: string;           // Reference to saved worker (Premium)
+  name?: string;               // Worker name or description
+  role?: string;               // Role description (free text)
+
+  // Two modes (use one or the other):
+  hours?: number;              // Calculated mode
+  rate?: number;               // Calculated mode ($/hr)
+  flatAmount?: number;         // Flat rate mode
+
+  notes?: string;
+};
+
+/**
+ * Team member for labor tracking and job assignments (Premium)
+ * Synced from Supabase team_members table
+ */
+export type TeamMember = {
+  id: string;
+  userId?: string; // Owner's user ID
+  name: string;
+  phone?: string;
+  email?: string;
+  role?: string; // Free text: "Lead Installer", "Helper", etc.
+  defaultRate: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// Backwards compatibility alias
+export type SavedWorker = TeamMember;
+
+/**
+ * Compute total from a labor entry
+ */
+export function computeLaborEntryTotal(entry: LaborEntry): number {
+  if (entry.flatAmount !== undefined && entry.flatAmount > 0) {
+    return entry.flatAmount;
+  }
+  if (entry.hours && entry.rate) {
+    return entry.hours * entry.rate;
+  }
+  return 0;
+}
+
+/**
+ * Compute total labor from all entries
+ */
+export function computeLaborTotal(entries: LaborEntry[]): number {
+  return entries.reduce((sum, entry) => sum + computeLaborEntryTotal(entry), 0);
+}

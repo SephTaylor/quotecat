@@ -4,12 +4,13 @@ import { useTechContext } from "@/contexts/TechContext";
 import { updateQuote, getQuoteById } from "@/lib/quotes";
 import { getClients, getAndClearLastCreatedClientId, getClientById, createClient, type Client } from "@/lib/clients";
 import { getUserState } from "@/lib/user";
-import { canAccessAssemblies } from "@/lib/features";
-import { loadPreferences } from "@/lib/preferences";
+import { canAccessAssemblies, canAccessMultiWorkerLabor } from "@/lib/features";
+import { loadPreferences, type OverheadSettings } from "@/lib/preferences";
+import { calculateQuoteProfitability, getMarginColor, getMarginIcon } from "@/lib/calculations";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { getItemId } from "@/lib/validation";
-import type { QuoteStatus, QuoteItem } from "@/lib/types";
-import { QuoteStatusMeta } from "@/lib/types";
+import type { QuoteStatus, QuoteItem, LaborEntry, TeamMember } from "@/lib/types";
+import { QuoteStatusMeta, computeLaborTotal } from "@/lib/types";
 import { useQuoteForm } from "@/modules/quotes";
 import {
   Stack,
@@ -21,13 +22,18 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
+import { SwipeableLaborEntry } from "@/components/SwipeableLaborEntry";
+import { AddLaborEntrySheet } from "@/components/AddLaborEntrySheet";
+import { WorkerPickerModal } from "@/components/WorkerPickerModal";
 import { AddItemRow } from "@/components/AddItemRow";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
+import { LaborInput } from "@/components/LaborInput";
 import { Ionicons } from "@expo/vector-icons";
 import { mergeById } from "@/modules/quotes/merge";
 import { formatNetChange } from "@/modules/changeOrders/diff";
+import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 
 export default function EditQuote() {
   const { theme } = useTheme();
@@ -60,11 +66,21 @@ export default function EditQuote() {
 
   // Client picker state
   const [isPro, setIsPro] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
   const [targetMaterialsMarginPercent, setTargetMaterialsMarginPercent] = useState(0);
+  const [defaultLaborRate, setDefaultLaborRate] = useState(0);
+  const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
   const [savedClients, setSavedClients] = useState<Client[]>([]);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [clientPickerSearch, setClientPickerSearch] = useState("");
+
+  // Premium multi-worker labor tracking
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [laborEntries, setLaborEntries] = useState<LaborEntry[]>([]);
+  const [showAddLaborSheet, setShowAddLaborSheet] = useState(false);
+  const [showWorkerPicker, setShowWorkerPicker] = useState(false);
+  const [editingLaborEntry, setEditingLaborEntry] = useState<LaborEntry | null>(null);
 
   // Undo functionality for material deletion
   const [showUndoSnackbar, setShowUndoSnackbar] = useState(false);
@@ -113,13 +129,15 @@ export default function EditQuote() {
     getFormData,
   } = form;
 
-  // Load Pro status, saved clients, and target materials margin
+  // Load Pro/Premium status, saved clients, and profitability settings
   useEffect(() => {
     const loadProAndClients = async () => {
       try {
         const user = await getUserState();
         const proStatus = canAccessAssemblies(user);
+        const premiumStatus = canAccessMultiWorkerLabor(user);
         setIsPro(proStatus);
+        setIsPremium(premiumStatus);
         if (proStatus) {
           const [clients, prefs] = await Promise.all([
             getClients(),
@@ -127,6 +145,13 @@ export default function EditQuote() {
           ]);
           setSavedClients(clients);
           setTargetMaterialsMarginPercent(prefs.pricing?.targetMaterialsMarginPercent || 0);
+          setDefaultLaborRate(prefs.pricing?.defaultLaborRate || 0);
+          setOverheadSettings(prefs.overhead);
+        }
+        // Load team members for Premium users
+        if (premiumStatus) {
+          const members = getLocalTeamMembers();
+          setTeamMembers(members);
         }
       } catch (error) {
         console.error("Failed to load Pro status or clients:", error);
@@ -193,6 +218,62 @@ export default function EditQuote() {
       checkNewClient();
     }, [load, setClientName, setClientEmail, setClientPhone, setClientAddress, setIsNewQuote, effectiveId, newItemsParam, setItems]),
   );
+
+  // Load labor entries from quote when it changes (Premium feature)
+  useEffect(() => {
+    if (isPremium && quote?.laborEntries && Array.isArray(quote.laborEntries)) {
+      setLaborEntries(quote.laborEntries);
+    }
+  }, [isPremium, quote]);
+
+  // Sync labor total when entries change (Premium feature)
+  useEffect(() => {
+    if (isPremium && laborEntries.length > 0) {
+      const total = computeLaborTotal(laborEntries);
+      setLabor(total.toFixed(2));
+    }
+  }, [laborEntries, isPremium, setLabor]);
+
+  // Labor entry CRUD handlers (Premium feature)
+  const handleAddLaborEntry = useCallback((entry: LaborEntry) => {
+    setLaborEntries((prev) => [...prev, entry]);
+  }, []);
+
+  const handleUpdateLaborEntry = useCallback((updatedEntry: LaborEntry) => {
+    setLaborEntries((prev) =>
+      prev.map((e) => (e.id === updatedEntry.id ? updatedEntry : e))
+    );
+    setEditingLaborEntry(null);
+  }, []);
+
+  const handleDeleteLaborEntry = useCallback((entryId: string) => {
+    setLaborEntries((prev) => prev.filter((e) => e.id !== entryId));
+  }, []);
+
+  const handleEditLaborEntry = useCallback((entry: LaborEntry) => {
+    setEditingLaborEntry(entry);
+    setShowAddLaborSheet(true);
+  }, []);
+
+  const handleSaveLaborEntry = useCallback((entry: LaborEntry) => {
+    if (editingLaborEntry) {
+      handleUpdateLaborEntry(entry);
+    } else {
+      handleAddLaborEntry(entry);
+    }
+  }, [editingLaborEntry, handleUpdateLaborEntry, handleAddLaborEntry]);
+
+  // Handle adding multiple workers from picker
+  const handleAddWorkersFromPicker = useCallback((entries: LaborEntry[]) => {
+    setLaborEntries((prev) => [...prev, ...entries]);
+  }, []);
+
+  // Handle inline hours change for a labor entry
+  const handleLaborEntryHoursChange = useCallback((entryId: string, hours: number) => {
+    setLaborEntries((prev) =>
+      prev.map((e) => (e.id === entryId ? { ...e, hours } : e))
+    );
+  }, []);
 
   // Filter saved clients based on current input (for autocomplete)
   const filteredClients = React.useMemo(() => {
@@ -484,6 +565,7 @@ export default function EditQuote() {
             changeHistory: updatedHistory,
             status: "draft",
             approvedSnapshot: newSnapshot, // Update snapshot to current state
+            laborEntries: isPremium ? laborEntries : undefined, // Premium multi-worker
           });
 
           Alert.alert(
@@ -513,7 +595,7 @@ export default function EditQuote() {
           qty: item.qty,
           unitPrice: item.unitPrice,
         })));
-        await updateQuote(effectiveId!, { ...formData, items: currentItems, approvedSnapshot: snapshot });
+        await updateQuote(effectiveId!, { ...formData, items: currentItems, approvedSnapshot: snapshot, laborEntries: isPremium ? laborEntries : undefined });
         Alert.alert("Saved", "Baseline snapshot created. Future changes will now be tracked.", [{ text: "OK" }]);
         return;
       }
@@ -531,14 +613,15 @@ export default function EditQuote() {
         unitPrice: item.unitPrice,
       })));
 
-      await updateQuote(effectiveId!, { ...formData, items: itemsToSnapshot, approvedSnapshot: snapshot });
+      await updateQuote(effectiveId!, { ...formData, items: itemsToSnapshot, approvedSnapshot: snapshot, laborEntries: isPremium ? laborEntries : undefined });
       Alert.alert("Saved", "Quote saved and approved. Future changes will be tracked.", [{ text: "OK" }]);
       return;
     }
 
-    // No changes or not tracking - just save normally
-    await handleSave();
-  }, [id, realQuoteId, effectiveId, items, status, isPro, handleSave, validateRequiredFields, ensureQuoteExists, maybePromptToSaveClient, changeHistory, setChangeHistory, setStatus, getFormData]);
+    // No changes or not tracking - just save normally with labor entries
+    await updateQuote(effectiveId!, { ...getFormData(), laborEntries: isPremium ? laborEntries : undefined });
+    Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
+  }, [id, realQuoteId, effectiveId, items, status, isPro, isPremium, laborEntries, validateRequiredFields, ensureQuoteExists, maybePromptToSaveClient, changeHistory, setChangeHistory, setStatus, getFormData]);
 
   const handleUpdateItemQty = async (itemId: string, delta: number) => {
     if (!effectiveId) return;
@@ -1005,15 +1088,84 @@ export default function EditQuote() {
         {canViewPricing && (
           <>
             <Text style={styles.label}>Labor</Text>
-            <FormInput
-              placeholder="0.00"
-              value={labor}
-              onChangeText={(text) => setLabor(formatLaborInput(text))}
-              onBlur={() => setLabor(formatMoneyOnBlur(labor))}
-              keyboardType="decimal-pad"
-            />
+            {isPro || isPremium ? (
+              // Pro/Premium: Hours × rate calculator OR flat rate
+              // Disabled when assigned workers are used (Premium)
+              <View style={laborEntries.length > 0 ? { opacity: 0.4 } : undefined}>
+                <LaborInput
+                  value={laborEntries.length > 0 ? 0 : (parseFloat(labor) || 0)}
+                  onChange={(value) => {
+                    if (laborEntries.length === 0) {
+                      setLabor(value.toFixed(2));
+                    }
+                  }}
+                  defaultRate={defaultLaborRate}
+                />
+                {laborEntries.length > 0 && (
+                  <Text style={styles.disabledHint}>
+                    Using assigned workers below
+                  </Text>
+                )}
+              </View>
+            ) : (
+              // Free: Simple input
+              <FormInput
+                placeholder="0.00"
+                value={labor}
+                onChangeText={(text) => setLabor(formatLaborInput(text))}
+                onBlur={() => setLabor(formatMoneyOnBlur(labor))}
+                keyboardType="decimal-pad"
+              />
+            )}
 
             <View style={{ height: theme.spacing(3) }} />
+
+            {/* Assigned Workers Section - Premium only */}
+            {isPremium && (
+              <>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Assigned Workers</Text>
+                  <Pressable
+                    onPress={() => setShowWorkerPicker(true)}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.browseTag}>Browse</Text>
+                  </Pressable>
+                </View>
+                {laborEntries.length > 0 ? (
+                  <>
+                    <GestureHandlerRootView style={styles.itemsList}>
+                      {laborEntries.map((entry, index) => (
+                        <SwipeableLaborEntry
+                          key={entry.id}
+                          entry={entry}
+                          onDelete={() => handleDeleteLaborEntry(entry.id)}
+                          onEdit={() => handleEditLaborEntry(entry)}
+                          onHoursChange={(hours) => handleLaborEntryHoursChange(entry.id, hours)}
+                          isLastItem={index === laborEntries.length - 1}
+                        />
+                      ))}
+                    </GestureHandlerRootView>
+                    <View style={styles.laborTotalRow}>
+                      <Text style={styles.laborTotalLabel}>Total Labor</Text>
+                      <Text style={styles.laborTotalValue}>
+                        ${computeLaborTotal(laborEntries).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <Pressable
+                    style={styles.emptyLaborCard}
+                    onPress={() => setShowWorkerPicker(true)}
+                  >
+                    <Text style={styles.emptyLaborText}>
+                      Tap to assign workers to this job
+                    </Text>
+                  </Pressable>
+                )}
+                <View style={{ height: theme.spacing(3) }} />
+              </>
+            )}
           </>
         )}
 
@@ -1271,6 +1423,76 @@ export default function EditQuote() {
                 ${calculations.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </View>
+
+            {/* Profitability Indicator - Pro+ only, when overhead settings exist */}
+            {isPro && overheadSettings && calculations.total > 0 && (() => {
+              // Check if overhead is properly configured
+              const overheadPercent = overheadSettings.overheadPercent;
+              const isOverheadConfigured = typeof overheadPercent === 'number' && overheadPercent > 0 && !isNaN(overheadPercent);
+              const targetMargin = overheadSettings.targetProfitMarginPercent;
+
+              // If overhead not configured, show setup prompt
+              if (!isOverheadConfigured) {
+                return (
+                  <>
+                    <View style={styles.totalsDivider} />
+                    <Pressable
+                      style={styles.totalsRow}
+                      onPress={() => router.push('/(main)/business-settings')}
+                    >
+                      <Text style={[styles.totalsLabel, { color: theme.colors.accent }]}>
+                        Set up overhead to see profit
+                      </Text>
+                      <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+                    </Pressable>
+                  </>
+                );
+              }
+
+              // Calculate profitability using current form values
+              const revenue = calculations.total;
+              const materialsCost = calculations.materialsFromItems; // Before markup
+              const laborCost = calculations.laborValue;
+              const overheadCost = laborCost * (overheadPercent / 100);
+              const profit = revenue - materialsCost - laborCost - overheadCost;
+              const marginPercent = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+              return (
+                <>
+                  <View style={styles.totalsDivider} />
+                  <View style={styles.totalsRow}>
+                    <Text style={styles.totalsLabel}>
+                      Profit Margin {targetMargin ? `(Target: ${targetMargin}%)` : ''}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: getMarginColor(marginPercent, targetMargin),
+                      }}>
+                        <Ionicons
+                          name={getMarginIcon(marginPercent, targetMargin) as any}
+                          size={12}
+                          color="white"
+                        />
+                      </View>
+                      <Text style={[styles.totalsValue, { color: getMarginColor(marginPercent, targetMargin) }]}>
+                        {marginPercent.toFixed(1)}%
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.totalsRow}>
+                    <Text style={styles.totalsLabel}>Est. Profit</Text>
+                    <Text style={[styles.totalsValue, { color: profit >= 0 ? '#22c55e' : '#ef4444' }]}>
+                      ${profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Text>
+                  </View>
+                </>
+              );
+            })()}
           </View>
         ) : (
           <View style={styles.totalsCard}>
@@ -1388,6 +1610,33 @@ export default function EditQuote() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Worker Picker Modal (Premium) */}
+      <WorkerPickerModal
+        visible={showWorkerPicker}
+        onClose={() => setShowWorkerPicker(false)}
+        onConfirm={handleAddWorkersFromPicker}
+        teamMembers={teamMembers}
+        existingEntries={laborEntries}
+        onTeamMembersChanged={() => {
+          // Refresh team members list when a new one is created
+          const members = getLocalTeamMembers();
+          setTeamMembers(members);
+        }}
+      />
+
+      {/* Add/Edit Labor Entry Sheet (Premium) */}
+      <AddLaborEntrySheet
+        visible={showAddLaborSheet}
+        onClose={() => {
+          setShowAddLaborSheet(false);
+          setEditingLaborEntry(null);
+        }}
+        onSave={handleSaveLaborEntry}
+        teamMembers={teamMembers}
+        defaultRate={defaultLaborRate}
+        editingEntry={editingLaborEntry}
+      />
 
     </>
   );
@@ -1860,6 +2109,45 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 13,
       fontWeight: "600",
       color: "#34C759",
+    },
+    // Labor section styles (Premium multi-worker)
+    emptyLaborCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderStyle: "dashed",
+      padding: theme.spacing(3),
+      alignItems: "center",
+    },
+    emptyLaborText: {
+      fontSize: 14,
+      color: theme.colors.muted,
+    },
+    disabledHint: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      fontStyle: "italic",
+      textAlign: "center",
+      marginTop: theme.spacing(1),
+    },
+    laborTotalRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      marginTop: theme.spacing(1),
+    },
+    laborTotalLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    laborTotalValue: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
     },
   });
 }

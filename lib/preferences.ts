@@ -11,6 +11,7 @@ export type DashboardPreferences = {
   showQuickActions: boolean;
   showRecentInvoices: boolean;
   showRecentContracts: boolean;
+  showMargin: boolean; // Pro+ only - show avg margin card
   recentQuotesCount: 3 | 5 | 10 | "all";
 };
 
@@ -60,6 +61,18 @@ export type PricingSettings = {
   targetMaterialsMarginPercent: number; // Target materials margin % (0 = not set)
 };
 
+/**
+ * Overhead settings for profitability calculations
+ * Configured via portal profitability setup, syncs to mobile
+ */
+export type OverheadSettings = {
+  annualOverhead: number; // Annual overhead costs in dollars
+  annualLaborRevenue: number; // Annual labor revenue in dollars
+  overheadPercent: number; // Calculated: (annualOverhead / annualLaborRevenue) * 100
+  targetProfitMarginPercent?: number; // User's target profit margin % (e.g., 25)
+  completedAt?: string; // ISO 8601 date when setup was completed
+};
+
 export type PaymentMethod = {
   enabled: boolean;
   value: string; // The actual payment info (email, username, address, etc.)
@@ -85,6 +98,7 @@ export type UserPreferences = {
   notifications: NotificationPreferences;
   pricing: PricingSettings;
   paymentMethods: PaymentMethods;
+  overhead?: OverheadSettings; // Profitability overhead settings (configured via portal)
 };
 
 const PREFERENCES_KEY = "@quotecat/preferences";
@@ -102,6 +116,7 @@ export function getDefaultPreferences(): UserPreferences {
       showQuickActions: true,
       showRecentInvoices: true,
       showRecentContracts: true,
+      showMargin: true, // Pro+ only - defaults to on
       recentQuotesCount: 5,
     },
     privacy: {
@@ -206,6 +221,8 @@ export async function loadPreferences(): Promise<UserPreferences> {
         ...getDefaultPreferences().paymentMethods,
         ...(stored.paymentMethods || {}),
       },
+      // Overhead settings (optional, configured via portal)
+      overhead: stored.overhead || undefined,
     };
 
     // Save migrated preferences back to storage to clean up
@@ -372,6 +389,21 @@ export async function updatePaymentMethods(
       ...prefs.paymentMethods,
       ...updates,
     },
+  };
+  await savePreferences(updated);
+  return updated;
+}
+
+/**
+ * Update overhead settings
+ */
+export async function updateOverheadSettings(
+  overhead: OverheadSettings | undefined,
+): Promise<UserPreferences> {
+  const prefs = await loadPreferences();
+  const updated: UserPreferences = {
+    ...prefs,
+    overhead,
   };
   await savePreferences(updated);
   return updated;

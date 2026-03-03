@@ -3,6 +3,7 @@
 // Single source of truth - do not duplicate these elsewhere
 
 import type { Quote, QuoteItem, Invoice } from "./types";
+import type { OverheadSettings } from "./preferences";
 
 /**
  * Calculate subtotal from line items
@@ -146,4 +147,134 @@ export function calculateInvoiceTotal(invoice: Invoice): number {
 export function calculateInvoiceRemaining(invoice: Invoice): number {
   const total = calculateInvoiceTotal(invoice);
   return invoice.paidAmount ? total - invoice.paidAmount : total;
+}
+
+/**
+ * Profitability result type
+ */
+export type ProfitabilityResult = {
+  revenue: number;
+  materialsCost: number;
+  laborCost: number;
+  overheadCost: number;
+  profit: number;
+  marginPercent: number;
+};
+
+/**
+ * Calculate profitability for a quote
+ *
+ * Formula:
+ * - Materials Cost = line items total (BEFORE markup)
+ * - Labor Cost = labor field
+ * - Overhead Cost = Labor × (Overhead % / 100)
+ * - Revenue = quote total (what client pays)
+ * - Profit = Revenue - Materials Cost - Labor Cost - Overhead Cost
+ * - Margin % = (Profit / Revenue) × 100
+ */
+export function calculateQuoteProfitability(
+  quote: Quote,
+  overheadSettings: OverheadSettings | undefined
+): ProfitabilityResult | null {
+  if (!overheadSettings || !overheadSettings.overheadPercent) {
+    return null;
+  }
+
+  const totals = calculateQuoteTotals(quote);
+  const revenue = totals.total;
+  const materialsCost = totals.materialsFromItems; // Before markup
+  const laborCost = totals.labor;
+  const overheadPercent = overheadSettings.overheadPercent;
+
+  // Overhead is calculated on labor
+  const overheadCost = laborCost * (overheadPercent / 100);
+
+  // Profit = Revenue - all costs
+  const profit = revenue - materialsCost - laborCost - overheadCost;
+
+  // Margin = Profit / Revenue
+  const marginPercent = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+  return {
+    revenue,
+    materialsCost,
+    laborCost,
+    overheadCost,
+    profit,
+    marginPercent,
+  };
+}
+
+/**
+ * Calculate profitability for an invoice
+ *
+ * Same formula as quotes, but uses invoice totals
+ */
+export function calculateInvoiceProfitability(
+  invoice: Invoice,
+  overheadSettings: OverheadSettings | undefined
+): ProfitabilityResult | null {
+  if (!overheadSettings || !overheadSettings.overheadPercent) {
+    return null;
+  }
+
+  const totals = calculateInvoiceTotals(invoice);
+  const revenue = totals.total;
+  const materialsCost = totals.materialsFromItems; // Before markup
+  const laborCost = totals.labor;
+  const overheadPercent = overheadSettings.overheadPercent;
+
+  // Overhead is calculated on labor
+  const overheadCost = laborCost * (overheadPercent / 100);
+
+  // Profit = Revenue - all costs
+  const profit = revenue - materialsCost - laborCost - overheadCost;
+
+  // Margin = Profit / Revenue
+  const marginPercent = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+  return {
+    revenue,
+    materialsCost,
+    laborCost,
+    overheadCost,
+    profit,
+    marginPercent,
+  };
+}
+
+/**
+ * Get margin indicator color based on margin percentage and user's target
+ * - Green: at or above target
+ * - Yellow: within 5% of target
+ * - Red: more than 5% below target
+ * - Gray: no target set (neutral)
+ */
+export function getMarginColor(marginPercent: number, targetMargin?: number): string {
+  // No target set - show neutral gray
+  if (!targetMargin || targetMargin <= 0) {
+    return "#6b7280"; // gray
+  }
+
+  const warningThreshold = targetMargin - 5;
+
+  if (marginPercent >= targetMargin) return "#22c55e"; // green - at or above target
+  if (marginPercent >= warningThreshold) return "#eab308"; // yellow - close to target
+  return "#ef4444"; // red - below target
+}
+
+/**
+ * Get margin indicator icon based on margin percentage and user's target
+ */
+export function getMarginIcon(marginPercent: number, targetMargin?: number): string {
+  // No target set - show neutral icon
+  if (!targetMargin || targetMargin <= 0) {
+    return "analytics-outline"; // neutral chart icon
+  }
+
+  const warningThreshold = targetMargin - 5;
+
+  if (marginPercent >= targetMargin) return "checkmark";
+  if (marginPercent >= warningThreshold) return "remove";
+  return "warning";
 }
