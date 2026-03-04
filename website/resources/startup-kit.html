@@ -8,7 +8,6 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://quotecat.ai/resources/startup-kit">
     <meta property="og:title" content="Free Contractor Startup Kit - QuoteCat">
@@ -16,305 +15,153 @@
     <meta property="og:image" content="https://quotecat.ai/logo.png">
     <link rel="canonical" href="https://quotecat.ai/resources/startup-kit">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --primary: #f97316;
-            --primary-dark: #ea580c;
             --text: #ffffff;
-            --text-light: #a0a0a0;
-            --bg-dark: #1a1a1a;
+            --text-muted: #9ca3af;
+            --bg: #111111;
+            --card: rgba(255,255,255,0.05);
+            --border: rgba(249,115,22,0.2);
         }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.5;
             color: var(--text);
-            background: linear-gradient(to bottom, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
-            min-height: 100vh;
+            background: var(--bg);
         }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
+        .container { max-width: 700px; margin: 0 auto; padding: 0 20px; }
 
         /* Header */
         header {
-            padding: 16px 0;
-            background: rgba(20, 20, 20, 0.95);
-            border-bottom: 1px solid rgba(249, 115, 22, 0.3);
+            padding: 12px 0;
+            background: rgba(17,17,17,0.95);
+            border-bottom: 1px solid var(--border);
         }
-
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
         .logo {
-            height: 40px;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            padding: 0 16px 0 0;
+            border-radius: 10px;
+            text-decoration: none;
         }
+        .logo img { height: 40px; margin-right: -4px; }
+        .logo span { font-size: 18px; font-weight: 700; color: #fff; }
+        .back-link { color: var(--primary); text-decoration: none; font-weight: 600; font-size: 14px; }
 
-        .logo img {
-            height: 100%;
-            width: auto;
-        }
-
-        /* Hero */
-        .hero {
-            padding: 60px 0 40px;
-            text-align: center;
-        }
-
+        /* Hero + Form */
+        .hero { padding: 32px 0 28px; text-align: center; }
         .badge {
             display: inline-block;
-            background: rgba(249, 115, 22, 0.2);
+            background: rgba(249,115,22,0.15);
             color: var(--primary);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 24px;
-        }
-
-        h1 {
-            font-size: 42px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            line-height: 1.2;
-        }
-
-        h1 span {
-            color: var(--primary);
-        }
-
-        .subtitle {
-            font-size: 20px;
-            color: var(--text-light);
-            margin-bottom: 40px;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* Benefits */
-        .benefits {
-            padding: 40px 0;
-        }
-
-        .benefits-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 24px;
-        }
-
-        .benefit {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(249, 115, 22, 0.2);
-            border-radius: 12px;
-            padding: 24px;
-        }
-
-        .benefit-icon {
-            font-size: 28px;
-            margin-bottom: 12px;
-        }
-
-        .benefit h3 {
-            font-size: 18px;
-            margin-bottom: 8px;
-            color: var(--text);
-        }
-
-        .benefit p {
-            font-size: 14px;
-            color: var(--text-light);
-        }
-
-        /* What's Inside */
-        .whats-inside {
-            padding: 40px 0;
-        }
-
-        .whats-inside h2 {
-            font-size: 28px;
-            text-align: center;
-            margin-bottom: 32px;
-        }
-
-        .inside-list {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(249, 115, 22, 0.2);
-            border-radius: 12px;
-            padding: 32px;
-        }
-
-        .inside-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
-            padding: 16px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .inside-item:last-child {
-            border-bottom: none;
-        }
-
-        .check {
-            color: var(--primary);
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-
-        .inside-item p {
-            font-size: 16px;
-        }
-
-        .inside-item strong {
-            color: var(--primary);
-        }
-
-        /* Form Section */
-        .form-section {
-            padding: 60px 0;
-        }
-
-        .form-card {
-            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%);
-            border: 2px solid var(--primary);
+            padding: 6px 14px;
             border-radius: 16px;
-            padding: 40px;
-            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
         }
+        h1 { font-size: 32px; font-weight: 800; margin-bottom: 12px; line-height: 1.2; }
+        h1 span { color: var(--primary); }
+        .subtitle { font-size: 16px; color: var(--text-muted); max-width: 520px; margin: 0 auto 24px; }
 
-        .form-card h2 {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-
-        .form-card .subtext {
-            color: var(--text-light);
-            margin-bottom: 32px;
-        }
-
-        .email-form {
-            display: flex;
-            gap: 12px;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
+        /* Email Form in Hero */
+        .email-form { display: flex; gap: 10px; max-width: 420px; margin: 0 auto; }
         .email-form input[type="email"] {
             flex: 1;
-            padding: 16px 20px;
-            font-size: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 14px 16px;
+            font-size: 15px;
+            border: 1px solid rgba(255,255,255,0.15);
             border-radius: 8px;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0,0,0,0.4);
             color: white;
         }
-
-        .email-form input[type="email"]::placeholder {
-            color: #666;
-        }
-
-        .email-form input[type="email"]:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
+        .email-form input::placeholder { color: #666; }
+        .email-form input:focus { outline: none; border-color: var(--primary); }
         .email-form button {
-            padding: 16px 32px;
-            font-size: 16px;
+            padding: 14px 28px;
+            font-size: 15px;
             font-weight: 700;
             background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-            color: white;
+            color: #000;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            white-space: nowrap;
         }
+        .email-form button:hover { box-shadow: 0 4px 16px rgba(249,115,22,0.35); }
+        .privacy-note { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
 
-        .email-form button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
-        }
-
-        .privacy-note {
-            font-size: 12px;
-            color: var(--text-light);
-            margin-top: 16px;
-        }
-
-        /* Stats */
-        .stats {
-            padding: 40px 0;
-            text-align: center;
-        }
-
-        .stat-row {
+        /* Benefits Grid */
+        .benefits { padding: 28px 0 20px; }
+        .benefits-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .benefit {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
             display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .benefit-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(249,115,22,0.15);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 60px;
-            flex-wrap: wrap;
+            flex-shrink: 0;
         }
+        .benefit-icon svg { width: 18px; height: 18px; stroke: var(--primary); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .benefit-text h3 { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+        .benefit-text p { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
 
-        .stat {
-            text-align: center;
+        /* What's Inside */
+        .whats-inside { padding: 20px 0 28px; }
+        .whats-inside h2 { font-size: 20px; margin-bottom: 14px; }
+        .inside-list {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 20px;
         }
-
-        .stat-number {
-            font-size: 48px;
-            font-weight: 800;
-            color: var(--primary);
+        .inside-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
-
-        .stat-label {
-            font-size: 14px;
-            color: var(--text-light);
+        .inside-item:last-child { border-bottom: none; }
+        .check {
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
+        .check svg { width: 12px; height: 12px; stroke: #000; stroke-width: 3; fill: none; }
+        .inside-item p { font-size: 14px; }
+        .inside-item strong { color: var(--text); }
 
         /* Footer */
-        footer {
-            padding: 40px 0;
-            text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
+        footer { padding: 24px 0; text-align: center; border-top: 1px solid rgba(255,255,255,0.08); }
+        footer p { color: var(--text-muted); font-size: 13px; }
+        footer a { color: var(--primary); text-decoration: none; }
 
-        footer p {
-            color: var(--text-light);
-            font-size: 14px;
-        }
-
-        footer a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        /* Mobile */
         @media (max-width: 600px) {
-            h1 {
-                font-size: 32px;
-            }
-
-            .benefits-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .email-form {
-                flex-direction: column;
-            }
-
-            .stat-row {
-                gap: 40px;
-            }
+            h1 { font-size: 26px; }
+            .benefits-grid { grid-template-columns: 1fr; }
+            .email-form { flex-direction: column; }
+            .email-form button { width: 100%; }
         }
     </style>
 </head>
@@ -322,11 +169,11 @@
     <header>
         <div class="container">
             <div class="header-content">
-                <a href="/" class="logo" style="display:flex;align-items:center;gap:0;background:linear-gradient(135deg,#f97316 0%,#ea580c 100%);padding:0 20px 0 0;border-radius:12px;text-decoration:none;">
-                    <img src="/qc-splash.png" alt="QuoteCat Logo" style="height:50px;width:auto;margin-right:-6px;">
-                    <span style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px;">QuoteCat</span>
+                <a href="/" class="logo">
+                    <img src="/qc-splash.png" alt="QuoteCat">
+                    <span>QuoteCat</span>
                 </a>
-                <a href="/" style="color: var(--primary); text-decoration: none; font-weight: 600;">← Back to Home</a>
+                <a href="/" class="back-link">← Home</a>
             </div>
         </div>
     </header>
@@ -337,6 +184,13 @@
                 <span class="badge">FREE DOWNLOAD</span>
                 <h1>The 90-Day <span>Contractor Startup Kit</span></h1>
                 <p class="subtitle">A no-BS checklist for starting your contracting business the right way. Licensing, insurance, pricing, first customers, and more.</p>
+
+                <form class="email-form" name="startup-kit" method="POST" data-netlify="true" action="/resources/startup-kit-thanks">
+                    <input type="hidden" name="form-name" value="startup-kit">
+                    <input type="email" name="email" placeholder="you@example.com" required>
+                    <button type="submit">Get Free Kit</button>
+                </form>
+                <p class="privacy-note">No spam, ever. Unsubscribe anytime.</p>
             </div>
         </section>
 
@@ -344,24 +198,40 @@
             <div class="container">
                 <div class="benefits-grid">
                     <div class="benefit">
-                        <div class="benefit-icon">&#x2705;</div>
-                        <h3>Step-by-Step Checklists</h3>
-                        <p>Know exactly what to do in your first 90 days</p>
+                        <div class="benefit-icon">
+                            <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                        </div>
+                        <div class="benefit-text">
+                            <h3>Step-by-Step Checklists</h3>
+                            <p>Exactly what to do in your first 90 days</p>
+                        </div>
                     </div>
                     <div class="benefit">
-                        <div class="benefit-icon">&#x1F4B0;</div>
-                        <h3>Pricing Guidance</h3>
-                        <p>Stop undercharging and leaving money on the table</p>
+                        <div class="benefit-icon">
+                            <svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                        </div>
+                        <div class="benefit-text">
+                            <h3>Pricing Guidance</h3>
+                            <p>Stop undercharging and leaving money on the table</p>
+                        </div>
                     </div>
                     <div class="benefit">
-                        <div class="benefit-icon">&#x1F4CB;</div>
-                        <h3>50-State Licensing Guide</h3>
-                        <p>Know your state's requirements at a glance</p>
+                        <div class="benefit-icon">
+                            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                        </div>
+                        <div class="benefit-text">
+                            <h3>50-State Licensing Guide</h3>
+                            <p>Know your state's requirements at a glance</p>
+                        </div>
                     </div>
                     <div class="benefit">
-                        <div class="benefit-icon">&#x1F6E1;</div>
-                        <h3>Insurance Breakdown</h3>
-                        <p>What you need, what it costs, and how to get it</p>
+                        <div class="benefit-icon">
+                            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <div class="benefit-text">
+                            <h3>Insurance Breakdown</h3>
+                            <p>What you need, costs, and how to get it</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -372,62 +242,32 @@
                 <h2>What's Inside</h2>
                 <div class="inside-list">
                     <div class="inside-item">
-                        <span class="check">&#x2713;</span>
-                        <p><strong>Legal Setup Checklist</strong> - LLC, EIN, licenses, bonds</p>
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Legal Setup</strong> - LLC, EIN, licenses, bonds</p>
                     </div>
                     <div class="inside-item">
-                        <span class="check">&#x2713;</span>
-                        <p><strong>Insurance Guide</strong> - GL, workers comp, commercial auto with cost estimates</p>
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Insurance Guide</strong> - GL, workers comp, auto with costs</p>
                     </div>
                     <div class="inside-item">
-                        <span class="check">&#x2713;</span>
-                        <p><strong>Money Setup</strong> - Bank accounts, payment terms, cash flow basics</p>
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Money Setup</strong> - Banking, payment terms, cash flow</p>
                     </div>
                     <div class="inside-item">
-                        <span class="check">&#x2713;</span>
-                        <p><strong>Tools & Equipment Lists</strong> - Starter kits by trade with costs</p>
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Tools & Equipment</strong> - Starter kits by trade</p>
                     </div>
                     <div class="inside-item">
-                        <span class="check">&#x2713;</span>
-                        <p><strong>First 10 Customers</strong> - How to get work without a marketing budget</p>
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>First 10 Customers</strong> - Get work with no budget</p>
                     </div>
                     <div class="inside-item">
-                        <span class="check">&#x2713;</span>
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
                         <p><strong>90-Day Action Plan</strong> - Week-by-week roadmap</p>
                     </div>
                     <div class="inside-item">
-                        <span class="check">&#x2713;</span>
-                        <p><strong>BONUS: 50-State Licensing Reference</strong> - Requirements for every state</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="form-section">
-            <div class="container">
-                <div class="form-card">
-                    <h2>Get Your Free Kit</h2>
-                    <p class="subtext">Enter your email and we'll send it right over.</p>
-                    <form class="email-form" name="startup-kit" method="POST" data-netlify="true" action="/resources/startup-kit-thanks">
-                        <input type="hidden" name="form-name" value="startup-kit">
-                        <input type="email" name="email" placeholder="you@example.com" required>
-                        <button type="submit">Send It</button>
-                    </form>
-                    <p class="privacy-note">No spam, ever. Unsubscribe anytime.</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="stats">
-            <div class="container">
-                <div class="stat-row">
-                    <div class="stat">
-                        <div class="stat-number">80%</div>
-                        <div class="stat-label">of new businesses survive year 1</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-number">82%</div>
-                        <div class="stat-label">of failures cite cash flow</div>
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>50-State Reference</strong> - Licensing by state</p>
                     </div>
                 </div>
             </div>
@@ -436,7 +276,7 @@
 
     <footer>
         <div class="container">
-            <p>&copy; 2026 QuoteCat. <a href="/privacy">Privacy Policy</a></p>
+            <p>&copy; 2026 QuoteCat. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
         </div>
     </footer>
 </body>
