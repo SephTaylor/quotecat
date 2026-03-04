@@ -19,6 +19,8 @@ module.exports = function(eleventyConfig) {
   eleventyConfig.addPassthroughCopy("resources/*.js");
   eleventyConfig.addPassthroughCopy("resources/*.css");
   eleventyConfig.addPassthroughCopy("resources/*.png");
+  eleventyConfig.addPassthroughCopy(".well-known");
+  eleventyConfig.addPassthroughCopy("_headers");
 
   return {
     dir: {
