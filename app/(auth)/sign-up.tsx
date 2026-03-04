@@ -128,22 +128,38 @@ export default function SignUpScreen() {
           const shouldSyncProducts = await needsSync();
 
           if (shouldSyncProducts && !hasCache) {
-            console.log("📦 First-time sync: downloading product catalog...");
-            setSyncing(true);
-            setSyncProgress({ loaded: 0, total: 100 });
-            progressAnim.setValue(0);
-
-            const success = await syncAllProducts((loaded, total) => {
-              if (isMountedRef.current) {
-                setSyncProgress({ loaded, total });
-              }
+            // Prompt for consent before downloading (Apple requirement)
+            const userConsents = await new Promise<boolean>((resolve) => {
+              Alert.alert(
+                "Download Product Catalog",
+                "QuoteCat needs to download the product catalog (~100 MB) to enable material pricing. This is a one-time download.\n\nDownload now?",
+                [
+                  { text: "Later", style: "cancel", onPress: () => resolve(false) },
+                  { text: "Download", onPress: () => resolve(true) },
+                ]
+              );
             });
 
-            await new Promise((r) => setTimeout(r, 300));
-            setSyncing(false);
+            if (userConsents) {
+              console.log("📦 First-time sync: downloading product catalog...");
+              setSyncing(true);
+              setSyncProgress({ loaded: 0, total: 100 });
+              progressAnim.setValue(0);
 
-            if (!success) {
-              Alert.alert("Warning", "Could not download product catalog. Some features may be limited.");
+              const success = await syncAllProducts((loaded, total) => {
+                if (isMountedRef.current) {
+                  setSyncProgress({ loaded, total });
+                }
+              });
+
+              await new Promise((r) => setTimeout(r, 300));
+              setSyncing(false);
+
+              if (!success) {
+                Alert.alert("Warning", "Could not download product catalog. Some features may be limited.");
+              }
+            } else {
+              console.log("⏭️ User skipped product catalog download");
             }
           }
 

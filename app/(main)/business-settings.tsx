@@ -11,7 +11,9 @@ import {
   updateInvoiceSettings,
   updateContractSettings,
   updatePricingSettings,
+  updateOverheadSettings,
   type UserPreferences,
+  type OverheadSettings,
 } from "@/lib/preferences";
 import { uploadCompanyLogo, getCompanyLogo, deleteLogo, type CompanyLogo } from "@/lib/logo";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -340,21 +342,92 @@ export default function BusinessSettings() {
               theme={theme}
               readOnly={isTech}
             />
+          </View>
+        </Pressable>
+
+        {/* Overhead & Profitability Section */}
+        <Pressable style={styles.section} onPress={Keyboard.dismiss}>
+          <Text style={styles.sectionTitle}>Overhead & Profitability</Text>
+          <View style={styles.card}>
+            <InlineField
+              label="Annual Overhead"
+              value={String(preferences.overhead?.annualOverhead || 0)}
+              prefix="$"
+              keyboardType="decimal-pad"
+              formatCurrency={true}
+              enabled={hasProAccess && canEdit}
+              onSave={async (v) => {
+                const annualOverhead = parseFloat(v) || 0;
+                const annualLaborRevenue = preferences.overhead?.annualLaborRevenue || 0;
+                const overheadPercent = annualLaborRevenue > 0 ? (annualOverhead / annualLaborRevenue) * 100 : 0;
+                setPreferences(await updateOverheadSettings({
+                  annualOverhead,
+                  annualLaborRevenue,
+                  overheadPercent,
+                  targetProfitMarginPercent: preferences.overhead?.targetProfitMarginPercent,
+                  completedAt: new Date().toISOString(),
+                }));
+              }}
+              onLocked={handleLearnMore}
+              theme={theme}
+              readOnly={isTech}
+            />
+            <InlineField
+              label="Annual Labor Revenue"
+              value={String(preferences.overhead?.annualLaborRevenue || 0)}
+              prefix="$"
+              keyboardType="decimal-pad"
+              formatCurrency={true}
+              enabled={hasProAccess && canEdit}
+              onSave={async (v) => {
+                const annualLaborRevenue = parseFloat(v) || 0;
+                const annualOverhead = preferences.overhead?.annualOverhead || 0;
+                const overheadPercent = annualLaborRevenue > 0 ? (annualOverhead / annualLaborRevenue) * 100 : 0;
+                setPreferences(await updateOverheadSettings({
+                  annualOverhead,
+                  annualLaborRevenue,
+                  overheadPercent,
+                  targetProfitMarginPercent: preferences.overhead?.targetProfitMarginPercent,
+                  completedAt: new Date().toISOString(),
+                }));
+              }}
+              onLocked={handleLearnMore}
+              theme={theme}
+              readOnly={isTech}
+            />
+            <View style={styles.divider} />
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Overhead Rate</Text>
+              <Text style={[styles.rowValue, { fontWeight: '600', color: theme.colors.text }]}>
+                {preferences.overhead?.overheadPercent
+                  ? `${preferences.overhead.overheadPercent.toFixed(1)}%`
+                  : "Not set"}
+              </Text>
+            </View>
             <View style={styles.divider} />
             <InlineField
-              label="Target Materials Margin"
-              value={String(preferences.pricing?.targetMaterialsMarginPercent || 0)}
+              label="Target Profit Margin"
+              value={String(preferences.overhead?.targetProfitMarginPercent || 0)}
               suffix="%"
               keyboardType="decimal-pad"
               enabled={hasProAccess && canEdit}
-              onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0 && n <= 100) setPreferences(await updatePricingSettings({ targetMaterialsMarginPercent: n })); }}
+              onSave={async (v) => {
+                const targetProfitMarginPercent = parseFloat(v) || 0;
+                setPreferences(await updateOverheadSettings({
+                  annualOverhead: preferences.overhead?.annualOverhead || 0,
+                  annualLaborRevenue: preferences.overhead?.annualLaborRevenue || 0,
+                  overheadPercent: preferences.overhead?.overheadPercent || 0,
+                  targetProfitMarginPercent: targetProfitMarginPercent > 0 ? targetProfitMarginPercent : undefined,
+                  completedAt: preferences.overhead?.completedAt || new Date().toISOString(),
+                }));
+              }}
               onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
           </View>
           <Text style={styles.sectionHint}>
-            Materials margin is your profit on materials before overhead
+            Jobs below your target margin will show a warning indicator
           </Text>
         </Pressable>
 
@@ -383,9 +456,16 @@ function PremiumBadge({ theme }: { theme: ReturnType<typeof useTheme>["theme"] }
   );
 }
 
+// Format number with commas
+function formatWithCommas(value: string | number): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '0';
+  return num.toLocaleString('en-US');
+}
+
 // Inline Field Component
 function InlineField({
-  label, value, placeholder, prefix, suffix, keyboardType = "default", enabled, premium, onSave, onLocked, theme, readOnly = false
+  label, value, placeholder, prefix, suffix, keyboardType = "default", enabled, premium, onSave, onLocked, theme, readOnly = false, formatCurrency = false
 }: {
   label: string;
   value: string;
@@ -399,6 +479,7 @@ function InlineField({
   onLocked: () => void;
   theme: ReturnType<typeof useTheme>["theme"];
   readOnly?: boolean;
+  formatCurrency?: boolean;
 }) {
   const [local, setLocal] = useState(value);
   const [isFocused, setIsFocused] = useState(false);
@@ -408,6 +489,9 @@ function InlineField({
     setLocal(value);
     savedValueRef.current = value;
   }, [value]);
+
+  // Display value - formatted when not focused, raw when editing
+  const displayValue = formatCurrency && !isFocused ? formatWithCommas(local) : local;
 
   const handleBlur = async () => {
     setIsFocused(false);
@@ -419,12 +503,13 @@ function InlineField({
 
   // Read-only mode for techs: show value but no editing
   if (readOnly) {
+    const readOnlyDisplay = formatCurrency ? formatWithCommas(value) : value;
     return (
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8 }}>
         <Text style={{ fontSize: 15, color: theme.colors.text }}>{label}</Text>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {prefix && <Text style={{ fontSize: 15, color: theme.colors.muted, marginRight: 2 }}>{prefix}</Text>}
-          <Text style={{ fontSize: 15, color: theme.colors.muted }}>{value || placeholder || "—"}</Text>
+          <Text style={{ fontSize: 15, color: theme.colors.muted }}>{readOnlyDisplay || placeholder || "—"}</Text>
           {suffix && <Text style={{ fontSize: 15, color: theme.colors.muted, marginLeft: 4 }}>{suffix}</Text>}
         </View>
       </View>
@@ -445,7 +530,7 @@ function InlineField({
               fontSize: 15,
               color: theme.colors.text,
               textAlign: "right",
-              minWidth: 70,
+              minWidth: formatCurrency ? 100 : 70,
               paddingVertical: 6,
               paddingHorizontal: 10,
               backgroundColor: theme.colors.bg,
@@ -453,8 +538,12 @@ function InlineField({
               borderWidth: 1,
               borderColor: isFocused ? theme.colors.accent : theme.colors.border,
             }}
-            value={local}
-            onChangeText={setLocal}
+            value={displayValue}
+            onChangeText={(text) => {
+              // Remove commas when user types (for currency fields)
+              const cleanText = formatCurrency ? text.replace(/,/g, '') : text;
+              setLocal(cleanText);
+            }}
             onFocus={() => setIsFocused(true)}
             onBlur={handleBlur}
             onSubmitEditing={handleBlur}

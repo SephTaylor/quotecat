@@ -147,6 +147,13 @@ export function canAccessWizard(user: UserState): boolean {
 }
 
 /**
+ * Check if user can access multi-worker labor tracking (Premium only)
+ */
+export function canAccessMultiWorkerLabor(user: UserState): boolean {
+  return user.tier === "premium";
+}
+
+/**
  * Check if user can access Drew for support questions (all tiers)
  * Everyone can ask Drew questions; only Premium can build quotes with Drew
  */

@@ -22,7 +22,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getQuoteById } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
-import { calculateQuoteTotals } from "@/lib/calculations";
+import { calculateQuoteTotals, calculateQuoteProfitability, getMarginColor, getMarginIcon } from "@/lib/calculations";
+import type { OverheadSettings } from "@/lib/preferences";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getUserState, incrementPdfCount, incrementSpreadsheetCount } from "@/lib/user";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
@@ -57,6 +58,7 @@ export default function QuoteReviewScreen() {
   const [pendingInvoicePercentage, setPendingInvoicePercentage] = useState<number>(100);
   const [isCreatingContract, setIsCreatingContract] = useState(false);
   const [targetMaterialsMarginPercent, setTargetMaterialsMarginPercent] = useState(0);
+  const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
 
   useEffect(() => {
     (async () => {
@@ -71,6 +73,7 @@ export default function QuoteReviewScreen() {
         setUserState(user);
         setCompanyDetails(prefs.company);
         setTargetMaterialsMarginPercent(prefs.pricing?.targetMaterialsMarginPercent || 0);
+        setOverheadSettings(prefs.overhead);
 
         // Load logo from local storage
         try {
@@ -98,6 +101,11 @@ export default function QuoteReviewScreen() {
   const subtotal = totals?.subtotal ?? 0;
   const taxAmount = totals?.taxAmount ?? 0;
   const grandTotal = totals?.total ?? 0;
+
+  // Calculate profitability (Pro/Premium with overhead configured)
+  const profitability = quote && overheadSettings
+    ? calculateQuoteProfitability(quote, overheadSettings)
+    : null;
 
   const handleExportPDF = async () => {
     if (!userState || !quote) return;
@@ -710,6 +718,80 @@ export default function QuoteReviewScreen() {
         {/* Change Orders Section - Pro/Premium only */}
         {(isPro || isPremium) && qid && (
           <ChangeOrderList quoteId={qid} theme={theme} limit={3} />
+        )}
+
+        {/* Profitability Section - Pro/Premium with overhead configured */}
+        {(isPro || isPremium) && profitability && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Profitability</Text>
+            <View style={styles.totalsCard}>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Revenue</Text>
+                <Text style={styles.totalValue}>
+                  ${profitability.revenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Materials Cost</Text>
+                <Text style={[styles.totalValue, { color: theme.colors.muted }]}>
+                  −${profitability.materialsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Labor Cost</Text>
+                <Text style={[styles.totalValue, { color: theme.colors.muted }]}>
+                  −${profitability.laborCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>
+                  Overhead ({overheadSettings?.overheadPercent?.toFixed(0) || 0}%)
+                </Text>
+                <Text style={[styles.totalValue, { color: theme.colors.muted }]}>
+                  −${profitability.overheadCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.dividerBold} />
+
+              <View style={styles.totalRow}>
+                <Text style={styles.subtotalLabel}>Profit</Text>
+                <Text style={[styles.subtotalValue, { color: profitability.profit >= 0 ? '#22c55e' : '#ef4444' }]}>
+                  ${profitability.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.totalRow}>
+                <Text style={styles.subtotalLabel}>
+                  Margin {overheadSettings?.targetProfitMarginPercent ? `(Target: ${overheadSettings.targetProfitMarginPercent}%)` : ''}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: getMarginColor(profitability.marginPercent, overheadSettings?.targetProfitMarginPercent),
+                  }}>
+                    <Ionicons
+                      name={getMarginIcon(profitability.marginPercent, overheadSettings?.targetProfitMarginPercent) as any}
+                      size={12}
+                      color="white"
+                    />
+                  </View>
+                  <Text style={[styles.subtotalValue, { color: getMarginColor(profitability.marginPercent, overheadSettings?.targetProfitMarginPercent) }]}>
+                    {profitability.marginPercent.toFixed(1)}%
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
         )}
 
         {/* Export Info for Free Users */}

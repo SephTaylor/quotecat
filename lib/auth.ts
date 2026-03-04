@@ -1,6 +1,7 @@
 // lib/auth.ts
 // Authentication service using Supabase
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "./supabase";
 import { activateProTier, activatePremiumTier, deactivateProTier, signOutUser } from "./user";
 import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync";
@@ -9,6 +10,7 @@ import { syncInvoices, hasInvoicesMigrated, migrateLocalInvoicesToCloud } from "
 import { syncPricebook } from "./pricebookSync";
 import { syncAssemblies, hasAssembliesMigrated, migrateLocalAssembliesToCloud } from "./assembliesSync";
 import { syncBusinessSettings, downloadBusinessSettings } from "./businessSettingsSync";
+import { syncTeamMembers } from "./teamMembersSync";
 import { markSyncComplete } from "./syncState";
 import { identifyUser, logOutRevenueCat } from "./revenuecat";
 
@@ -17,6 +19,51 @@ export { isAuthenticated, getCurrentUserEmail, getCurrentUserId } from "./authUt
 
 // Track if we've set up the auth listener
 let authListenerSetup = false;
+
+// Sync consent tracking (Apple requirement: disclose download size and prompt user)
+const SYNC_CONSENT_KEY = "@quotecat/syncConsent";
+let pendingSyncForPaidUser = false; // True when user is Pro/Premium but hasn't consented to sync yet
+
+/**
+ * Check if user has previously consented to cloud sync
+ */
+export async function hasSyncConsent(): Promise<boolean> {
+  try {
+    const consent = await AsyncStorage.getItem(SYNC_CONSENT_KEY);
+    return consent === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Store user's sync consent
+ */
+export async function setSyncConsent(consented: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SYNC_CONSENT_KEY, consented ? "true" : "false");
+  } catch (error) {
+    console.error("Failed to save sync consent:", error);
+  }
+}
+
+/**
+ * Check if app needs to show sync consent prompt
+ * Returns true if user is Pro/Premium and hasn't consented yet
+ */
+export function needsSyncConsentPrompt(): boolean {
+  return pendingSyncForPaidUser;
+}
+
+/**
+ * Run sync after user grants consent
+ * Call this from the consent modal when user taps "Sync Now"
+ */
+export async function runSyncWithConsent(): Promise<void> {
+  await setSyncConsent(true);
+  pendingSyncForPaidUser = false;
+  await runBackgroundSync();
+}
 
 /**
  * Sign out current user
@@ -85,11 +132,20 @@ export async function initializeAuth(): Promise<void> {
             await activateProTier(profile.email);
           }
 
-          // Run sync in BACKGROUND - don't block app startup
-          // This is the key optimization for fast launches
-          runBackgroundSync().catch(error => {
-            console.error("Background sync failed:", error);
-          });
+          // Check if user has consented to cloud sync (Apple requirement)
+          // Must disclose download size and prompt before syncing
+          const hasConsent = await hasSyncConsent();
+          if (hasConsent) {
+            // User previously consented - run sync in background
+            runBackgroundSync().catch(error => {
+              console.error("Background sync failed:", error);
+            });
+          } else {
+            // First time Pro/Premium user - need to show consent prompt
+            // UI will check needsSyncConsentPrompt() and show modal
+            pendingSyncForPaidUser = true;
+            console.log("📋 Sync consent needed - waiting for user prompt");
+          }
         } else {
           await deactivateProTier();
         }
@@ -136,10 +192,16 @@ async function handleAuthChange(userId: string): Promise<void> {
         await activateProTier(profile.email);
       }
 
-      // Run sync in background
-      runBackgroundSync().catch(error => {
-        console.error("Background sync failed:", error);
-      });
+      // Check sync consent before running (Apple requirement)
+      const hasConsent = await hasSyncConsent();
+      if (hasConsent) {
+        runBackgroundSync().catch(error => {
+          console.error("Background sync failed:", error);
+        });
+      } else {
+        pendingSyncForPaidUser = true;
+        console.log("📋 Sync consent needed - waiting for user prompt");
+      }
     } else {
       await deactivateProTier();
     }
@@ -253,6 +315,14 @@ async function runBackgroundSync(): Promise<void> {
     await syncBusinessSettings();
   } catch (error) {
     console.error("❌ Business settings sync failed:", error);
+  }
+
+  // Sync team members for Premium users (used for labor tracking)
+  try {
+    await syncTeamMembers();
+    await gcBreak();
+  } catch (error) {
+    console.error("❌ Team members sync failed:", error);
   }
 
   // Mark sync as complete so UI components know to refresh

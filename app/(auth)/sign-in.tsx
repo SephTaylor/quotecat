@@ -141,30 +141,45 @@ export default function SignInScreen() {
 
         if (shouldSyncProducts) {
           if (!hasCache) {
-            // First-time user - wait for sync with progress bar
-            console.log("📦 First-time sync: downloading product catalog...");
-            setSyncing(true);
-            setSyncProgress({ loaded: 0, total: 100 });
-            progressAnim.setValue(0);
-
-            const success = await syncAllProducts((loaded, total) => {
-              if (isMountedRef.current) {
-                setSyncProgress({ loaded, total });
-              }
+            // First-time user - prompt for consent before downloading (Apple requirement)
+            const userConsents = await new Promise<boolean>((resolve) => {
+              Alert.alert(
+                "Download Product Catalog",
+                "QuoteCat needs to download the product catalog (~100 MB) to enable material pricing. This is a one-time download.\n\nDownload now?",
+                [
+                  { text: "Later", style: "cancel", onPress: () => resolve(false) },
+                  { text: "Download", onPress: () => resolve(true) },
+                ]
+              );
             });
 
-            // Brief pause to show completion
-            await new Promise((r) => setTimeout(r, 300));
-            setSyncing(false);
+            if (userConsents) {
+              console.log("📦 First-time sync: downloading product catalog...");
+              setSyncing(true);
+              setSyncProgress({ loaded: 0, total: 100 });
+              progressAnim.setValue(0);
 
-            if (success) {
-              console.log("✅ Product catalog synced successfully");
+              const success = await syncAllProducts((loaded, total) => {
+                if (isMountedRef.current) {
+                  setSyncProgress({ loaded, total });
+                }
+              });
+
+              // Brief pause to show completion
+              await new Promise((r) => setTimeout(r, 300));
+              setSyncing(false);
+
+              if (success) {
+                console.log("✅ Product catalog synced successfully");
+              } else {
+                console.log("⚠️ Product catalog sync failed");
+                Alert.alert("Warning", "Could not download product catalog. Some features may be limited.");
+              }
             } else {
-              console.log("⚠️ Product catalog sync failed");
-              Alert.alert("Warning", "Could not download product catalog. Some features may be limited.");
+              console.log("⏭️ User skipped product catalog download");
             }
           } else {
-            // Existing user with stale cache - sync in background
+            // Existing user with stale cache - sync in background (already consented)
             console.log("📦 Background sync: refreshing product catalog...");
             syncAllProducts().then((success) => {
               if (success) {

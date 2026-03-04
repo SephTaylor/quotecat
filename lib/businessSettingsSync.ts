@@ -216,6 +216,7 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
         if (cloudPrefs.quote) updatedPrefs.quote = cloudPrefs.quote;
         if (cloudPrefs.pricing) updatedPrefs.pricing = { ...updatedPrefs.pricing, ...cloudPrefs.pricing };
         if (cloudPrefs.paymentMethods) updatedPrefs.paymentMethods = cloudPrefs.paymentMethods;
+        if (cloudPrefs.overhead) updatedPrefs.overhead = cloudPrefs.overhead;
       }
     } else {
       // Owners merge cloud data into local
@@ -252,6 +253,9 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
         }
         if (cloudPrefs.paymentMethods) {
           updatedPrefs.paymentMethods = cloudPrefs.paymentMethods;
+        }
+        if (cloudPrefs.overhead) {
+          updatedPrefs.overhead = cloudPrefs.overhead;
         }
       }
     }
@@ -381,6 +385,7 @@ export async function syncBusinessSettings(): Promise<{ success: boolean; error?
         quote: preferences.quote,
         pricing: preferences.pricing,
         paymentMethods: preferences.paymentMethods,
+        overhead: preferences.overhead, // Profitability overhead settings
       },
       updated_at: new Date().toISOString(),
     };

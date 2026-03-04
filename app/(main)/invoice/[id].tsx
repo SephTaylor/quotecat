@@ -32,9 +32,9 @@ import {
   deletePayment,
 } from "@/lib/invoices";
 import type { InvoicePayment } from "@/lib/types";
-import { calculateInvoiceTotals } from "@/lib/calculations";
+import { calculateInvoiceTotals, calculateInvoiceProfitability, getMarginColor, getMarginIcon } from "@/lib/calculations";
 import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
-import { loadPreferences } from "@/lib/preferences";
+import { loadPreferences, type OverheadSettings } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies, canExportInvoice } from "@/lib/features";
 import { incrementInvoiceCount } from "@/lib/user";
@@ -100,6 +100,10 @@ export default function InvoiceDetailScreen() {
   const projectInputRef = useRef<TextInput>(null);
   const clientInputRef = useRef<TextInput>(null);
 
+  // Profitability state
+  const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
+  const [isPro, setIsPro] = useState(false);
+
   const loadInvoice = useCallback(async () => {
     if (!invoiceId) return;
     setLoading(true);
@@ -132,6 +136,22 @@ export default function InvoiceDetailScreen() {
   useEffect(() => {
     loadInvoice();
   }, [loadInvoice]);
+
+  // Load overhead settings and user tier
+  useEffect(() => {
+    (async () => {
+      try {
+        const [prefs, user] = await Promise.all([
+          loadPreferences(),
+          getUserState(),
+        ]);
+        setOverheadSettings(prefs.overhead);
+        setIsPro(user?.tier === 'pro' || user?.tier === 'premium');
+      } catch (error) {
+        console.error("Failed to load overhead settings:", error);
+      }
+    })();
+  }, []);
 
   // Initialize tempNotes when invoice loads
   useEffect(() => {
@@ -566,6 +586,11 @@ export default function InvoiceDetailScreen() {
   const totals = calculateInvoiceTotals(invoice);
   const { materialsFromItems, materialEstimate, labor, subtotal, markupAmount, taxAmount, total } = totals;
 
+  // Calculate profitability (Pro/Premium with overhead configured)
+  const profitability = overheadSettings
+    ? calculateInvoiceProfitability(invoice, overheadSettings)
+    : null;
+
   // Format dates
   const invoiceDate = new Date(invoice.invoiceDate);
   const dueDate = new Date(invoice.dueDate);
@@ -892,6 +917,79 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.costValue}>${taxAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </Pressable>
           </View>
+
+          {/* Profitability Section - Pro/Premium with overhead configured */}
+          {isPro && profitability && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Profitability</Text>
+
+              <View style={styles.costRow}>
+                <Text style={styles.costLabel}>Revenue</Text>
+                <Text style={styles.costValue}>
+                  ${profitability.revenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={[styles.divider, { marginVertical: 8 }]} />
+
+              <View style={styles.costRow}>
+                <Text style={styles.costLabel}>Materials Cost</Text>
+                <Text style={[styles.costValue, { color: theme.colors.muted }]}>
+                  −${profitability.materialsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.costRow}>
+                <Text style={styles.costLabel}>Labor Cost</Text>
+                <Text style={[styles.costValue, { color: theme.colors.muted }]}>
+                  −${profitability.laborCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.costRow}>
+                <Text style={styles.costLabel}>
+                  Overhead ({overheadSettings?.overheadPercent?.toFixed(0) || 0}%)
+                </Text>
+                <Text style={[styles.costValue, { color: theme.colors.muted }]}>
+                  −${profitability.overheadCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={[styles.divider, { marginVertical: 8, height: 2 }]} />
+
+              <View style={styles.costRow}>
+                <Text style={[styles.costLabel, { fontWeight: '700' }]}>Profit</Text>
+                <Text style={[styles.costValue, { fontWeight: '700', color: profitability.profit >= 0 ? '#22c55e' : '#ef4444' }]}>
+                  ${profitability.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.costRow}>
+                <Text style={[styles.costLabel, { fontWeight: '700' }]}>
+                  Margin {overheadSettings?.targetProfitMarginPercent ? `(Target: ${overheadSettings.targetProfitMarginPercent}%)` : ''}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: getMarginColor(profitability.marginPercent, overheadSettings?.targetProfitMarginPercent),
+                  }}>
+                    <Ionicons
+                      name={getMarginIcon(profitability.marginPercent, overheadSettings?.targetProfitMarginPercent) as any}
+                      size={12}
+                      color="white"
+                    />
+                  </View>
+                  <Text style={[styles.costValue, { fontWeight: '700', color: getMarginColor(profitability.marginPercent, overheadSettings?.targetProfitMarginPercent) }]}>
+                    {profitability.marginPercent.toFixed(1)}%
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Notes */}
           <View style={styles.section}>

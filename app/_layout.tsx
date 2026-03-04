@@ -6,10 +6,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { TechContextProvider } from "@/contexts/TechContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SyncConsentModal } from "@/components/SyncConsentModal";
 import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { initAnalytics, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
-import { initializeAuth } from "@/lib/auth";
+import { initializeAuth, needsSyncConsentPrompt } from "@/lib/auth";
 import { initializeRevenueCat, syncTierFromRevenueCat } from "@/lib/revenuecat";
 import {
   checkCrashLoopAndReset,
@@ -64,6 +65,7 @@ const styles = StyleSheet.create({
 export default function RootLayout() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Starting up...");
+  const [showSyncConsent, setShowSyncConsent] = useState(false);
 
   useEffect(() => {
     // Initialize app with crash loop detection FIRST
@@ -140,6 +142,12 @@ export default function RootLayout() {
         // This resets the crash counter so we don't trigger nuclear reset
         await markStartupSuccess();
 
+        // Step 5: Check if sync consent prompt is needed (Apple requirement)
+        // Pro/Premium users must consent before first cloud sync
+        if (needsSyncConsentPrompt()) {
+          setShowSyncConsent(true);
+        }
+
         // Ready to show the app
         setIsInitialized(true);
       } catch (error) {
@@ -168,6 +176,11 @@ export default function RootLayout() {
           <ThemeProvider>
             <TechContextProvider>
               <RootNavigator />
+              {/* Sync consent modal - shown for Pro/Premium users before first sync */}
+              <SyncConsentModal
+                visible={showSyncConsent}
+                onClose={() => setShowSyncConsent(false)}
+              />
             </TechContextProvider>
           </ThemeProvider>
         </SafeAreaProvider>

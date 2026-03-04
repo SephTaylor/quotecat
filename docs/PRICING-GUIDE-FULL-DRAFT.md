@@ -417,7 +417,171 @@ To hit 15% net profit, you'd need to increase prices by about $700—either high
 
 ## Chapter 4: The Good/Better/Best Framework
 
-[This chapter already drafted in PRICING-GUIDE-CHAPTER4-DRAFT.md - include that content here]
+### Why One Price is a Losing Strategy
+
+Here's how most contractors quote a job:
+
+1. Look at the scope
+2. Calculate materials + labor
+3. Add some markup
+4. Send one number
+
+And then the client says yes or no. Usually no.
+
+The problem? One price turns every quote into a take-it-or-leave-it situation. The client has two choices: accept your number or call someone else.
+
+**Good/Better/Best changes the game.**
+
+Instead of one price, you present three options. Now the client isn't deciding whether to hire you—they're deciding *which option* to pick. The psychology shifts from "should I buy?" to "which one should I buy?"
+
+### The Psychology Behind It
+
+This isn't some sales gimmick we invented. It's based on decades of pricing research.
+
+**The Decoy Effect:** When people see three options, they almost never pick the cheapest. The middle option feels "safe"—not too cheap, not too expensive. Studies show 60-70% of buyers choose the middle tier.
+
+> **Source:** Huber, Payne & Puto (1982), "Adding Asymmetrically Dominated Alternatives"
+
+**Anchoring:** When the first number someone sees is $12,000, suddenly $8,500 feels reasonable. Your premium tier makes your standard tier look like a deal.
+
+**Autonomy:** People like feeling in control. Three options gives them control. One price feels like an ultimatum.
+
+Here's the kicker: **you're not manipulating anyone.** You're giving clients what they actually want—choices that fit different budgets and needs.
+
+### How to Structure Your Tiers
+
+Bad tiering is just "more stuff for more money." That's lazy and clients see through it.
+
+Good tiering solves different problems at different price points.
+
+**The Framework:**
+
+| Tier | What It Solves | Typical Markup |
+|------|---------------|----------------|
+| **Good** | The core problem, no frills | Your baseline |
+| **Better** | Core problem + convenience/quality upgrade | +25-40% |
+| **Best** | Full solution + future-proofing + premium | +50-80% |
+
+**The Rules:**
+
+1. **Good must be genuinely good.** Not a stripped-down garbage option. A client should be happy choosing it.
+
+2. **Better should be your target.** Structure it so most people land here. This is where your margins are healthiest.
+
+3. **Best is the anchor.** Some people will pick it (great for you), but its main job is making Better look reasonable.
+
+4. **Name them well.** "Basic/Standard/Premium" is boring. Try:
+   - Essential / Professional / Complete
+   - Bronze / Silver / Gold
+   - Starter / Recommended / Ultimate
+
+### Real Examples by Trade
+
+**Electrical: 200A Panel Upgrade**
+
+A homeowner needs their panel upgraded. Here's how to tier it:
+
+| Tier | Scope | Price |
+|------|-------|-------|
+| **Essential** | 200A panel upgrade, code-compliant installation, standard breakers, 1-year workmanship warranty | $3,800 |
+| **Professional** | Everything in Essential + Arc-fault breakers on required circuits, whole-home surge protector, labeled panel map, 3-year warranty | $4,950 |
+| **Complete** | Everything in Professional + Smart breaker panel with app monitoring, dedicated EV charger circuit (future-ready), lifetime warranty on workmanship | $6,400 |
+
+**Why this works:**
+- Essential solves the problem. Client gets a new, safe panel.
+- Professional adds peace of mind (surge protection, better breakers, longer warranty). Most clients pick this.
+- Complete is for the homeowner who wants the best and is thinking ahead (EV charger circuit, smart monitoring).
+
+**The math:**
+- If 20% pick Essential, 60% pick Professional, 20% pick Complete...
+- Average ticket: $4,990 vs $3,800 if you only offered one price
+- That's a **31% increase** in revenue on the same jobs
+
+**Plumbing: Water Heater Replacement**
+
+Client's water heater died. They need hot water today.
+
+| Tier | Scope | Price |
+|------|-------|-------|
+| **Essential** | 50-gal standard tank water heater, installation, haul away old unit, 1-year labor warranty | $1,850 |
+| **Professional** | 50-gal high-efficiency tank, expansion tank, new water supply lines, drain pan with leak sensor, 3-year warranty | $2,650 |
+| **Complete** | Tankless water heater (endless hot water), gas line upgrade if needed, recirculating pump for instant hot water at fixtures, 5-year warranty | $4,200 |
+
+**Why this works:**
+- Essential gets them hot water today. Done.
+- Professional gives them efficiency, safety features, and confidence. Most pick this.
+- Complete is the "I never want to think about hot water again" option.
+
+**HVAC: System Replacement**
+
+Full system replacement (AC + furnace).
+
+| Tier | Scope | Price |
+|------|-------|-------|
+| **Essential** | 14 SEER AC + 80% AFUE furnace, standard installation, manufacturer warranty only | $8,500 |
+| **Professional** | 16 SEER AC + 95% AFUE furnace, smart thermostat, duct inspection & sealing, 5-year labor warranty | $11,200 |
+| **Complete** | 18 SEER variable-speed AC + 98% AFUE modulating furnace, zoning system (2 zones), air purification, 10-year full coverage warranty | $16,800 |
+
+**Remodeling: Bathroom Renovation**
+
+Client wants to update their master bathroom.
+
+| Tier | Scope | Price |
+|------|-------|-------|
+| **Essential** | New vanity, toilet, tub/shower fixtures, flooring, paint. Basic finishes, standard layout | $12,500 |
+| **Professional** | Custom vanity, frameless glass shower door, tile shower walls, heated floor, upgraded fixtures, lighting update | $22,000 |
+| **Complete** | Full reconfiguration, freestanding tub, walk-in shower with multiple heads, custom tile work, smart mirror, in-floor radiant heat, ventilation upgrade | $38,000 |
+
+### How to Present the Options
+
+**Don't just send a PDF with three prices.** Walk them through it.
+
+Here's a script that works:
+
+> "Based on what we discussed, I put together three options for you. Let me walk you through them.
+>
+> The first option covers everything you need—it's solid and gets the job done right. A lot of clients are happy with this.
+>
+> The second option is what I'd personally recommend. It adds [specific benefit] and [specific benefit], which gives you [outcome]. Most of my clients go with this one.
+>
+> The third option is for people who want the best of the best. It includes [premium features]. It's definitely an investment, but if [scenario where it makes sense], it's worth considering.
+>
+> Which one sounds closest to what you're looking for?"
+
+**Key points:**
+- Don't trash-talk the Essential tier
+- Give a gentle nudge toward the middle tier ("Most clients choose this")
+- Let them ask questions and choose
+
+### Common Mistakes to Avoid
+
+**1. Making the gap between tiers too big**
+
+If Essential is $3,000 and Better is $7,000, you've lost them. The jump should feel achievable, not absurd. Keep it in the 25-40% range between tiers.
+
+**2. Padding tiers with garbage**
+
+Adding a $50 item to justify a $1,000 jump insults the client's intelligence. Each tier should have real, meaningful differences.
+
+**3. Too many options**
+
+Three tiers. Not four, not five. More than three creates decision paralysis and you'll get "let me think about it" instead of a signature.
+
+**4. Hiding the best value**
+
+Make it visually obvious which tier is the sweet spot. Label it "Most Popular" or "Recommended." People like following the crowd.
+
+**5. Not being able to explain why**
+
+If a client asks "why is the Professional option $1,200 more?", you need a clear, confident answer. If you can't justify the difference, neither can they.
+
+### The Bottom Line
+
+One price = one chance.
+
+Three prices = three chances to win the job, higher average tickets, and a client who feels in control.
+
+Try it on your next five quotes. Track the results. Contractors using Good/Better/Best typically increase their average ticket by 20-35%.
 
 ---
 
@@ -996,6 +1160,883 @@ You don't owe an explanation. You don't need their permission.
 
 ---
 
+# Part 4: Trade-Specific Pricing Guides
+
+---
+
+## Chapter 13: Electrical Pricing Guide
+
+Electrical work is some of the most profitable in the trades—if you know how to price it right. The barrier to entry is high (licensing, insurance, code knowledge), and homeowners can't legally DIY most of it. That's your competitive advantage.
+
+### The Electrical Pricing Framework
+
+Electrical pricing typically breaks down into three models:
+
+**1. Service Call + Repair (Most Common)**
+- Flat service fee to show up and diagnose
+- Flat-rate pricing for common repairs
+- T&M for unusual situations
+
+**2. Project Pricing (Installations/Upgrades)**
+- Flat rate for defined scope
+- Good/Better/Best options
+- Clear exclusions
+
+**3. New Construction/Rough-In**
+- Per-opening pricing (outlets, switches, fixtures)
+- Square footage pricing for whole-house
+- Allowances for fixtures
+
+### Service Call Pricing
+
+Your service call fee covers:
+- Driving to the job
+- Diagnosing the problem
+- First 15-30 minutes of simple repairs (optional)
+
+**Typical service call rates (2026):**
+
+| Market | Service Call Fee | Includes |
+|--------|------------------|----------|
+| Small town/rural | $75-95 | Diagnosis only |
+| Suburban | $95-125 | Diagnosis only |
+| Metro/urban | $125-175 | Diagnosis only |
+| Premium markets (NYC, SF, LA) | $175-250 | Diagnosis only |
+
+**Pro tip:** Don't waive the service call fee if they hire you. That devalues your time. Instead, consider applying a portion toward the repair: "The $125 service call fee covers my trip and diagnosis. If you approve the repair, $50 of that applies toward the job."
+
+### Common Residential Electrical Jobs
+
+Here are flat-rate pricing ranges for common work. Your rates should reflect your market, overhead, and expertise.
+
+**Outlets & Switches:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| Replace outlet (standard) | $75-150 | 15-20 min labor |
+| Replace outlet (GFCI) | $125-200 | Code-required in kitchens, baths, outdoors |
+| Add new outlet (existing circuit) | $175-350 | Depends on access |
+| Add new outlet (new circuit) | $350-600 | Includes panel work |
+| Replace switch (standard) | $75-150 | 15-20 min labor |
+| Install dimmer switch | $100-200 | Depends on switch type |
+| Install smart switch | $150-300 | May need neutral wire |
+
+**Lighting:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| Replace light fixture (simple) | $75-150 | Existing wiring, no modifications |
+| Replace light fixture (complex) | $150-300 | Heavy fixtures, modifications needed |
+| Install recessed light (existing circuit) | $200-400 | Per light, includes cutting |
+| Install recessed lighting (6 lights, new circuit) | $1,200-2,400 | Package pricing |
+| Install ceiling fan (existing box) | $150-250 | Box rated for fan |
+| Install ceiling fan (no existing box) | $300-500 | Includes new box, wiring |
+| Install under-cabinet lighting | $400-800 | Per kitchen, hardwired |
+
+**Panels & Heavy-Ups:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| Panel inspection/tightening | $150-300 | Preventive maintenance |
+| Breaker replacement | $150-300 | Per breaker |
+| GFCI/AFCI breaker replacement | $200-400 | More expensive breakers |
+| Sub-panel installation | $1,200-2,500 | 60-100A, depends on distance |
+| 100A to 200A upgrade | $2,500-4,500 | Panel + meter base + utility |
+| 200A panel replacement (same capacity) | $1,800-3,500 | Modern panel, no upgrade |
+| Whole-house surge protector | $300-600 | Includes installation |
+
+**Specialty Work:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| EV charger installation (Level 2) | $800-2,500 | Depends on panel distance |
+| Generator connection (manual transfer) | $800-1,500 | Transfer switch + inlet |
+| Generator connection (automatic) | $2,500-5,000 | Auto-transfer switch |
+| Hot tub/spa hookup (50A) | $800-1,800 | Includes GFCI breaker, wiring |
+| Smoke detector install (hardwired) | $150-250 | Per unit, interconnected |
+
+### Panel Upgrade: Good/Better/Best Example
+
+A homeowner needs to upgrade from 100A to 200A for an EV charger and future needs:
+
+**Essential - $3,200**
+- 200A main panel upgrade
+- 200A meter base (if needed)
+- Utility coordination
+- Code-compliant installation
+- Standard breakers
+- 1-year workmanship warranty
+
+**Professional - $4,400** (Most Popular)
+- Everything in Essential
+- Whole-house surge protection ($400 value)
+- Arc-fault breakers on required circuits
+- Copper grounding upgrade
+- Detailed panel schedule/labeling
+- 3-year workmanship warranty
+
+**Complete - $5,800**
+- Everything in Professional
+- Smart electrical panel with app monitoring
+- Pre-wired EV charger circuit (40A, 50A, or 60A)
+- Pre-wired sub-panel feed to garage
+- Whole-home electrical audit with recommendations
+- 5-year workmanship warranty
+
+### New Construction Pricing
+
+For new construction and major remodels, electricians typically price per "opening" or by square footage.
+
+**Per-Opening Pricing:**
+
+| Item | Price Range | Notes |
+|------|-------------|-------|
+| Standard outlet | $50-100 | Rough + trim |
+| GFCI outlet | $75-125 | Kitchen, bath, outdoor |
+| Switch (single) | $50-80 | Rough + trim |
+| Switch (3-way) | $80-120 | Per switch location |
+| Recessed light | $100-175 | Rough + trim |
+| Ceiling fan box | $75-125 | Fan-rated box |
+| Smoke/CO detector | $75-125 | Hardwired, interconnected |
+| Data/low voltage | $50-100 | Cat6, coax, etc. |
+
+**Square Footage Pricing:**
+
+| Home Type | Price per SF | Notes |
+|-----------|--------------|-------|
+| Basic tract home | $4-6/sf | Minimum code, builder-grade |
+| Standard custom | $6-10/sf | More circuits, quality fixtures |
+| High-end custom | $10-15/sf | Smart home, premium finishes |
+| Luxury/smart home | $15-25+/sf | Full automation, extensive systems |
+
+**Example:** 2,000 sf custom home at $8/sf = $16,000 rough-in allowance
+
+### Cost Factors That Affect Pricing
+
+**Access:**
+- Finished walls vs. open studs (add 50-100% for fishing through walls)
+- Crawl space vs. slab (slab = trenching or surface conduit)
+- Single story vs. multi-story
+- Attic access
+
+**Code Requirements:**
+- AFCI breakers now required in most rooms (~$40 per circuit)
+- GFCI protection expanded (now required in laundry, unfinished basements)
+- Tamper-resistant receptacles (standard now)
+- Local amendments (some jurisdictions stricter)
+
+**Materials:**
+- Copper prices fluctuate—check current wire costs
+- Panel brands vary significantly ($200-800 for same capacity)
+- Fixture allowances vs. provided by homeowner
+
+### Electrical-Specific Terms
+
+**Quote language to include:**
+- "Price based on standard residential wiring methods"
+- "Does not include permit fees" (or specify if included)
+- "Assumes standard wall construction with accessible routing"
+- "Drywall repair/painting by others" (if cutting into walls)
+- "Fixture installation included; fixture cost additional unless specified"
+
+**Exclusions to list:**
+- "Does not include trenching for underground runs"
+- "Asbestos/lead remediation by others if discovered"
+- "Utility company fees for service upgrade not included"
+
+### Permits and Inspections
+
+Always pull permits for:
+- Panel work
+- New circuits
+- Any work affecting service entrance
+- Anything code requires (check your jurisdiction)
+
+**Permit costs:** Vary widely ($50-500+ depending on scope and jurisdiction)
+
+**How to handle:**
+- Option 1: Include permit in price, mark up slightly for your time
+- Option 2: "Permit fees additional, billed at cost"
+- Option 3: "Homeowner to obtain permit" (risky—work may not get inspected)
+
+Recommendation: Include permits, mark up 10-15% for your time coordinating with the building department. It's easier and protects everyone.
+
+---
+
+## Chapter 14: Plumbing Pricing Guide
+
+Plumbing has two distinct worlds: service/repair and new construction. The pricing models are completely different, and the most profitable plumbers know when to use which.
+
+### The Service Plumber's Formula
+
+Service plumbing is all about fast turnaround and flat-rate pricing. Homeowners don't want to hear "$150/hour—let's see how long this takes." They want a number.
+
+**The successful service plumber knows:**
+- Every common repair down to the minute
+- Material cost for every job in the truck
+- How to quote flat-rate on the spot
+
+### Service Call Structure
+
+**Trip/diagnostic fee: $75-150**
+- Covers driving to the job
+- Diagnosing the problem
+- Providing a quote
+
+**Flat-rate repair pricing:**
+Once you diagnose, quote a flat price from your rate book. Build your rate book over time—track how long every job actually takes.
+
+### Common Residential Plumbing Jobs
+
+**Drain Cleaning:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| Snake drain (sink, tub) | $150-300 | Under 30 min typical |
+| Snake main line (cleanout) | $200-400 | May need camera if recurring |
+| Hydro-jet main line | $350-600 | For stubborn blockages |
+| Camera inspection | $250-500 | Often bundled with cleaning |
+| Locate line/leak | $200-400 | Using camera or locator |
+
+**Fixture Repairs:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| Replace faucet (client provides) | $150-250 | Installation labor only |
+| Replace faucet (you provide) | $250-500 | Depending on faucet quality |
+| Repair faucet (cartridge, seats) | $150-300 | Parts + labor |
+| Replace toilet | $250-450 | Includes new wax ring, supply |
+| Repair toilet (flapper, fill valve) | $100-200 | Simple repairs |
+| Replace garbage disposal | $250-450 | Standard disposal, installed |
+| Replace P-trap | $100-175 | Under sink |
+| Fix leak under sink | $150-300 | Depends on cause |
+
+**Water Heaters:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| Flush/service water heater | $150-250 | Annual maintenance |
+| Replace thermocouple/thermopile | $150-300 | Gas water heaters |
+| Replace heating element | $150-300 | Electric water heaters |
+| Replace anode rod | $150-250 | Extends tank life |
+| Tank water heater replacement (40-50 gal) | $1,200-2,000 | Standard efficiency |
+| Tank water heater replacement (high efficiency) | $1,800-2,800 | Better efficiency, longer warranty |
+| Tankless water heater install | $3,000-5,500 | Gas, properly sized |
+| Tankless water heater install (electric) | $1,800-3,500 | Lower flow capacity |
+
+**Water Lines:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| Replace water supply lines (fixture) | $100-200 | Per fixture |
+| Replace angle stop (shutoff valve) | $150-300 | Per valve |
+| Replace main shutoff valve | $400-800 | Depends on location/access |
+| Fix pinhole leak in copper | $200-400 | Per repair |
+| Repipe section of copper | $400-1,000 | Depends on length, access |
+| Whole-house repipe (copper to PEX) | $4,000-10,000 | 2-3 bath home |
+
+**Sewer & Drain:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| Clear clogged floor drain | $150-300 | Basement, utility |
+| Repair/replace P-trap (floor) | $200-400 | Requires access |
+| Sewer line spot repair | $1,500-4,000 | Depends on depth, location |
+| Sewer line replacement | $5,000-15,000+ | Major excavation |
+| Trenchless sewer lining | $6,000-12,000 | Pipe bursting or lining |
+
+### Water Heater: Good/Better/Best Example
+
+Client's 40-gallon gas water heater failed:
+
+**Essential - $1,450**
+- 40-gallon standard gas water heater (6-year warranty)
+- Standard installation
+- Connect to existing gas, water, and venting
+- Haul away old unit
+- 1-year labor warranty
+
+**Professional - $2,150** (Most Popular)
+- 50-gallon high-efficiency gas water heater (12-year warranty)
+- Expansion tank installation (code in many areas)
+- New water supply lines
+- Drain pan with leak sensor
+- New gas flex connector
+- 3-year labor warranty
+
+**Complete - $4,200**
+- Tankless water heater (endless hot water)
+- Gas line upgrade if needed
+- New venting (PVC direct vent)
+- Recirculating pump (instant hot water at fixtures)
+- 5-year labor warranty
+- Annual flush service for first 2 years included
+
+### New Construction Pricing
+
+New construction plumbing is priced differently—typically per fixture or as a bid on the whole rough-in package.
+
+**Per-Fixture Rough-In:**
+
+| Fixture Type | Rough-In Cost | Notes |
+|--------------|---------------|-------|
+| Toilet | $300-500 | Drain, supply, flange |
+| Lavatory (bath sink) | $250-400 | Drain, hot/cold supplies |
+| Kitchen sink | $350-600 | Larger drain, disposal prep |
+| Bathtub/shower | $400-700 | Drain, valve, head connection |
+| Laundry | $300-500 | Hot/cold, drain, gas if needed |
+| Dishwasher | $150-300 | Hot supply, drain connection |
+| Hose bib (outdoor) | $200-400 | Each location |
+| Water heater | $400-700 | Connections, expansion tank |
+
+**Whole-House Rough-In Estimates:**
+
+| Home Size | Bathrooms | Est. Rough-In | Notes |
+|-----------|-----------|---------------|-------|
+| 1,200 sf | 1.5 | $4,000-6,000 | Small home/ADU |
+| 2,000 sf | 2.5 | $7,000-12,000 | Average new construction |
+| 3,000 sf | 3.5 | $12,000-20,000 | Larger custom home |
+| 4,000+ sf | 4+ | $20,000-40,000+ | Luxury, multiple zones |
+
+### Plumbing Cost Factors
+
+**What increases price:**
+- Slab construction (trenching vs. basement/crawl)
+- Long runs from main stack
+- Second-floor bathrooms over finished space
+- Specialty fixtures (steam showers, body sprays)
+- Old galvanized or lead pipes requiring replacement
+- Cast iron drain replacement
+
+**What clients forget:**
+- Permit fees
+- Fixture costs (separate from installation)
+- Drywall repair after accessing pipes
+- Painting touch-up
+
+### Emergency/After-Hours Pricing
+
+Plumbing emergencies are your opportunity to earn premium rates:
+
+| Situation | Rate Multiplier | Notes |
+|-----------|-----------------|-------|
+| Same-day (next available) | 1.0-1.25x | No premium or small bump |
+| After hours (evenings) | 1.5x | 6pm-10pm |
+| Weekend | 1.5-2x | Especially Sunday |
+| Holiday | 2-2.5x | Major holidays |
+| True emergency (water gushing) | 2x | Immediate dispatch |
+
+**Emergency call example:**
+- Normal service call: $125
+- Emergency service call: $250
+- Normal toilet replacement: $350
+- Emergency toilet replacement: $525-700
+
+Some plumbers include the regular service call in the emergency fee; others stack them. Be clear with clients before dispatch.
+
+### Plumbing-Specific Quote Terms
+
+**Include:**
+- "Does not include permit fees unless specified"
+- "Assumes standard accessibility to work area"
+- "Fixture specifications: [brand/model or allowance amount]"
+- "Price assumes existing conditions match code"
+
+**Exclude:**
+- "Does not include drywall/plaster repair or painting"
+- "Does not include floor covering replacement"
+- "Does not include mold/water damage remediation"
+- "Scope changes require written change order"
+
+---
+
+## Chapter 15: HVAC Pricing Guide
+
+HVAC is a feast-or-famine business. Summer and winter are slammed; spring and fall are slow. Your pricing needs to account for this seasonality—and the high-value replacement jobs that make your year.
+
+### The HVAC Business Model
+
+Most HVAC companies operate on three revenue streams:
+
+**1. Maintenance/Tune-Ups (Lead Generation)**
+- $80-150 per tune-up
+- Builds customer relationships
+- Identifies replacement opportunities
+- Often sold as annual plans
+
+**2. Service/Repair (Steady Income)**
+- $150-500 average ticket
+- Year-round (with seasonal peaks)
+- Diagnostic fee + flat-rate repair
+
+**3. Replacements (Major Profit)**
+- $5,000-20,000+ per job
+- Where you make your year
+- Requires excellent sales skills
+
+### Service Call Structure
+
+**Diagnostic fee: $75-150**
+- Some companies waive if repair is approved
+- Others apply a portion toward repair
+- Some keep it separate
+
+**Tip:** Higher diagnostic fees attract more serious leads. A $49 diagnostic brings tire-kickers. A $125 diagnostic brings people ready to pay for quality.
+
+### Common HVAC Service & Repair
+
+**Heating Repairs:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| Furnace tune-up | $80-150 | Annual maintenance |
+| Thermostat replacement (basic) | $150-300 | Non-smart, installed |
+| Thermostat replacement (smart) | $250-450 | Nest, Ecobee, etc. |
+| Flame sensor cleaning | $100-200 | Common no-heat fix |
+| Ignitor replacement | $200-400 | Electronic hot surface ignitor |
+| Blower motor replacement | $400-800 | PSC motor |
+| Blower motor (variable speed) | $800-1,500 | ECM motor |
+| Inducer motor replacement | $400-800 | Draft inducer |
+| Control board replacement | $400-800 | Depends on unit |
+| Gas valve replacement | $400-700 | |
+| Heat exchanger replacement | $1,500-3,000 | Often better to replace unit |
+
+**Cooling Repairs:**
+
+| Job | Price Range | Notes |
+|-----|-------------|-------|
+| AC tune-up | $80-150 | Annual maintenance |
+| Capacitor replacement | $150-350 | Run or start capacitor |
+| Contactor replacement | $150-300 | |
+| Refrigerant recharge (R-410A) | $200-600 | Per pound, leak must be fixed |
+| Locate and repair refrigerant leak | $300-800 | Plus recharge |
+| Condenser fan motor | $300-600 | |
+| Compressor replacement | $1,500-3,000 | Parts + labor, often replace system |
+| Evaporator coil replacement | $1,200-2,500 | Coil + refrigerant |
+| Condensate drain cleaning | $100-200 | Clogged drain line |
+| Condensate pump replacement | $200-400 | If equipped |
+
+**Note on R-22 (Freon):** Phased out, extremely expensive. If a system uses R-22 and needs refrigerant, it's usually time to replace the whole system.
+
+### System Replacement Pricing
+
+This is where HVAC companies make real money. Typical pricing:
+
+**Air Conditioning (Central):**
+
+| System Type | Price Range | Notes |
+|-------------|-------------|-------|
+| 14 SEER (minimum efficiency) | $4,500-7,000 | Builder grade |
+| 16 SEER | $6,000-9,000 | Standard upgrade |
+| 18+ SEER (high efficiency) | $8,000-12,000 | Variable speed, quieter |
+| 20+ SEER (premium) | $10,000-15,000+ | Top efficiency |
+
+**Furnaces (Gas):**
+
+| System Type | Price Range | Notes |
+|-------------|-------------|-------|
+| 80% AFUE (minimum) | $2,500-4,000 | Standard atmospheric |
+| 90% AFUE | $3,500-5,500 | Condensing, PVC venting |
+| 95%+ AFUE | $4,500-7,000 | High efficiency |
+| 98% AFUE (modulating) | $6,000-10,000+ | Variable speed, quiet |
+
+**Combined Systems (AC + Furnace):**
+
+| System Level | Price Range | Notes |
+|--------------|-------------|-------|
+| Basic (14 SEER + 80% furnace) | $7,000-10,000 | Minimum code |
+| Standard (16 SEER + 90% furnace) | $10,000-14,000 | Most popular |
+| High-end (18 SEER + 95% furnace) | $14,000-20,000 | Premium comfort |
+| Luxury (variable speed everything) | $18,000-30,000+ | Whole-home comfort |
+
+**Heat Pumps:**
+
+| System Type | Price Range | Notes |
+|-------------|-------------|-------|
+| Standard heat pump (15 SEER) | $5,500-8,000 | AC + heat in one |
+| High-efficiency heat pump (18+ SEER) | $8,000-12,000 | Variable speed |
+| Mini-split (single zone) | $3,000-6,000 | Per indoor unit |
+| Mini-split (multi-zone, 2-4 heads) | $8,000-15,000 | One outdoor, multiple indoor |
+| Dual fuel (heat pump + gas furnace) | $10,000-18,000 | Best of both worlds |
+
+### HVAC Replacement: Good/Better/Best Example
+
+Client needs full system replacement (AC died, furnace is 18 years old):
+
+**Essential - $8,500**
+- 14 SEER air conditioner
+- 80% AFUE gas furnace
+- Standard single-stage operation
+- New refrigerant lines
+- Basic thermostat
+- Manufacturer warranty only
+- 1-year labor warranty
+
+**Professional - $12,800** (Most Popular)
+- 16 SEER air conditioner (2-stage)
+- 95% AFUE gas furnace
+- Smart thermostat (Ecobee or similar)
+- New refrigerant lines and pad
+- Duct inspection and sealing (10 connections)
+- System start-up and calibration
+- 5-year labor warranty
+
+**Complete - $18,500**
+- 18 SEER variable-speed air conditioner
+- 98% AFUE modulating gas furnace
+- Advanced smart thermostat with zoning controls
+- Whole-home air purification system
+- UV light for coil
+- Complete duct sealing
+- Add return air vent (if undersized)
+- 10-year all-inclusive warranty (parts + labor)
+
+### Maintenance Agreement Pricing
+
+Maintenance agreements create recurring revenue and replacement opportunities:
+
+**Typical plan structure:**
+
+| Plan Level | Annual Cost | Includes |
+|------------|-------------|----------|
+| Basic | $150-200 | 2 tune-ups (heating + cooling) |
+| Standard | $200-300 | 2 tune-ups + 15% repair discount |
+| Premium | $300-500 | 2 tune-ups + priority service + discounts |
+
+**Why offer maintenance plans:**
+- Recurring revenue during slow seasons
+- First call when system fails (replacement opportunity)
+- Higher conversion rate on replacements
+- Customers stay with you longer
+
+**Typical close rate:** Good HVAC companies get 30-50% of replacement leads on maintenance plans.
+
+### Seasonal Pricing Strategy
+
+**Peak season (extreme heat/cold):**
+- Don't discount—you're busy anyway
+- Longer wait times are acceptable
+- Focus on maintenance customers first (loyalty)
+- Emergency/same-day premium pricing
+
+**Off-season (spring/fall):**
+- Offer "shoulder season" discounts (5-10% off replacement)
+- Push maintenance plan sign-ups
+- Focus on replacement sales (people have time to decide)
+- Good time for energy upgrade rebate promotions
+
+### HVAC Cost Factors
+
+**What increases system price:**
+- Tight access (attic, crawl space, closet)
+- Long refrigerant line runs
+- Zoning systems
+- Ductwork modifications
+- Electrical upgrades (panel space, circuit)
+- High-end air quality add-ons
+- Extended warranties
+
+**What clients don't realize:**
+- Ductwork is often undersized for new high-efficiency equipment
+- Refrigerant line insulation degrades (should replace)
+- Drain lines may need rerouting
+- Code has changed since their last install
+
+### HVAC Quote Terms
+
+**Include:**
+- "Price includes all labor, materials, and equipment specified"
+- "Includes disposal of old equipment"
+- "Includes permit and inspection" (or specify separate)
+- "All equipment registered with manufacturer for warranty"
+- "System start-up and owner training included"
+
+**Exclude:**
+- "Does not include ductwork modifications" (unless specified)
+- "Does not include electrical panel upgrades if required"
+- "Does not include thermostat relocation or additional wiring"
+- "Price assumes standard installation; attic/difficult access additional"
+
+### Financing: The HVAC Secret Weapon
+
+Most homeowners don't have $10,000-15,000 sitting around. Financing makes expensive systems accessible.
+
+**Offer:**
+- Same-as-cash financing (12-18 months)
+- Low monthly payment options
+- Rebate/financing combos
+
+**The pitch:**
+"The Professional option is $12,800. With our financing, that's about $225/month—less than what most people spend on Starbucks. And you'll probably save $50-80/month on energy bills, so the new system nearly pays for itself."
+
+Financing increases close rates by 40-60% on replacement jobs.
+
+---
+
+## Chapter 16: General Contractor & Remodeling Pricing Guide
+
+General contractors and remodelers face the most complex pricing in the trades. You're not just pricing your work—you're coordinating multiple subs, managing materials from dozens of suppliers, and dealing with scope that inevitably changes.
+
+### How GCs Make Money
+
+General contractors typically earn money three ways:
+
+**1. Markup on Subcontractors**
+- Standard: 15-25% on sub costs
+- Covers coordination, liability, warranty
+- Higher for complex projects
+
+**2. Markup on Materials**
+- Standard: 15-30% on materials
+- Covers procurement, delivery coordination, waste
+- Some GCs charge cost-plus on materials
+
+**3. Project Management Fee**
+- Some charge as a line item (10-20% of project)
+- Some roll it into overall markup
+- Covers supervision, scheduling, client communication
+
+### Pricing Methods
+
+**Cost-Plus (T&M with Markup)**
+- All costs at cost, plus fixed percentage (15-25%)
+- Client sees every receipt
+- Works for: Uncertain scope, trusted relationships
+
+**Fixed Price (Lump Sum)**
+- One number for entire project
+- GC takes all risk/reward
+- Works for: Well-defined scope, competitive bids
+
+**Guaranteed Maximum Price (GMP)**
+- Cost-plus with a cap
+- Client shares savings below cap
+- Works for: Larger projects, risk-sharing
+
+### Remodeling Cost Benchmarks
+
+**Kitchen Remodels:**
+
+| Level | Price Range | What's Included |
+|-------|-------------|-----------------|
+| Cosmetic refresh | $10,000-25,000 | Paint, hardware, lighting, countertops |
+| Mid-range remodel | $35,000-75,000 | New cabinets, counters, appliances, flooring |
+| Upscale remodel | $75,000-150,000 | Custom cabinets, high-end appliances, layout changes |
+| Luxury remodel | $150,000+ | Gut renovation, structural changes, top-tier everything |
+
+**Bathroom Remodels:**
+
+| Level | Price Range | What's Included |
+|-------|-------------|-----------------|
+| Cosmetic refresh | $5,000-10,000 | Paint, fixtures, accessories, minor updates |
+| Standard remodel | $15,000-30,000 | New vanity, toilet, tile, tub/shower |
+| Upscale remodel | $30,000-60,000 | Custom tile, frameless glass, premium fixtures |
+| Luxury remodel | $60,000-120,000+ | Structural changes, high-end everything, custom |
+
+**Room Additions:**
+
+| Type | Price per SF | Notes |
+|------|--------------|-------|
+| Basic addition (on slab) | $200-350/sf | Simple bedroom or family room |
+| Standard addition | $350-500/sf | Full bathroom included |
+| Premium addition | $500-750/sf | Multiple rooms, complex roof |
+| Second story addition | $400-600/sf | Structural considerations |
+
+**Whole-House Remodels:**
+
+| Level | Price per SF | Notes |
+|-------|--------------|-------|
+| Light renovation | $100-200/sf | Cosmetic updates, some systems |
+| Moderate remodel | $200-400/sf | Kitchen, baths, flooring throughout |
+| Extensive remodel | $400-600/sf | Gut to studs, new systems |
+| Luxury renovation | $600-1,000+/sf | High-end finishes, custom everything |
+
+### Bathroom Remodel: Good/Better/Best Example
+
+Client wants to update their master bathroom:
+
+**Essential - $18,500**
+- Demo existing finishes
+- New 36" vanity with top and faucet
+- New toilet
+- Standard tub/shower with tile surround (to 6')
+- Vinyl plank flooring
+- Basic lighting update
+- Paint
+- Standard fixtures
+- 1-year workmanship warranty
+
+**Professional - $32,000** (Most Popular)
+- Everything in Essential, plus:
+- 48" double vanity with quartz top
+- Tile shower walls floor to ceiling
+- Frameless glass shower door
+- Heated tile floor
+- Upgraded fixtures (Moen or Delta)
+- Recessed lighting with dimmer
+- Exhaust fan upgrade
+- 3-year workmanship warranty
+
+**Complete - $52,000**
+- Everything in Professional, plus:
+- Walk-in shower with bench and niche
+- Multiple showerheads (rain + handheld)
+- Freestanding tub
+- Custom tile design with accent wall
+- Lighted mirror or mirror TV
+- Premium fixtures (Kohler, Brizo)
+- Radiant floor heating
+- New window (if applicable)
+- 5-year workmanship warranty
+
+### Managing Subcontractor Pricing
+
+**Get multiple bids:**
+- 3 bids minimum for each trade
+- Compare scope carefully (apples to apples)
+- Check their insurance and licenses
+
+**Your markup should cover:**
+- Time coordinating/scheduling
+- Warranty liability
+- Callbacks you handle before calling sub back
+- Admin (contracts, payments, lien waivers)
+
+**Typical sub markups:**
+
+| Situation | Markup |
+|-----------|--------|
+| Simple, reliable sub | 15-20% |
+| Complex coordination | 20-25% |
+| Difficult sub/high risk | 25-30% |
+| Sub providing own materials | 10-15% (on labor only) |
+
+### Allowances: Managing Client Expectations
+
+For finishes the client selects, use allowances:
+
+**Example language:**
+"This quote includes a $2,500 allowance for lighting fixtures. You can select any fixtures you like—if total exceeds $2,500, the overage will be added to your contract. If under, you'll receive a credit."
+
+**Common allowances:**
+
+| Category | Typical Allowance | Notes |
+|----------|-------------------|-------|
+| Kitchen cabinets | $200-500/linear foot | Budget vs. custom |
+| Countertops | $50-150/sf installed | Laminate to quartzite |
+| Appliances | $3,000-15,000 (set) | Package vs. premium |
+| Lighting fixtures | $100-500/fixture | Basic to designer |
+| Tile | $5-25/sf (material) | Ceramic to natural stone |
+| Hardware | $5-50/pull or knob | Builder to premium |
+
+### Change Order Management
+
+Remodeling projects ALWAYS have changes. Your change order process determines whether you make or lose money.
+
+**The system:**
+1. Document original scope clearly
+2. When client requests change: stop work on that area
+3. Price the change in writing
+4. Get signed approval before proceeding
+5. Track all changes on a running log
+
+**Change order pricing:**
+- Material costs + your standard markup
+- Labor at your hourly rate (T&M) or quoted flat
+- Don't discount "since we're already here"—that costs you money
+
+**Example change order:**
+
+> **Change Order #3 - Master Bath**
+>
+> Requested by: [Client]
+> Date: [Date]
+>
+> **Description:** Add second showerhead (handheld on slide bar) to walk-in shower
+>
+> **Work includes:**
+> - Additional rough-in plumbing
+> - Slide bar and handheld showerhead (Moen Engage)
+> - Diverter valve
+>
+> **Additional cost:** $650
+> **New contract total:** $33,650 (was $33,000)
+>
+> Approval signature: _____________ Date: _______
+
+### Contingency: Protecting Yourself
+
+Every remodel hides surprises behind the walls. Build contingency into your price.
+
+**Recommended contingency:**
+
+| Project Type | Contingency |
+|--------------|-------------|
+| Light remodel (mostly cosmetic) | 5-10% |
+| Standard remodel | 10-15% |
+| Gut renovation | 15-20% |
+| Old home (pre-1970) | 20-25% |
+
+**How to present it:**
+- Option 1: Build into your price (don't itemize)
+- Option 2: Show as "contingency allowance" (transparent)
+- Option 3: Price "as-is" with clear T&M language for surprises
+
+**Script for surprises:**
+"We opened up the wall and found [issue]. This wasn't visible before demo and isn't included in our original scope. Here are our options: [Solution A at $X] or [Solution B at $Y]. Which direction would you like to go?"
+
+### Timeline and Payment Schedule
+
+**Typical payment structure:**
+
+| Milestone | Payment | Why |
+|-----------|---------|-----|
+| Contract signing | 10-30% | Materials ordering, scheduling |
+| Start of work | 20-30% | Demo, initial materials |
+| Rough-in complete | 20-30% | Framing, electrical, plumbing rough |
+| Finish stage start | 15-20% | Cabinets, fixtures arriving |
+| Substantial completion | 5-10% | Punch list items remain |
+
+**Never:**
+- Collect 50%+ before starting work (looks like a scam)
+- Let payments get ahead of work completed
+- Start finish work without rough-in payment collected
+
+### GC Quote Essentials
+
+**Your quote should include:**
+- Detailed scope with specifications
+- Allowance amounts for client selections
+- Timeline with milestones
+- Payment schedule
+- Change order process
+- What's included and excluded (very detailed)
+- Warranty terms
+
+**Critical exclusions for remodels:**
+- "Does not include work to concealed conditions"
+- "Asbestos/lead testing and remediation by others"
+- "Permits and inspections [included/not included]"
+- "Moving/storing client belongings by others"
+- "Final cleaning [included/not included]"
+- "Appliance installation (plumbing/electrical connections included, appliance delivery by supplier)"
+
+### Red Flags to Walk Away
+
+Not every project is worth taking. Watch for:
+
+- Client already fired one contractor mid-project
+- Unrealistic budget for their expectations
+- "We'll figure out the details as we go"
+- Multiple decision-makers who don't agree
+- Pushing for huge discount before you start
+- Previous legal disputes with contractors
+- Wanting to pay 100% upfront (money laundering) or $0 until complete (cash flow nightmare)
+
+A bad project costs more than no project. Trust your gut.
+
+---
+
 # Conclusion: Price with Confidence
 
 Let's recap what you've learned:
@@ -1020,6 +2061,12 @@ Let's recap what you've learned:
 - Don't let software eat your margins
 - Get paid promptly
 
+**5. Know your trade** (Chapters 13-16)
+- Electrical: Service calls, flat-rate repairs, panel upgrades, new construction pricing
+- Plumbing: Drain cleaning, fixture work, water heaters, whole-house repipes
+- HVAC: Maintenance plans, repair pricing, system replacement strategies, seasonal adjustments
+- General contracting: Managing subs, allowances, contingency, and change orders
+
 ### The Abundance Mindset
 
 Here's the thing: there are plenty of good clients out there.
@@ -1038,15 +2085,18 @@ Before you send your next quote:
 - [ ] My labor rate includes profit, not just salary
 - [ ] I've calculated the correct markup to hit my margin target
 - [ ] I'm offering Good/Better/Best options
+- [ ] My prices align with market rates for my trade and region
 - [ ] My quote looks professional
-- [ ] I've protected myself with clear terms and change order language
+- [ ] I've included trade-appropriate terms and exclusions
+- [ ] I've protected myself with clear change order language
 - [ ] I'm confident in my price
 
 ### Next Steps
 
 1. **Today:** Calculate your true overhead (Chapter 1 worksheet)
-2. **This week:** Build your Good/Better/Best templates for your top 3 services
+2. **This week:** Build your Good/Better/Best templates for your top 3 services (use the trade-specific examples in Chapters 13-16)
 3. **This month:** Raise your prices on new quotes by 10% and see what happens
+4. **Ongoing:** Review your trade chapter quarterly—prices and code requirements change
 
 Most contractors are surprised: they raise prices and still close the same percentage of jobs. The clients who care about price weren't going to be good clients anyway.
 

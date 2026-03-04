@@ -26,6 +26,26 @@ Quotable lines from QuoteCat content that work for social, ads, emails, and app 
 
 ---
 
+## Differentiator / Positioning
+
+**The insight:** Competitors (Jobber, Housecall Pro, ServiceTitan) have quote builders, but they're just forms. Enter your price, send it. No education, no "is this the right price?" check. Their blogs have pricing advice, but it's disconnected from the workflow.
+
+**Nobody's connecting education to the workflow.**
+
+**QuoteCat's angle:**
+
+> "Competitors sell forms. QuoteCat sells confidence."
+
+> "QuoteCat doesn't just help you send quotes. It helps you send the right quotes."
+
+> "Don't just send quotes. Send *profitable* quotes. We'll make sure."
+
+> "Set your target margin once. We'll do the math on every quote."
+
+**Future feature idea:** Integrate pricing guide calculations into the quoting flow - labor rate calculator, markup/margin converter, "am I leaving money?" check, Good/Better/Best template builder. They decide the strategy, QuoteCat handles execution.
+
+---
+
 ## Ideas for Use
 
 - **Social posts:** Stand-alone quotes with QuoteCat branding

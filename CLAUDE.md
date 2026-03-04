@@ -1009,6 +1009,9 @@ Features to consider for future releases (not blockers for launch):
 - **Email/SMS Campaigns** - Marketing campaigns to client list. Re-engagement ("haven't seen you in 6 months"), seasonal promos, announcements. AI-generated campaign content via Drew. Could use Knock.app for delivery (same infrastructure as automations). Jobber charges $29/mo. (Discussed Jan 17, 2026)
 - **Referral Program** - Automated referral tracking. Client shares link, new customer signs up, original client gets credit/reward. Track referral sources. Jobber charges $29/mo. (Discussed Jan 17, 2026)
 
+### Analytics (Premium)
+- **AI Business Performance Coach** - AI-powered analysis of business performance with actionable insights. **Scoring:** Overall score (0-100) plus category scores for Profitability, Cash Flow, Pricing, Win Rate, Efficiency. **Data sources:** Quotes, invoices, overhead settings, margins, payment timing, win rates. **Tone:** Supportive first ("Your win rate is 68% - solid for your industry"), then constructive ("Bumping markup 5% could add $X/year"), then actionable ("3 invoices 30+ days overdue - send reminders?"). Like having a business coach built in. Huge differentiator - competitors are forms, QuoteCat helps them succeed. Uses Claude for personalized analysis. Premium feature. (Discussed Mar 2, 2026)
+
 ### Drew AI (Premium)
 - **Site Visit Mode (Voice-to-Scope)** - Record conversations during on-site walkthroughs with clients. AI transcribes and extracts job details (tasks, locations, measurements, client concerns) so contractors don't have to take notes. Pre-fills quote draft with captured details. Uses Whisper API (~$0.006/min) or Deepgram for transcription, Claude for extraction. Add 🎤 button to Drew chat screen. Requires consent prompt for recording (two-party consent states). Killer differentiator - no competitor has this. (Discussed Jan 17, 2026)
 
