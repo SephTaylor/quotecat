@@ -157,7 +157,16 @@ interface RequestBody {
   userMessage: string;
   state?: ConversationState;
   userSettings?: UserSettings;
-  mode?: 'support' | 'quote';  // Support mode skips state machine, handles FAQ/feedback
+  mode?: 'support' | 'quote' | 'sms';  // Support mode skips state machine, handles FAQ/feedback
+  // SMS mode fields (for Drew-powered messaging)
+  contractorId?: string;
+  clientPhone?: string;
+  clientInfo?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
+  message?: string;  // Alternative to userMessage for SMS
 }
 
 // =============================================================================
@@ -1782,6 +1791,151 @@ async function handleSupportIntent(
 }
 
 // =============================================================================
+// SMS MODE HELPERS
+// =============================================================================
+
+interface ClientContext {
+  clientName: string;
+  clientPhone: string;
+  companyName?: string;
+  recentQuotes: Array<{ name: string; total: number; status: string; created_at: string }>;
+  recentInvoices: Array<{ total: number; status: string; created_at: string }>;
+  recentMessages: Array<{ sender_type: string; message: string; created_at: string }>;
+}
+
+/**
+ * Load context about the client for SMS reply drafting.
+ * Includes quotes, invoices, and recent conversation history.
+ */
+async function loadClientContext(
+  supabase: ReturnType<typeof createClient>,
+  contractorId: string,
+  clientPhone: string,
+  clientInfo?: { name?: string; email?: string; phone?: string }
+): Promise<ClientContext> {
+  // Get contractor's company name
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_name')
+    .eq('id', contractorId)
+    .single();
+
+  // Find client by phone number
+  const { data: client } = await supabase
+    .from('clients')
+    .select('id, name, email')
+    .eq('user_id', contractorId)
+    .eq('phone', clientPhone)
+    .single();
+
+  const clientName = client?.name || clientInfo?.name || 'Customer';
+  const clientEmail = client?.email || clientInfo?.email;
+
+  // Get recent quotes for this client (by email if available)
+  let recentQuotes: ClientContext['recentQuotes'] = [];
+  if (clientEmail) {
+    const { data: quotes } = await supabase
+      .from('quotes')
+      .select('name, total, status, created_at')
+      .eq('user_id', contractorId)
+      .eq('client_email', clientEmail)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    recentQuotes = quotes || [];
+  }
+
+  // Get recent invoices for this client
+  let recentInvoices: ClientContext['recentInvoices'] = [];
+  if (clientEmail) {
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('total, status, created_at')
+      .eq('user_id', contractorId)
+      .eq('client_email', clientEmail)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    recentInvoices = invoices || [];
+  }
+
+  // Get recent message history for this conversation
+  const { data: messages } = await supabase
+    .from('client_messages')
+    .select('sender_type, message, created_at')
+    .eq('contractor_id', contractorId)
+    .eq('phone', clientPhone)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  return {
+    clientName,
+    clientPhone,
+    companyName: profile?.company_name,
+    recentQuotes,
+    recentInvoices,
+    recentMessages: (messages || []).reverse(), // Oldest first for conversation flow
+  };
+}
+
+/**
+ * Build the system prompt for SMS reply drafting.
+ * Includes client context so Drew can write relevant replies.
+ */
+function buildSMSSystemPrompt(context: ClientContext): string {
+  let prompt = `You are Drew, an AI assistant helping a contractor reply to client text messages.
+
+## Your Task
+Draft a helpful, professional SMS reply. Keep it SHORT - ideally under 160 characters.
+
+## Guidelines
+- Be friendly but professional
+- Get to the point quickly
+- Reference their quote/invoice if relevant to their question
+- If they're asking about status, give a clear answer
+- If you need info from the contractor, suggest they'll follow up
+- NEVER make up dates, times, or prices - just say "I'll get back to you"
+- End with a question or next step when appropriate
+
+## About the Business`;
+
+  if (context.companyName) {
+    prompt += `\nCompany: ${context.companyName}`;
+  }
+
+  prompt += `\n\n## Client Information
+Name: ${context.clientName}
+Phone: ${context.clientPhone}`;
+
+  if (context.recentQuotes.length > 0) {
+    prompt += '\n\n## Recent Quotes';
+    for (const quote of context.recentQuotes) {
+      const date = new Date(quote.created_at).toLocaleDateString();
+      prompt += `\n- ${quote.name}: $${quote.total?.toFixed(2) || '0.00'} (${quote.status}) - ${date}`;
+    }
+  }
+
+  if (context.recentInvoices.length > 0) {
+    prompt += '\n\n## Recent Invoices';
+    for (const invoice of context.recentInvoices) {
+      const date = new Date(invoice.created_at).toLocaleDateString();
+      prompt += `\n- $${invoice.total?.toFixed(2) || '0.00'} (${invoice.status}) - ${date}`;
+    }
+  }
+
+  if (context.recentMessages.length > 0) {
+    prompt += '\n\n## Recent Conversation';
+    for (const msg of context.recentMessages) {
+      const sender = msg.sender_type === 'client' ? context.clientName : 'You';
+      prompt += `\n${sender}: ${msg.message}`;
+    }
+  }
+
+  prompt += `\n\n## Output
+Reply with ONLY the SMS text - no quotes, no explanation, no "Here's a draft:". Just the message.`;
+
+  return prompt;
+}
+
+// =============================================================================
 // MAIN HANDLER
 // =============================================================================
 
@@ -1843,6 +1997,63 @@ serve(async (req) => {
         state: { messages: [], quoteItems: [] },
         quickReplies: ['How do I create a quote?', 'Feature request', 'Report a problem'],
       }), { headers });
+    }
+
+    // ==========================================================================
+    // SMS MODE - Draft contextual SMS replies (uses Haiku 3.5 for cost efficiency)
+    // ==========================================================================
+    if (mode === 'sms') {
+      const { contractorId, clientPhone, clientInfo, message: smsMessage } = body;
+
+      if (!contractorId || !clientPhone) {
+        return new Response(JSON.stringify({ error: 'Missing contractorId or clientPhone' }), {
+          status: 400,
+          headers
+        });
+      }
+
+      console.log('[drew-agent] SMS mode - drafting reply for contractor:', contractorId);
+
+      // Load client context
+      const clientContext = await loadClientContext(supabase, contractorId, clientPhone, clientInfo);
+
+      // Build SMS system prompt
+      const smsSystemPrompt = buildSMSSystemPrompt(clientContext);
+
+      // Call Claude Haiku 3.5 for cost-efficient SMS drafting
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY!,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-haiku-20241022',  // Haiku for SMS (~$0.003/draft)
+          max_tokens: 256,  // SMS should be short
+          system: smsSystemPrompt,
+          messages: [
+            { role: 'user', content: smsMessage || userMessage },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[drew-agent] SMS Claude API error:', response.status, errorText);
+        return new Response(JSON.stringify({ error: 'Failed to generate draft' }), {
+          status: 500,
+          headers
+        });
+      }
+
+      const data = await response.json();
+      const textBlock = data.content.find((c: ContentBlock) => c.type === 'text');
+      const draft = textBlock?.text || '';
+
+      console.log('[drew-agent] SMS draft generated:', draft.substring(0, 50));
+
+      return new Response(JSON.stringify({ draft }), { headers });
     }
 
     // ==========================================================================
