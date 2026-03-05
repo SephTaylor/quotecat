@@ -27,6 +27,7 @@ type Props = {
   existingEntries: LaborEntry[]; // To show which workers are already assigned
   defaultHours?: number; // Default hours per worker (e.g., 8)
   onTeamMembersChanged?: () => void; // Callback when a new member is added
+  showRates?: boolean; // Whether to show hourly rates (defaults to true)
 };
 
 function generateId(): string {
@@ -41,6 +42,7 @@ export function WorkerPickerModal({
   existingEntries,
   defaultHours = 8,
   onTeamMembersChanged,
+  showRates = true,
 }: Props) {
   const { theme, mode } = useTheme();
   const isDark = mode === "dark";
@@ -192,18 +194,20 @@ export function WorkerPickerModal({
                     onChangeText={setNewRole}
                     autoCapitalize="words"
                   />
-                  <View style={styles.rateInputWrapper}>
-                    <Text style={styles.ratePrefix}>$</Text>
-                    <TextInput
-                      style={[styles.newWorkerInput, styles.rateInput]}
-                      placeholder="0"
-                      placeholderTextColor={theme.colors.muted}
-                      value={newRate}
-                      onChangeText={(t) => setNewRate(t.replace(/[^0-9.]/g, ""))}
-                      keyboardType="decimal-pad"
-                    />
-                    <Text style={styles.rateSuffix}>/hr</Text>
-                  </View>
+                  {showRates && (
+                    <View style={styles.rateInputWrapper}>
+                      <Text style={styles.ratePrefix}>$</Text>
+                      <TextInput
+                        style={[styles.newWorkerInput, styles.rateInput]}
+                        placeholder="0"
+                        placeholderTextColor={theme.colors.muted}
+                        value={newRate}
+                        onChangeText={(t) => setNewRate(t.replace(/[^0-9.]/g, ""))}
+                        keyboardType="decimal-pad"
+                      />
+                      <Text style={styles.rateSuffix}>/hr</Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.newWorkerActions}>
                   <Pressable
@@ -315,7 +319,7 @@ export function WorkerPickerModal({
                               {member.role && (
                                 <Text style={styles.workerRole}>{member.role}</Text>
                               )}
-                              {member.defaultRate > 0 && (
+                              {showRates && member.defaultRate > 0 && (
                                 <Text style={styles.workerRate}>
                                   ${member.defaultRate.toFixed(2)}/hr
                                 </Text>

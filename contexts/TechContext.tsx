@@ -3,9 +3,12 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { Alert } from 'react-native';
-import { getTechContext, TechContext as TechContextType, TechPermissions, canViewPricing, canCreateQuotes, canEditQuote } from '@/lib/team';
+import { getTechContext, TechContext as TechContextType, TechPermissions, canViewPricing, canCreateQuotes, canEditQuote, canAssignWorkers, canViewLaborRates } from '@/lib/team';
 import { getCurrentUserId } from '@/lib/authUtils';
 import { signOut } from '@/lib/auth';
+import { getUserState } from '@/lib/user';
+
+type UserTier = 'free' | 'pro' | 'premium';
 
 interface TechContextValue {
   // State
@@ -16,6 +19,8 @@ interface TechContextValue {
   isTech: boolean;
   ownerId: string | null;
   ownerCompanyName: string | null;
+  ownerTier: UserTier | null;  // Owner's subscription tier
+  effectiveTier: UserTier;     // Tier to use for feature access (ownerTier for techs, own tier otherwise)
   permissions: TechPermissions | null;
 
   // Removal detection
@@ -25,6 +30,8 @@ interface TechContextValue {
   // Permission helpers
   canViewPricing: boolean;
   canCreateQuotes: boolean;
+  canAssignWorkers: boolean;
+  canViewLaborRates: boolean;
   canEditQuote: (quoteCreatedByTechId?: string) => boolean;
 
   // Actions
@@ -38,6 +45,7 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
   const [techContext, setTechContext] = useState<TechContextType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [userTier, setUserTier] = useState<UserTier>('free');
 
   // Track if we've already shown the removal alert (prevent duplicate alerts)
   const hasShownRemovalAlert = useRef(false);
@@ -47,6 +55,10 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
     try {
       const userId = await getCurrentUserId();
       setCurrentUserId(userId);
+
+      // Load user's own tier
+      const userState = await getUserState();
+      setUserTier(userState.tier);
 
       if (userId) {
         const context = await getTechContext(userId);
@@ -111,6 +123,11 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
     refreshTechContext();
   }, [refreshTechContext]);
 
+  // Compute effective tier: techs use owner's tier, others use their own
+  const effectiveTier: UserTier = techContext?.isTech && techContext.ownerTier
+    ? techContext.ownerTier
+    : userTier;
+
   const value: TechContextValue = {
     techContext,
     isLoading,
@@ -118,6 +135,8 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
     isTech: techContext?.isTech ?? false,
     ownerId: techContext?.ownerId ?? null,
     ownerCompanyName: techContext?.ownerCompanyName ?? null,
+    ownerTier: techContext?.ownerTier ?? null,
+    effectiveTier,
     permissions: techContext?.permissions ?? null,
 
     // Removal detection
@@ -126,6 +145,8 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
 
     canViewPricing: canViewPricing(techContext),
     canCreateQuotes: canCreateQuotes(techContext),
+    canAssignWorkers: canAssignWorkers(techContext),
+    canViewLaborRates: canViewLaborRates(techContext),
     canEditQuote: (quoteCreatedByTechId?: string) =>
       canEditQuote(techContext, quoteCreatedByTechId, currentUserId ?? undefined),
 
@@ -151,11 +172,15 @@ export function useTechContext(): TechContextValue {
       isTech: false,
       ownerId: null,
       ownerCompanyName: null,
+      ownerTier: null,
+      effectiveTier: 'free',
       permissions: null,
       wasRemoved: false,
       removalReason: null,
       canViewPricing: true,
       canCreateQuotes: true,
+      canAssignWorkers: true,
+      canViewLaborRates: true,
       canEditQuote: () => true,
       refreshTechContext: async () => {},
       clearTechContext: () => {},

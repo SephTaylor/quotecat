@@ -3,8 +3,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useTechContext } from "@/contexts/TechContext";
 import { updateQuote, getQuoteById } from "@/lib/quotes";
 import { getClients, getAndClearLastCreatedClientId, getClientById, createClient, type Client } from "@/lib/clients";
-import { getUserState } from "@/lib/user";
-import { canAccessAssemblies, canAccessMultiWorkerLabor } from "@/lib/features";
 import { loadPreferences, type OverheadSettings } from "@/lib/preferences";
 import { calculateQuoteProfitability, getMarginColor, getMarginIcon } from "@/lib/calculations";
 import { FormInput, FormScreen } from "@/modules/core/ui";
@@ -37,7 +35,7 @@ import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 
 export default function EditQuote() {
   const { theme } = useTheme();
-  const { isTech, ownerCompanyName, canViewPricing } = useTechContext();
+  const { isTech, ownerCompanyName, canViewPricing, canAssignWorkers, canViewLaborRates, effectiveTier } = useTechContext();
   const { id, newItems: newItemsParam } = useLocalSearchParams<{ id?: string; newItems?: string }>();
   const router = useRouter();
 
@@ -130,22 +128,24 @@ export default function EditQuote() {
   } = form;
 
   // Load Pro/Premium status, saved clients, and profitability settings
+  // Uses effectiveTier from TechContext (techs inherit owner's tier)
   useEffect(() => {
     const loadProAndClients = async () => {
       try {
-        const user = await getUserState();
-        const proStatus = canAccessAssemblies(user);
-        const premiumStatus = canAccessMultiWorkerLabor(user);
+        // Derive Pro/Premium from effectiveTier (techs use owner's tier)
+        const proStatus = effectiveTier === 'pro' || effectiveTier === 'premium';
+        const premiumStatus = effectiveTier === 'premium';
         setIsPro(proStatus);
         setIsPremium(premiumStatus);
+
+        // Load preferences for all users (defaultLaborRate used by LaborInput)
+        const prefs = await loadPreferences();
+        setDefaultLaborRate(prefs.pricing?.defaultLaborRate || 0);
+
         if (proStatus) {
-          const [clients, prefs] = await Promise.all([
-            getClients(),
-            loadPreferences(),
-          ]);
+          const clients = await getClients();
           setSavedClients(clients);
           setTargetMaterialsMarginPercent(prefs.pricing?.targetMaterialsMarginPercent || 0);
-          setDefaultLaborRate(prefs.pricing?.defaultLaborRate || 0);
           setOverheadSettings(prefs.overhead);
         }
         // Load team members for Premium users
@@ -159,7 +159,7 @@ export default function EditQuote() {
       }
     };
     loadProAndClients();
-  }, []);
+  }, [effectiveTier]);
 
   // Track if we've processed the newItemsParam to avoid re-processing
   const processedNewItemsRef = React.useRef<string | null>(null);
@@ -1085,87 +1085,80 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(3) }} />
 
+        {/* Labor section - canViewPricing controls dollar amounts visibility */}
         {canViewPricing && (
           <>
             <Text style={styles.label}>Labor</Text>
-            {isPro || isPremium ? (
-              // Pro/Premium: Hours × rate calculator OR flat rate
-              // Disabled when assigned workers are used (Premium)
-              <View style={laborEntries.length > 0 ? { opacity: 0.4 } : undefined}>
-                <LaborInput
-                  value={laborEntries.length > 0 ? 0 : (parseFloat(labor) || 0)}
-                  onChange={(value) => {
-                    if (laborEntries.length === 0) {
-                      setLabor(value.toFixed(2));
-                    }
-                  }}
-                  defaultRate={defaultLaborRate}
-                />
-                {laborEntries.length > 0 && (
-                  <Text style={styles.disabledHint}>
-                    Using assigned workers below
-                  </Text>
-                )}
-              </View>
-            ) : (
-              // Free: Simple input
-              <FormInput
-                placeholder="0.00"
-                value={labor}
-                onChangeText={(text) => setLabor(formatLaborInput(text))}
-                onBlur={() => setLabor(formatMoneyOnBlur(labor))}
-                keyboardType="decimal-pad"
+            {/* All users get LaborInput with hours × rate calculator */}
+            {/* Disabled when assigned workers are used (Premium) */}
+            <View style={laborEntries.length > 0 ? { opacity: 0.4 } : undefined}>
+              <LaborInput
+                value={laborEntries.length > 0 ? 0 : (parseFloat(labor) || 0)}
+                onChange={(value) => {
+                  if (laborEntries.length === 0) {
+                    setLabor(value.toFixed(2));
+                  }
+                }}
+                defaultRate={defaultLaborRate}
               />
-            )}
-
+              {laborEntries.length > 0 && (
+                <Text style={styles.disabledHint}>
+                  Using assigned workers below
+                </Text>
+              )}
+            </View>
             <View style={{ height: theme.spacing(3) }} />
+          </>
+        )}
 
-            {/* Assigned Workers Section - Premium only */}
-            {isPremium && (
+        {/* Assigned Workers Section - Premium + canAssignWorkers permission */}
+        {isPremium && canAssignWorkers && (
+          <>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Assigned Workers</Text>
+              <Pressable
+                onPress={() => setShowWorkerPicker(true)}
+                hitSlop={8}
+              >
+                <Text style={styles.browseTag}>Browse</Text>
+              </Pressable>
+            </View>
+            {laborEntries.length > 0 ? (
               <>
-                <View style={styles.labelRow}>
-                  <Text style={styles.label}>Assigned Workers</Text>
-                  <Pressable
-                    onPress={() => setShowWorkerPicker(true)}
-                    hitSlop={8}
-                  >
-                    <Text style={styles.browseTag}>Browse</Text>
-                  </Pressable>
-                </View>
-                {laborEntries.length > 0 ? (
-                  <>
-                    <GestureHandlerRootView style={styles.itemsList}>
-                      {laborEntries.map((entry, index) => (
-                        <SwipeableLaborEntry
-                          key={entry.id}
-                          entry={entry}
-                          onDelete={() => handleDeleteLaborEntry(entry.id)}
-                          onEdit={() => handleEditLaborEntry(entry)}
-                          onHoursChange={(hours) => handleLaborEntryHoursChange(entry.id, hours)}
-                          isLastItem={index === laborEntries.length - 1}
-                        />
-                      ))}
-                    </GestureHandlerRootView>
-                    <View style={styles.laborTotalRow}>
-                      <Text style={styles.laborTotalLabel}>Total Labor</Text>
-                      <Text style={styles.laborTotalValue}>
-                        ${computeLaborTotal(laborEntries).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </Text>
-                    </View>
-                  </>
-                ) : (
-                  <Pressable
-                    style={styles.emptyLaborCard}
-                    onPress={() => setShowWorkerPicker(true)}
-                  >
-                    <Text style={styles.emptyLaborText}>
-                      Tap to assign workers to this job
+                <GestureHandlerRootView style={styles.itemsList}>
+                  {laborEntries.map((entry, index) => (
+                    <SwipeableLaborEntry
+                      key={entry.id}
+                      entry={entry}
+                      onDelete={() => handleDeleteLaborEntry(entry.id)}
+                      onEdit={() => handleEditLaborEntry(entry)}
+                      onHoursChange={(hours) => handleLaborEntryHoursChange(entry.id, hours)}
+                      isLastItem={index === laborEntries.length - 1}
+                      showRate={canViewLaborRates}
+                    />
+                  ))}
+                </GestureHandlerRootView>
+                {/* Total Labor - only show if canViewPricing */}
+                {canViewPricing && (
+                  <View style={styles.laborTotalRow}>
+                    <Text style={styles.laborTotalLabel}>Total Labor</Text>
+                    <Text style={styles.laborTotalValue}>
+                      ${computeLaborTotal(laborEntries).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </Text>
-                  </Pressable>
+                  </View>
                 )}
-                <View style={{ height: theme.spacing(3) }} />
               </>
+            ) : (
+              <Pressable
+                style={styles.emptyLaborCard}
+                onPress={() => setShowWorkerPicker(true)}
+              >
+                <Text style={styles.emptyLaborText}>
+                  Tap to assign workers to this job
+                </Text>
+              </Pressable>
             )}
+            <View style={{ height: theme.spacing(3) }} />
           </>
         )}
 
@@ -1623,6 +1616,7 @@ export default function EditQuote() {
           const members = getLocalTeamMembers();
           setTeamMembers(members);
         }}
+        showRates={canViewLaborRates}
       />
 
       {/* Add/Edit Labor Entry Sheet (Premium) */}
@@ -1636,6 +1630,7 @@ export default function EditQuote() {
         teamMembers={teamMembers}
         defaultRate={defaultLaborRate}
         editingEntry={editingLaborEntry}
+        showRate={canViewLaborRates}
       />
 
     </>

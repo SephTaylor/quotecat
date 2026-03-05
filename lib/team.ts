@@ -10,6 +10,10 @@ export type TechPermissions = {
   can_view_pricing: boolean;
   can_manage_clients: boolean;
   can_view_invoices: boolean;
+  can_record_payments: boolean;
+  can_send_to_portal: boolean;
+  can_assign_workers: boolean;
+  can_view_labor_rates: boolean;
 };
 
 export type TechAccount = {
@@ -35,6 +39,7 @@ export type TechContext = {
   techAccount: TechAccount | null;
   ownerId: string | null;  // The owner's user_id (for creating quotes)
   ownerCompanyName: string | null;
+  ownerTier: 'free' | 'pro' | 'premium' | null;  // Owner's subscription tier (for feature access)
   permissions: TechPermissions | null;
   // Removal detection
   wasRemoved: boolean;  // True if tech was removed or suspended
@@ -48,6 +53,10 @@ const DEFAULT_PERMISSIONS: TechPermissions = {
   can_view_pricing: false,
   can_manage_clients: false,
   can_view_invoices: false,
+  can_record_payments: false,
+  can_send_to_portal: false,
+  can_assign_workers: true,
+  can_view_labor_rates: false,
 };
 
 /**
@@ -61,6 +70,7 @@ export async function getTechContext(userId: string): Promise<TechContext> {
     techAccount: null,
     ownerId: null,
     ownerCompanyName: null,
+    ownerTier: null,
     permissions: null,
     wasRemoved: false,
     removalReason: null,
@@ -117,6 +127,7 @@ export async function getTechContext(userId: string): Promise<TechContext> {
         techAccount: null,
         ownerId: null,
         ownerCompanyName: ownerProfile?.company_name || 'the team',
+        ownerTier: null,
         permissions: null,
         wasRemoved: true,
         removalReason: data.status as 'removed' | 'suspended',
@@ -128,10 +139,10 @@ export async function getTechContext(userId: string): Promise<TechContext> {
       return notATech;
     }
 
-    // Get owner's company details for active tech
+    // Get owner's company details and tier for active tech
     const { data: ownerProfile } = await supabase
       .from('profiles')
-      .select('company_name, email')
+      .select('company_name, email, tier')
       .eq('id', data.owner_id)
       .single();
 
@@ -147,6 +158,7 @@ export async function getTechContext(userId: string): Promise<TechContext> {
       techAccount,
       ownerId: data.owner_id,
       ownerCompanyName: ownerProfile?.company_name || 'Unknown Company',
+      ownerTier: (ownerProfile?.tier as 'free' | 'pro' | 'premium') || 'free',
       permissions: techAccount.permissions,
       wasRemoved: false,
       removalReason: null,
@@ -195,6 +207,20 @@ export function canViewPricing(techContext: TechContext | null): boolean {
  */
 export function canCreateQuotes(techContext: TechContext | null): boolean {
   return hasPermission(techContext, 'can_create_quotes');
+}
+
+/**
+ * Check if user can assign workers to quotes (and set hours)
+ */
+export function canAssignWorkers(techContext: TechContext | null): boolean {
+  return hasPermission(techContext, 'can_assign_workers');
+}
+
+/**
+ * Check if user can view labor rates ($/hr)
+ */
+export function canViewLaborRates(techContext: TechContext | null): boolean {
+  return hasPermission(techContext, 'can_view_labor_rates');
 }
 
 /**

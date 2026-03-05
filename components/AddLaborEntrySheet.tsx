@@ -24,6 +24,7 @@ type Props = {
   teamMembers: TeamMember[];
   defaultRate?: number;
   editingEntry?: LaborEntry | null;
+  showRate?: boolean; // Whether to show rate/pricing (defaults to true)
 };
 
 function generateId(): string {
@@ -37,6 +38,7 @@ export function AddLaborEntrySheet({
   teamMembers,
   defaultRate = 0,
   editingEntry,
+  showRate = true,
 }: Props) {
   const { theme, mode } = useTheme();
   const isDark = mode === "dark";
@@ -125,7 +127,9 @@ export function AddLaborEntrySheet({
   const canSave =
     mode_ === "flat"
       ? flatAmount && parseFloat(flatAmount) > 0
-      : hours && rate && parseFloat(hours) > 0 && parseFloat(rate) > 0;
+      : showRate
+        ? hours && rate && parseFloat(hours) > 0 && parseFloat(rate) > 0
+        : hours && parseFloat(hours) > 0; // When showRate is false, only hours required
 
   const previewTotal =
     mode_ === "calculated" && hours && rate
@@ -254,62 +258,64 @@ export function AddLaborEntrySheet({
             </View>
           )}
 
-          {/* Mode Toggle */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Pricing Type</Text>
-            <View style={styles.modeToggle}>
-              <Pressable
-                style={[
-                  styles.modeButton,
-                  mode_ === "calculated" && styles.modeButtonSelected,
-                ]}
-                onPress={() => setMode("calculated")}
-              >
-                <Ionicons
-                  name="calculator-outline"
-                  size={18}
-                  color={
-                    mode_ === "calculated" ? "#fff" : theme.colors.text
-                  }
-                />
-                <Text
+          {/* Mode Toggle - only show if rates are visible */}
+          {showRate && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Pricing Type</Text>
+              <View style={styles.modeToggle}>
+                <Pressable
                   style={[
-                    styles.modeButtonText,
-                    mode_ === "calculated" && styles.modeButtonTextSelected,
+                    styles.modeButton,
+                    mode_ === "calculated" && styles.modeButtonSelected,
                   ]}
+                  onPress={() => setMode("calculated")}
                 >
-                  Hours x Rate
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.modeButton,
-                  mode_ === "flat" && styles.modeButtonSelected,
-                ]}
-                onPress={() => setMode("flat")}
-              >
-                <Ionicons
-                  name="cash-outline"
-                  size={18}
-                  color={mode_ === "flat" ? "#fff" : theme.colors.text}
-                />
-                <Text
+                  <Ionicons
+                    name="calculator-outline"
+                    size={18}
+                    color={
+                      mode_ === "calculated" ? "#fff" : theme.colors.text
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.modeButtonText,
+                      mode_ === "calculated" && styles.modeButtonTextSelected,
+                    ]}
+                  >
+                    Hours x Rate
+                  </Text>
+                </Pressable>
+                <Pressable
                   style={[
-                    styles.modeButtonText,
-                    mode_ === "flat" && styles.modeButtonTextSelected,
+                    styles.modeButton,
+                    mode_ === "flat" && styles.modeButtonSelected,
                   ]}
+                  onPress={() => setMode("flat")}
                 >
-                  Flat Rate
-                </Text>
-              </Pressable>
+                  <Ionicons
+                    name="cash-outline"
+                    size={18}
+                    color={mode_ === "flat" ? "#fff" : theme.colors.text}
+                  />
+                  <Text
+                    style={[
+                      styles.modeButtonText,
+                      mode_ === "flat" && styles.modeButtonTextSelected,
+                    ]}
+                  >
+                    Flat Rate
+                  </Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
+          )}
 
-          {/* Hours × Rate Inputs */}
+          {/* Hours × Rate Inputs (or just Hours if showRate is false) */}
           {mode_ === "calculated" && (
             <View style={styles.section}>
-              <View style={styles.row}>
-                <View style={styles.halfInput}>
+              <View style={showRate ? styles.row : undefined}>
+                <View style={showRate ? styles.halfInput : undefined}>
                   <Text style={styles.sectionLabel}>Hours</Text>
                   <TextInput
                     style={styles.textInput}
@@ -320,22 +326,24 @@ export function AddLaborEntrySheet({
                     keyboardType="decimal-pad"
                   />
                 </View>
-                <View style={styles.halfInput}>
-                  <Text style={styles.sectionLabel}>Rate ($/hr)</Text>
-                  <View style={styles.currencyInput}>
-                    <Text style={styles.currencySymbol}>$</Text>
-                    <TextInput
-                      style={[styles.textInput, styles.currencyTextInput]}
-                      value={rate}
-                      onChangeText={setRate}
-                      placeholder="0.00"
-                      placeholderTextColor={theme.colors.muted}
-                      keyboardType="decimal-pad"
-                    />
+                {showRate && (
+                  <View style={styles.halfInput}>
+                    <Text style={styles.sectionLabel}>Rate ($/hr)</Text>
+                    <View style={styles.currencyInput}>
+                      <Text style={styles.currencySymbol}>$</Text>
+                      <TextInput
+                        style={[styles.textInput, styles.currencyTextInput]}
+                        value={rate}
+                        onChangeText={setRate}
+                        placeholder="0.00"
+                        placeholderTextColor={theme.colors.muted}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
                   </View>
-                </View>
+                )}
               </View>
-              {previewTotal !== null && previewTotal > 0 && (
+              {showRate && previewTotal !== null && previewTotal > 0 && (
                 <View style={styles.previewRow}>
                   <Text style={styles.previewLabel}>Total:</Text>
                   <Text style={styles.previewValue}>
@@ -350,8 +358,8 @@ export function AddLaborEntrySheet({
             </View>
           )}
 
-          {/* Flat Amount Input */}
-          {mode_ === "flat" && (
+          {/* Flat Amount Input - only show if rates are visible */}
+          {showRate && mode_ === "flat" && (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Amount</Text>
               <View style={styles.currencyInput}>

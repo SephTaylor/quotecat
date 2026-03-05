@@ -12,10 +12,11 @@ type SwipeableLaborEntryProps = {
   onEdit: () => void;
   onHoursChange?: (hours: number) => void;
   isLastItem: boolean;
+  showRate?: boolean; // Whether to show hourly rate and cost (defaults to true)
 };
 
 export const SwipeableLaborEntry = React.memo(
-  ({ entry, onDelete, onEdit, onHoursChange, isLastItem }: SwipeableLaborEntryProps) => {
+  ({ entry, onDelete, onEdit, onHoursChange, isLastItem, showRate = true }: SwipeableLaborEntryProps) => {
     const { theme, mode } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     const isDark = mode === "dark";
@@ -112,12 +113,14 @@ export const SwipeableLaborEntry = React.memo(
                 </View>
               )}
             </View>
-            {isFlat ? (
-              <Text style={styles.itemDetail}>Flat rate</Text>
-            ) : (
-              <Text style={styles.itemRate}>
-                ${(entry.rate || 0).toFixed(2)}/hr
-              </Text>
+            {showRate && (
+              isFlat ? (
+                <Text style={styles.itemDetail}>Flat rate</Text>
+              ) : (
+                <Text style={styles.itemRate}>
+                  ${(entry.rate || 0).toFixed(2)}/hr
+                </Text>
+              )
             )}
           </View>
 
@@ -146,13 +149,15 @@ export const SwipeableLaborEntry = React.memo(
                 <Text style={styles.hrsLabel}>hrs</Text>
               </View>
             )}
-            <Text style={styles.itemTotal}>
-              $
-              {total.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </Text>
+            {showRate && (
+              <Text style={styles.itemTotal}>
+                $
+                {total.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            )}
           </View>
         </Pressable>
       </Swipeable>
