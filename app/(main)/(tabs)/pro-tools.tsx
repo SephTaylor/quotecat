@@ -13,7 +13,7 @@ import {
   Text,
   View,
 } from "react-native";
-import RevenueCatUI from "react-native-purchases-ui";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { GradientBackground } from "@/components/GradientBackground";
 
 export default function ProTools() {
@@ -73,8 +73,8 @@ export default function ProTools() {
     } else {
       // Show RevenueCat paywall for non-subscribers
       try {
-        const result = await RevenueCatUI.presentPaywall();
-        if (result === "PURCHASED" || result === "RESTORED") {
+        const purchased = await presentPaywallAndSync();
+        if (purchased) {
           // Refresh subscription status
           load();
         }
@@ -225,8 +225,8 @@ export default function ProTools() {
                 style={styles.upgradeButton}
                 onPress={async () => {
                   try {
-                    const result = await RevenueCatUI.presentPaywall();
-                    if (result === "PURCHASED" || result === "RESTORED") {
+                    const purchased = await presentPaywallAndSync();
+                    if (purchased) {
                       load();
                     }
                   } catch (e) {

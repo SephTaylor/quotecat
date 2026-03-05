@@ -30,7 +30,7 @@ import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/fea
 import type { UserState } from "@/lib/user";
 import { generateAndSharePDF } from "@/lib/pdf";
 import { generateAndShareSpreadsheet } from "@/lib/spreadsheet";
-import RevenueCatUI from "react-native-purchases-ui";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
 import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { createInvoiceFromQuote } from "@/lib/invoices";
@@ -118,7 +118,7 @@ export default function QuoteReviewScreen() {
         reason,
         [
           { text: "OK", style: "cancel" },
-          { text: "Upgrade", onPress: () => RevenueCatUI.presentPaywall() }
+          { text: "Upgrade", onPress: () => presentPaywallAndSync() }
         ]
       );
       return;
@@ -240,7 +240,7 @@ export default function QuoteReviewScreen() {
         reason,
         [
           { text: "OK", style: "cancel" },
-          { text: "Upgrade", onPress: () => RevenueCatUI.presentPaywall() }
+          { text: "Upgrade", onPress: () => presentPaywallAndSync() }
         ]
       );
       return;

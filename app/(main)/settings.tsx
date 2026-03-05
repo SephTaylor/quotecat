@@ -20,8 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { GradientBackground } from "@/components/GradientBackground";
 import { useSettingsState, formatSyncTime } from "@/hooks/useSettingsState";
 import { useTechContext } from "@/contexts/TechContext";
-import RevenueCatUI from "react-native-purchases-ui";
-import { restorePurchases } from "@/lib/revenuecat";
+import { restorePurchases, presentPaywallAndSync } from "@/lib/revenuecat";
 
 const LOCATION_OPTIONS = [
   { id: "", name: "None (Use base prices)" },
@@ -149,7 +148,7 @@ export default function Settings() {
                     {!isPro && (
                       <Pressable
                         style={styles.upgradeButton}
-                        onPress={() => RevenueCatUI.presentPaywall()}
+                        onPress={() => presentPaywallAndSync()}
                       >
                         <Text style={styles.upgradeButtonText}>Upgrade</Text>
                       </Pressable>
@@ -360,7 +359,7 @@ export default function Settings() {
                   {!expandedSections.cloudSync && (
                     <Pressable
                       style={styles.upgradeButtonSmall}
-                      onPress={() => RevenueCatUI.presentPaywall()}
+                      onPress={() => presentPaywallAndSync()}
                     >
                       <Text style={styles.upgradeButtonSmallText}>Upgrade</Text>
                     </Pressable>
@@ -382,7 +381,7 @@ export default function Settings() {
                     </Text>
                     <Pressable
                       style={styles.lockedFeatureButton}
-                      onPress={() => RevenueCatUI.presentPaywall()}
+                      onPress={() => presentPaywallAndSync()}
                     >
                       <Text style={styles.lockedFeatureButtonText}>Upgrade to Pro</Text>
                     </Pressable>

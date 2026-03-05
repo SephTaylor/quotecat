@@ -24,7 +24,7 @@ import { getUserState, incrementInvoiceCount } from "@/lib/user";
 import { getCompanyLogo } from "@/lib/logo";
 import { isSyncAvailable } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
-import RevenueCatUI from "react-native-purchases-ui";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 
 export function useInvoiceList() {
   const router = useRouter();
@@ -168,7 +168,7 @@ export function useInvoiceList() {
           exportCheck.reason || "You've reached your monthly invoice export limit.",
           [
             { text: "OK", style: "cancel" },
-            { text: "Upgrade", onPress: () => RevenueCatUI.presentPaywall() },
+            { text: "Upgrade", onPress: () => presentPaywallAndSync() },
           ]
         );
         return;

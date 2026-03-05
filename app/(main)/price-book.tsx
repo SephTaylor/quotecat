@@ -10,7 +10,7 @@ import {
   getPricebookCategories,
   type PricebookItem,
 } from "@/lib/pricebook";
-import RevenueCatUI from "react-native-purchases-ui";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useState, useCallback } from "react";
 import {
@@ -166,7 +166,7 @@ export default function PriceBookManager() {
         "Price Book lets you create and manage your own custom products with your pricing. Upgrade to Pro to unlock this feature.",
         [
           { text: "OK", style: "cancel" },
-          { text: "Upgrade", onPress: () => RevenueCatUI.presentPaywall() }
+          { text: "Upgrade", onPress: () => presentPaywallAndSync() }
         ]
       );
       return;

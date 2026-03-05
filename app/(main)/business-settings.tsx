@@ -34,7 +34,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
-import RevenueCatUI from "react-native-purchases-ui";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 
 export default function BusinessSettings() {
   const { theme } = useTheme();
@@ -106,7 +106,7 @@ export default function BusinessSettings() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const handleLearnMore = () => RevenueCatUI.presentPaywall();
+  const handleLearnMore = () => presentPaywallAndSync();
 
   const styles = React.useMemo(() => createStyles(theme, insets), [theme, insets]);
 
@@ -266,26 +266,22 @@ export default function BusinessSettings() {
           </View>
         </Pressable>
 
-        {/* Payment Methods Section */}
+        {/* Payment Methods Section - Available to all tiers */}
         <Pressable style={styles.section} onPress={Keyboard.dismiss}>
           <Text style={styles.sectionTitle}>Payment Collection</Text>
           <View style={styles.card}>
             <Pressable
               style={styles.row}
-              onPress={() => (hasProAccess && canEdit) ? router.push("/(main)/payment-methods" as never) : (!hasProAccess ? handleLearnMore() : undefined)}
+              onPress={() => canEdit ? router.push("/(main)/payment-methods" as never) : undefined}
               disabled={isTech}
             >
               <Text style={styles.rowLabel}>Payment Methods</Text>
-              {hasProAccess ? (
-                <View style={styles.rowRight}>
-                  <Text style={styles.rowValue} numberOfLines={1}>
-                    {isTech ? "View only" : "Add Zelle, Venmo, etc."}
-                  </Text>
-                  {canEdit && <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />}
-                </View>
-              ) : (
-                <LockBadge theme={theme} />
-              )}
+              <View style={styles.rowRight}>
+                <Text style={styles.rowValue} numberOfLines={1}>
+                  {isTech ? "View only" : "Add Zelle, Venmo, etc."}
+                </Text>
+                {canEdit && <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />}
+              </View>
             </Pressable>
           </View>
           <Text style={styles.sectionHint}>

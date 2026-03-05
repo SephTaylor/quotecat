@@ -17,7 +17,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import RevenueCatUI from "react-native-purchases-ui";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -177,7 +177,7 @@ export default function InvoiceDetailScreen() {
           reason,
           [
             { text: "OK", style: "cancel" },
-            { text: "Upgrade", onPress: () => RevenueCatUI.presentPaywall() }
+            { text: "Upgrade", onPress: () => presentPaywallAndSync() }
           ]
         );
         return;
@@ -200,8 +200,8 @@ export default function InvoiceDetailScreen() {
           includeBranding: !isPro, // Free tier shows branding
           companyDetails: prefs.company,
           logoBase64,
-          // Pro/Premium users can add payment methods to invoices
-          paymentMethods: isPro ? prefs.paymentMethods : undefined,
+          // Payment methods available to all tiers (Free, Pro, Premium)
+          paymentMethods: prefs.paymentMethods,
         };
 
         await generateAndShareInvoicePDF(invoice, pdfOptions);

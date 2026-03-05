@@ -89,6 +89,25 @@ export async function restorePurchases(): Promise<CustomerInfo> {
 }
 
 /**
+ * Present paywall and sync tier after purchase
+ * Use this instead of RevenueCatUI.presentPaywall() directly
+ * Returns true if purchase was made or restored
+ */
+export async function presentPaywallAndSync(): Promise<boolean> {
+  const RevenueCatUI = require('react-native-purchases-ui').default;
+  const result = await RevenueCatUI.presentPaywall();
+
+  if (result === 'PURCHASED' || result === 'RESTORED') {
+    // Sync tier from RevenueCat to update local tier
+    await syncTierFromRevenueCat();
+    console.log('✅ Tier synced after purchase/restore');
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Sync local tier with RevenueCat entitlements
  * Call this on app startup after RevenueCat initializes
  */

@@ -5,7 +5,7 @@ import { useAssemblies } from "@/modules/assemblies";
 import { deleteAssembly } from "@/modules/assemblies/storage";
 import { getUserState } from "@/lib/user";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
-import RevenueCatUI from "react-native-purchases-ui";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 import React, { memo, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -201,8 +201,8 @@ export default function AssembliesScreen() {
             <Pressable
               style={styles.upgradeButton}
               onPress={async () => {
-                const result = await RevenueCatUI.presentPaywall();
-                if (result === "PURCHASED" || result === "RESTORED") {
+                const purchased = await presentPaywallAndSync();
+                if (purchased) {
                   // Re-check tier after purchase
                   const userState = await getUserState();
                   setIsPro(userState.tier === "pro" || userState.tier === "premium");
