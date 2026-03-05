@@ -44,10 +44,12 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useTechContext } from "@/contexts/TechContext";
 
 export default function QuotesList() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { canCreateQuotes } = useTechContext();
   const params = useLocalSearchParams();
   const filterScrollRef = React.useRef<ScrollView>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -612,13 +614,13 @@ export default function QuotesList() {
                   Done
                 </Text>
               </Pressable>
-            ) : (
+            ) : canCreateQuotes ? (
               <HeaderIconButton
                 onPress={handleCreateNewQuote}
                 icon="+"
                 side="right"
               />
-            )
+            ) : null
           ),
         }}
       />

@@ -11,12 +11,14 @@ import { signOut as authSignOut, getCurrentUserEmail, isAuthenticated } from "@/
 import { HeaderIconButton } from "@/components/HeaderIconButton";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RefreshButton } from "@/components/RefreshButton";
+import { useTechContext } from "@/contexts/TechContext";
 
 type IconProps = { color: string; size: number };
 
 export default function DrawerLayout() {
   const { theme } = useTheme();
   const router = useRouter();
+  const { canCreateQuotes } = useTechContext();
 
   const handleCreateNewQuote = React.useCallback(() => {
     // Navigate to "new" - quote will only be created when user fills required fields
@@ -74,11 +76,13 @@ export default function DrawerLayout() {
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <RefreshButton />
               <NotificationBell side="right" />
-              <HeaderIconButton
-                onPress={handleCreateNewQuote}
-                icon="+"
-                side="right"
-              />
+              {canCreateQuotes && (
+                <HeaderIconButton
+                  onPress={handleCreateNewQuote}
+                  icon="+"
+                  side="right"
+                />
+              )}
             </View>
           ),
         }}
@@ -92,11 +96,13 @@ export default function DrawerLayout() {
             <Ionicons name="document-text-outline" size={size} color={color} />
           ),
           headerRight: () => (
-            <HeaderIconButton
-              onPress={handleCreateNewQuote}
-              icon="+"
-              side="right"
-            />
+            canCreateQuotes ? (
+              <HeaderIconButton
+                onPress={handleCreateNewQuote}
+                icon="+"
+                side="right"
+              />
+            ) : null
           ),
         }}
       />
