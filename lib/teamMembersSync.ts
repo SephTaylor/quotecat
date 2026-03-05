@@ -70,7 +70,7 @@ async function checkSyncCooldown(): Promise<boolean> {
 }
 
 /**
- * Download team members from Supabase
+ * Download team members (Workers) from Supabase
  * For techs, downloads team members owned by the team owner
  */
 export async function downloadTeamMembers(): Promise<TeamMember[]> {
@@ -96,7 +96,6 @@ export async function downloadTeamMembers(): Promise<TeamMember[]> {
       .from("team_members")
       .select("*")
       .eq("user_id", effectiveUserId)
-      .eq("is_active", true)
       .order("name", { ascending: true });
 
     if (error) {
@@ -117,12 +116,12 @@ export async function downloadTeamMembers(): Promise<TeamMember[]> {
       email: row.email || undefined,
       role: row.role || undefined,
       defaultRate: row.default_rate || 0,
-      isActive: row.is_active,
+      isActive: row.is_active ?? true,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
 
-    console.log(`✅ Downloaded ${members.length} team members from cloud`);
+    console.log(`✅ Downloaded ${members.length} workers from cloud`);
     return members;
   } catch (error) {
     console.error("Download team members error:", error);
@@ -131,7 +130,65 @@ export async function downloadTeamMembers(): Promise<TeamMember[]> {
 }
 
 /**
+ * Download tech accounts from Supabase (Premium feature)
+ * Techs have app access and are managed via portal
+ */
+export async function downloadTechAccounts(): Promise<TeamMember[]> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.warn("Cannot download tech accounts: user not authenticated");
+      return [];
+    }
+
+    // Check if user is a tech - if so, use owner's user_id
+    const techContext = await getTechContext(userId);
+    const effectiveUserId =
+      techContext.isTech && techContext.ownerId ? techContext.ownerId : userId;
+
+    const { data, error } = await supabase
+      .from("team_tech_accounts")
+      .select("*")
+      .eq("owner_id", effectiveUserId)
+      .in("status", ["active", "pending"])
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.error("Failed to download tech accounts:", error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Map to TeamMember type with isTech marker in role
+    const techs: TeamMember[] = data.map((row) => ({
+      id: row.id,
+      userId: row.owner_id,
+      name: row.name || "",
+      phone: row.phone || undefined,
+      email: row.email || undefined,
+      role: row.role === "admin" ? "Admin (Tech)" : "Tech",
+      defaultRate: 0, // Techs don't have hourly rates in this table
+      isActive: row.status === "active",
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      // Extra field to identify as tech account
+      isTechAccount: true,
+    }));
+
+    console.log(`✅ Downloaded ${techs.length} tech accounts from cloud`);
+    return techs;
+  } catch (error) {
+    console.error("Download tech accounts error:", error);
+    return [];
+  }
+}
+
+/**
  * Sync team members from cloud to local (one-way download)
+ * Downloads both Workers (team_members) and Techs (team_tech_accounts)
  * This replaces all local team members with cloud data
  */
 export async function syncTeamMembers(): Promise<{
@@ -154,13 +211,19 @@ export async function syncTeamMembers(): Promise<{
 
     console.log("🔄 Syncing team members from cloud...");
 
-    // Download all team members from cloud
-    const cloudMembers = await downloadTeamMembers();
+    // Download both Workers and Techs in parallel
+    const [workers, techs] = await Promise.all([
+      downloadTeamMembers(),
+      downloadTechAccounts(),
+    ]);
+
+    // Merge workers and techs into a single list
+    const allMembers = [...workers, ...techs];
 
     // Replace local data with cloud data (full sync)
     clearTeamMembersDB();
-    if (cloudMembers.length > 0) {
-      saveTeamMembersBatchDB(cloudMembers);
+    if (allMembers.length > 0) {
+      saveTeamMembersBatchDB(allMembers);
     }
 
     // Update sync metadata
@@ -168,8 +231,8 @@ export async function syncTeamMembers(): Promise<{
       lastSyncAt: new Date().toISOString(),
     });
 
-    console.log(`✅ Team members sync complete: ${cloudMembers.length} members`);
-    return { success: true, count: cloudMembers.length };
+    console.log(`✅ Team sync complete: ${workers.length} workers, ${techs.length} techs`);
+    return { success: true, count: allMembers.length };
   } catch (error) {
     console.error("Team members sync error:", error);
     return { success: false, count: 0 };
@@ -178,9 +241,10 @@ export async function syncTeamMembers(): Promise<{
 
 /**
  * Get all local team members (from SQLite cache)
+ * Includes both Workers and Techs
  */
 export function getLocalTeamMembers(): TeamMember[] {
-  return listTeamMembersDB({ activeOnly: true });
+  return listTeamMembersDB({ activeOnly: false });
 }
 
 /**

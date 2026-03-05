@@ -664,6 +664,7 @@ export type TeamMember = {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  isTechAccount?: boolean; // True if this is a tech with app access (managed via portal)
 };
 
 // Backwards compatibility alias

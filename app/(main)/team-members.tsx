@@ -16,6 +16,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -32,6 +34,10 @@ import {
   deleteTeamMemberCloud,
 } from "@/lib/teamMembersSync";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const DISMISSED_INFO_KEY = "@quotecat/team-members-info-dismissed";
+const DISMISSED_TECHS_KEY = "@quotecat/team-members-techs-dismissed";
 
 export default function TeamMembersScreen() {
   const router = useRouter();
@@ -42,7 +48,34 @@ export default function TeamMembersScreen() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [infoDismissed, setInfoDismissed] = useState(false);
+  const [techsDismissed, setTechsDismissed] = useState(false);
+
+  // Load dismissed state on mount
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const [info, techs] = await Promise.all([
+          AsyncStorage.getItem(DISMISSED_INFO_KEY),
+          AsyncStorage.getItem(DISMISSED_TECHS_KEY),
+        ]);
+        if (info === "true") setInfoDismissed(true);
+        if (techs === "true") setTechsDismissed(true);
+      } catch {}
+    })();
+  }, []);
+
+  const dismissInfo = async () => {
+    setInfoDismissed(true);
+    await AsyncStorage.setItem(DISMISSED_INFO_KEY, "true");
+  };
+
+  const dismissTechs = async () => {
+    setTechsDismissed(true);
+    await AsyncStorage.setItem(DISMISSED_TECHS_KEY, "true");
+  };
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -86,6 +119,34 @@ export default function TeamMembersScreen() {
       setSyncing(false);
     }
   };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await handleSync();
+    setRefreshing(false);
+  };
+
+  const handleToggleActive = async (member: TeamMember) => {
+    try {
+      const updated = await updateTeamMemberCloud(member.id, {
+        isActive: !member.isActive,
+      });
+      if (updated) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        await loadMembers();
+      }
+    } catch (error) {
+      console.error("Toggle failed:", error);
+      Alert.alert("Error", "Failed to update status.");
+    }
+  };
+
+  // Stats calculations
+  const stats = useMemo(() => {
+    const total = members.length;
+    const active = members.filter((m) => m.isActive !== false).length;
+    return { total, active };
+  }, [members]);
 
   const openAddModal = () => {
     setEditingMember(null);
@@ -198,98 +259,153 @@ export default function TeamMembersScreen() {
     <>
       <Stack.Screen
         options={{
+          headerShown: true,
           title: "Team Members",
           headerTitleAlign: "center",
+          headerBackTitle: "Back",
+          headerStyle: { backgroundColor: theme.colors.bg },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: { color: theme.colors.text },
           headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          headerRight: () => (
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <Pressable onPress={handleSync} disabled={syncing} hitSlop={8}>
-                {syncing ? (
-                  <ActivityIndicator size="small" color={theme.colors.accent} />
-                ) : (
-                  <Ionicons name="sync" size={22} color={theme.colors.accent} />
-                )}
-              </Pressable>
-              <Pressable onPress={openAddModal} hitSlop={8}>
-                <Ionicons name="add" size={26} color={theme.colors.accent} />
-              </Pressable>
-            </View>
-          ),
         }}
       />
       <GradientBackground>
-        <View style={styles.container}>
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <Ionicons
-              name="search"
-              size={18}
-              color={theme.colors.muted}
-              style={styles.searchIcon}
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search team members..."
-              placeholderTextColor={theme.colors.muted}
-              value={search}
-              onChangeText={setSearch}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {search.length > 0 && (
-              <Pressable onPress={() => setSearch("")} hitSlop={8}>
-                <Ionicons name="close-circle" size={18} color={theme.colors.muted} />
-              </Pressable>
-            )}
-          </View>
-
-          {loading ? (
-            <View style={styles.centered}>
-              <ActivityIndicator size="large" color={theme.colors.accent} />
-            </View>
-          ) : filteredMembers.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="people-outline"
-                size={64}
-                color={theme.colors.muted}
+        <GestureHandlerRootView style={styles.container}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.colors.accent}
               />
-              <Text style={styles.emptyTitle}>
-                {search ? "No Results" : "No Team Members"}
-              </Text>
-              <Text style={styles.emptySubtitle}>
-                {search
-                  ? "Try a different search"
-                  : "Add team members to track labor costs per worker"}
-              </Text>
-              {!search && (
-                <Pressable style={styles.addButton} onPress={openAddModal}>
-                  <Ionicons name="add" size={20} color="#000" />
-                  <Text style={styles.addButtonText}>Add Team Member</Text>
+            }
+          >
+            {/* Header Row with Add Button */}
+            <View style={styles.headerRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pageTitle}>Workers</Text>
+                <Text style={styles.pageSubtitle}>Track labor costs per team member</Text>
+              </View>
+              <Pressable style={styles.addButtonHeader} onPress={openAddModal}>
+                <Ionicons name="add" size={20} color="#000" />
+                <Text style={styles.addButtonHeaderText}>Add</Text>
+              </Pressable>
+            </View>
+
+            {/* Stats Row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{stats.total}</Text>
+                <Text style={styles.statLabel}>Total</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={[styles.statValue, { color: "#34C759" }]}>{stats.active}</Text>
+                <Text style={styles.statLabel}>Active</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={[styles.statValue, { color: theme.colors.muted }]}>
+                  {stats.total - stats.active}
+                </Text>
+                <Text style={styles.statLabel}>Inactive</Text>
+              </View>
+            </View>
+
+            {/* Info Box */}
+            {!infoDismissed && (
+              <View style={styles.infoBox}>
+                <Ionicons name="information-circle" size={20} color="#3B82F6" />
+                <Text style={styles.infoText}>
+                  Workers receive SMS notifications for job assignments. Tap avatar to toggle active/inactive. Swipe left to delete.
+                </Text>
+                <Pressable onPress={dismissInfo} hitSlop={8}>
+                  <Ionicons name="close" size={18} color={isDark ? "#93C5FD" : "#1D4ED8"} />
+                </Pressable>
+              </View>
+            )}
+
+            {/* Techs Portal Note */}
+            {!techsDismissed && (
+              <View style={styles.techsNote}>
+                <Ionicons name="phone-portrait-outline" size={18} color="#5856D6" />
+                <Text style={styles.techsNoteText}>
+                  Need team members with app access? Manage <Text style={styles.techsNoteLink}>Techs</Text> from the web portal at portal.quotecat.ai
+                </Text>
+                <Pressable onPress={dismissTechs} hitSlop={8}>
+                  <Ionicons name="close" size={18} color={isDark ? "#C4B5FD" : "#5B21B6"} />
+                </Pressable>
+              </View>
+            )}
+
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+              <Ionicons
+                name="search"
+                size={18}
+                color={theme.colors.muted}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search team members..."
+                placeholderTextColor={theme.colors.muted}
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {search.length > 0 && (
+                <Pressable onPress={() => setSearch("")} hitSlop={8}>
+                  <Ionicons name="close-circle" size={18} color={theme.colors.muted} />
                 </Pressable>
               )}
             </View>
-          ) : (
-            <GestureHandlerRootView style={styles.list}>
-              <ScrollView
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-              >
+
+            {loading ? (
+              <View style={styles.centered}>
+                <ActivityIndicator size="large" color={theme.colors.accent} />
+              </View>
+            ) : filteredMembers.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="people-outline"
+                  size={64}
+                  color={theme.colors.muted}
+                />
+                <Text style={styles.emptyTitle}>
+                  {search ? "No Results" : "No Team Members"}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {search
+                    ? "Try a different search"
+                    : "Add your workers to track labor costs per person"}
+                </Text>
+                {!search && (
+                  <Pressable style={styles.addButton} onPress={openAddModal}>
+                    <Ionicons name="add" size={20} color="#000" />
+                    <Text style={styles.addButtonText}>Add Team Member</Text>
+                  </Pressable>
+                )}
+              </View>
+            ) : (
+              <View style={styles.list}>
                 {filteredMembers.map((member) => (
                   <SwipeableMemberCard
                     key={member.id}
                     member={member}
                     onEdit={() => openEditModal(member)}
                     onDelete={() => handleDelete(member)}
+                    onToggleActive={() => handleToggleActive(member)}
                     theme={theme}
                     isDark={isDark}
                   />
                 ))}
                 <Text style={styles.hint}>Swipe left to delete</Text>
-              </ScrollView>
-            </GestureHandlerRootView>
-          )}
-        </View>
+              </View>
+            )}
+          </ScrollView>
+        </GestureHandlerRootView>
       </GradientBackground>
 
       {/* Add/Edit Modal */}
@@ -388,16 +504,19 @@ function SwipeableMemberCard({
   member,
   onEdit,
   onDelete,
+  onToggleActive,
   theme,
   isDark,
 }: {
   member: TeamMember;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleActive: () => void;
   theme: ReturnType<typeof useTheme>["theme"];
   isDark: boolean;
 }) {
   const swipeableRef = useRef<Swipeable>(null);
+  const isActive = member.isActive !== false; // Default to active if undefined
 
   const renderRightActions = (
     progress: Animated.AnimatedInterpolation<number>,
@@ -441,12 +560,15 @@ function SwipeableMemberCard({
     );
   };
 
+  const isTech = member.isTechAccount === true;
+
   return (
     <Swipeable
       ref={swipeableRef}
-      renderRightActions={renderRightActions}
+      renderRightActions={isTech ? undefined : renderRightActions}
       friction={2}
       overshootRight={false}
+      enabled={!isTech}
     >
       <Pressable
         style={{
@@ -455,60 +577,83 @@ function SwipeableMemberCard({
           backgroundColor: theme.colors.card,
           borderRadius: theme.radius.md,
           borderWidth: 1,
-          borderColor: theme.colors.border,
-          padding: theme.spacing(1.5),
+          borderColor: isTech
+            ? "#FF8C42" + "50"
+            : isActive
+              ? theme.colors.border
+              : theme.colors.muted + "50",
+          padding: theme.spacing(2),
           marginBottom: theme.spacing(1.5),
+          opacity: isActive ? 1 : 0.7,
         }}
-        onPress={onEdit}
+        onPress={isTech ? undefined : onEdit}
       >
-        <View
+        {/* Avatar / Status Toggle */}
+        <TouchableOpacity
+          onPress={isTech ? undefined : onToggleActive}
+          activeOpacity={isTech ? 1 : 0.7}
+          disabled={isTech}
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            backgroundColor: isDark ? "#2B4B7A" : "#E8F4FF",
-            alignItems: "center",
-            justifyContent: "center",
             marginRight: theme.spacing(1.5),
           }}
         >
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "700",
-              color: isDark ? "#8CB4E8" : "#2563EB",
-            }}
-          >
-            {member.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase()
-              .slice(0, 2)}
-          </Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "600",
-              color: theme.colors.text,
-            }}
-          >
-            {member.name}
-          </Text>
           <View
             style={{
-              flexDirection: "row",
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: isTech
+                ? isDark ? "#3D2B1F" : "#FFF3E0"
+                : isActive
+                  ? isDark ? "#1B4332" : "#D1FAE5"
+                  : isDark ? "#374151" : "#E5E7EB",
               alignItems: "center",
-              gap: theme.spacing(1),
-              marginTop: 2,
+              justifyContent: "center",
+              borderWidth: 2,
+              borderColor: isTech
+                ? "#FF8C42"
+                : isActive
+                  ? "#34C759"
+                  : theme.colors.muted,
             }}
           >
-            {member.role && (
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color: isTech
+                  ? "#FF8C42"
+                  : isActive
+                    ? "#34C759"
+                    : theme.colors.muted,
+              }}
+            >
+              {member.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2)}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Member Info */}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "600",
+                color: theme.colors.text,
+              }}
+            >
+              {member.name}
+            </Text>
+            {!isActive && (
               <View
                 style={{
-                  backgroundColor: isDark ? "#2B4B7A" : "#E8F4FF",
+                  backgroundColor: isDark ? "#374151" : "#E5E7EB",
                   paddingHorizontal: 6,
                   paddingVertical: 2,
                   borderRadius: 4,
@@ -516,9 +661,39 @@ function SwipeableMemberCard({
               >
                 <Text
                   style={{
-                    fontSize: 11,
-                    fontWeight: "500",
-                    color: isDark ? "#8CB4E8" : "#2563EB",
+                    fontSize: 10,
+                    fontWeight: "600",
+                    color: theme.colors.muted,
+                  }}
+                >
+                  INACTIVE
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.spacing(1),
+              marginTop: 4,
+            }}
+          >
+            {member.role && (
+              <View
+                style={{
+                  backgroundColor: isDark ? "#2B4B7A" : "#DBEAFE",
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 4,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: isDark ? "#93C5FD" : "#2563EB",
                   }}
                 >
                   {member.role}
@@ -526,30 +701,50 @@ function SwipeableMemberCard({
               </View>
             )}
             {member.defaultRate > 0 && (
-              <Text
+              <View
                 style={{
-                  fontSize: 13,
-                  fontWeight: "600",
-                  color: theme.colors.accent,
+                  backgroundColor: isDark ? "#1F2D1F" : "#D1FAE5",
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 4,
                 }}
               >
-                ${member.defaultRate.toFixed(2)}/hr
-              </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: "#34C759",
+                  }}
+                >
+                  ${member.defaultRate.toFixed(2)}/hr
+                </Text>
+              </View>
             )}
           </View>
+
+          {/* Contact Info Row */}
           {(member.phone || member.email) && (
-            <Text
-              style={{
-                fontSize: 12,
-                color: theme.colors.muted,
-                marginTop: 2,
-              }}
-              numberOfLines={1}
-            >
-              {[member.phone, member.email].filter(Boolean).join(" | ")}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 6 }}>
+              {member.phone && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Ionicons name="call-outline" size={12} color={theme.colors.muted} />
+                  <Text style={{ fontSize: 12, color: theme.colors.muted }}>
+                    {member.phone}
+                  </Text>
+                </View>
+              )}
+              {member.email && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Ionicons name="mail-outline" size={12} color={theme.colors.muted} />
+                  <Text style={{ fontSize: 12, color: theme.colors.muted }} numberOfLines={1}>
+                    {member.email}
+                  </Text>
+                </View>
+              )}
+            </View>
           )}
         </View>
+
         <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
       </Pressable>
     </Swipeable>
@@ -563,7 +758,102 @@ function createStyles(
   return StyleSheet.create({
     container: {
       flex: 1,
+    },
+    scrollContent: {
       padding: theme.spacing(2),
+      paddingBottom: theme.spacing(4),
+    },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: theme.spacing(2),
+    },
+    pageTitle: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    pageSubtitle: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginTop: 2,
+    },
+    addButtonHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      borderRadius: theme.radius.md,
+    },
+    addButtonHeaderText: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: "#000",
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: theme.spacing(1.5),
+      marginBottom: theme.spacing(2),
+    },
+    statCard: {
+      flex: 1,
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing(1.5),
+      alignItems: "center",
+    },
+    statValue: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    statLabel: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      marginTop: 2,
+    },
+    infoBox: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing(1.5),
+      backgroundColor: isDark ? "#1E3A5F" : "#EFF6FF",
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(1.5),
+      marginBottom: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: isDark ? "#2563EB40" : "#BFDBFE",
+    },
+    infoText: {
+      flex: 1,
+      fontSize: 13,
+      color: isDark ? "#93C5FD" : "#1D4ED8",
+      lineHeight: 18,
+    },
+    techsNote: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing(1.5),
+      backgroundColor: isDark ? "#2D2640" : "#F3F0FF",
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(1.5),
+      marginBottom: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: isDark ? "#5856D640" : "#DDD6FE",
+    },
+    techsNoteText: {
+      flex: 1,
+      fontSize: 13,
+      color: isDark ? "#C4B5FD" : "#5B21B6",
+      lineHeight: 18,
+    },
+    techsNoteLink: {
+      fontWeight: "700",
+      color: "#5856D6",
     },
     searchContainer: {
       flexDirection: "row",
@@ -588,11 +878,12 @@ function createStyles(
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
+      paddingVertical: theme.spacing(8),
     },
     emptyState: {
-      flex: 1,
       justifyContent: "center",
       alignItems: "center",
+      paddingVertical: theme.spacing(8),
       paddingHorizontal: theme.spacing(4),
     },
     emptyTitle: {
@@ -624,68 +915,6 @@ function createStyles(
     },
     list: {
       flex: 1,
-    },
-    listContent: {
-      paddingBottom: theme.spacing(4),
-    },
-    memberCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      padding: theme.spacing(1.5),
-      marginBottom: theme.spacing(1.5),
-    },
-    memberAvatar: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: isDark ? "#2B4B7A" : "#E8F4FF",
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: theme.spacing(1.5),
-    },
-    memberInitials: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: isDark ? "#8CB4E8" : "#2563EB",
-    },
-    memberInfo: {
-      flex: 1,
-    },
-    memberName: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: theme.colors.text,
-    },
-    memberMeta: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing(1),
-      marginTop: 2,
-    },
-    roleBadge: {
-      backgroundColor: isDark ? "#2B4B7A" : "#E8F4FF",
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-    },
-    roleText: {
-      fontSize: 11,
-      fontWeight: "500",
-      color: isDark ? "#8CB4E8" : "#2563EB",
-    },
-    rateText: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: theme.colors.accent,
-    },
-    contactText: {
-      fontSize: 12,
-      color: theme.colors.muted,
-      marginTop: 2,
     },
     hint: {
       fontSize: 12,
