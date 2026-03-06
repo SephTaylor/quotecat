@@ -129,21 +129,21 @@ export default function ProTools() {
               theme={theme}
               tier="free"
             />
+
+            {/* Overhead Calculator - Free for all */}
+            <ProFeatureCard
+              title="Overhead Calculator"
+              description="Calculate your true overhead costs step by step"
+              locked={false}
+              onPress={() => handleFeatureTap("Overhead Calculator", false, true)}
+              theme={theme}
+              tier="free"
+            />
           </View>
 
           {/* Pro Tools Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Pro Tools</Text>
-
-            {/* Overhead Calculator - Pro feature */}
-            <ProFeatureCard
-              title="Overhead Calculator"
-              description="Calculate your true overhead costs step by step"
-              locked={!isPro}
-              onPress={() => handleFeatureTap("Overhead Calculator")}
-              theme={theme}
-              tier="pro"
-            />
 
             {/* Assembly Manager */}
             <ProFeatureCard

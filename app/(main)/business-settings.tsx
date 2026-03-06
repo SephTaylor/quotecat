@@ -350,13 +350,14 @@ export default function BusinessSettings() {
         <Pressable style={styles.section} onPress={Keyboard.dismiss}>
           <Text style={styles.sectionTitle}>Overhead & Profitability</Text>
           <View style={styles.card}>
+            {/* Overhead fields are free for all users - Pro features use the data */}
             <InlineField
               label="Annual Overhead"
               value={String(preferences.overhead?.annualOverhead || 0)}
               prefix="$"
               keyboardType="decimal-pad"
               formatCurrency={true}
-              enabled={hasProAccess && canEdit}
+              enabled={canEdit}
               onSave={async (v) => {
                 const annualOverhead = parseFloat(v) || 0;
                 const annualLaborRevenue = preferences.overhead?.annualLaborRevenue || 0;
@@ -369,7 +370,6 @@ export default function BusinessSettings() {
                   completedAt: new Date().toISOString(),
                 }));
               }}
-              onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
@@ -379,7 +379,7 @@ export default function BusinessSettings() {
               prefix="$"
               keyboardType="decimal-pad"
               formatCurrency={true}
-              enabled={hasProAccess && canEdit}
+              enabled={canEdit}
               onSave={async (v) => {
                 const annualLaborRevenue = parseFloat(v) || 0;
                 const annualOverhead = preferences.overhead?.annualOverhead || 0;
@@ -392,7 +392,6 @@ export default function BusinessSettings() {
                   completedAt: new Date().toISOString(),
                 }));
               }}
-              onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
@@ -411,7 +410,7 @@ export default function BusinessSettings() {
               value={String(preferences.overhead?.targetProfitMarginPercent || 0)}
               suffix="%"
               keyboardType="decimal-pad"
-              enabled={hasProAccess && canEdit}
+              enabled={canEdit}
               onSave={async (v) => {
                 const targetProfitMarginPercent = parseFloat(v) || 0;
                 setPreferences(await updateOverheadSettings({
@@ -422,7 +421,6 @@ export default function BusinessSettings() {
                   completedAt: preferences.overhead?.completedAt || new Date().toISOString(),
                 }));
               }}
-              onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
