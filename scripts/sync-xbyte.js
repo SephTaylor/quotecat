@@ -90,16 +90,19 @@ function getTodayFormatted() {
 async function supabaseQuery(table, method, data, options = {}) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
 
+  // Add on_conflict to URL for upsert
+  if (options.onConflict) {
+    url.searchParams.set('on_conflict', options.onConflict);
+  }
+
   const headers = {
     'apikey': SUPABASE_SERVICE_KEY,
     'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
     'Content-Type': 'application/json',
-    'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : undefined,
+    'Prefer': method === 'POST' && options.onConflict
+      ? 'resolution=merge-duplicates,return=minimal'
+      : undefined,
   };
-
-  if (options.onConflict) {
-    headers['Prefer'] = `resolution=merge-duplicates,return=minimal`;
-  }
 
   const response = await fetch(url.toString(), {
     method: method,
