@@ -1,7 +1,7 @@
 // app/(main)/price-book.tsx
 // Pro/Premium tool for managing custom products in price book
 import { useTheme } from "@/contexts/ThemeContext";
-import { getUserState } from "@/lib/user";
+import { useTechContext } from "@/contexts/TechContext";
 import {
   getPricebookItems,
   savePricebookItem,
@@ -50,9 +50,13 @@ const UNIT_OPTIONS = [
 export default function PriceBookManager() {
   const { theme } = useTheme();
   const router = useRouter();
+
+  // Use effectiveTier from TechContext - techs inherit owner's tier
+  const { effectiveTier, isTech } = useTechContext();
+  const isPremium = effectiveTier === "pro" || effectiveTier === "premium";
+
   const [items, setItems] = useState<PricebookItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [isPremium, setIsPremium] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<PricebookItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,15 +93,6 @@ export default function PriceBookManager() {
     // Load categories
     const cats = await getPricebookCategories();
     setCategories(cats);
-  }, []);
-
-  // Load Premium status and items
-  React.useEffect(() => {
-    const load = async () => {
-      const user = await getUserState();
-      setIsPremium(user.tier === "pro" || user.tier === "premium");
-    };
-    load();
   }, []);
 
   // Reload items when screen comes into focus
@@ -161,13 +156,17 @@ export default function PriceBookManager() {
 
   const handleAddItem = () => {
     if (!isPremium) {
+      // Hide upgrade option for techs - they inherit owner's tier
+      const buttons = isTech
+        ? [{ text: "OK", style: "cancel" as const }]
+        : [
+            { text: "OK", style: "cancel" as const },
+            { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+          ];
       Alert.alert(
         "Pro Feature",
-        "Price Book lets you create and manage your own custom products with your pricing. Upgrade to Pro to unlock this feature.",
-        [
-          { text: "OK", style: "cancel" },
-          { text: "Upgrade", onPress: () => presentPaywallAndSync() }
-        ]
+        "Price Book lets you create and manage your own custom products with your pricing.",
+        buttons
       );
       return;
     }

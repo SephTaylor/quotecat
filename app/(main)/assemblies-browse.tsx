@@ -1,8 +1,8 @@
 // app/(main)/assemblies-browse.tsx
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTechContext } from "@/contexts/TechContext";
 import { useAssemblies } from "@/modules/assemblies";
 import { deleteAssembly } from "@/modules/assemblies/storage";
-import { getUserState } from "@/lib/user";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import React, { memo, useMemo, useState, useEffect, useCallback } from "react";
 import {
@@ -102,9 +102,12 @@ export default function AssembliesScreen() {
   const { assemblies, loading, reload } = useAssemblies();
   const [refreshing, setRefreshing] = React.useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isPro, setIsPro] = React.useState(false);
-  const [checkingTier, setCheckingTier] = React.useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("my");
+
+  // Use effectiveTier from TechContext - techs inherit owner's tier
+  const { effectiveTier, isTech } = useTechContext();
+  const isPro = effectiveTier === "pro" || effectiveTier === "premium";
+  const checkingTier = false; // TechContext handles loading state
 
   // Community tab state
   const [communityAssemblies, setCommunityAssemblies] = useState<SharedAssembly[]>([]);
@@ -122,16 +125,6 @@ export default function AssembliesScreen() {
   const [loadingComments, setLoadingComments] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
-
-  // Check Pro tier on mount
-  React.useEffect(() => {
-    const checkTier = async () => {
-      const userState = await getUserState();
-      setIsPro(userState.tier === "pro" || userState.tier === "premium");
-      setCheckingTier(false);
-    };
-    checkTier();
-  }, []);
 
   // Fetch community assemblies when tab changes or filters change
   const fetchCommunity = useCallback(async () => {

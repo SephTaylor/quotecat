@@ -2,8 +2,8 @@
 // Contracts list screen for Premium users
 
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTechContext } from "@/contexts/TechContext";
 import { listContracts, deleteContract, createContractFromQuote } from "@/lib/contracts";
-import { getUserState } from "@/lib/user";
 import { listQuotes } from "@/lib/quotes";
 import type { Contract } from "@/lib/types";
 import type { Quote } from "@/lib/quotes";
@@ -36,19 +36,19 @@ export default function ContractsScreen() {
   const { trigger } = useLocalSearchParams<{ trigger?: string }>();
   const insets = useSafeAreaInsets();
 
+  // Use effectiveTier from TechContext - techs inherit owner's tier
+  const { effectiveTier, isTech } = useTechContext();
+  const isPremium = effectiveTier === "premium";
+
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [approvedQuotes, setApprovedQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isPremium, setIsPremium] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const user = await getUserState();
-    const premium = user?.tier === "premium";
-    setIsPremium(premium);
 
-    if (premium) {
+    if (isPremium) {
       const [contractData, quotesData] = await Promise.all([
         listContracts(),
         listQuotes(),
@@ -65,7 +65,7 @@ export default function ContractsScreen() {
       setApprovedQuotes(available);
     }
     setLoading(false);
-  }, []);
+  }, [isPremium]);
 
   useFocusEffect(
     useCallback(() => {
@@ -232,17 +232,15 @@ export default function ContractsScreen() {
               <Text style={styles.lockedFeatureText}>Share contracts with clients</Text>
             </View>
           </View>
-          <Pressable
-            style={styles.upgradeButton}
-            onPress={async () => {
-              const purchased = await presentPaywallAndSync();
-              if (purchased) {
-                load(); // Re-check tier after purchase
-              }
-            }}
-          >
-            <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
-          </Pressable>
+          {/* Hide upgrade button for techs - they inherit owner's tier */}
+          {!isTech && (
+            <Pressable
+              style={styles.upgradeButton}
+              onPress={() => presentPaywallAndSync()}
+            >
+              <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     );

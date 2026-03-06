@@ -5,7 +5,6 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTechContext } from "@/contexts/TechContext";
 import { getUserState, type UserState } from "@/lib/user";
-import { canAccessAssemblies } from "@/lib/features";
 import {
   loadPreferences,
   updateInvoiceSettings,
@@ -40,7 +39,7 @@ export default function BusinessSettings() {
   const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isTech, ownerCompanyName } = useTechContext();
+  const { isTech, ownerCompanyName, effectiveTier } = useTechContext();
 
   const [userState, setUserState] = useState<UserState | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
@@ -49,8 +48,9 @@ export default function BusinessSettings() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Techs can view settings but cannot edit them
-  const hasProAccess = userState ? canAccessAssemblies(userState) : false;
-  const hasPremiumAccess = userState?.tier === "premium";
+  // Use effectiveTier for access checks - techs inherit owner's tier
+  const hasProAccess = effectiveTier === "pro" || effectiveTier === "premium";
+  const hasPremiumAccess = effectiveTier === "premium";
   const canEdit = !isTech; // Techs cannot edit - they view owner's settings
 
   const load = useCallback(async () => {
@@ -106,7 +106,12 @@ export default function BusinessSettings() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const handleLearnMore = () => presentPaywallAndSync();
+  // Hide paywall for techs - they inherit owner's tier
+  const handleLearnMore = () => {
+    if (!isTech) {
+      presentPaywallAndSync();
+    }
+  };
 
   const styles = React.useMemo(() => createStyles(theme, insets), [theme, insets]);
 

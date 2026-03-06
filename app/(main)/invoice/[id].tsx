@@ -20,6 +20,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTechContext } from "@/contexts/TechContext";
 import { Ionicons } from "@expo/vector-icons";
 import type { Invoice, InvoiceStatus } from "@/lib/types";
 import { InvoiceStatusMeta } from "@/lib/types";
@@ -100,9 +101,12 @@ export default function InvoiceDetailScreen() {
   const projectInputRef = useRef<TextInput>(null);
   const clientInputRef = useRef<TextInput>(null);
 
+  // Use effectiveTier from TechContext - techs inherit owner's tier
+  const { effectiveTier, isTech } = useTechContext();
+  const isPro = effectiveTier === "pro" || effectiveTier === "premium";
+
   // Profitability state
   const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
-  const [isPro, setIsPro] = useState(false);
 
   const loadInvoice = useCallback(async () => {
     if (!invoiceId) return;
@@ -137,16 +141,12 @@ export default function InvoiceDetailScreen() {
     loadInvoice();
   }, [loadInvoice]);
 
-  // Load overhead settings and user tier
+  // Load overhead settings
   useEffect(() => {
     (async () => {
       try {
-        const [prefs, user] = await Promise.all([
-          loadPreferences(),
-          getUserState(),
-        ]);
+        const prefs = await loadPreferences();
         setOverheadSettings(prefs.overhead);
-        setIsPro(user?.tier === 'pro' || user?.tier === 'premium');
       } catch (error) {
         console.error("Failed to load overhead settings:", error);
       }
@@ -172,14 +172,14 @@ export default function InvoiceDetailScreen() {
       // Check if user can export (free tier has limits)
       const { allowed, reason, remaining } = canExportInvoice(user);
       if (!allowed) {
-        Alert.alert(
-          "Limit Reached",
-          reason,
-          [
-            { text: "OK", style: "cancel" },
-            { text: "Upgrade", onPress: () => presentPaywallAndSync() }
-          ]
-        );
+        // Hide upgrade option for techs - they inherit owner's tier
+        const buttons = isTech
+          ? [{ text: "OK", style: "cancel" as const }]
+          : [
+              { text: "OK", style: "cancel" as const },
+              { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+            ];
+        Alert.alert("Limit Reached", reason, buttons);
         return;
       }
 

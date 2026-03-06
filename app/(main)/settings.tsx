@@ -32,11 +32,11 @@ const LOCATION_OPTIONS = [
 export default function Settings() {
   const { mode, theme, setThemeMode } = useTheme();
   const router = useRouter();
-  const { isTech, ownerCompanyName, permissions } = useTechContext();
+  const { isTech, ownerCompanyName, ownerTier, effectiveTier, permissions } = useTechContext();
 
   const {
     // State
-    isPro,
+    isPro: userIsPro,
     userEmail,
     userState,
     preferences,
@@ -69,6 +69,9 @@ export default function Settings() {
     handleDeleteAccount,
     deleting,
   } = useSettingsState();
+
+  // Use effectiveTier for Pro check - techs inherit owner's tier
+  const isPro = effectiveTier === 'pro' || effectiveTier === 'premium';
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -131,21 +134,23 @@ export default function Settings() {
                     <View
                       style={[
                         styles.tierBadge,
-                        userState?.tier === 'pro' && styles.tierBadgePro,
-                        userState?.tier === 'premium' && styles.tierBadgePremium,
+                        // Techs show owner's tier, regular users show their own
+                        (isTech ? ownerTier : userState?.tier) === 'pro' && styles.tierBadgePro,
+                        (isTech ? ownerTier : userState?.tier) === 'premium' && styles.tierBadgePremium,
                       ]}
                     >
                       <Text
                         style={[
                           styles.tierBadgeText,
-                          userState?.tier === 'pro' && styles.tierBadgeTextPro,
-                          userState?.tier === 'premium' && styles.tierBadgeTextPremium,
+                          (isTech ? ownerTier : userState?.tier) === 'pro' && styles.tierBadgeTextPro,
+                          (isTech ? ownerTier : userState?.tier) === 'premium' && styles.tierBadgeTextPremium,
                         ]}
                       >
-                        {userState?.tier === 'premium' ? "PREMIUM" : userState?.tier === 'pro' ? "PRO" : "FREE"}
+                        {(isTech ? ownerTier : userState?.tier) === 'premium' ? "PREMIUM" : (isTech ? ownerTier : userState?.tier) === 'pro' ? "PRO" : "FREE"}
                       </Text>
                     </View>
-                    {!isPro && (
+                    {/* Hide upgrade button for techs - they inherit owner's tier */}
+                    {!isTech && !isPro && (
                       <Pressable
                         style={styles.upgradeButton}
                         onPress={() => presentPaywallAndSync()}

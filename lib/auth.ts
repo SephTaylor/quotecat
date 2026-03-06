@@ -67,10 +67,20 @@ export async function runSyncWithConsent(): Promise<void> {
 
 /**
  * Sign out current user
+ * Works even when offline - clears local state regardless of network
  */
 export async function signOut(): Promise<void> {
-  await supabase.auth.signOut();
-  await signOutUser(); // Clear local user state
+  // Try to sign out from Supabase (network call)
+  // If this fails (e.g., offline), we still clear local state
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {
+    console.warn("Supabase sign out failed (offline?):", e);
+  }
+
+  // Always clear local user state, even if network failed
+  await signOutUser();
+
   // Clear RevenueCat user identity
   try {
     await logOutRevenueCat();

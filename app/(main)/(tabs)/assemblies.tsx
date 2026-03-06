@@ -1,9 +1,9 @@
 // app/(main)/assemblies.tsx
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTechContext } from "@/contexts/TechContext";
 import { Screen } from "@/modules/core/ui";
 import { useAssemblies } from "@/modules/assemblies";
 import { deleteAssembly } from "@/modules/assemblies/storage";
-import { getUserState } from "@/lib/user";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import React, { memo, useMemo, useState } from "react";
@@ -65,19 +65,12 @@ export default function AssembliesScreen() {
   const { assemblies, loading, reload } = useAssemblies();
   const [refreshing, setRefreshing] = React.useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isPro, setIsPro] = React.useState(false);
-  const [checkingTier, setCheckingTier] = React.useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("my");
 
-  // Check Pro tier on mount
-  React.useEffect(() => {
-    const checkTier = async () => {
-      const userState = await getUserState();
-      setIsPro(userState.tier === "pro" || userState.tier === "premium");
-      setCheckingTier(false);
-    };
-    checkTier();
-  }, []);
+  // Use effectiveTier from TechContext - techs inherit owner's tier
+  const { effectiveTier, isTech } = useTechContext();
+  const isPro = effectiveTier === "pro" || effectiveTier === "premium";
+  const checkingTier = false; // TechContext handles loading state
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -198,19 +191,15 @@ export default function AssembliesScreen() {
               </View>
             </View>
 
-            <Pressable
-              style={styles.upgradeButton}
-              onPress={async () => {
-                const purchased = await presentPaywallAndSync();
-                if (purchased) {
-                  // Re-check tier after purchase
-                  const userState = await getUserState();
-                  setIsPro(userState.tier === "pro" || userState.tier === "premium");
-                }
-              }}
-            >
-              <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
-            </Pressable>
+            {/* Hide upgrade button for techs - they inherit owner's tier */}
+            {!isTech && (
+              <Pressable
+                style={styles.upgradeButton}
+                onPress={() => presentPaywallAndSync()}
+              >
+                <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+              </Pressable>
+            )}
           </View>
         </Screen>
       </>

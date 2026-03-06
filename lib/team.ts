@@ -51,10 +51,10 @@ const DEFAULT_PERMISSIONS: TechPermissions = {
   can_edit_own_quotes: true,
   can_edit_all_quotes: false,
   can_view_pricing: false,
-  can_manage_clients: false,
+  can_manage_clients: true,
   can_view_invoices: false,
   can_record_payments: false,
-  can_send_to_portal: false,
+  can_send_to_portal: true,
   can_assign_workers: true,
   can_view_labor_rates: false,
 };

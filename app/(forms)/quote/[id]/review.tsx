@@ -25,6 +25,7 @@ import type { Quote } from "@/lib/quotes";
 import { calculateQuoteTotals, calculateQuoteProfitability, getMarginColor, getMarginIcon } from "@/lib/calculations";
 import type { OverheadSettings } from "@/lib/preferences";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTechContext } from "@/contexts/TechContext";
 import { getUserState, incrementPdfCount, incrementSpreadsheetCount } from "@/lib/user";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
 import type { UserState } from "@/lib/user";
@@ -42,6 +43,7 @@ export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const qid = Array.isArray(params.id) ? params.id[0] : (params.id ?? null);
   const { theme } = useTheme();
+  const { effectiveTier } = useTechContext();
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
@@ -226,8 +228,9 @@ export default function QuoteReviewScreen() {
 
   const pdfRemaining = userState ? getQuotaRemaining(userState, "pdfs") : 0;
   const spreadsheetRemaining = userState ? getQuotaRemaining(userState, "spreadsheets") : 0;
-  const isPro = userState?.tier === "pro";
-  const isPremium = userState?.tier === "premium";
+  // Use effectiveTier from TechContext (techs inherit owner's tier)
+  const isPro = effectiveTier === "pro" || effectiveTier === "premium";
+  const isPremium = effectiveTier === "premium";
 
   const handleExportSpreadsheet = async () => {
     if (!userState || !quote) return;

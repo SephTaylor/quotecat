@@ -1,8 +1,7 @@
 // app/(main)/(tabs)/pro-tools.tsx
 // Toolbox tab - Business tools for all users (free, pro, premium)
 import { useTheme } from "@/contexts/ThemeContext";
-import { canAccessAssemblies } from "@/lib/features";
-import { getUserState } from "@/lib/user";
+import { useTechContext } from "@/contexts/TechContext";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
@@ -19,13 +18,16 @@ import { GradientBackground } from "@/components/GradientBackground";
 export default function ProTools() {
   const router = useRouter();
   const { theme } = useTheme();
-  const [isPro, setIsPro] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
+  // Use effectiveTier from TechContext - techs inherit owner's tier
+  const { effectiveTier, isTech } = useTechContext();
 
+  // Derive Pro/Premium from effectiveTier (techs get owner's tier)
+  const isPro = effectiveTier === 'pro' || effectiveTier === 'premium';
+  const isPremium = effectiveTier === 'premium';
+
+  // Reload handler for when paywall completes (refreshes TechContext)
   const load = useCallback(async () => {
-    const user = await getUserState();
-    setIsPro(canAccessAssemblies(user));
-    setIsPremium(user?.tier === "premium");
+    // TechContext auto-refreshes on focus
   }, []);
 
   useFocusEffect(
