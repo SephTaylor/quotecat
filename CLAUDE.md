@@ -958,6 +958,21 @@ Cloud Sync downloads 10 quotes
 **Remaining:**
 - Consider cleaning up orphan cloud data (21 invoices that were deleted locally but still exist in Supabase)
 
+### User Data Isolation on Account Switch (Mar 6, 2026)
+
+**Problem:** When switching accounts, local data from the previous user persists and shows alongside the new user's cloud data. Edge case - most users have one account.
+
+**Root Cause:**
+- `signOutUser()` in `lib/user.ts` only clears tier/email, NOT actual data (quotes, invoices, clients)
+- Local storage (AsyncStorage for quotes, SQLite for invoices/clients) has no user_id filtering
+- When new user signs in, sync downloads their cloud data but old local data remains mixed in
+
+**Impact:** Low - only affects developers testing with multiple accounts. Not a launch blocker.
+
+**Potential Fix:** Track user ID in AsyncStorage, detect account switch, clear local data before sync re-downloads. Needs careful handling for offline-first - don't clear until sync has replacement data ready.
+
+**Status:** Deferred - will address post-launch if needed.
+
 ---
 
 ## 💡 Future Feature Ideas
