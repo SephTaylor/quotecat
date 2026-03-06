@@ -238,6 +238,10 @@ export type Invoice = {
   deletedAt?: string; // ISO 8601 - soft delete timestamp
   currency: CurrencyCode;
 
+  // Reminder tracking (Pro/Premium)
+  reminderSentAt?: string; // ISO 8601 - last reminder sent
+  reminderCount?: number; // Total reminders sent
+
   // Forward-compatible: allow extra fields
   [key: string]: any;
 };

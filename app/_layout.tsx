@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { initAnalytics, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import { initializeAuth, needsSyncConsentPrompt } from "@/lib/auth";
-import { initializeRevenueCat, syncTierFromRevenueCat } from "@/lib/revenuecat";
+// RevenueCat now initializes lazily when user taps "Upgrade" - no startup init needed
 import {
   checkCrashLoopAndReset,
   performStartupIntegrityCheck,
@@ -87,14 +87,8 @@ export default function RootLayout() {
           console.error("Analytics init error:", e);
         }
 
-        // Step 1.1: Initialize RevenueCat for in-app purchases
-        try {
-          await initializeRevenueCat();
-          // Sync local tier with RevenueCat entitlements
-          await syncTierFromRevenueCat();
-        } catch (e) {
-          console.error("RevenueCat init error:", e);
-        }
+        // RevenueCat now initializes lazily when user taps "Upgrade"
+        // Tier comes from Supabase profiles.tier, not RevenueCat
 
         // Step 1.5: Migrate from AsyncStorage to SQLite (one-time)
         // This MUST happen before any data reads to prevent OOM crashes

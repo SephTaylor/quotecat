@@ -7,6 +7,7 @@ import { getTechContext, TechContext as TechContextType, TechPermissions, canVie
 import { getCurrentUserId } from '@/lib/authUtils';
 import { signOut } from '@/lib/auth';
 import { getUserState } from '@/lib/user';
+import { onSyncComplete } from '@/lib/syncState';
 
 type UserTier = 'free' | 'pro' | 'premium';
 
@@ -121,6 +122,15 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
   // Load tech context on mount
   useEffect(() => {
     refreshTechContext();
+  }, [refreshTechContext]);
+
+  // Refresh when sync completes (tier may have updated)
+  useEffect(() => {
+    const unsubscribe = onSyncComplete(() => {
+      console.log('🔄 Sync completed, refreshing tech context...');
+      refreshTechContext();
+    });
+    return unsubscribe;
   }, [refreshTechContext]);
 
   // Compute effective tier: techs use owner's tier, others use their own

@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   TouchableOpacity,
+  Share,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
@@ -87,6 +88,10 @@ export default function InvoiceDetailScreen() {
   const [tempMarkupPercent, setTempMarkupPercent] = useState("");
   const [tempProjectName, setTempProjectName] = useState("");
   const [tempInvoiceNumber, setTempInvoiceNumber] = useState("");
+
+  // Menu modal state (3-dot menu)
+  const [showMenu, setShowMenu] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState(false);
 
   // Payment modal state
   const [editingPayment, setEditingPayment] = useState(false);
@@ -254,6 +259,7 @@ export default function InvoiceDetailScreen() {
   const handleDelete = useCallback(() => {
     if (!invoice) return;
 
+    setShowMenu(false);
     Alert.alert(
       "Delete Invoice",
       `Are you sure you want to delete invoice ${invoice.invoiceNumber}?`,
@@ -270,6 +276,112 @@ export default function InvoiceDetailScreen() {
       ]
     );
   }, [invoice, router]);
+
+  const handleSendReminder = useCallback(async () => {
+    if (!invoice) return;
+
+    console.log("📧 handleSendReminder called", { isPro, clientEmail: invoice.clientEmail });
+
+    // Check tier
+    if (!isPro) {
+      console.log("📧 Not Pro, showing upgrade prompt");
+      setShowMenu(false);
+      const purchased = await presentPaywallAndSync();
+      if (!purchased) {
+        Alert.alert("Upgrade Required", "Visit quotecat.ai to upgrade and send reminders.");
+      }
+      return;
+    }
+
+    setShowMenu(false);
+
+    // If no client email, fall back to Share sheet
+    if (!invoice.clientEmail) {
+      console.log("📧 No client email, opening email composer");
+
+      // Open email composer with blank "to" field
+      const portalUrl = "https://portal.quotecat.ai";
+      const invoiceLink = `${portalUrl}/pay/${invoice.id}`;
+      const amount = calculateInvoiceTotals(invoice).total.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
+      const dueText = invoice.dueDate
+        ? ` due on ${new Date(invoice.dueDate).toLocaleDateString()}`
+        : "";
+
+      const subject = `Payment Reminder: Invoice ${invoice.invoiceNumber || invoice.id.slice(0, 8)}`;
+      const body = `Hi${invoice.clientName ? ` ${invoice.clientName}` : ""},
+
+This is a friendly reminder that invoice ${invoice.invoiceNumber || invoice.id.slice(0, 8)} for ${amount} is${dueText}.
+
+View and pay here: ${invoiceLink}
+
+Thank you!`;
+
+      const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+      const { Linking } = require("react-native");
+      try {
+        await Linking.openURL(mailtoUrl);
+      } catch (e) {
+        // No email client (simulator) - fall back to Share
+        console.log("📧 No email client, falling back to Share");
+        await Share.share({ message: `${subject}\n\n${body}` });
+      }
+      return;
+    }
+
+    // Has email - send via API for tracking + HTML template
+    console.log("📧 Has client email, calling API");
+    setSendingReminder(true);
+    try {
+      const { sendInvoiceReminder } = await import("@/lib/invoices");
+      console.log("📧 Calling sendInvoiceReminder for", invoice.id);
+      const result = await sendInvoiceReminder(invoice.id);
+      console.log("📧 Result:", result);
+
+      if (result.success) {
+        Alert.alert("Reminder Sent", "Payment reminder sent to client.");
+        await loadInvoice(); // Refresh to show reminder count
+      } else {
+        Alert.alert("Failed", result.error || "Could not send reminder.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to send reminder. Please try again.");
+    } finally {
+      setSendingReminder(false);
+    }
+  }, [invoice, isPro, loadInvoice]);
+
+  const handleSendInvoiceLink = useCallback(() => {
+    if (!invoice) return;
+
+    setShowMenu(false);
+
+    // Use Share API to send invoice link
+    const portalUrl = "https://portal.quotecat.ai";
+    const invoiceLink = `${portalUrl}/pay/${invoice.id}`;
+
+    Share.share({
+      message: `View your invoice: ${invoiceLink}`,
+      url: invoiceLink,
+    });
+  }, [invoice]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!invoice) return;
+
+    setShowMenu(false);
+
+    const portalUrl = "https://portal.quotecat.ai";
+    const invoiceLink = `${portalUrl}/pay/${invoice.id}`;
+
+    const Clipboard = await import("expo-clipboard");
+    await Clipboard.setStringAsync(invoiceLink);
+
+    Alert.alert("Copied", "Invoice link copied to clipboard.");
+  }, [invoice]);
 
   // Edit handlers
   const handleEditDueDate = useCallback(() => {
@@ -615,6 +727,14 @@ export default function InvoiceDetailScreen() {
           headerShown: true,
           headerTitleAlign: "center",
           headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
+          headerRight: () => (
+            <Pressable
+              onPress={() => setShowMenu(true)}
+              style={{ padding: 8, marginRight: -8 }}
+            >
+              <Ionicons name="ellipsis-vertical" size={22} color={theme.colors.text} />
+            </Pressable>
+          ),
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
@@ -637,10 +757,6 @@ export default function InvoiceDetailScreen() {
             <Pressable style={styles.exportButton} onPress={handleExportPDF}>
               <Ionicons name="document-outline" size={20} color="#000" />
               <Text style={styles.exportButtonText}>PDF</Text>
-            </Pressable>
-
-            <Pressable style={styles.deleteButton} onPress={handleDelete}>
-              <Ionicons name="trash-outline" size={20} color="#FFF" />
             </Pressable>
           </View>
         }
@@ -1005,6 +1121,29 @@ export default function InvoiceDetailScreen() {
               textAlignVertical="top"
             />
           </View>
+
+          {/* History - only show if there's something to display */}
+          {(invoice.reminderCount && invoice.reminderCount > 0) && (
+            <View style={styles.historySection}>
+              <Text style={styles.historySectionTitle}>History</Text>
+              <View style={styles.historyItem}>
+                <Ionicons name="mail-outline" size={16} color={theme.colors.muted} />
+                <Text style={styles.historyText}>
+                  {invoice.reminderCount} reminder{invoice.reminderCount !== 1 ? "s" : ""} sent
+                  {invoice.reminderSentAt && (
+                    <Text style={styles.historyDate}>
+                      {" · Last: "}
+                      {new Date(invoice.reminderSentAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </Text>
+                  )}
+                </Text>
+              </View>
+            </View>
+          )}
       </FormScreen>
 
         {/* Edit Modals */}
@@ -1709,6 +1848,134 @@ export default function InvoiceDetailScreen() {
             }}
           />
         )}
+
+        {/* 3-Dot Menu Modal */}
+        <Modal
+          visible={showMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowMenu(false)}
+        >
+          <Pressable
+            style={styles.menuOverlay}
+            onPress={() => setShowMenu(false)}
+          >
+            <View style={styles.menuContainer}>
+              <Pressable
+                style={styles.menuModal}
+                onPress={(e) => e.stopPropagation()}
+              >
+                {/* Send Reminder */}
+                <Pressable
+                  style={[
+                    styles.menuItem,
+                    !isPro && styles.menuItemDisabled,
+                  ]}
+                  onPress={handleSendReminder}
+                  disabled={sendingReminder}
+                >
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color={!isPro ? theme.colors.muted : theme.colors.text}
+                  />
+                  <Text
+                    style={[
+                      styles.menuItemText,
+                      !isPro && styles.menuItemTextDisabled,
+                    ]}
+                  >
+                    {sendingReminder
+                      ? "Sending..."
+                      : invoice?.status === "overdue"
+                      ? "Send Overdue Notice"
+                      : "Send Reminder"}
+                  </Text>
+                  {!isPro && (
+                    <View style={styles.proBadge}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
+                  )}
+                </Pressable>
+
+                {/* Send Invoice Link - Pro only (requires cloud sync) */}
+                <Pressable
+                  style={[styles.menuItem, !isPro && styles.menuItemDisabled]}
+                  onPress={() => {
+                    if (!isPro) {
+                      setShowMenu(false);
+                      presentPaywallAndSync();
+                      return;
+                    }
+                    handleSendInvoiceLink();
+                  }}
+                >
+                  <Ionicons
+                    name="share-outline"
+                    size={20}
+                    color={!isPro ? theme.colors.muted : theme.colors.text}
+                  />
+                  <Text
+                    style={[
+                      styles.menuItemText,
+                      !isPro && styles.menuItemTextDisabled,
+                    ]}
+                  >
+                    Send Invoice Link
+                  </Text>
+                  {!isPro && (
+                    <View style={styles.proBadge}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
+                  )}
+                </Pressable>
+
+                {/* Copy Link - Pro only (requires cloud sync) */}
+                <Pressable
+                  style={[styles.menuItem, !isPro && styles.menuItemDisabled]}
+                  onPress={() => {
+                    if (!isPro) {
+                      setShowMenu(false);
+                      presentPaywallAndSync();
+                      return;
+                    }
+                    handleCopyLink();
+                  }}
+                >
+                  <Ionicons
+                    name="copy-outline"
+                    size={20}
+                    color={!isPro ? theme.colors.muted : theme.colors.text}
+                  />
+                  <Text
+                    style={[
+                      styles.menuItemText,
+                      !isPro && styles.menuItemTextDisabled,
+                    ]}
+                  >
+                    Copy Link
+                  </Text>
+                  {!isPro && (
+                    <View style={styles.proBadge}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
+                  )}
+                </Pressable>
+
+                <View style={styles.menuDivider} />
+
+                {/* Delete */}
+                <Pressable
+                  style={styles.menuItem}
+                  onPress={handleDelete}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                  <Text style={[styles.menuItemText, { color: "#ef4444" }]}>Delete Invoice</Text>
+                </Pressable>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
     </>
   );
 }
@@ -2376,6 +2643,92 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.text,
       minHeight: 60,
       textAlignVertical: "top",
+    },
+    // Menu modal styles
+    menuOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-start",
+      alignItems: "flex-end",
+    },
+    menuContainer: {
+      paddingTop: 90, // Account for header
+      paddingRight: theme.spacing(2),
+    },
+    menuModal: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      paddingVertical: theme.spacing(1),
+      minWidth: 200,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    menuItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.25),
+      paddingHorizontal: theme.spacing(2),
+      gap: theme.spacing(1),
+    },
+    menuItemDisabled: {
+      opacity: 0.5,
+    },
+    menuItemText: {
+      fontSize: 15,
+      fontWeight: "500",
+      color: theme.colors.text,
+    },
+    menuItemTextDisabled: {
+      color: theme.colors.muted,
+    },
+    menuDivider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: theme.spacing(0.5),
+    },
+    proBadge: {
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: theme.radius.sm,
+      marginLeft: "auto",
+    },
+    proBadgeText: {
+      fontSize: 9,
+      fontWeight: "700",
+      color: "#000",
+    },
+    // History section styles
+    historySection: {
+      marginTop: theme.spacing(2),
+      paddingTop: theme.spacing(2),
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    historySectionTitle: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: theme.colors.muted,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: theme.spacing(1.5),
+    },
+    historyItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1),
+    },
+    historyText: {
+      fontSize: 14,
+      color: theme.colors.text,
+    },
+    historyDate: {
+      color: theme.colors.muted,
     },
   });
 }

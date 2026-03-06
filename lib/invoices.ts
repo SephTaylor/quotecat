@@ -545,3 +545,56 @@ export async function deletePayment(paymentId: string, invoiceId: string): Promi
 export function getInvoicePaidTotal(invoiceId: string): number {
   return getInvoicePaidTotalDB(invoiceId);
 }
+
+/**
+ * Send a payment reminder email to the client
+ * Requires Pro/Premium tier and cloud sync
+ */
+export async function sendInvoiceReminder(
+  invoiceId: string
+): Promise<{ success: boolean; error?: string; reminderCount?: number }> {
+  try {
+    // Get Supabase client and session
+    const { supabase } = await import("@/lib/supabase");
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    // Call the edge function
+    const { data, error } = await supabase.functions.invoke(
+      "send-invoice-reminder",
+      {
+        body: { invoiceId },
+      }
+    );
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message || "Failed to send reminder",
+      };
+    }
+
+    if (!data?.success) {
+      return {
+        success: false,
+        error: data?.error || "Failed to send reminder",
+      };
+    }
+
+    return {
+      success: true,
+      reminderCount: data.reminderCount,
+    };
+  } catch (error) {
+    console.error("Error sending invoice reminder:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}

@@ -1,135 +1,123 @@
 // lib/revenuecat.ts
-// RevenueCat configuration and helpers for in-app purchases
+// RevenueCat configuration with LAZY loading
+// Only initializes when user enters purchase flow (not at app startup)
 
 import { Platform } from 'react-native';
-import Purchases, { LOG_LEVEL, CustomerInfo, PurchasesOffering } from 'react-native-purchases';
-import { setUserTier, type UserTier } from './user';
+import { getCurrentUserId } from './authUtils';
+
+// Track initialization state
+let isInitialized = false;
+let PurchasesModule: any = null;
+let LOG_LEVEL: any = null;
 
 // API Keys - Get these from RevenueCat dashboard
-// https://app.revenuecat.com → Project → API Keys
-const REVENUECAT_IOS_KEY = 'appl_ExkgnPkiEZCaTifCLtvAjbgBoPf'; // Production iOS key
-const REVENUECAT_ANDROID_KEY = 'test_JMfMXQVdDJPruXJknXvgZTQutmz'; // Test key - replace with goog_* for production
+const REVENUECAT_IOS_KEY = 'appl_ExkgnPkiEZCaTifCLtvAjbgBoPf';
+const REVENUECAT_ANDROID_KEY = 'test_JMfMXQVdDJPruXJknXvgZTQutmz';
 
-// Entitlement IDs - must match what you set up in RevenueCat dashboard
+// Entitlement IDs - must match RevenueCat dashboard
 export const ENTITLEMENTS = {
   PRO: 'pro',
   PREMIUM: 'premium',
 } as const;
 
 /**
- * Initialize RevenueCat SDK
- * Call this once at app startup (in _layout.tsx)
+ * Lazy-initialize RevenueCat
+ * Only call this when user is about to see the paywall
+ * Returns false if initialization fails (e.g., on simulator)
  */
-export async function initializeRevenueCat(): Promise<void> {
-  // Enable verbose logging in development
-  if (__DEV__) {
-    Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+async function ensureInitialized(): Promise<boolean> {
+  if (isInitialized && PurchasesModule) return true;
+
+  try {
+    // Use require() instead of dynamic import to avoid Metro's importAll issue
+    // which triggers PushNotificationIOS loading on simulator
+    const RC = require('react-native-purchases');
+    PurchasesModule = RC.default;
+    LOG_LEVEL = RC.LOG_LEVEL;
+
+    if (__DEV__) {
+      PurchasesModule.setLogLevel(LOG_LEVEL.VERBOSE);
+    }
+
+    const apiKey = Platform.OS === 'ios' ? REVENUECAT_IOS_KEY : REVENUECAT_ANDROID_KEY;
+    await PurchasesModule.configure({ apiKey });
+
+    // Link to current user if logged in
+    const userId = await getCurrentUserId();
+    if (userId) {
+      await PurchasesModule.logIn(userId);
+    }
+
+    isInitialized = true;
+    console.log('✅ RevenueCat initialized (lazy)');
+    return true;
+  } catch (e) {
+    console.warn('RevenueCat not available (simulator?):', e);
+    return false;
+  }
+}
+
+/**
+ * Present paywall and handle purchase
+ * Initializes RevenueCat lazily if needed
+ * Returns false if RC unavailable (simulator) or user cancelled
+ *
+ * Note: After purchase, tier syncs via RevenueCat webhook → Supabase profiles.tier
+ * The app reads tier from Supabase, not RevenueCat
+ */
+export async function presentPaywallAndSync(): Promise<boolean> {
+  const ready = await ensureInitialized();
+  if (!ready) {
+    // On simulator or if RC fails, can't show paywall
+    // Caller should show "upgrade via website" message
+    return false;
   }
 
-  const apiKey = Platform.OS === 'ios' ? REVENUECAT_IOS_KEY : REVENUECAT_ANDROID_KEY;
+  try {
+    const RevenueCatUI = require('react-native-purchases-ui').default;
+    const result = await RevenueCatUI.presentPaywall();
 
-  await Purchases.configure({ apiKey });
-  console.log('✅ RevenueCat initialized');
-}
-
-/**
- * Link RevenueCat to your Supabase user ID
- * Call this after user signs in
- */
-export async function identifyUser(userId: string): Promise<void> {
-  await Purchases.logIn(userId);
-  console.log('✅ RevenueCat user identified:', userId);
-}
-
-/**
- * Clear RevenueCat user (on sign out)
- */
-export async function logOutRevenueCat(): Promise<void> {
-  await Purchases.logOut();
-  console.log('✅ RevenueCat user logged out');
-}
-
-/**
- * Get current customer info (subscription status)
- */
-export async function getCustomerInfo(): Promise<CustomerInfo> {
-  return await Purchases.getCustomerInfo();
-}
-
-/**
- * Check if user has Pro access
- */
-export async function hasProAccess(): Promise<boolean> {
-  const customerInfo = await getCustomerInfo();
-  return customerInfo.entitlements.active[ENTITLEMENTS.PRO] !== undefined ||
-         customerInfo.entitlements.active[ENTITLEMENTS.PREMIUM] !== undefined;
-}
-
-/**
- * Check if user has Premium access
- */
-export async function hasPremiumAccess(): Promise<boolean> {
-  const customerInfo = await getCustomerInfo();
-  return customerInfo.entitlements.active[ENTITLEMENTS.PREMIUM] !== undefined;
-}
-
-/**
- * Get available offerings (products/packages)
- */
-export async function getOfferings(): Promise<PurchasesOffering | null> {
-  const offerings = await Purchases.getOfferings();
-  return offerings.current;
+    // PURCHASED or RESTORED means successful
+    // Tier will update via webhook → Supabase → app sync
+    return result === 'PURCHASED' || result === 'RESTORED';
+  } catch (e) {
+    console.error('Paywall error:', e);
+    return false;
+  }
 }
 
 /**
  * Restore purchases (for users who reinstall or switch devices)
+ * Returns false if RC unavailable
  */
-export async function restorePurchases(): Promise<CustomerInfo> {
-  return await Purchases.restorePurchases();
+export async function restorePurchases(): Promise<boolean> {
+  const ready = await ensureInitialized();
+  if (!ready) return false;
+
+  try {
+    await PurchasesModule.restorePurchases();
+    console.log('✅ Purchases restored');
+    return true;
+  } catch (e) {
+    console.error('Restore purchases failed:', e);
+    return false;
+  }
 }
 
 /**
- * Present paywall and sync tier after purchase
- * Use this instead of RevenueCatUI.presentPaywall() directly
- * Returns true if purchase was made or restored
+ * Clear RevenueCat user on sign out
+ * Safe to call even if RC was never initialized
  */
-export async function presentPaywallAndSync(): Promise<boolean> {
-  const RevenueCatUI = require('react-native-purchases-ui').default;
-  const result = await RevenueCatUI.presentPaywall();
-
-  if (result === 'PURCHASED' || result === 'RESTORED') {
-    // Sync tier from RevenueCat to update local tier
-    await syncTierFromRevenueCat();
-    console.log('✅ Tier synced after purchase/restore');
-    return true;
+export async function logOutRevenueCat(): Promise<void> {
+  if (!isInitialized || !PurchasesModule) {
+    // Never initialized, nothing to do
+    return;
   }
 
-  return false;
-}
-
-/**
- * Sync local tier with RevenueCat entitlements
- * Call this on app startup after RevenueCat initializes
- */
-export async function syncTierFromRevenueCat(): Promise<void> {
   try {
-    const customerInfo = await getCustomerInfo();
-    const activeEntitlements = customerInfo.entitlements.active;
-
-    let newTier: UserTier = 'free';
-
-    // Check for Premium first (higher tier)
-    if (activeEntitlements[ENTITLEMENTS.PREMIUM]) {
-      newTier = 'premium';
-    } else if (activeEntitlements[ENTITLEMENTS.PRO]) {
-      newTier = 'pro';
-    }
-
-    // Update local tier to match RevenueCat
-    await setUserTier(newTier);
-    console.log('✅ RevenueCat tier synced:', newTier);
-  } catch (error) {
-    console.error('Failed to sync tier from RevenueCat:', error);
-    // Don't throw - we'll just use the existing local tier
+    await PurchasesModule.logOut();
+    console.log('✅ RevenueCat user logged out');
+  } catch (e) {
+    console.warn('RevenueCat logout failed:', e);
   }
 }

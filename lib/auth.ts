@@ -12,7 +12,8 @@ import { syncAssemblies, hasAssembliesMigrated, migrateLocalAssembliesToCloud } 
 import { syncBusinessSettings, downloadBusinessSettings } from "./businessSettingsSync";
 import { syncTeamMembers } from "./teamMembersSync";
 import { markSyncComplete } from "./syncState";
-import { identifyUser, logOutRevenueCat } from "./revenuecat";
+import { logOutRevenueCat } from "./revenuecat";
+// identifyUser removed - RevenueCat now links user lazily when showing paywall
 
 // Re-export auth utilities for backwards compatibility
 export { isAuthenticated, getCurrentUserEmail, getCurrentUserId } from "./authUtils";
@@ -116,12 +117,7 @@ export async function initializeAuth(): Promise<void> {
     const { data } = await supabase.auth.getSession();
 
     if (data.session?.user) {
-      // Link RevenueCat to this user
-      try {
-        await identifyUser(data.session.user.id);
-      } catch (e) {
-        console.error("RevenueCat identify error:", e);
-      }
+      // RevenueCat links user lazily when showing paywall
 
       // User is authenticated, fetch their profile
       const { data: profile } = await supabase
@@ -178,12 +174,7 @@ export async function initializeAuth(): Promise<void> {
 async function handleAuthChange(userId: string): Promise<void> {
   console.log("🔐 Handling auth change for user:", userId);
 
-  // Link RevenueCat to this user (for subscription sync)
-  try {
-    await identifyUser(userId);
-  } catch (e) {
-    console.error("RevenueCat identify error:", e);
-  }
+  // RevenueCat links user lazily when showing paywall
 
   // Fetch their profile
   const { data: profile } = await supabase
