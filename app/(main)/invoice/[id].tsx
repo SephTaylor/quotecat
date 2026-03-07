@@ -109,6 +109,7 @@ export default function InvoiceDetailScreen() {
   // Use effectiveTier from TechContext - techs inherit owner's tier
   const { effectiveTier, isTech } = useTechContext();
   const isPro = effectiveTier === "pro" || effectiveTier === "premium";
+  const isPremium = effectiveTier === "premium";
 
   // Profitability state
   const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
@@ -277,10 +278,10 @@ export default function InvoiceDetailScreen() {
     );
   }, [invoice, router]);
 
-  const handleSendReminder = useCallback(async () => {
+  const handleSendReminder = useCallback(async (channel?: "email" | "sms") => {
     if (!invoice) return;
 
-    console.log("📧 handleSendReminder called", { isPro, clientEmail: invoice.clientEmail });
+    console.log("📧 handleSendReminder called", { isPro, isPremium, clientEmail: invoice.clientEmail, clientPhone: invoice.clientPhone, channel });
 
     // Check tier
     if (!isPro) {
@@ -295,9 +296,9 @@ export default function InvoiceDetailScreen() {
 
     setShowMenu(false);
 
-    // If no client email, fall back to Share sheet
-    if (!invoice.clientEmail) {
-      console.log("📧 No client email, opening email composer");
+    // If no contact info at all, fall back to Share sheet
+    if (!invoice.clientEmail && !invoice.clientPhone) {
+      console.log("📧 No contact info, opening email composer");
 
       // Open email composer with blank "to" field
       const portalUrl = "https://portal.quotecat.ai";
@@ -332,17 +333,53 @@ Thank you!`;
       return;
     }
 
-    // Has email - send via API for tracking + HTML template
-    console.log("📧 Has client email, calling API");
+    // If channel not specified and both options available, ask user to choose
+    if (!channel && invoice.clientEmail && invoice.clientPhone && isPremium) {
+      Alert.alert(
+        "Send Reminder",
+        "How would you like to send the reminder?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "SMS", onPress: () => handleSendReminder("sms") },
+          { text: "Email", onPress: () => handleSendReminder("email"), style: "default" },
+        ]
+      );
+      return;
+    }
+
+    // Determine channel if not specified
+    const selectedChannel = channel || (invoice.clientEmail ? "email" : "sms");
+
+    // Check Premium for SMS
+    if (selectedChannel === "sms" && !isPremium) {
+      Alert.alert("Premium Required", "Upgrade to Premium to send SMS reminders.");
+      return;
+    }
+
+    // Check contact info for selected channel
+    if (selectedChannel === "email" && !invoice.clientEmail) {
+      Alert.alert("No Email", "This invoice doesn't have a client email address.");
+      return;
+    }
+    if (selectedChannel === "sms" && !invoice.clientPhone) {
+      Alert.alert("No Phone", "This invoice doesn't have a client phone number.");
+      return;
+    }
+
+    // Send via API
+    console.log(`📧 Sending ${selectedChannel} reminder via API`);
     setSendingReminder(true);
     try {
       const { sendInvoiceReminder } = await import("@/lib/invoices");
-      console.log("📧 Calling sendInvoiceReminder for", invoice.id);
-      const result = await sendInvoiceReminder(invoice.id);
+      console.log("📧 Calling sendInvoiceReminder for", invoice.id, selectedChannel);
+      const result = await sendInvoiceReminder(invoice.id, selectedChannel);
       console.log("📧 Result:", result);
 
       if (result.success) {
-        Alert.alert("Reminder Sent", "Payment reminder sent to client.");
+        Alert.alert(
+          "Reminder Sent",
+          `${selectedChannel === "sms" ? "SMS" : "Email"} reminder sent to client.`
+        );
         await loadInvoice(); // Refresh to show reminder count
       } else {
         Alert.alert("Failed", result.error || "Could not send reminder.");
@@ -352,7 +389,7 @@ Thank you!`;
     } finally {
       setSendingReminder(false);
     }
-  }, [invoice, isPro, loadInvoice]);
+  }, [invoice, isPro, isPremium, loadInvoice]);
 
   const handleSendInvoiceLink = useCallback(() => {
     if (!invoice) return;
@@ -1871,11 +1908,11 @@ Thank you!`;
                     styles.menuItem,
                     !isPro && styles.menuItemDisabled,
                   ]}
-                  onPress={handleSendReminder}
+                  onPress={() => handleSendReminder()}
                   disabled={sendingReminder}
                 >
                   <Ionicons
-                    name="mail-outline"
+                    name={isPremium && invoice.clientPhone ? "chatbubble-ellipses-outline" : "mail-outline"}
                     size={20}
                     color={!isPro ? theme.colors.muted : theme.colors.text}
                   />

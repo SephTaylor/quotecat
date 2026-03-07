@@ -547,12 +547,14 @@ export function getInvoicePaidTotal(invoiceId: string): number {
 }
 
 /**
- * Send a payment reminder email to the client
+ * Send a payment reminder to the client via email or SMS
  * Requires Pro/Premium tier and cloud sync
+ * SMS requires Premium tier
  */
 export async function sendInvoiceReminder(
-  invoiceId: string
-): Promise<{ success: boolean; error?: string; reminderCount?: number }> {
+  invoiceId: string,
+  channel: "email" | "sms" = "email"
+): Promise<{ success: boolean; error?: string; reminderCount?: number; channel?: string }> {
   try {
     // Get Supabase client and session
     const { supabase } = await import("@/lib/supabase");
@@ -568,7 +570,7 @@ export async function sendInvoiceReminder(
     const { data, error } = await supabase.functions.invoke(
       "send-invoice-reminder",
       {
-        body: { invoiceId },
+        body: { invoiceId, channel },
       }
     );
 
@@ -589,6 +591,7 @@ export async function sendInvoiceReminder(
     return {
       success: true,
       reminderCount: data.reminderCount,
+      channel: data.channel,
     };
   } catch (error) {
     console.error("Error sending invoice reminder:", error);

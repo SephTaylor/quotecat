@@ -12,6 +12,7 @@ const corsHeaders = {
 
 interface InvoiceReminderRequest {
   invoiceId: string;
+  channel?: "email" | "sms"; // Default: email
 }
 
 serve(async (req) => {
@@ -46,7 +47,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { invoiceId } = (await req.json()) as InvoiceReminderRequest;
+    const { invoiceId, channel = "email" } = (await req.json()) as InvoiceReminderRequest;
     if (!invoiceId) {
       return new Response(
         JSON.stringify({ error: "Missing invoiceId" }),
@@ -65,7 +66,7 @@ serve(async (req) => {
         .single(),
       supabase
         .from("profiles")
-        .select("tier, company_name, company_email, company_phone")
+        .select("tier, company_name, company_email, company_phone, sms_phone")
         .eq("id", user.id)
         .single(),
     ]);
@@ -88,10 +89,33 @@ serve(async (req) => {
       );
     }
 
-    // Check for client email
-    if (!invoice.client_email) {
+    // SMS requires Premium tier
+    if (channel === "sms" && profile.tier !== "premium") {
+      return new Response(
+        JSON.stringify({ error: "Upgrade to Premium to send SMS reminders" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // SMS requires contractor to have sms_phone configured
+    if (channel === "sms" && !profile.sms_phone) {
+      return new Response(
+        JSON.stringify({ error: "SMS not configured. Set up your QuoteCat phone number first." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check for client contact info based on channel
+    if (channel === "email" && !invoice.client_email) {
       return new Response(
         JSON.stringify({ error: "No client email on invoice" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (channel === "sms" && !invoice.client_phone) {
+      return new Response(
+        JSON.stringify({ error: "No client phone on invoice" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -135,50 +159,114 @@ serve(async (req) => {
       companyEmail: profile.company_email,
     });
 
-    // Send email via Resend
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!RESEND_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "Email service not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Send reminder based on channel
+    if (channel === "email") {
+      // Send email via Resend
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (!RESEND_API_KEY) {
+        return new Response(
+          JSON.stringify({ error: "Email service not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "QuoteCat <noreply@quotecat.ai>",
-        to: [invoice.client_email],
-        subject,
-        html: emailHtml,
-        reply_to: profile.company_email || undefined,
-      }),
-    });
-
-    if (!emailResponse.ok) {
-      const errorText = await emailResponse.text();
-      console.error("[send-invoice-reminder] Resend API error:", errorText);
-
-      // Log failure
-      await supabase.from("invoice_reminders").insert({
-        invoice_id: invoiceId,
-        user_id: user.id,
-        reminder_type: "email",
-        remind_at: new Date().toISOString(),
-        status: "failed",
-        sent_at: new Date().toISOString(),
-        error: errorText,
-        reminder_number: (invoice.reminder_count || 0) + 1,
+      const emailResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "QuoteCat <noreply@quotecat.ai>",
+          to: [invoice.client_email],
+          subject,
+          html: emailHtml,
+          reply_to: profile.company_email || undefined,
+        }),
       });
 
-      return new Response(
-        JSON.stringify({ error: "Failed to send email" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (!emailResponse.ok) {
+        const errorText = await emailResponse.text();
+        console.error("[send-invoice-reminder] Resend API error:", errorText);
+
+        // Log failure
+        await supabase.from("invoice_reminders").insert({
+          invoice_id: invoiceId,
+          user_id: user.id,
+          reminder_type: "email",
+          remind_at: new Date().toISOString(),
+          status: "failed",
+          sent_at: new Date().toISOString(),
+          error: errorText,
+          reminder_number: (invoice.reminder_count || 0) + 1,
+        });
+
+        return new Response(
+          JSON.stringify({ error: "Failed to send email" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // Send SMS via Twilio
+      const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+      const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+
+      if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+        return new Response(
+          JSON.stringify({ error: "SMS service not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Generate SMS message
+      const smsMessage = generateReminderSmsMessage({
+        invoiceNumber: invoice.invoice_number,
+        amount,
+        daysOverdue: daysOverdue > 0 ? daysOverdue : undefined,
+        invoiceLink,
+        companyName: profile.company_name || "Your contractor",
+      });
+
+      // Format phone number to E.164
+      const toPhone = formatPhoneE164(invoice.client_phone);
+
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+      const twilioAuth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
+
+      const smsResponse = await fetch(twilioUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${twilioAuth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          From: profile.sms_phone,
+          To: toPhone,
+          Body: smsMessage,
+        }),
+      });
+
+      if (!smsResponse.ok) {
+        const errorData = await smsResponse.json();
+        console.error("[send-invoice-reminder] Twilio API error:", errorData);
+
+        // Log failure
+        await supabase.from("invoice_reminders").insert({
+          invoice_id: invoiceId,
+          user_id: user.id,
+          reminder_type: "sms",
+          remind_at: new Date().toISOString(),
+          status: "failed",
+          sent_at: new Date().toISOString(),
+          error: errorData.message || "SMS failed",
+          reminder_number: (invoice.reminder_count || 0) + 1,
+        });
+
+        return new Response(
+          JSON.stringify({ error: errorData.message || "Failed to send SMS" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Update invoice reminder tracking
@@ -197,19 +285,20 @@ serve(async (req) => {
     await supabase.from("invoice_reminders").insert({
       invoice_id: invoiceId,
       user_id: user.id,
-      reminder_type: "email",
+      reminder_type: channel,
       remind_at: new Date().toISOString(),
       status: "sent",
       sent_at: new Date().toISOString(),
       reminder_number: newReminderCount,
     });
 
-    console.log(`[send-invoice-reminder] Sent reminder for invoice ${invoiceId} to ${invoice.client_email}`);
+    const recipient = channel === "email" ? invoice.client_email : invoice.client_phone;
+    console.log(`[send-invoice-reminder] Sent ${channel} reminder for invoice ${invoiceId} to ${recipient}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        channel: "email",
+        channel,
         sentAt: new Date().toISOString(),
         reminderCount: newReminderCount,
       }),
@@ -372,4 +461,35 @@ function generateReminderEmailHtml(params: {
 </body>
 </html>
   `.trim();
+}
+
+function generateReminderSmsMessage(params: {
+  invoiceNumber: string;
+  amount: string;
+  daysOverdue?: number;
+  invoiceLink: string;
+  companyName: string;
+}): string {
+  const { invoiceNumber, amount, daysOverdue, invoiceLink, companyName } = params;
+
+  if (daysOverdue && daysOverdue > 0) {
+    return `Payment reminder from ${companyName}: Invoice ${invoiceNumber} for ${amount} is ${daysOverdue} day${daysOverdue === 1 ? "" : "s"} overdue. View & pay: ${invoiceLink}`;
+  }
+
+  return `Payment reminder from ${companyName}: Invoice ${invoiceNumber} for ${amount} is due. View & pay: ${invoiceLink}`;
+}
+
+function formatPhoneE164(phone: string): string {
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 10) {
+    return `+1${cleaned}`;
+  }
+  if (cleaned.length === 11 && cleaned.startsWith("1")) {
+    return `+${cleaned}`;
+  }
+  // Already has country code or other format
+  if (phone.startsWith("+")) {
+    return phone;
+  }
+  return `+${cleaned}`;
 }
