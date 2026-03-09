@@ -221,7 +221,7 @@ serve(async (req) => {
       // Generate SMS message
       const smsMessage = generateReminderSmsMessage({
         invoiceNumber: invoice.invoice_number,
-        amount,
+        amount: formatCurrency(amount, invoice.currency || "USD"),
         daysOverdue: daysOverdue > 0 ? daysOverdue : undefined,
         invoiceLink,
         companyName: profile.company_name || "Your contractor",
