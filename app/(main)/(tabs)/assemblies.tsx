@@ -2,8 +2,7 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTechContext } from "@/contexts/TechContext";
 import { Screen } from "@/modules/core/ui";
-import { useAssemblies } from "@/modules/assemblies";
-import { deleteAssembly } from "@/modules/assemblies/storage";
+import { useAssemblies, deleteAssembly } from "@/modules/assemblies";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import React, { memo, useMemo, useState } from "react";

@@ -26,6 +26,7 @@ export type CompanyDetails = {
   website: string;
   address: string;
   logoUrl?: string; // Optional logo URL
+  smsPhone?: string; // Twilio number for SMS (configured in portal)
 };
 
 export type InvoiceSettings = {

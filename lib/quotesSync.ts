@@ -8,7 +8,7 @@ import { normalizeQuote } from "./validation";
 import { getCurrentUserId } from "./authUtils";
 import { getTechContext } from "./team";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getLocallyDeletedQuoteIdsDB } from "./database";
+import { getTombstonesDB, deleteTombstoneDB } from "./database";
 
 const SYNC_METADATA_KEY = "@quotecat/sync_metadata";
 const SYNC_LOCK_KEY = "@quotecat/quotes_sync_lock";
@@ -528,17 +528,21 @@ export async function syncQuotes(): Promise<{
     const cloudMap = new Map(cloudQuotes.map((q) => [q.id, q]));
     const localMap = new Map(localQuotes.map((q) => [q.id, q]));
 
-    // Step 4: Get locally deleted quote IDs to avoid re-downloading them
-    const locallyDeletedIds = new Set(getLocallyDeletedQuoteIdsDB());
-    if (locallyDeletedIds.size > 0) {
-      console.log(`🗑️ Found ${locallyDeletedIds.size} locally deleted quotes to skip`);
+    // Step 4: Process tombstones - delete from cloud and clear tombstones
+    const tombstoneIds = getTombstonesDB('quote');
+    const locallyDeletedIds = new Set(tombstoneIds);
+    if (tombstoneIds.length > 0) {
+      console.log(`🪦 Found ${tombstoneIds.length} tombstones to process`);
 
-      // Clean up orphans: delete from cloud any quotes that were deleted locally
-      for (const deletedId of locallyDeletedIds) {
+      // Delete from cloud and clear tombstones
+      for (const deletedId of tombstoneIds) {
         try {
           await deleteQuoteFromCloud(deletedId);
+          // Clear tombstone after successful cloud deletion
+          deleteTombstoneDB(deletedId, 'quote');
         } catch (error) {
-          // Silently continue - might already be deleted or not exist
+          // Keep tombstone to retry on next sync
+          console.warn(`Failed to delete quote ${deletedId} from cloud, will retry:`, error);
         }
       }
     }

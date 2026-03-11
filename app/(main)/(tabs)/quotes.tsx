@@ -15,7 +15,9 @@ import {
 } from "@/lib/quotes";
 import { generateAndShareMultiTierPDF } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
-import { getUserState } from "@/lib/user";
+import { getUserState, incrementPdfCount } from "@/lib/user";
+import { canExportPDF } from "@/lib/features";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { getCachedLogo } from "@/lib/logo";
 import { isSyncAvailable, syncQuotes } from "@/lib/quotesSync";
 import { getActiveChangeOrderCount } from "@/modules/changeOrders";
@@ -189,7 +191,7 @@ export default function QuotesList() {
     setRefreshing(false);
   }, [load]);
 
-  const handleDelete = useCallback(async (quote: Quote) => {
+  const performDelete = useCallback(async (quote: Quote) => {
     // Store deleted quote for undo
     setDeletedQuote(quote);
 
@@ -197,12 +199,21 @@ export default function QuotesList() {
     setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
 
     try {
-      // If quote is part of a group, clean up links on related quotes first
-      if (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0) {
+      // If quote is part of a tier group, clean up the group
+      if (quote.tierGroupId) {
+        const linkedQuotes = await getLinkedQuotes(quote.id);
+        const remainingQuotes = linkedQuotes.filter(q => q.id !== quote.id);
+
+        // If only 1 quote remains, clear its tierGroupId (no longer a group)
+        if (remainingQuotes.length === 1) {
+          await updateQuote(remainingQuotes[0].id, { tierGroupId: undefined, tier: undefined });
+        }
+      }
+      // FALLBACK: Clean up linkedQuoteIds for old data
+      else if (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0) {
         const linkedQuotes = await getLinkedQuotes(quote.id);
         for (const linked of linkedQuotes) {
           if (linked.id !== quote.id) {
-            // Remove this quote's ID from the linked quote's linkedQuoteIds
             const updatedLinks = (linked.linkedQuoteIds || []).filter(id => id !== quote.id);
             await updateQuote(linked.id, { linkedQuoteIds: updatedLinks.length > 0 ? updatedLinks : undefined });
           }
@@ -225,6 +236,49 @@ export default function QuotesList() {
     // Show undo snackbar
     setShowUndo(true);
   }, []);
+
+  const handleDeleteAll = useCallback(async (quotesToDelete: Quote[]) => {
+    // Optimistically remove all from list
+    const idsToDelete = new Set(quotesToDelete.map(q => q.id));
+    setQuotes((prev) => prev.filter((q) => !idsToDelete.has(q.id)));
+
+    // Delete all from storage (no need to clean up links since we're deleting the whole group)
+    for (const quote of quotesToDelete) {
+      await deleteQuote(quote.id);
+    }
+  }, []);
+
+  const handleDelete = useCallback(async (quote: Quote) => {
+    // Check if this is the base quote of a tier group
+    const isPartOfGroup = quote.tierGroupId || (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0);
+    const isBase = quote.tier === "Base" && isPartOfGroup;
+
+    if (isBase) {
+      // Get all linked quotes for the "Delete All" option
+      const linkedQuotes = await getLinkedQuotes(quote.id);
+      const otherQuotes = linkedQuotes.filter(q => q.id !== quote.id);
+
+      Alert.alert(
+        "Delete Base Quote",
+        `Deleting the base will ungroup the ${otherQuotes.length} other option${otherQuotes.length === 1 ? "" : "s"}. They'll remain as separate quotes.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete All Options",
+            style: "destructive",
+            onPress: () => handleDeleteAll(linkedQuotes),
+          },
+          {
+            text: "Delete Just This",
+            onPress: () => performDelete(quote),
+          },
+        ]
+      );
+    } else {
+      // Not a base quote, delete normally
+      await performDelete(quote);
+    }
+  }, [performDelete, handleDeleteAll]);
 
   const handleUndo = useCallback(async () => {
     if (!deletedQuote) return;
@@ -309,27 +363,59 @@ export default function QuotesList() {
         return;
       }
 
-      // Load user state, preferences, and logo
-      const [userState, prefs] = await Promise.all([
-        getUserState(),
-        loadPreferences(),
-      ]);
+      // Check limits first
+      const userState = await getUserState();
+      const { allowed, reason, remaining } = canExportPDF(userState);
 
-      let logo = null;
-      try {
-        logo = await getCachedLogo();
-      } catch {
-        // Logo loading failed, continue without it
+      if (!allowed) {
+        Alert.alert(
+          "Limit Reached",
+          reason,
+          [
+            { text: "OK", style: "cancel" },
+            { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+          ]
+        );
+        return;
       }
 
-      // Generate and share combined PDF
-      // Strip data URL prefix if present - PDF template adds it back
-      const rawBase64 = logo?.base64?.replace(/^data:image\/\w+;base64,/, '');
-      await generateAndShareMultiTierPDF(linkedQuotes, {
-        includeBranding: userState.tier === "free",
-        companyDetails: prefs.company,
-        logoBase64: rawBase64,
-      });
+      const doExport = async () => {
+        const prefs = await loadPreferences();
+
+        let logo = null;
+        try {
+          logo = await getCachedLogo();
+        } catch {
+          // Logo loading failed, continue without it
+        }
+
+        // Generate and share combined PDF
+        const rawBase64 = logo?.base64?.replace(/^data:image\/\w+;base64,/, '');
+        await generateAndShareMultiTierPDF(linkedQuotes, {
+          includeBranding: userState.tier === "free",
+          companyDetails: prefs.company,
+          logoBase64: rawBase64,
+        });
+
+        // Increment counter for free users (counts as 1 export for all tiers)
+        if (userState.tier === "free") {
+          await incrementPdfCount();
+        }
+      };
+
+      // Show confirmation for free users
+      if (userState.tier === "free" && remaining !== undefined) {
+        Alert.alert(
+          "Export All Options",
+          `This will use 1 of your ${remaining} remaining PDF exports.`,
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Export", onPress: doExport }
+          ]
+        );
+      } else {
+        await doExport();
+      }
     } catch (error) {
       Alert.alert(
         "Export Failed",
@@ -538,7 +624,17 @@ export default function QuotesList() {
     const result: QuoteOrGroup[] = [];
     const processedIds = new Set<string>();
 
-    // Helper to collect all linked quotes transitively (handles star topology)
+    // NEW: Group quotes by tierGroupId (simple, robust approach)
+    const tierGroups = new Map<string, Quote[]>();
+    for (const quote of filteredQuotes) {
+      if (quote.tierGroupId) {
+        const existing = tierGroups.get(quote.tierGroupId) || [];
+        existing.push(quote);
+        tierGroups.set(quote.tierGroupId, existing);
+      }
+    }
+
+    // FALLBACK: Helper to collect all linked quotes transitively (for old data without tierGroupId)
     const collectLinkedQuotes = (startQuote: Quote): Quote[] => {
       const group: Quote[] = [];
       const toProcess = [startQuote];
@@ -550,7 +646,7 @@ export default function QuotesList() {
         seen.add(current.id);
         group.push(current);
 
-        // Check this quote's linked quotes
+        // Check this quote's linked quotes (legacy support)
         if (current.linkedQuoteIds) {
           for (const linkedId of current.linkedQuoteIds) {
             if (!seen.has(linkedId)) {
@@ -570,9 +666,26 @@ export default function QuotesList() {
       // Skip if already processed as part of a group
       if (processedIds.has(quote.id)) continue;
 
-      // Check if this quote has linked quotes
-      if (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0) {
-        // Collect all linked quotes transitively (follows links through base)
+      // NEW: Check tierGroupId first (robust approach)
+      if (quote.tierGroupId) {
+        const groupQuotes = tierGroups.get(quote.tierGroupId) || [quote];
+
+        // Mark all as processed
+        for (const gq of groupQuotes) {
+          processedIds.add(gq.id);
+        }
+
+        // Only create a group if we have 2+ quotes
+        if (groupQuotes.length >= 2) {
+          // Sort by price for consistent display
+          const sorted = [...groupQuotes].sort((a, b) => (a.total || 0) - (b.total || 0));
+          result.push({ type: "group", quotes: sorted });
+        } else {
+          result.push({ type: "single", quote });
+        }
+      }
+      // FALLBACK: Check linkedQuoteIds for backward compatibility
+      else if (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0) {
         const groupQuotes = collectLinkedQuotes(quote);
 
         // Mark all as processed
@@ -815,6 +928,7 @@ export default function QuotesList() {
                     onLongPress={(q) => enterSelectMode(q.id)}
                     onCreateTier={handleCreateTier}
                     onExportAllTiers={handleExportAllTiers}
+                    onDeleteAll={handleDeleteAll}
                     onUnlink={handleUnlink}
                     coCounts={coCounts}
                   />

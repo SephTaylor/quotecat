@@ -23,9 +23,9 @@ import {
   createPricebookEntryFromSharedItem,
 } from "@/lib/pricebookMatching";
 import { savePricebookItem } from "@/lib/pricebook";
-import { saveAssembly } from "@/modules/assemblies/storage";
+import { saveAssembly } from "@/modules/assemblies";
 import type { SharedAssembly, ItemMatchResult, PricebookItem } from "@/lib/types";
-import type { Assembly, AssemblyItem } from "@/modules/assemblies/types";
+import type { Assembly, AssemblyItem } from "@/modules/assemblies";
 
 type ItemState = {
   result: ItemMatchResult;

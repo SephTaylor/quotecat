@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -113,6 +114,8 @@ export default function InvoiceDetailScreen() {
 
   // Profitability state
   const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
+  // SMS configuration (Twilio number from portal)
+  const [smsPhone, setSmsPhone] = useState<string | undefined>(undefined);
 
   const loadInvoice = useCallback(async () => {
     if (!invoiceId) return;
@@ -147,14 +150,15 @@ export default function InvoiceDetailScreen() {
     loadInvoice();
   }, [loadInvoice]);
 
-  // Load overhead settings
+  // Load overhead settings and SMS configuration
   useEffect(() => {
     (async () => {
       try {
         const prefs = await loadPreferences();
         setOverheadSettings(prefs.overhead);
+        setSmsPhone(prefs.company?.smsPhone);
       } catch (error) {
-        console.error("Failed to load overhead settings:", error);
+        console.error("Failed to load preferences:", error);
       }
     })();
   }, []);
@@ -283,13 +287,45 @@ export default function InvoiceDetailScreen() {
 
     console.log("📧 handleSendReminder called", { isPro, isPremium, clientEmail: invoice.clientEmail, clientPhone: invoice.clientPhone, channel });
 
-    // Check tier
+    // FREE USERS: Open mailto with prefilled message
     if (!isPro) {
-      console.log("📧 Not Pro, showing upgrade prompt");
       setShowMenu(false);
-      const purchased = await presentPaywallAndSync();
-      if (!purchased) {
-        Alert.alert("Upgrade Required", "Visit quotecat.ai to upgrade and send reminders.");
+
+      if (!invoice.clientEmail) {
+        Alert.alert("No Email", "Add a client email address to send a reminder.");
+        return;
+      }
+
+      const amount = calculateInvoiceTotals(invoice).total.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
+      const dueDate = invoice.dueDate
+        ? new Date(invoice.dueDate).toLocaleDateString()
+        : "";
+      const isOverdue = invoice.dueDate && new Date(invoice.dueDate) < new Date();
+
+      const subject = isOverdue
+        ? `Payment Overdue: Invoice ${invoice.invoiceNumber || invoice.id.slice(0, 8)}`
+        : `Payment Reminder: Invoice ${invoice.invoiceNumber || invoice.id.slice(0, 8)}`;
+
+      const body = `Hi${invoice.clientName ? ` ${invoice.clientName}` : ""},
+
+This is a friendly reminder that invoice ${invoice.invoiceNumber || invoice.id.slice(0, 8)} for ${amount}${isOverdue ? ` was due on ${dueDate}` : dueDate ? ` is due on ${dueDate}` : ""}.
+
+Please let me know if you have any questions.
+
+Thank you!`;
+
+      const mailtoUrl = `mailto:${invoice.clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+      // Try to open mailto, fall back to Share sheet (for simulator)
+      try {
+        await Linking.openURL(mailtoUrl);
+      } catch {
+        await Share.share({
+          message: `To: ${invoice.clientEmail}\nSubject: ${subject}\n\n${body}`,
+        });
       }
       return;
     }
@@ -356,6 +392,16 @@ Thank you!`;
       return;
     }
 
+    // Check SMS is configured in portal (requires Twilio number)
+    if (selectedChannel === "sms" && !smsPhone) {
+      Alert.alert(
+        "SMS Not Set Up",
+        "Set up SMS messaging in your QuoteCat Portal settings to send text reminders to clients.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     // Check contact info for selected channel
     if (selectedChannel === "email" && !invoice.clientEmail) {
       Alert.alert("No Email", "This invoice doesn't have a client email address.");
@@ -389,7 +435,7 @@ Thank you!`;
     } finally {
       setSendingReminder(false);
     }
-  }, [invoice, isPro, isPremium, loadInvoice]);
+  }, [invoice, isPro, isPremium, smsPhone, loadInvoice]);
 
   const handleSendInvoiceLink = useCallback(() => {
     if (!invoice) return;
@@ -767,7 +813,8 @@ Thank you!`;
           headerRight: () => (
             <Pressable
               onPress={() => setShowMenu(true)}
-              style={{ padding: 8, marginRight: -8 }}
+              style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}
+              hitSlop={8}
             >
               <Ionicons name="ellipsis-vertical" size={22} color={theme.colors.text} />
             </Pressable>
@@ -1902,37 +1949,24 @@ Thank you!`;
                 style={styles.menuModal}
                 onPress={(e) => e.stopPropagation()}
               >
-                {/* Send Reminder */}
+                {/* Send Reminder - available to all tiers */}
                 <Pressable
-                  style={[
-                    styles.menuItem,
-                    !isPro && styles.menuItemDisabled,
-                  ]}
+                  style={styles.menuItem}
                   onPress={() => handleSendReminder()}
                   disabled={sendingReminder}
                 >
                   <Ionicons
-                    name={isPremium && invoice.clientPhone ? "chatbubble-ellipses-outline" : "mail-outline"}
+                    name={isPremium && invoice?.clientPhone ? "chatbubble-ellipses-outline" : "mail-outline"}
                     size={20}
-                    color={!isPro ? theme.colors.muted : theme.colors.text}
+                    color={theme.colors.text}
                   />
-                  <Text
-                    style={[
-                      styles.menuItemText,
-                      !isPro && styles.menuItemTextDisabled,
-                    ]}
-                  >
+                  <Text style={styles.menuItemText}>
                     {sendingReminder
                       ? "Sending..."
                       : invoice?.status === "overdue"
                       ? "Send Overdue Notice"
                       : "Send Reminder"}
                   </Text>
-                  {!isPro && (
-                    <View style={styles.proBadge}>
-                      <Text style={styles.proBadgeText}>PRO</Text>
-                    </View>
-                  )}
                 </Pressable>
 
                 {/* Send Invoice Link - Pro only (requires cloud sync) */}

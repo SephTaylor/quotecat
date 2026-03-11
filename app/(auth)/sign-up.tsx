@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useNavigation } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
@@ -27,6 +27,8 @@ const LAST_EMAIL_KEY = "@quotecat/last-email";
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const canGoBack = navigation.canGoBack();
   const { theme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -272,7 +274,13 @@ export default function SignUpScreen() {
 
               <Pressable
                 style={styles.backButton}
-                onPress={() => router.back()}
+                onPress={() => {
+                  if (canGoBack) {
+                    router.back();
+                  } else {
+                    router.replace("/(main)/(tabs)/dashboard");
+                  }
+                }}
                 disabled={loading}
               >
                 <Text style={styles.backButtonText}>Back to App</Text>

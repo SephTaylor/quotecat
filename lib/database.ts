@@ -10,7 +10,7 @@ import type { Product, Category } from "@/modules/catalog/seed";
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 16;
 
 /**
  * Get or create the database instance
@@ -525,6 +525,156 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     console.log(`👷 Added team_members table and labor_entries columns`);
   }
 
+  if (fromVersion < 14) {
+    // Add assemblies table (migrated from AsyncStorage)
+    // Assemblies are reusable templates for groups of products
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS assemblies (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        category TEXT,
+        items TEXT NOT NULL DEFAULT '[]',
+        defaults TEXT,
+        user_id TEXT,
+        synced_at TEXT,
+        deleted_at TEXT,
+        created_at TEXT,
+        updated_at TEXT
+      );
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_assemblies_user_id ON assemblies(user_id);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_assemblies_updated_at ON assemblies(updated_at);
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_assemblies_deleted_at ON assemblies(deleted_at);
+    `);
+
+    // Add change_orders table (migrated from AsyncStorage)
+    // Change orders track modifications to approved quotes
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS change_orders (
+        id TEXT PRIMARY KEY,
+        quote_id TEXT NOT NULL,
+        quote_number TEXT,
+        number INTEGER NOT NULL,
+        items TEXT NOT NULL DEFAULT '[]',
+        labor_before REAL DEFAULT 0,
+        labor_after REAL DEFAULT 0,
+        labor_delta REAL DEFAULT 0,
+        net_change REAL DEFAULT 0,
+        quote_total_before REAL DEFAULT 0,
+        quote_total_after REAL DEFAULT 0,
+        note TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
+      );
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_change_orders_quote_id ON change_orders(quote_id);
+    `);
+
+    console.log(`📦 Added assemblies and change_orders tables`);
+  }
+
+  if (fromVersion < 15) {
+    // Add tombstones table for tracking deletions (hard delete + sync)
+    // This replaces soft deletes (deleted_at) for quotes, invoices, clients, assemblies
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS tombstones (
+        id TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        deleted_at TEXT NOT NULL,
+        PRIMARY KEY (id, entity_type)
+      );
+    `);
+
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_tombstones_entity_type ON tombstones(entity_type);
+    `);
+
+    // Clean up old soft-deleted test data (no real users yet)
+    // These records have deleted_at set but are still in the database
+    database.execSync(`DELETE FROM quotes WHERE deleted_at IS NOT NULL;`);
+    database.execSync(`DELETE FROM invoices WHERE deleted_at IS NOT NULL;`);
+    database.execSync(`DELETE FROM clients WHERE deleted_at IS NOT NULL;`);
+    database.execSync(`DELETE FROM assemblies WHERE deleted_at IS NOT NULL;`);
+
+    console.log(`🪦 Added tombstones table and cleaned up soft-deleted test data`);
+  }
+
+  if (fromVersion < 16) {
+    // Add tier_group_id column for tier groups
+    // This is a simpler, more robust approach than linkedQuoteIds
+    // All quotes in a tier group share the same UUID
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(quotes)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("tier_group_id")) {
+      database.execSync(`ALTER TABLE quotes ADD COLUMN tier_group_id TEXT;`);
+    }
+
+    // Create index for fast tier group lookups
+    database.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_quotes_tier_group_id ON quotes(tier_group_id);
+    `);
+
+    // Migrate existing tier groups from linkedQuoteIds to tierGroupId
+    // Find all quotes that have linkedQuoteIds and assign them a shared tierGroupId
+    const quotesWithLinks = database.getAllSync<{ id: string; linked_quote_ids: string; tier: string }>(
+      "SELECT id, linked_quote_ids, tier FROM quotes WHERE linked_quote_ids IS NOT NULL AND linked_quote_ids != '[]'"
+    );
+
+    // Group quotes by their tier group (find connected components)
+    const processed = new Set<string>();
+    for (const quote of quotesWithLinks) {
+      if (processed.has(quote.id)) continue;
+
+      const linkedIds = JSON.parse(quote.linked_quote_ids || "[]") as string[];
+      if (linkedIds.length === 0) continue;
+
+      // Generate a new tierGroupId for this group
+      const tierGroupId = `tg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+      // Collect all quotes in this group (including this one and all linked)
+      const groupIds = new Set<string>([quote.id, ...linkedIds]);
+
+      // Also check the linked quotes' links to ensure we get everyone
+      for (const linkedId of linkedIds) {
+        const linked = database.getFirstSync<{ linked_quote_ids: string }>(
+          "SELECT linked_quote_ids FROM quotes WHERE id = ?",
+          [linkedId]
+        );
+        if (linked?.linked_quote_ids) {
+          const moreIds = JSON.parse(linked.linked_quote_ids) as string[];
+          moreIds.forEach((id) => groupIds.add(id));
+        }
+      }
+
+      // Update all quotes in this group with the tierGroupId
+      for (const groupQuoteId of groupIds) {
+        database.runSync(
+          "UPDATE quotes SET tier_group_id = ? WHERE id = ?",
+          [tierGroupId, groupQuoteId]
+        );
+        processed.add(groupQuoteId);
+      }
+    }
+
+    console.log(`🏷️ Added tier_group_id column and migrated ${processed.size} quotes to new tier group system`);
+  }
+
   // Update version
   database.runSync(
     "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
@@ -565,6 +715,7 @@ function rowToQuote(row: any): Quote {
     status: row.status || "draft",
     pinned: row.pinned === 1,
     tier: row.tier || undefined,
+    tierGroupId: row.tier_group_id || undefined,
     linkedQuoteIds: row.linked_quote_ids ? JSON.parse(row.linked_quote_ids) : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -574,24 +725,19 @@ function rowToQuote(row: any): Quote {
 
 /**
  * List quotes with pagination
- * Returns active quotes (not deleted) sorted by most recent
+ * Returns all quotes sorted by most recent (hard deletes mean no soft-deleted records exist)
  */
 export function listQuotesDB(options?: {
   limit?: number;
   offset?: number;
   status?: string;
-  includeDeleted?: boolean;
 }): Quote[] {
   try {
     const database = getDatabase();
-    const { limit = 50, offset = 0, status, includeDeleted = false } = options || {};
+    const { limit = 50, offset = 0, status } = options || {};
 
     let sql = "SELECT * FROM quotes WHERE 1=1";
     const params: any[] = [];
-
-    if (!includeDeleted) {
-      sql += " AND deleted_at IS NULL";
-    }
 
     if (status) {
       sql += " AND status = ?";
@@ -612,14 +758,12 @@ export function listQuotesDB(options?: {
 /**
  * Get total count of quotes (for pagination)
  */
-export function getQuoteCountDB(includeDeleted = false): number {
+export function getQuoteCountDB(): number {
   try {
     const database = getDatabase();
-    let sql = "SELECT COUNT(*) as count FROM quotes";
-    if (!includeDeleted) {
-      sql += " WHERE deleted_at IS NULL";
-    }
-    const result = database.getFirstSync<{ count: number }>(sql);
+    const result = database.getFirstSync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM quotes"
+    );
     return result?.count || 0;
   } catch (error) {
     console.error("Failed to get quote count from SQLite:", error);
@@ -645,17 +789,35 @@ export function getQuoteByIdDB(id: string): Quote | null {
 }
 
 /**
+ * Get all quotes in a tier group by tierGroupId
+ * Returns quotes sorted by price (low to high) for consistent tier display
+ */
+export function getQuotesByTierGroupIdDB(tierGroupId: string): Quote[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT * FROM quotes WHERE tier_group_id = ? ORDER BY (labor + COALESCE(material_estimate, 0)) ASC",
+      [tierGroupId]
+    );
+    return rows.map(rowToQuote);
+  } catch (error) {
+    console.error(`Failed to get quotes by tier group ${tierGroupId}:`, error);
+    return [];
+  }
+}
+
+/**
  * Save a quote (insert or update)
  */
 export function saveQuoteDB(quote: Quote): void {
   try {
     const database = getDatabase();
 
-    // Debug logging for tier/linkedQuoteIds
-    if (quote.tier || quote.linkedQuoteIds) {
+    // Debug logging for tier groups
+    if (quote.tier || quote.tierGroupId) {
       console.log(`[DB] saveQuoteDB ${quote.id}:`, {
         tier: quote.tier,
-        linkedQuoteIds: quote.linkedQuoteIds,
+        tierGroupId: quote.tierGroupId,
       });
     }
 
@@ -663,9 +825,9 @@ export function saveQuoteDB(quote: Quote): void {
       `INSERT OR REPLACE INTO quotes (
         id, quote_number, name, client_name, client_email, client_phone, client_address,
         items, labor, labor_entries, material_estimate, overhead, markup_percent, tax_percent,
-        notes, change_history, approved_snapshot, follow_up_date, currency, status, pinned, tier, linked_quote_ids,
+        notes, change_history, approved_snapshot, follow_up_date, currency, status, pinned, tier, tier_group_id, linked_quote_ids,
         created_at, updated_at, deleted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         quote.id,
         quote.quoteNumber || null,
@@ -689,6 +851,7 @@ export function saveQuoteDB(quote: Quote): void {
         quote.status || "draft",
         quote.pinned ? 1 : 0,
         quote.tier || null,
+        quote.tierGroupId || null,
         quote.linkedQuoteIds ? JSON.stringify(quote.linkedQuoteIds) : null,
         quote.createdAt,
         quote.updatedAt,
@@ -727,30 +890,14 @@ export function saveQuotesBatchDB(quotes: Quote[]): void {
 export function deleteQuoteDB(id: string): void {
   try {
     const database = getDatabase();
-    const now = new Date().toISOString();
-    database.runSync(
-      "UPDATE quotes SET deleted_at = ?, updated_at = ? WHERE id = ?",
-      [now, now, id]
-    );
+    // Use transaction for atomicity: tombstone + hard delete
+    database.withTransactionSync(() => {
+      insertTombstoneSync(database, id, 'quote');
+      database.runSync("DELETE FROM quotes WHERE id = ?", [id]);
+    });
   } catch (error) {
     console.error(`Failed to delete quote ${id} from SQLite:`, error);
     throw error;
-  }
-}
-
-/**
- * Get IDs of locally deleted quotes (for sync to skip re-downloading)
- */
-export function getLocallyDeletedQuoteIdsDB(): string[] {
-  try {
-    const database = getDatabase();
-    const rows = database.getAllSync(
-      "SELECT id FROM quotes WHERE deleted_at IS NOT NULL"
-    );
-    return rows.map((row: any) => row.id);
-  } catch (error) {
-    console.error("Failed to get deleted quote IDs from SQLite:", error);
-    return [];
   }
 }
 
@@ -818,18 +965,13 @@ export function listInvoicesDB(options?: {
   limit?: number;
   offset?: number;
   status?: string;
-  includeDeleted?: boolean;
 }): Invoice[] {
   try {
     const database = getDatabase();
-    const { limit = 50, offset = 0, status, includeDeleted = false } = options || {};
+    const { limit = 50, offset = 0, status } = options || {};
 
     let sql = "SELECT * FROM invoices WHERE 1=1";
     const params: any[] = [];
-
-    if (!includeDeleted) {
-      sql += " AND deleted_at IS NULL";
-    }
 
     if (status) {
       sql += " AND status = ?";
@@ -850,14 +992,12 @@ export function listInvoicesDB(options?: {
 /**
  * Get total count of invoices
  */
-export function getInvoiceCountDB(includeDeleted = false): number {
+export function getInvoiceCountDB(): number {
   try {
     const database = getDatabase();
-    let sql = "SELECT COUNT(*) as count FROM invoices";
-    if (!includeDeleted) {
-      sql += " WHERE deleted_at IS NULL";
-    }
-    const result = database.getFirstSync<{ count: number }>(sql);
+    const result = database.getFirstSync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM invoices"
+    );
     return result?.count || 0;
   } catch (error) {
     console.error("Failed to get invoice count from SQLite:", error);
@@ -960,30 +1100,14 @@ export function saveInvoicesBatchDB(invoices: Invoice[]): void {
 export function deleteInvoiceDB(id: string): void {
   try {
     const database = getDatabase();
-    const now = new Date().toISOString();
-    database.runSync(
-      "UPDATE invoices SET deleted_at = ?, updated_at = ? WHERE id = ?",
-      [now, now, id]
-    );
+    // Use transaction for atomicity: tombstone + hard delete
+    database.withTransactionSync(() => {
+      insertTombstoneSync(database, id, 'invoice');
+      database.runSync("DELETE FROM invoices WHERE id = ?", [id]);
+    });
   } catch (error) {
     console.error(`Failed to delete invoice ${id} from SQLite:`, error);
     throw error;
-  }
-}
-
-/**
- * Get IDs of locally deleted invoices (for sync to skip re-downloading)
- */
-export function getLocallyDeletedInvoiceIdsDB(): string[] {
-  try {
-    const database = getDatabase();
-    const rows = database.getAllSync(
-      "SELECT id FROM invoices WHERE deleted_at IS NOT NULL"
-    );
-    return rows.map((row: any) => row.id);
-  } catch (error) {
-    console.error("Failed to get deleted invoice IDs from SQLite:", error);
-    return [];
   }
 }
 
@@ -1031,18 +1155,13 @@ export function listClientsDB(options?: {
   limit?: number;
   offset?: number;
   search?: string;
-  includeDeleted?: boolean;
 }): Client[] {
   try {
     const database = getDatabase();
-    const { limit = 50, offset = 0, search, includeDeleted = false } = options || {};
+    const { limit = 50, offset = 0, search } = options || {};
 
     let sql = "SELECT * FROM clients WHERE 1=1";
     const params: any[] = [];
-
-    if (!includeDeleted) {
-      sql += " AND deleted_at IS NULL";
-    }
 
     if (search) {
       sql += " AND (name LIKE ? OR email LIKE ?)";
@@ -1064,14 +1183,12 @@ export function listClientsDB(options?: {
 /**
  * Get total count of clients
  */
-export function getClientCountDB(includeDeleted = false): number {
+export function getClientCountDB(): number {
   try {
     const database = getDatabase();
-    let sql = "SELECT COUNT(*) as count FROM clients";
-    if (!includeDeleted) {
-      sql += " WHERE deleted_at IS NULL";
-    }
-    const result = database.getFirstSync<{ count: number }>(sql);
+    const result = database.getFirstSync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM clients"
+    );
     return result?.count || 0;
   } catch (error) {
     console.error("Failed to get client count from SQLite:", error);
@@ -1146,35 +1263,19 @@ export function saveClientsBatchDB(clients: Client[]): void {
 }
 
 /**
- * Soft delete a client
+ * Hard delete a client with tombstone for sync
  */
 export function deleteClientDB(id: string): void {
   try {
     const database = getDatabase();
-    const now = new Date().toISOString();
-    database.runSync(
-      "UPDATE clients SET deleted_at = ?, updated_at = ? WHERE id = ?",
-      [now, now, id]
-    );
+    // Use transaction for atomicity: tombstone + hard delete
+    database.withTransactionSync(() => {
+      insertTombstoneSync(database, id, 'client');
+      database.runSync("DELETE FROM clients WHERE id = ?", [id]);
+    });
   } catch (error) {
     console.error(`Failed to delete client ${id} from SQLite:`, error);
     throw error;
-  }
-}
-
-/**
- * Get IDs of locally deleted clients (for sync to skip re-downloading)
- */
-export function getLocallyDeletedClientIdsDB(): string[] {
-  try {
-    const database = getDatabase();
-    const rows = database.getAllSync(
-      "SELECT id FROM clients WHERE deleted_at IS NOT NULL"
-    );
-    return rows.map((row: any) => row.id);
-  } catch (error) {
-    console.error("Failed to get deleted client IDs from SQLite:", error);
-    return [];
   }
 }
 
@@ -1291,7 +1392,7 @@ export function getPricebookItemByIdDB(id: string): PricebookItem | null {
   try {
     const database = getDatabase();
     const row = database.getFirstSync(
-      "SELECT * FROM pricebook_items WHERE id = ?",
+      "SELECT * FROM pricebook_items WHERE id = ? AND deleted_at IS NULL",
       [id]
     );
     return row ? rowToPricebookItem(row) : null;
@@ -2286,6 +2387,549 @@ export function clearTeamMembersDB(): void {
     database.runSync("DELETE FROM team_members");
   } catch (error) {
     console.error("Failed to clear team members:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// ASSEMBLIES (migrated from AsyncStorage)
+// ============================================
+
+/**
+ * Assembly type for SQLite storage
+ */
+export type AssemblyDB = {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  items: string; // JSON string of AssemblyItem[]
+  defaults?: string; // JSON string of AssemblyVarBag
+  userId?: string;
+  syncedAt?: string;
+  deletedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+/**
+ * Convert database row to Assembly-like object
+ * Note: Returns raw JSON strings - caller should parse items/defaults
+ */
+function rowToAssembly(row: any): AssemblyDB {
+  return {
+    id: row.id,
+    name: row.name || "",
+    description: row.description || undefined,
+    category: row.category || undefined,
+    items: row.items || "[]",
+    defaults: row.defaults || undefined,
+    userId: row.user_id || undefined,
+    syncedAt: row.synced_at || undefined,
+    deletedAt: row.deleted_at || undefined,
+    createdAt: row.created_at || undefined,
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
+/**
+ * List all assemblies
+ */
+export function listAssembliesDB(options?: {
+  limit?: number;
+  userId?: string;
+}): AssemblyDB[] {
+  try {
+    const database = getDatabase();
+    const { limit = 1000, userId } = options || {};
+
+    let sql = "SELECT * FROM assemblies";
+    const params: any[] = [];
+    const conditions: string[] = [];
+
+    if (userId) {
+      conditions.push("user_id = ?");
+      params.push(userId);
+    }
+
+    if (conditions.length > 0) {
+      sql += " WHERE " + conditions.join(" AND ");
+    }
+
+    sql += " ORDER BY updated_at DESC, created_at DESC LIMIT ?";
+    params.push(limit);
+
+    const rows = database.getAllSync(sql, params);
+    return rows.map(rowToAssembly);
+  } catch (error) {
+    console.error("Failed to list assemblies:", error);
+    return [];
+  }
+}
+
+/**
+ * Get assembly count
+ */
+export function getAssemblyCountDB(): number {
+  try {
+    const database = getDatabase();
+    const result = database.getFirstSync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM assemblies"
+    );
+    return result?.count || 0;
+  } catch (error) {
+    console.error("Failed to get assembly count:", error);
+    return 0;
+  }
+}
+
+/**
+ * Get assembly by ID
+ */
+export function getAssemblyByIdDB(id: string): AssemblyDB | null {
+  try {
+    const database = getDatabase();
+    const row = database.getFirstSync(
+      "SELECT * FROM assemblies WHERE id = ?",
+      [id]
+    );
+    return row ? rowToAssembly(row) : null;
+  } catch (error) {
+    console.error(`Failed to get assembly ${id}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Save an assembly (insert or update)
+ */
+export function saveAssemblyDB(assembly: AssemblyDB): void {
+  try {
+    const database = getDatabase();
+    const now = new Date().toISOString();
+
+    database.runSync(
+      `INSERT OR REPLACE INTO assemblies (
+        id, name, description, category, items, defaults,
+        user_id, synced_at, deleted_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        assembly.id,
+        assembly.name,
+        assembly.description || null,
+        assembly.category || null,
+        assembly.items,
+        assembly.defaults || null,
+        assembly.userId || null,
+        assembly.syncedAt || null,
+        assembly.deletedAt || null,
+        assembly.createdAt || now,
+        assembly.updatedAt || now,
+      ]
+    );
+  } catch (error) {
+    console.error(`Failed to save assembly ${assembly.id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Save multiple assemblies in a transaction
+ */
+export function saveAssembliesBatchDB(assemblies: AssemblyDB[]): void {
+  if (assemblies.length === 0) return;
+
+  try {
+    const database = getDatabase();
+
+    database.withTransactionSync(() => {
+      for (const assembly of assemblies) {
+        saveAssemblyDB(assembly);
+      }
+    });
+  } catch (error) {
+    console.error(`Failed to batch save ${assemblies.length} assemblies:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Hard delete an assembly with tombstone for sync
+ */
+export function deleteAssemblyDB(id: string): void {
+  try {
+    const database = getDatabase();
+    // Use transaction for atomicity: tombstone + hard delete
+    database.withTransactionSync(() => {
+      insertTombstoneSync(database, id, 'assembly');
+      database.runSync("DELETE FROM assemblies WHERE id = ?", [id]);
+    });
+  } catch (error) {
+    console.error(`Failed to delete assembly ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get assemblies modified since a given timestamp (for sync)
+ */
+export function getAssembliesModifiedSinceDB(since: string): AssemblyDB[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      `SELECT * FROM assemblies
+       WHERE updated_at > ? OR synced_at IS NULL
+       ORDER BY updated_at DESC`,
+      [since]
+    );
+    return rows.map(rowToAssembly);
+  } catch (error) {
+    console.error("Failed to get modified assemblies:", error);
+    return [];
+  }
+}
+
+/**
+ * Clear all assemblies (for full resync)
+ */
+export function clearAssembliesDB(): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM assemblies");
+  } catch (error) {
+    console.error("Failed to clear assemblies:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// CHANGE ORDERS (migrated from AsyncStorage)
+// ============================================
+
+/**
+ * ChangeOrder type for SQLite storage
+ */
+export type ChangeOrderDB = {
+  id: string;
+  quoteId: string;
+  quoteNumber?: string;
+  number: number;
+  items: string; // JSON string
+  laborBefore: number;
+  laborAfter: number;
+  laborDelta: number;
+  netChange: number;
+  quoteTotalBefore: number;
+  quoteTotalAfter: number;
+  note?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Convert database row to ChangeOrder-like object
+ */
+function rowToChangeOrder(row: any): ChangeOrderDB {
+  return {
+    id: row.id,
+    quoteId: row.quote_id,
+    quoteNumber: row.quote_number || undefined,
+    number: row.number || 1,
+    items: row.items || "[]",
+    laborBefore: row.labor_before || 0,
+    laborAfter: row.labor_after || 0,
+    laborDelta: row.labor_delta || 0,
+    netChange: row.net_change || 0,
+    quoteTotalBefore: row.quote_total_before || 0,
+    quoteTotalAfter: row.quote_total_after || 0,
+    note: row.note || undefined,
+    status: row.status || "pending",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * List all change orders for a quote
+ */
+export function listChangeOrdersDB(quoteId: string): ChangeOrderDB[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT * FROM change_orders WHERE quote_id = ? ORDER BY number ASC",
+      [quoteId]
+    );
+    return rows.map(rowToChangeOrder);
+  } catch (error) {
+    console.error(`Failed to list change orders for quote ${quoteId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Get all change orders (for all quotes)
+ */
+export function listAllChangeOrdersDB(): ChangeOrderDB[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT * FROM change_orders ORDER BY created_at DESC"
+    );
+    return rows.map(rowToChangeOrder);
+  } catch (error) {
+    console.error("Failed to list all change orders:", error);
+    return [];
+  }
+}
+
+/**
+ * Get change order by ID
+ */
+export function getChangeOrderByIdDB(id: string): ChangeOrderDB | null {
+  try {
+    const database = getDatabase();
+    const row = database.getFirstSync(
+      "SELECT * FROM change_orders WHERE id = ?",
+      [id]
+    );
+    return row ? rowToChangeOrder(row) : null;
+  } catch (error) {
+    console.error(`Failed to get change order ${id}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Save a change order (insert or update)
+ */
+export function saveChangeOrderDB(changeOrder: ChangeOrderDB): void {
+  try {
+    const database = getDatabase();
+    const now = new Date().toISOString();
+
+    database.runSync(
+      `INSERT OR REPLACE INTO change_orders (
+        id, quote_id, quote_number, number, items,
+        labor_before, labor_after, labor_delta,
+        net_change, quote_total_before, quote_total_after,
+        note, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        changeOrder.id,
+        changeOrder.quoteId,
+        changeOrder.quoteNumber || null,
+        changeOrder.number,
+        changeOrder.items,
+        changeOrder.laborBefore,
+        changeOrder.laborAfter,
+        changeOrder.laborDelta,
+        changeOrder.netChange,
+        changeOrder.quoteTotalBefore,
+        changeOrder.quoteTotalAfter,
+        changeOrder.note || null,
+        changeOrder.status,
+        changeOrder.createdAt || now,
+        changeOrder.updatedAt || now,
+      ]
+    );
+  } catch (error) {
+    console.error(`Failed to save change order ${changeOrder.id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a change order
+ */
+export function deleteChangeOrderDB(id: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM change_orders WHERE id = ?", [id]);
+  } catch (error) {
+    console.error(`Failed to delete change order ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete all change orders for a quote
+ */
+export function deleteChangeOrdersForQuoteDB(quoteId: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM change_orders WHERE quote_id = ?", [quoteId]);
+  } catch (error) {
+    console.error(`Failed to delete change orders for quote ${quoteId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get next change order number for a quote
+ */
+export function getNextChangeOrderNumberDB(quoteId: string): number {
+  try {
+    const database = getDatabase();
+    const result = database.getFirstSync<{ max_num: number | null }>(
+      "SELECT MAX(number) as max_num FROM change_orders WHERE quote_id = ?",
+      [quoteId]
+    );
+    return (result?.max_num || 0) + 1;
+  } catch (error) {
+    console.error(`Failed to get next CO number for quote ${quoteId}:`, error);
+    return 1;
+  }
+}
+
+// ============================================
+// TOMBSTONES (for hard delete + cloud sync)
+// ============================================
+
+export type TombstoneEntityType = 'quote' | 'invoice' | 'client' | 'assembly';
+
+/**
+ * Insert a tombstone record for a deleted entity
+ * This is used to track deletions that need to be synced to cloud
+ */
+export function insertTombstoneDB(id: string, entityType: TombstoneEntityType): void {
+  try {
+    const database = getDatabase();
+    const now = new Date().toISOString();
+    database.runSync(
+      "INSERT OR REPLACE INTO tombstones (id, entity_type, deleted_at) VALUES (?, ?, ?)",
+      [id, entityType, now]
+    );
+  } catch (error) {
+    console.error(`Failed to insert tombstone for ${entityType} ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Sync version that can be called within a transaction
+ */
+function insertTombstoneSync(database: SQLite.SQLiteDatabase, id: string, entityType: TombstoneEntityType): void {
+  const now = new Date().toISOString();
+  database.runSync(
+    "INSERT OR REPLACE INTO tombstones (id, entity_type, deleted_at) VALUES (?, ?, ?)",
+    [id, entityType, now]
+  );
+}
+
+/**
+ * Get all tombstones for a given entity type
+ * Returns array of IDs that were deleted locally and need to be synced
+ */
+export function getTombstonesDB(entityType: TombstoneEntityType): string[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync<{ id: string }>(
+      "SELECT id FROM tombstones WHERE entity_type = ?",
+      [entityType]
+    );
+    return rows.map((r) => r.id);
+  } catch (error) {
+    console.error(`Failed to get tombstones for ${entityType}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Delete a single tombstone after successful cloud sync
+ */
+export function deleteTombstoneDB(id: string, entityType: TombstoneEntityType): void {
+  try {
+    const database = getDatabase();
+    database.runSync(
+      "DELETE FROM tombstones WHERE id = ? AND entity_type = ?",
+      [id, entityType]
+    );
+  } catch (error) {
+    console.error(`Failed to delete tombstone for ${entityType} ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete multiple tombstones after successful cloud sync (batch)
+ */
+export function deleteTombstonesBatchDB(ids: string[], entityType: TombstoneEntityType): void {
+  if (ids.length === 0) return;
+
+  try {
+    const database = getDatabase();
+    database.withTransactionSync(() => {
+      for (const id of ids) {
+        database.runSync(
+          "DELETE FROM tombstones WHERE id = ? AND entity_type = ?",
+          [id, entityType]
+        );
+      }
+    });
+  } catch (error) {
+    console.error(`Failed to batch delete tombstones for ${entityType}:`, error);
+    throw error;
+  }
+}
+
+// ============================================
+// HARD DELETE FUNCTIONS (for server-side deletions)
+// These delete without creating tombstones - used when server tells us to delete
+// ============================================
+
+/**
+ * Hard delete a quote without creating a tombstone
+ * Used when server indicates the quote was deleted (e.g., deleted from portal)
+ */
+export function hardDeleteQuoteDB(id: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM quotes WHERE id = ?", [id]);
+  } catch (error) {
+    console.error(`Failed to hard delete quote ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Hard delete an invoice without creating a tombstone
+ * Used when server indicates the invoice was deleted
+ */
+export function hardDeleteInvoiceDB(id: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM invoices WHERE id = ?", [id]);
+  } catch (error) {
+    console.error(`Failed to hard delete invoice ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Hard delete a client without creating a tombstone
+ * Used when server indicates the client was deleted
+ */
+export function hardDeleteClientDB(id: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM clients WHERE id = ?", [id]);
+  } catch (error) {
+    console.error(`Failed to hard delete client ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Hard delete an assembly without creating a tombstone
+ * Used when server indicates the assembly was deleted
+ */
+export function hardDeleteAssemblyDB(id: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM assemblies WHERE id = ?", [id]);
+  } catch (error) {
+    console.error(`Failed to hard delete assembly ${id}:`, error);
     throw error;
   }
 }

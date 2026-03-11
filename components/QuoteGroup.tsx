@@ -1,8 +1,10 @@
 // components/QuoteGroup.tsx
 // Collapsible group for linked quotes (multi-tier)
 
-import React, { useState } from "react";
-import { View, Text, Pressable, StyleSheet, LayoutAnimation, Platform, UIManager } from "react-native";
+import React, { useRef, useState } from "react";
+import { View, Text, Pressable, StyleSheet, LayoutAnimation, Platform, UIManager, Alert, Animated } from "react-native";
+import { Swipeable, TouchableOpacity } from "react-native-gesture-handler";
+import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { SwipeableQuoteItem } from "./SwipeableQuoteItem";
@@ -22,6 +24,7 @@ type QuoteGroupProps = {
   onLongPress: (quote: Quote) => void;
   onCreateTier: (quote: Quote) => void;
   onExportAllTiers: (quote: Quote) => void;
+  onDeleteAll: (quotes: Quote[]) => void;
   onUnlink: (quote: Quote) => void;
   /** CO counts per quote ID */
   coCounts?: Record<string, number>;
@@ -35,11 +38,13 @@ export function QuoteGroup({
   onLongPress,
   onCreateTier,
   onExportAllTiers,
+  onDeleteAll,
   onUnlink,
   coCounts,
 }: QuoteGroupProps) {
   const { theme } = useTheme();
   const [expanded, setExpanded] = useState(false);
+  const swipeableRef = useRef<Swipeable>(null);
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   // Sort quotes by price (low to high) - matches portal behavior
@@ -60,38 +65,116 @@ export function QuoteGroup({
     setExpanded(!expanded);
   };
 
+  const handleExportAll = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    swipeableRef.current?.close();
+    // Use the first quote to trigger export all (same as swiping inside)
+    onExportAllTiers(primaryQuote);
+  };
+
+  const handleDeleteAll = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    swipeableRef.current?.close();
+    Alert.alert(
+      "Delete All Options",
+      `Are you sure you want to delete all ${quotes.length} options for "${primaryQuote.name || "Untitled"}"? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: () => onDeleteAll(quotes),
+        },
+      ]
+    );
+  };
+
+  const renderLeftActions = (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>,
+  ) => {
+    const translateX = dragX.interpolate({
+      inputRange: [0, 100],
+      outputRange: [-100, 0],
+      extrapolate: "clamp",
+    });
+
+    return (
+      <Animated.View
+        style={[styles.actionsContainer, { transform: [{ translateX }] }]}
+      >
+        <TouchableOpacity style={styles.exportButton} onPress={handleExportAll}>
+          <Text style={styles.actionText}>Export All</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  const renderRightActions = (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>,
+  ) => {
+    const translateX = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [0, 100],
+      extrapolate: "clamp",
+    });
+
+    return (
+      <Animated.View
+        style={[styles.actionsContainer, { transform: [{ translateX }] }]}
+      >
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAll}>
+          <Text style={styles.actionText}>Delete All</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      {/* Group Header */}
-      <Pressable style={styles.header} onPress={toggleExpanded}>
-        <View style={styles.headerLeft}>
-          <Ionicons
-            name={expanded ? "chevron-down" : "chevron-forward"}
-            size={20}
-            color={theme.colors.muted}
-          />
-          <View style={styles.headerInfo}>
-            <View style={styles.titleRow}>
-              <Text style={styles.title} numberOfLines={1}>
-                {primaryQuote.name || "Untitled Project"}
-              </Text>
-              <View style={styles.optionsBadge}>
-                <Text style={styles.optionsBadgeText}>{quotes.length} Options</Text>
+      {/* Swipeable Group Header */}
+      <Swipeable
+        ref={swipeableRef}
+        renderLeftActions={renderLeftActions}
+        renderRightActions={renderRightActions}
+        friction={2}
+        overshootRight={false}
+        overshootLeft={false}
+        leftThreshold={40}
+        rightThreshold={40}
+        overshootFriction={8}
+      >
+        <Pressable style={styles.header} onPress={toggleExpanded}>
+          <View style={styles.headerLeft}>
+            <Ionicons
+              name={expanded ? "chevron-down" : "chevron-forward"}
+              size={20}
+              color={theme.colors.muted}
+            />
+            <View style={styles.headerInfo}>
+              <View style={styles.titleRow}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {primaryQuote.name || "Untitled Project"}
+                </Text>
+                <View style={styles.optionsBadge}>
+                  <Text style={styles.optionsBadgeText}>{quotes.length} Options</Text>
+                </View>
               </View>
+              <Text style={styles.subtitle} numberOfLines={1}>
+                {primaryQuote.clientName || "No client"}
+              </Text>
             </View>
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {primaryQuote.clientName || "No client"}
+          </View>
+          <View style={styles.headerRight}>
+            <Text style={styles.priceRange}>
+              {minTotal === maxTotal
+                ? `$${minTotal.toFixed(0)}`
+                : `$${minTotal.toFixed(0)} - $${maxTotal.toFixed(0)}`}
             </Text>
           </View>
-        </View>
-        <View style={styles.headerRight}>
-          <Text style={styles.priceRange}>
-            {minTotal === maxTotal
-              ? `$${minTotal.toFixed(0)}`
-              : `$${minTotal.toFixed(0)} - $${maxTotal.toFixed(0)}`}
-          </Text>
-        </View>
-      </Pressable>
+        </Pressable>
+      </Swipeable>
 
       {/* Expanded Content */}
       {expanded && (
@@ -216,6 +299,29 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     quoteItem: {
       flex: 1,
+    },
+    actionsContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    exportButton: {
+      backgroundColor: "#34C759",
+      width: 100,
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    deleteButton: {
+      backgroundColor: "#FF3B30",
+      width: 100,
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    actionText: {
+      color: "#FFFFFF",
+      fontSize: 12,
+      fontWeight: "600",
     },
   });
 }

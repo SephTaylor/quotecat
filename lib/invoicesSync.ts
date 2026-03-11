@@ -12,7 +12,8 @@ import {
   saveInvoiceDB,
   saveInvoicesBatchDB,
   deleteInvoiceDB,
-  getLocallyDeletedInvoiceIdsDB,
+  getTombstonesDB,
+  deleteTombstoneDB,
   listInvoicePaymentsDB,
   saveInvoicePaymentDB,
 } from "./database";
@@ -757,17 +758,21 @@ export async function syncInvoices(): Promise<{
     const cloudMap = new Map(cloudInvoices.map((inv) => [inv.id, inv]));
     const localMap = new Map(localInvoices.map((inv) => [inv.id, inv]));
 
-    // Step 4: Get locally deleted invoice IDs to avoid re-downloading them
-    const locallyDeletedIds = new Set(getLocallyDeletedInvoiceIdsDB());
-    if (locallyDeletedIds.size > 0) {
-      console.log(`🗑️ Found ${locallyDeletedIds.size} locally deleted invoices to skip`);
+    // Step 4: Process tombstones - delete from cloud and clear tombstones
+    const tombstoneIds = getTombstonesDB('invoice');
+    const locallyDeletedIds = new Set(tombstoneIds);
+    if (tombstoneIds.length > 0) {
+      console.log(`🪦 Found ${tombstoneIds.length} invoice tombstones to process`);
 
-      // Clean up orphans: delete from cloud any invoices that were deleted locally
-      for (const deletedId of locallyDeletedIds) {
+      // Delete from cloud and clear tombstones
+      for (const deletedId of tombstoneIds) {
         try {
           await deleteInvoiceFromCloud(deletedId);
+          // Clear tombstone after successful cloud deletion
+          deleteTombstoneDB(deletedId, 'invoice');
         } catch (error) {
-          // Silently continue - might already be deleted or not exist
+          // Keep tombstone to retry on next sync
+          console.warn(`Failed to delete invoice ${deletedId} from cloud, will retry:`, error);
         }
       }
     }

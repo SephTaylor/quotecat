@@ -29,7 +29,8 @@ import { useTechContext } from "@/contexts/TechContext";
 import { getUserState, incrementPdfCount, incrementSpreadsheetCount } from "@/lib/user";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
 import type { UserState } from "@/lib/user";
-import { generateAndSharePDF } from "@/lib/pdf";
+import { generateAndSharePDF, generateAndShareMultiTierPDF } from "@/lib/pdf";
+import { getLinkedQuotes } from "@/lib/quotes";
 import { generateAndShareSpreadsheet } from "@/lib/spreadsheet";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
@@ -126,7 +127,8 @@ export default function QuoteReviewScreen() {
       return;
     }
 
-    const exportPDF = async () => {
+    // Export single quote PDF
+    const exportSinglePDF = async () => {
       try {
         setIsExporting(true);
 
@@ -140,11 +142,8 @@ export default function QuoteReviewScreen() {
         });
 
         // Increment counter for free users
-        // Note: expo-sharing doesn't tell us if user cancelled, but the confirmation
-        // dialog before export means user has already committed to using an export
         if (userState.tier === "free") {
           await incrementPdfCount();
-          // Update local state to reflect new count
           const updatedState = await getUserState();
           setUserState(updatedState);
         }
@@ -157,19 +156,79 @@ export default function QuoteReviewScreen() {
       }
     };
 
-    // Show remaining for free users
-    if (userState.tier === "free" && remaining !== undefined) {
+    // Export all tier options as combined PDF
+    const exportTierGroupPDF = async () => {
+      try {
+        setIsExporting(true);
+
+        // Get all linked quotes including this one
+        const linkedQuotes = await getLinkedQuotes(quote.id);
+
+        const rawBase64 = logo?.base64?.replace(/^data:image\/\w+;base64,/, '');
+        await generateAndShareMultiTierPDF(linkedQuotes, {
+          includeBranding: userState.tier === "free",
+          companyDetails: companyDetails ?? undefined,
+          logoBase64: rawBase64
+        });
+
+        // Increment counter for free users (counts as 1 export for all tiers)
+        if (userState.tier === "free") {
+          await incrementPdfCount();
+          const updatedState = await getUserState();
+          setUserState(updatedState);
+        }
+
+      } catch (error) {
+        Alert.alert("Error", "Failed to generate PDF. Please try again.");
+        console.error("PDF generation error:", error);
+      } finally {
+        setIsExporting(false);
+      }
+    };
+
+    // Check if this quote is part of a tier group
+    const isTierGroup = quote.tierGroupId || (quote.linkedQuoteIds && quote.linkedQuoteIds.length > 0);
+    const isFreeUser = userState.tier === "free";
+
+    // Build the export flow
+    const proceedWithExport = async (exportAll: boolean) => {
+      if (exportAll) {
+        await exportTierGroupPDF();
+      } else {
+        await exportSinglePDF();
+      }
+    };
+
+    // If tier group, ask which export option
+    if (isTierGroup) {
+      const tierName = quote.tier || "This Option";
+      // Include remaining count for free users
+      const message = isFreeUser && remaining !== undefined
+        ? `This will use 1 of your ${remaining} remaining PDF exports.\n\nWould you like to export just this option or all pricing options?`
+        : "Would you like to export just this option or all pricing options?";
+
+      Alert.alert(
+        "Export PDF",
+        message,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: `Just ${tierName}`, onPress: () => proceedWithExport(false) },
+          { text: "All Options", onPress: () => proceedWithExport(true) },
+        ]
+      );
+    } else if (isFreeUser && remaining !== undefined) {
+      // Show remaining for free users (not a tier group)
       Alert.alert(
         "Export PDF",
         `This will use 1 of your ${remaining} remaining PDF exports.`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Export", onPress: exportPDF }
+          { text: "Export", onPress: () => proceedWithExport(false) }
         ]
       );
     } else {
-      // Pro user - just export
-      await exportPDF();
+      // Pro user, not a tier group - just export
+      await proceedWithExport(false);
     }
   };
 

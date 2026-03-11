@@ -8,6 +8,7 @@ import { getCurrentUserId } from '@/lib/authUtils';
 import { signOut } from '@/lib/auth';
 import { getUserState } from '@/lib/user';
 import { onSyncComplete } from '@/lib/syncState';
+import { supabase } from '@/lib/supabase';
 
 type UserTier = 'free' | 'pro' | 'premium';
 
@@ -132,6 +133,24 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
     });
     return unsubscribe;
   }, [refreshTechContext]);
+
+  // Refresh when auth state changes (user logs in/out)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        // Delay to let auth.ts handleAuthChange() finish updating tier in local storage
+        console.log('🔐 Auth state changed to SIGNED_IN, refreshing tech context in 500ms...');
+        setTimeout(() => {
+          refreshTechContext();
+        }, 500);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('🔐 Auth state changed to SIGNED_OUT, clearing tech context...');
+        clearTechContext();
+        setUserTier('free');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [refreshTechContext, clearTechContext]);
 
   // Compute effective tier: techs use owner's tier, others use their own
   const effectiveTier: UserTier = techContext?.isTech && techContext.ownerTier

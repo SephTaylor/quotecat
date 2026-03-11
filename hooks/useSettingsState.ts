@@ -25,6 +25,7 @@ import {
 } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
 import { syncClients } from "@/lib/clientsSync";
+import { downloadBusinessSettings, syncBusinessSettings } from "@/lib/businessSettingsSync";
 import { listQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { getClients } from "@/lib/clients";
@@ -314,6 +315,14 @@ export function useSettingsState() {
 
       console.log("🔄 Starting clients sync...");
       const clientsResult = await syncClients();
+
+      // Give GC time to clean up
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Sync business settings (downloads SMS phone, logo, preferences)
+      console.log("🔄 Starting business settings sync...");
+      await downloadBusinessSettings();
+      await syncBusinessSettings();
 
       if (quotesResult.success && invoicesResult.success && clientsResult.success) {
         setLastSyncTime(new Date());

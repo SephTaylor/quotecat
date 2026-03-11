@@ -306,35 +306,35 @@ export async function forceCloudRefresh(): Promise<boolean> {
 
 /**
  * Get diagnostics for debugging data issues
+ * NOTE: Quotes, invoices, and clients are now stored in SQLite (not AsyncStorage)
  */
 export async function getDataDiagnostics(): Promise<{
   lastIntegrityCheck: Date | null;
   corruptionLog: Array<{ timestamp: string; key: string; reason: string }>;
-  storageSizes: Record<string, number>;
+  storageCounts: Record<string, number>;
 }> {
   const lastCheck = await getLastIntegrityCheck();
   const corruptionLog = await getCorruptionLog();
 
-  // Get sizes of main storage keys
-  const keysToCheck = [
-    "@quotecat/quotes",
-    "@quotecat/invoices",
-    "@quotecat/clients",
-  ];
+  // Import database functions dynamically to avoid circular deps
+  const { getQuoteCountDB, getInvoiceCountDB, getClientCountDB } = await import("./database");
 
-  const storageSizes: Record<string, number> = {};
-  for (const key of keysToCheck) {
-    try {
-      const data = await AsyncStorage.getItem(key);
-      storageSizes[key] = data ? data.length : 0;
-    } catch {
-      storageSizes[key] = -1; // Error reading
-    }
+  // Get counts from SQLite tables (data moved from AsyncStorage)
+  const storageCounts: Record<string, number> = {};
+  try {
+    storageCounts["quotes"] = getQuoteCountDB(false); // Active quotes only
+    storageCounts["invoices"] = getInvoiceCountDB(false);
+    storageCounts["clients"] = getClientCountDB(false);
+  } catch (error) {
+    console.error("Failed to get SQLite counts:", error);
+    storageCounts["quotes"] = -1;
+    storageCounts["invoices"] = -1;
+    storageCounts["clients"] = -1;
   }
 
   return {
     lastIntegrityCheck: lastCheck,
     corruptionLog,
-    storageSizes,
+    storageCounts,
   };
 }

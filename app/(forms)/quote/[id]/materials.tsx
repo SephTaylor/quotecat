@@ -20,8 +20,8 @@ import type { QuoteItem, PricebookItem } from "@/lib/types";
 import { trackProductUsage } from "@/lib/analytics";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { getPricebookItems, getPricebookCategories } from "@/lib/pricebook";
-import { listAssemblies } from "@/modules/assemblies/storage";
-import type { Assembly } from "@/modules/assemblies/types";
+import { listAssemblies } from "@/modules/assemblies";
+import type { Assembly } from "@/modules/assemblies";
 import { getUserState } from "@/lib/user";
 import { canAccessPricebook, canAccessAssemblies } from "@/lib/features";
 

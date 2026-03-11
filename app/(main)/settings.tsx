@@ -6,6 +6,7 @@ import { Stack, useRouter } from "expo-router";
 import Constants from "expo-constants";
 import React from "react";
 import {
+  Alert,
   Linking,
   Pressable,
   ScrollView,
@@ -70,8 +71,9 @@ export default function Settings() {
     deleting,
   } = useSettingsState();
 
-  // Use effectiveTier for Pro check - techs inherit owner's tier
+  // Use effectiveTier for Pro/Premium check - techs inherit owner's tier
   const isPro = effectiveTier === 'pro' || effectiveTier === 'premium';
+  const isPremium = effectiveTier === 'premium';
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -172,13 +174,16 @@ export default function Settings() {
 
               {userEmail ? (
                 <>
-                  <Pressable
-                    style={styles.settingButton}
-                    onPress={handleManageAccount}
-                  >
-                    <Text style={styles.settingButtonText}>Manage Account</Text>
-                    <Text style={styles.settingButtonIcon}>→</Text>
-                  </Pressable>
+                  {/* Only show Manage Account for Pro/Premium (they have Stripe subscriptions) */}
+                  {isPro && (
+                    <Pressable
+                      style={styles.settingButton}
+                      onPress={handleManageAccount}
+                    >
+                      <Text style={styles.settingButtonText}>Manage Account</Text>
+                      <Text style={styles.settingButtonIcon}>→</Text>
+                    </Pressable>
+                  )}
                   <Pressable
                     style={styles.deleteAccountButton}
                     onPress={handleDeleteAccount}
@@ -536,19 +541,21 @@ export default function Settings() {
                   handleUpdatePreference({ showRecentContracts: value })
                 }
                 theme={theme}
-                isLast={!isPro}
+                locked={!isPremium}
+                premium
+                onLockedPress={() => presentPaywallAndSync()}
               />
-              {isPro && (
-                <SettingRow
-                  label="Margin"
-                  value={preferences.dashboard.showMargin}
-                  onToggle={(value) =>
-                    handleUpdatePreference({ showMargin: value })
-                  }
-                  theme={theme}
-                  isLast
-                />
-              )}
+              <SettingRow
+                label="Margin"
+                value={preferences.dashboard.showMargin}
+                onToggle={(value) =>
+                  handleUpdatePreference({ showMargin: value })
+                }
+                theme={theme}
+                isLast
+                locked={!isPro}
+                onLockedPress={() => presentPaywallAndSync()}
+              />
 
               {/* Recent Quotes Count */}
               {preferences.dashboard.showRecentQuotes && (
@@ -759,7 +766,7 @@ export default function Settings() {
               </Pressable>
 
               <Pressable
-                style={[styles.settingButton, styles.settingButtonLast]}
+                style={styles.settingButton}
                 onPress={async () => {
                   try {
                     await restorePurchases();
@@ -773,6 +780,61 @@ export default function Settings() {
                 <Text style={styles.settingButtonText}>Restore Purchases</Text>
                 <Text style={styles.settingButtonIcon}>→</Text>
               </Pressable>
+
+              {/* Clear Local Data - for testing different users */}
+              {__DEV__ && (
+                <Pressable
+                  style={[styles.settingButton, styles.settingButtonLast, { borderTopWidth: 1, borderTopColor: theme.colors.border, marginTop: 16 }]}
+                  onPress={() => {
+                    Alert.alert(
+                      "Clear Local Data",
+                      "This will delete all local quotes, invoices, clients, and settings. Cloud data will NOT be affected.\n\nThe app will restart after clearing.",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Clear All",
+                          style: "destructive",
+                          onPress: async () => {
+                            try {
+                              const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+
+                              // Clear all AsyncStorage
+                              await AsyncStorage.clear();
+                              console.log("🗑️ AsyncStorage cleared");
+
+                              // Clear SQLite database
+                              const { getDatabase } = await import("@/lib/database");
+                              const db = getDatabase();
+                              db.execSync("DELETE FROM quotes");
+                              db.execSync("DELETE FROM invoices");
+                              db.execSync("DELETE FROM invoice_payments");
+                              db.execSync("DELETE FROM clients");
+                              db.execSync("DELETE FROM custom_line_items");
+                              db.execSync("DELETE FROM pricebook_items");
+                              db.execSync("DELETE FROM team_members");
+                              db.execSync("DELETE FROM sync_metadata");
+                              console.log("🗑️ SQLite tables cleared");
+
+                              Alert.alert("Done", "Local data cleared. Tap OK to reload.", [
+                                { text: "OK", onPress: () => {
+                                  // Force reload by navigating to auth
+                                  router.replace("/(auth)/sign-in");
+                                }}
+                              ]);
+                            } catch (error) {
+                              console.error("Clear data failed:", error);
+                              Alert.alert("Error", "Failed to clear data: " + (error instanceof Error ? error.message : "Unknown"));
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={[styles.settingButtonText, { color: "#FF3B30" }]}>Clear Local Data (Dev)</Text>
+                  <Text style={styles.settingButtonIcon}>→</Text>
+                </Pressable>
+              )}
             </View>
           </CollapsibleSection>
         </ScrollView>
@@ -887,6 +949,9 @@ function SettingRow({
   isLast = false,
   theme,
   compact = false,
+  locked = false,
+  premium = false,
+  onLockedPress,
 }: {
   label: string;
   value: boolean;
@@ -894,21 +959,63 @@ function SettingRow({
   isLast?: boolean;
   theme: ReturnType<typeof useTheme>["theme"];
   compact?: boolean;
+  locked?: boolean;
+  premium?: boolean;
+  onLockedPress?: () => Promise<boolean>;
 }) {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  const handleUpgrade = async () => {
+    if (!onLockedPress) return;
+    await onLockedPress();
+  };
+
+  const rowContent = (
+    <>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text style={styles.settingButtonText}>{label}</Text>
+        {locked && (
+          <View style={{
+            backgroundColor: premium ? '#5856D6' : theme.colors.accent,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 4,
+          }}>
+            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{premium ? 'PREMIUM' : 'PRO'}</Text>
+          </View>
+        )}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={locked ? undefined : onToggle}
+        trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
+        thumbColor="#FFFFFF"
+        disabled={locked}
+      />
+    </>
+  );
+
+  // When locked, make entire row tappable to trigger upgrade
+  if (locked) {
+    return (
+      <Pressable
+        onPress={handleUpgrade}
+        style={[
+          compact ? styles.settingButtonCompact : styles.settingButton,
+          isLast && styles.settingButtonLast
+        ]}
+      >
+        {rowContent}
+      </Pressable>
+    );
+  }
 
   return (
     <View style={[
       compact ? styles.settingButtonCompact : styles.settingButton,
       isLast && styles.settingButtonLast
     ]}>
-      <Text style={styles.settingButtonText}>{label}</Text>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
-        thumbColor="#FFFFFF"
-      />
+      {rowContent}
     </View>
   );
 }

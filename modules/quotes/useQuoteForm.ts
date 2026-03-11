@@ -75,6 +75,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
   const [changeHistory, setChangeHistory] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [tier, setTier] = useState("");
+  const [tierGroupId, setTierGroupId] = useState<string | undefined>(undefined);
+  const [linkedQuoteIds, setLinkedQuoteIds] = useState<string[] | undefined>(undefined);
   const [isNewQuote, setIsNewQuote] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -145,6 +147,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       setChangeHistory(q.changeHistory || "");
       setFollowUpDate(q.followUpDate || "");
       setTier(q.tier || "");
+      setTierGroupId(q.tierGroupId);
+      setLinkedQuoteIds(q.linkedQuoteIds);
 
       // Check if this is a newly created empty quote
       const isDefaultName = !q.name || q.name === "Untitled";
@@ -212,6 +216,10 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       status,
       pinned,
       items,
+      // Preserve tier group data
+      tier: tier || undefined,
+      tierGroupId,
+      linkedQuoteIds,
     };
   }, [
     name,
@@ -229,6 +237,9 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     status,
     pinned,
     items,
+    tier,
+    tierGroupId,
+    linkedQuoteIds,
   ]);
 
   // Save quote
@@ -568,6 +579,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     setFollowUpDate,
     tier,
     setTier,
+    tierGroupId,
+    linkedQuoteIds,
 
     // Calculated values
     calculations,

@@ -1,8 +1,7 @@
 // app/(main)/assemblies-browse.tsx
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTechContext } from "@/contexts/TechContext";
-import { useAssemblies } from "@/modules/assemblies";
-import { deleteAssembly } from "@/modules/assemblies/storage";
+import { useAssemblies, deleteAssembly } from "@/modules/assemblies";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import React, { memo, useMemo, useState, useEffect, useCallback } from "react";
 import {

@@ -161,7 +161,7 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
     // Fetch profile from Supabase (owner's profile for techs)
     const { data: profile, error: fetchError } = await supabase
       .from("profiles")
-      .select("company_name, company_email, company_phone, company_website, company_address, company_logo_url, zip_code, preferences")
+      .select("company_name, company_email, company_phone, company_website, company_address, company_logo_url, zip_code, preferences, sms_phone")
       .eq("id", effectiveUserId)
       .single();
 
@@ -201,6 +201,7 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
           phone: profile.company_phone || "",
           website: profile.company_website || "",
           address: profile.company_address || "",
+          smsPhone: profile.sms_phone || undefined,
         },
         pricing: {
           ...localPrefs.pricing,
@@ -229,6 +230,7 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
           phone: profile.company_phone || localPrefs.company?.phone || "",
           website: profile.company_website || localPrefs.company?.website || "",
           address: profile.company_address || localPrefs.company?.address || "",
+          smsPhone: profile.sms_phone || localPrefs.company?.smsPhone || undefined,
         },
         pricing: {
           ...localPrefs.pricing,

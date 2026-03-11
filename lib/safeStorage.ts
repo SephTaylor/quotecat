@@ -243,23 +243,39 @@ export async function getCorruptionLog(): Promise<Array<{
 /**
  * Check if any data is potentially corrupt
  * Call this on app startup to detect issues early
+ * NOTE: Core data (quotes, invoices, clients) is now in SQLite, not AsyncStorage
+ * SQLite has built-in integrity checking, so we verify we can read from tables
  */
 export async function checkDataIntegrity(): Promise<{
   healthy: boolean;
   issues: string[];
 }> {
   const issues: string[] = [];
-  const keysToCheck = [
-    "@quotecat/quotes",
-    "@quotecat/invoices",
-    "@quotecat/clients",
-  ];
 
-  for (const key of keysToCheck) {
-    const result = await safeRead(key);
-    if (result.wasCorrupt) {
-      issues.push(`${key}: ${result.error}`);
+  try {
+    // Import database functions dynamically to avoid circular deps
+    const { getQuoteCountDB, getInvoiceCountDB, getClientCountDB } = await import("./database");
+
+    // Try to read from SQLite tables - if this fails, database is corrupt
+    try {
+      getQuoteCountDB(false);
+    } catch (e) {
+      issues.push(`SQLite quotes: ${e instanceof Error ? e.message : "read error"}`);
     }
+
+    try {
+      getInvoiceCountDB(false);
+    } catch (e) {
+      issues.push(`SQLite invoices: ${e instanceof Error ? e.message : "read error"}`);
+    }
+
+    try {
+      getClientCountDB(false);
+    } catch (e) {
+      issues.push(`SQLite clients: ${e instanceof Error ? e.message : "read error"}`);
+    }
+  } catch (e) {
+    issues.push(`Database initialization: ${e instanceof Error ? e.message : "unknown error"}`);
   }
 
   return {
@@ -271,17 +287,30 @@ export async function checkDataIntegrity(): Promise<{
 /**
  * Emergency recovery: Clear all local data
  * Use when data is so corrupt that normal recovery fails
+ * NOTE: Core data is in SQLite, sync metadata is in AsyncStorage
  */
 export async function emergencyReset(): Promise<void> {
   console.warn("🚨 EMERGENCY RESET: Clearing all local data");
 
-  const keysToClear = [
-    "@quotecat/quotes",
-    "@quotecat/invoices",
-    "@quotecat/clients",
-    "@quotecat/quotes_temp",
-    "@quotecat/invoices_temp",
-    "@quotecat/clients_temp",
+  // Clear SQLite tables (where core data now lives)
+  try {
+    const { getDatabase } = await import("./database");
+    const db = getDatabase();
+    db.withTransactionSync(() => {
+      db.runSync("DELETE FROM invoice_payments");
+      db.runSync("DELETE FROM quotes");
+      db.runSync("DELETE FROM invoices");
+      db.runSync("DELETE FROM clients");
+      // Note: NOT clearing pricebook_items, products, categories, team_members
+      // Those can be re-synced from cloud and aren't typically corrupt
+    });
+    console.log("✅ SQLite data cleared");
+  } catch (e) {
+    console.error("Failed to clear SQLite data:", e);
+  }
+
+  // Clear AsyncStorage sync metadata and locks (still in AsyncStorage)
+  const asyncKeysToClear = [
     "@quotecat/sync_metadata",
     "@quotecat/invoices_sync_metadata",
     "@quotecat/clients_sync_metadata",
@@ -290,7 +319,7 @@ export async function emergencyReset(): Promise<void> {
     "@quotecat/clients_sync_lock",
   ];
 
-  for (const key of keysToClear) {
+  for (const key of asyncKeysToClear) {
     try {
       await AsyncStorage.removeItem(key);
     } catch (e) {

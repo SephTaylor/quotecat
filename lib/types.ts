@@ -117,7 +117,8 @@ export type Quote = {
   status: QuoteStatus;
   pinned?: boolean; // For favoriting/starring quotes
   tier?: string; // Optional tier/variant name (e.g., "Good", "Better", "Best", "Base + Generator")
-  linkedQuoteIds?: string[]; // IDs of quotes linked as options/tiers (Good/Better/Best)
+  tierGroupId?: string; // UUID shared by all quotes in a tier group - simpler than linkedQuoteIds
+  linkedQuoteIds?: string[]; // DEPRECATED: IDs of quotes linked as options/tiers - use tierGroupId instead
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
   deletedAt?: string; // ISO 8601 - soft delete timestamp

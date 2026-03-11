@@ -145,7 +145,7 @@ export const AddItemRow = React.memo(({ onAddItem, isLastItem = true, onDelete }
             value={name}
             onChangeText={setName}
             onBlur={handleNameBlur}
-            placeholder="Tap to add custom item"
+            placeholder="Item"
             placeholderTextColor={theme.colors.muted}
             returnKeyType="next"
             onSubmitEditing={() => priceInputRef.current?.focus()}
@@ -182,16 +182,18 @@ export const AddItemRow = React.memo(({ onAddItem, isLastItem = true, onDelete }
           </View>
         </View>
 
+        {/* Delete button - positioned in top-right corner */}
+        {onDelete && (
+          <Pressable
+            onPress={onDelete}
+            style={styles.deleteBtn}
+            hitSlop={8}
+          >
+            <Ionicons name="close-circle" size={20} color="#FF3B30" />
+          </Pressable>
+        )}
+
         <View style={styles.itemControls}>
-          {onDelete && (
-            <Pressable
-              onPress={onDelete}
-              style={styles.deleteBtn}
-              hitSlop={4}
-            >
-              <Ionicons name="close-circle" size={22} color="#FF3B30" />
-            </Pressable>
-          )}
           <View style={styles.stepper}>
             <Pressable
               style={styles.stepBtn}
@@ -253,6 +255,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], isDark: boole
       position: "relative",
     },
     itemRow: {
+      position: "relative",
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
@@ -308,7 +311,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], isDark: boole
       gap: theme.spacing(1.5),
     },
     deleteBtn: {
+      position: "absolute",
+      top: 4,
+      right: 4,
       padding: 4,
+      zIndex: 10,
     },
     addBtn: {
       padding: 2,

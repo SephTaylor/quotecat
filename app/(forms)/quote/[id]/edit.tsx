@@ -1,7 +1,7 @@
 // app/(forms)/quote/[id]/edit.tsx
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTechContext } from "@/contexts/TechContext";
-import { updateQuote, getQuoteById } from "@/lib/quotes";
+import { updateQuote, getQuoteById, duplicateQuote, createTierFromQuote, deleteQuote, getLinkedQuotes } from "@/lib/quotes";
 import { getClients, getAndClearLastCreatedClientId, getClientById, createClient, type Client } from "@/lib/clients";
 import { loadPreferences, type OverheadSettings } from "@/lib/preferences";
 import { calculateQuoteProfitability, getMarginColor, getMarginIcon } from "@/lib/calculations";
@@ -61,6 +61,7 @@ export default function EditQuote() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
+  const [showMenu, setShowMenu] = useState(false);
 
   // Client picker state
   const [isPro, setIsPro] = useState(false);
@@ -109,6 +110,8 @@ export default function EditQuote() {
     changeHistory, setChangeHistory,
     followUpDate, setFollowUpDate,
     tier,
+    tierGroupId,
+    linkedQuoteIds,
     setIsNewQuote,
     calculations,
     load,
@@ -127,6 +130,93 @@ export default function EditQuote() {
     getFormData,
   } = form;
 
+  // Handle status change with auto-sync for tier groups
+  // IMPORTANT: Uses getLinkedQuotes to handle STAR TOPOLOGY correctly
+  // Handle status changes for tier groups
+  const handleStatusChange = useCallback(async (newStatus: QuoteStatus) => {
+    const hasTierGroup = tierGroupId || (linkedQuoteIds && linkedQuoteIds.length > 0);
+
+    // Helper to save current quote with new status
+    const saveCurrentWithStatus = async (status: QuoteStatus) => {
+      setStatus(status);
+      if (effectiveId && effectiveId !== "new") {
+        // Save immediately to storage to ensure consistency
+        await updateQuote(effectiveId, { ...getFormData(), status });
+      }
+    };
+
+    // "sent" → automatically mark ALL tier group quotes as "sent"
+    if (newStatus === "sent" && hasTierGroup && effectiveId) {
+      // Save current quote first
+      await saveCurrentWithStatus(newStatus);
+
+      // Get ALL quotes in the tier group (handles star topology transitively)
+      const allLinkedQuotes = await getLinkedQuotes(effectiveId);
+
+      // Update all OTHER quotes to "sent" status
+      for (const linkedQuote of allLinkedQuotes) {
+        if (linkedQuote.id === effectiveId) continue; // Skip current quote
+        try {
+          // Only update if not already in a terminal state
+          if (linkedQuote.status !== "approved" &&
+              linkedQuote.status !== "completed" &&
+              linkedQuote.status !== "declined" &&
+              linkedQuote.status !== "sent") {
+            await updateQuote(linkedQuote.id, { ...linkedQuote, status: "sent" });
+          }
+        } catch (error) {
+          console.error(`Failed to update linked quote ${linkedQuote.id} to sent:`, error);
+        }
+      }
+      return;
+    }
+
+    // "approved" → prompt to decline others
+    if (newStatus === "approved" && hasTierGroup && effectiveId) {
+      Alert.alert(
+        "Approve This Option",
+        "Would you like to automatically mark the other options in this tier group as declined?",
+        [
+          {
+            text: "Just Approve This",
+            style: "cancel",
+            onPress: async () => {
+              await saveCurrentWithStatus(newStatus);
+            },
+          },
+          {
+            text: "Approve & Decline Others",
+            onPress: async () => {
+              // Save current quote first
+              await saveCurrentWithStatus(newStatus);
+
+              // Get ALL quotes in the tier group (handles star topology transitively)
+              const allLinkedQuotes = await getLinkedQuotes(effectiveId);
+
+              // Decline all OTHER quotes in the group
+              for (const linkedQuote of allLinkedQuotes) {
+                if (linkedQuote.id === effectiveId) continue; // Skip current quote
+                try {
+                  if (linkedQuote.status !== "approved" &&
+                      linkedQuote.status !== "completed" &&
+                      linkedQuote.status !== "declined") {
+                    await updateQuote(linkedQuote.id, { ...linkedQuote, status: "declined" });
+                  }
+                } catch (error) {
+                  console.error(`Failed to decline linked quote ${linkedQuote.id}:`, error);
+                }
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // All other status changes - just set it (will be saved when user taps Save)
+    setStatus(newStatus);
+  }, [tierGroupId, linkedQuoteIds, setStatus, effectiveId, getFormData]);
+
   // Load Pro/Premium status, saved clients, and profitability settings
   // Uses effectiveTier from TechContext (techs inherit owner's tier)
   useEffect(() => {
@@ -142,9 +232,11 @@ export default function EditQuote() {
         const prefs = await loadPreferences();
         setDefaultLaborRate(prefs.pricing?.defaultLaborRate || 0);
 
+        // Load saved clients for all users
+        const clients = await getClients();
+        setSavedClients(clients);
+
         if (proStatus) {
-          const clients = await getClients();
-          setSavedClients(clients);
           setTargetMaterialsMarginPercent(prefs.pricing?.targetMaterialsMarginPercent || 0);
           setOverheadSettings(prefs.overhead);
         }
@@ -277,14 +369,14 @@ export default function EditQuote() {
 
   // Filter saved clients based on current input (for autocomplete)
   const filteredClients = React.useMemo(() => {
-    if (!clientName.trim() || !isPro || savedClients.length === 0) return [];
+    if (!clientName.trim() || savedClients.length === 0) return [];
     const query = clientName.toLowerCase();
     return savedClients.filter(
       (c) =>
         c.name.toLowerCase().includes(query) &&
         c.name.toLowerCase() !== query // Don't show if exact match
     ).slice(0, 5); // Limit to 5 suggestions
-  }, [clientName, isPro, savedClients]);
+  }, [clientName, savedClients]);
 
   // Filter saved clients for picker modal
   const pickerFilteredClients = React.useMemo(() => {
@@ -312,16 +404,16 @@ export default function EditQuote() {
 
   // Check if current client name is new (not in saved clients)
   const isNewClientName = React.useMemo(() => {
-    if (!clientName.trim() || !isPro) return false;
+    if (!clientName.trim()) return false;
     const query = clientName.toLowerCase().trim();
     return !savedClients.some(c => c.name.toLowerCase().trim() === query);
-  }, [clientName, isPro, savedClients]);
+  }, [clientName, savedClients]);
 
   // Prompt to save client if it's a new one (called before save/review)
   const maybePromptToSaveClient = useCallback((): Promise<void> => {
     return new Promise((resolve) => {
-      // Skip if not Pro, no client name, already exists, or already prompted
-      if (!isPro || !isNewClientName || hasPromptedSaveClient.current) {
+      // Skip if no client name, already exists, or already prompted
+      if (!isNewClientName || hasPromptedSaveClient.current) {
         resolve();
         return;
       }
@@ -357,7 +449,7 @@ export default function EditQuote() {
         ]
       );
     });
-  }, [isPro, isNewClientName, clientName, clientEmail, clientPhone, clientAddress]);
+  }, [isNewClientName, clientName, clientEmail, clientPhone, clientAddress]);
 
   // Helper to format change history entry for notes
   const formatChangeHistory = useCallback((diff: NonNullable<ReturnType<typeof checkForChanges>>) => {
@@ -623,6 +715,82 @@ export default function EditQuote() {
     Alert.alert("Saved", "Quote saved successfully.", [{ text: "OK" }]);
   }, [id, realQuoteId, effectiveId, items, status, isPro, isPremium, laborEntries, validateRequiredFields, ensureQuoteExists, maybePromptToSaveClient, changeHistory, setChangeHistory, setStatus, getFormData]);
 
+  // Check if quote is saved (has a real ID in storage)
+  const isQuoteSaved = Boolean(effectiveId && effectiveId !== "new");
+
+  // Menu action handlers
+  const handleCreateTier = useCallback(() => {
+    setShowMenu(false);
+    if (!effectiveId || !isQuoteSaved) return;
+
+    Alert.prompt(
+      "Create Tier",
+      `Enter a name for this tier option (e.g., "Better", "Best", "With Generator")`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Create",
+          onPress: async (tierName: string | undefined) => {
+            if (!tierName?.trim()) {
+              Alert.alert("Error", "Please enter a tier name");
+              return;
+            }
+            try {
+              const newTierQuote = await createTierFromQuote(effectiveId, tierName.trim());
+              if (newTierQuote) {
+                router.push(`/(forms)/quote/${newTierQuote.id}/edit`);
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to create tier. Please try again.");
+            }
+          },
+        },
+      ],
+      "plain-text",
+      "",
+      "default"
+    );
+  }, [effectiveId, isQuoteSaved, router]);
+
+  const handleDuplicateQuote = useCallback(async () => {
+    setShowMenu(false);
+    if (!effectiveId || !isQuoteSaved) return;
+
+    try {
+      const duplicatedQuote = await duplicateQuote(effectiveId);
+      if (duplicatedQuote) {
+        router.replace(`/(forms)/quote/${duplicatedQuote.id}/edit`);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to duplicate quote. Please try again.");
+    }
+  }, [effectiveId, isQuoteSaved, router]);
+
+  const handleDeleteQuote = useCallback(async () => {
+    setShowMenu(false);
+    if (!effectiveId || !isQuoteSaved) return;
+
+    Alert.alert(
+      "Delete Quote",
+      "Are you sure you want to delete this quote? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteQuote(effectiveId);
+              router.replace("/(main)/(tabs)/quotes" as any);
+            } catch (error) {
+              Alert.alert("Error", "Failed to delete quote. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }, [effectiveId, isQuoteSaved, router]);
+
   const handleUpdateItemQty = async (itemId: string, delta: number) => {
     if (!effectiveId) return;
 
@@ -790,6 +958,16 @@ export default function EditQuote() {
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },
+          headerRight: () => (
+            <Pressable
+              onPress={() => setShowMenu(true)}
+              hitSlop={8}
+            >
+              <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="ellipsis-vertical" size={22} color={theme.colors.text} />
+              </View>
+            </Pressable>
+          ),
         }}
       />
       <FormScreen
@@ -840,7 +1018,7 @@ export default function EditQuote() {
                 styles.statusChip,
                 isActive && { backgroundColor: statusColor, borderColor: statusColor },
               ]}
-              onPress={() => setStatus(s)}
+              onPress={() => handleStatusChange(s)}
             >
               <Text
                 style={[
@@ -871,7 +1049,7 @@ export default function EditQuote() {
 
         <View style={styles.labelRow}>
           <Text style={styles.label}>Client name *</Text>
-          {isPro && savedClients.length > 0 && (
+          {savedClients.length > 0 && (
             <Pressable
               onPress={() => setShowClientPicker(true)}
               hitSlop={8}
@@ -879,7 +1057,7 @@ export default function EditQuote() {
               <Text style={styles.browseTag}>Browse</Text>
             </Pressable>
           )}
-          {isPro && savedClients.length === 0 && (
+          {savedClients.length === 0 && (
             <Pressable
               onPress={() => router.push(`/(main)/client-manager?returnTo=${effectiveId}` as any)}
               hitSlop={8}
@@ -898,7 +1076,7 @@ export default function EditQuote() {
               setShowClientSuggestions(true);
             }}
             onFocus={() => {
-              if (isPro && savedClients.length > 0) {
+              if (savedClients.length > 0) {
                 setShowClientSuggestions(true);
               }
             }}
@@ -907,7 +1085,7 @@ export default function EditQuote() {
               setTimeout(() => {
                 setShowClientSuggestions(false);
                 // Auto-fill contact info if name exactly matches a saved client
-                if (isPro && clientName.trim()) {
+                if (clientName.trim()) {
                   const exactMatch = savedClients.find(
                     (c) => c.name.toLowerCase() === clientName.trim().toLowerCase()
                   );
@@ -1255,7 +1433,7 @@ export default function EditQuote() {
 
             <View style={{ height: theme.spacing(2) }} />
 
-            <Text style={styles.label}>Markup %</Text>
+            <Text style={styles.label}>Material Markup %</Text>
             <View style={styles.inputWithSuffix}>
               <FormInput
                 placeholder="0"
@@ -1632,6 +1810,76 @@ export default function EditQuote() {
         editingEntry={editingLaborEntry}
         showRate={canViewLaborRates}
       />
+
+      {/* Quote Actions Menu */}
+      <Modal
+        visible={showMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <Pressable
+          style={styles.menuOverlay}
+          onPress={() => setShowMenu(false)}
+        >
+          <View style={styles.menuContainer}>
+            <Pressable
+              style={styles.menuModal}
+              onPress={(e) => e.stopPropagation()}
+            >
+              {/* Create Tier */}
+              <Pressable
+                style={[styles.menuItem, !isQuoteSaved && styles.menuItemDisabled]}
+                onPress={handleCreateTier}
+                disabled={!isQuoteSaved}
+              >
+                <Ionicons
+                  name="layers-outline"
+                  size={20}
+                  color={!isQuoteSaved ? theme.colors.muted : theme.colors.text}
+                />
+                <Text style={[styles.menuItemText, !isQuoteSaved && styles.menuItemTextDisabled]}>
+                  Create Tier
+                </Text>
+              </Pressable>
+
+              {/* Duplicate Quote */}
+              <Pressable
+                style={[styles.menuItem, !isQuoteSaved && styles.menuItemDisabled]}
+                onPress={handleDuplicateQuote}
+                disabled={!isQuoteSaved}
+              >
+                <Ionicons
+                  name="copy-outline"
+                  size={20}
+                  color={!isQuoteSaved ? theme.colors.muted : theme.colors.text}
+                />
+                <Text style={[styles.menuItemText, !isQuoteSaved && styles.menuItemTextDisabled]}>
+                  Duplicate Quote
+                </Text>
+              </Pressable>
+
+              <View style={styles.menuDivider} />
+
+              {/* Delete Quote */}
+              <Pressable
+                style={[styles.menuItem, !isQuoteSaved && styles.menuItemDisabled]}
+                onPress={handleDeleteQuote}
+                disabled={!isQuoteSaved}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={20}
+                  color={!isQuoteSaved ? theme.colors.muted : "#FF3B30"}
+                />
+                <Text style={[styles.menuItemText, !isQuoteSaved ? styles.menuItemTextDisabled : { color: "#FF3B30" }]}>
+                  Delete Quote
+                </Text>
+              </Pressable>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
     </>
   );
@@ -2143,6 +2391,54 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.text,
+    },
+    // Menu modal styles
+    menuOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-start",
+      alignItems: "flex-end",
+    },
+    menuContainer: {
+      paddingTop: 90,
+      paddingRight: theme.spacing(2),
+    },
+    menuModal: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      paddingVertical: theme.spacing(1),
+      minWidth: 180,
+      maxWidth: 220,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    menuItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: theme.spacing(1.25),
+      paddingHorizontal: theme.spacing(2),
+      gap: theme.spacing(1),
+    },
+    menuItemDisabled: {
+      opacity: 0.5,
+    },
+    menuItemText: {
+      fontSize: 15,
+      fontWeight: "500",
+      color: theme.colors.text,
+    },
+    menuItemTextDisabled: {
+      color: theme.colors.muted,
+    },
+    menuDivider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: theme.spacing(0.5),
     },
   });
 }

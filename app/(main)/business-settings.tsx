@@ -192,7 +192,11 @@ export default function BusinessSettings() {
 
             <View style={styles.divider} />
 
-            <View style={styles.row}>
+            <Pressable
+              style={styles.row}
+              onPress={() => !hasProAccess ? handleLearnMore() : undefined}
+              disabled={hasProAccess}
+            >
               <View style={styles.logoLeft}>
                 <Text style={styles.rowLabel}>Logo</Text>
                 {logo?.base64 && (
@@ -219,7 +223,7 @@ export default function BusinessSettings() {
               ) : (
                 <Text style={styles.rowValue}>{logo ? "Set" : "Not set"}</Text>
               )}
-            </View>
+            </Pressable>
           </View>
         </Pressable>
 
@@ -230,9 +234,8 @@ export default function BusinessSettings() {
             <InlineField
               label="Invoice Prefix"
               value={preferences.invoice?.prefix || "INV"}
-              enabled={hasProAccess && canEdit}
+              enabled={canEdit}
               onSave={async (v) => setPreferences(await updateInvoiceSettings({ prefix: v.trim().toUpperCase() }))}
-              onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
@@ -240,9 +243,8 @@ export default function BusinessSettings() {
               label="Next Invoice #"
               value={String(preferences.invoice?.nextNumber || 1)}
               keyboardType="number-pad"
-              enabled={hasProAccess && canEdit}
+              enabled={canEdit}
               onSave={async (v) => { const n = parseInt(v, 10); if (n > 0) setPreferences(await updateInvoiceSettings({ nextNumber: n })); }}
-              onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
@@ -294,6 +296,53 @@ export default function BusinessSettings() {
           </Text>
         </Pressable>
 
+        {/* SMS Messaging Section - Premium only */}
+        <Pressable style={styles.section} onPress={Keyboard.dismiss}>
+          <Text style={styles.sectionTitle}>SMS Messaging</Text>
+          <View style={styles.card}>
+            <Pressable
+              style={styles.row}
+              onPress={() => {
+                if (!hasPremiumAccess && !isTech) {
+                  handleLearnMore();
+                } else if (hasPremiumAccess && !preferences.company?.smsPhone) {
+                  // Open portal to set up SMS
+                  Linking.openURL("https://portal.quotecat.ai/dashboard/settings#sms");
+                }
+              }}
+              disabled={isTech && !preferences.company?.smsPhone}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={styles.rowLabel}>SMS Number</Text>
+                {!hasPremiumAccess && <PremiumBadge theme={theme} />}
+              </View>
+              <View style={styles.rowRight}>
+                {hasPremiumAccess ? (
+                  preferences.company?.smsPhone ? (
+                    <Text style={[styles.rowValue, { color: theme.colors.text, fontWeight: "500" }]}>
+                      {formatPhoneForDisplay(preferences.company.smsPhone)}
+                    </Text>
+                  ) : (
+                    <>
+                      <Text style={[styles.rowValue, { color: theme.colors.accent }]}>
+                        Set up in portal
+                      </Text>
+                      <Ionicons name="open-outline" size={16} color={theme.colors.accent} style={{ marginLeft: 4 }} />
+                    </>
+                  )
+                ) : (
+                  <Text style={styles.rowValue}>Send text reminders</Text>
+                )}
+              </View>
+            </Pressable>
+          </View>
+          <Text style={styles.sectionHint}>
+            {hasPremiumAccess && preferences.company?.smsPhone
+              ? "Clients can text this number to reach you"
+              : "Send text reminders to clients for invoices and appointments"}
+          </Text>
+        </Pressable>
+
         {/* Pricing Section */}
         <Pressable style={styles.section} onPress={Keyboard.dismiss}>
           <Text style={styles.sectionTitle}>Pricing Defaults</Text>
@@ -303,20 +352,18 @@ export default function BusinessSettings() {
               value={String(preferences.pricing?.defaultTaxPercent || 0)}
               suffix="%"
               keyboardType="decimal-pad"
-              enabled={hasProAccess && canEdit}
+              enabled={canEdit}
               onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0 && n <= 100) setPreferences(await updatePricingSettings({ defaultTaxPercent: n })); }}
-              onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
             <InlineField
-              label="Default Markup"
+              label="Default Material Markup"
               value={String(preferences.pricing?.defaultMarkupPercent || 0)}
               suffix="%"
               keyboardType="decimal-pad"
-              enabled={hasProAccess && canEdit}
+              enabled={canEdit}
               onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0) setPreferences(await updatePricingSettings({ defaultMarkupPercent: n })); }}
-              onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
@@ -326,9 +373,8 @@ export default function BusinessSettings() {
               prefix="$"
               suffix="/hr"
               keyboardType="decimal-pad"
-              enabled={hasProAccess && canEdit}
+              enabled={canEdit}
               onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0) setPreferences(await updatePricingSettings({ defaultLaborRate: n })); }}
-              onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
@@ -337,27 +383,28 @@ export default function BusinessSettings() {
               value={preferences.pricing?.zipCode || ""}
               placeholder="—"
               keyboardType="number-pad"
-              enabled={hasProAccess && canEdit}
+              enabled={canEdit}
               onSave={async (v) => setPreferences(await updatePricingSettings({ zipCode: v.trim() }))}
-              onLocked={handleLearnMore}
               theme={theme}
               readOnly={isTech}
             />
           </View>
         </Pressable>
 
-        {/* Overhead & Profitability Section */}
-        <Pressable style={styles.section} onPress={Keyboard.dismiss}>
-          <Text style={styles.sectionTitle}>Overhead & Profitability</Text>
-          <View style={styles.card}>
-            {/* Overhead fields are free for all users - Pro features use the data */}
+        {/* Overhead & Profitability Section - Pro feature */}
+        <Pressable style={styles.section} onPress={() => !hasProAccess ? handleLearnMore() : Keyboard.dismiss()}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={styles.sectionTitle}>Overhead & Profitability</Text>
+            {!hasProAccess && <LockBadge theme={theme} />}
+          </View>
+          <View style={[styles.card, !hasProAccess && { opacity: 0.5 }]}>
             <InlineField
               label="Annual Overhead"
               value={String(preferences.overhead?.annualOverhead || 0)}
               prefix="$"
               keyboardType="decimal-pad"
               formatCurrency={true}
-              enabled={canEdit}
+              enabled={hasProAccess && canEdit}
               onSave={async (v) => {
                 const annualOverhead = parseFloat(v) || 0;
                 const annualLaborRevenue = preferences.overhead?.annualLaborRevenue || 0;
@@ -371,7 +418,7 @@ export default function BusinessSettings() {
                 }));
               }}
               theme={theme}
-              readOnly={isTech}
+              readOnly={isTech || !hasProAccess}
             />
             <InlineField
               label="Annual Labor Revenue"
@@ -379,7 +426,7 @@ export default function BusinessSettings() {
               prefix="$"
               keyboardType="decimal-pad"
               formatCurrency={true}
-              enabled={canEdit}
+              enabled={hasProAccess && canEdit}
               onSave={async (v) => {
                 const annualLaborRevenue = parseFloat(v) || 0;
                 const annualOverhead = preferences.overhead?.annualOverhead || 0;
@@ -393,7 +440,7 @@ export default function BusinessSettings() {
                 }));
               }}
               theme={theme}
-              readOnly={isTech}
+              readOnly={isTech || !hasProAccess}
             />
             <View style={styles.divider} />
             <View style={styles.row}>
@@ -410,7 +457,7 @@ export default function BusinessSettings() {
               value={String(preferences.overhead?.targetProfitMarginPercent || 0)}
               suffix="%"
               keyboardType="decimal-pad"
-              enabled={canEdit}
+              enabled={hasProAccess && canEdit}
               onSave={async (v) => {
                 const targetProfitMarginPercent = parseFloat(v) || 0;
                 setPreferences(await updateOverheadSettings({
@@ -422,7 +469,7 @@ export default function BusinessSettings() {
                 }));
               }}
               theme={theme}
-              readOnly={isTech}
+              readOnly={isTech || !hasProAccess}
             />
           </View>
           <Text style={styles.sectionHint}>
@@ -453,6 +500,14 @@ function PremiumBadge({ theme }: { theme: ReturnType<typeof useTheme>["theme"] }
       <Text style={{ fontSize: 11, fontWeight: "600", color: "#7C3AED" }}>Premium</Text>
     </View>
   );
+}
+
+// Format phone number for display: +18445551234 → (844) 555-1234
+function formatPhoneForDisplay(phone: string): string {
+  // Remove +1 prefix and any non-digits
+  const digits = phone.replace(/^\+1/, "").replace(/\D/g, "");
+  if (digits.length !== 10) return phone; // Return as-is if not standard US
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
 // Format number with commas
@@ -519,7 +574,7 @@ function InlineField({
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8 }}>
       <Pressable onPress={Keyboard.dismiss} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <Text style={{ fontSize: 15, color: theme.colors.text }}>{label}</Text>
-        {!enabled && <Ionicons name="lock-closed" size={12} color={theme.colors.accent} />}
+        {!enabled && (premium ? <PremiumBadge theme={theme} /> : <LockBadge theme={theme} />)}
       </Pressable>
       {enabled ? (
         <View style={{ flexDirection: "row", alignItems: "center" }}>

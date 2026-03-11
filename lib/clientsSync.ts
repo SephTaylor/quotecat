@@ -7,7 +7,7 @@ import type { Client } from "./types";
 import { getCurrentUserId } from "./authUtils";
 import { getTechContext } from "./team";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getLocallyDeletedClientIdsDB } from "./database";
+import { getTombstonesDB, deleteTombstoneDB } from "./database";
 
 const SYNC_METADATA_KEY = "@quotecat/clients_sync_metadata";
 const SYNC_LOCK_KEY = "@quotecat/clients_sync_lock";
@@ -432,17 +432,21 @@ export async function syncClients(): Promise<{
       }
     }
 
-    // Get locally deleted client IDs to avoid re-downloading them
-    const locallyDeletedIds = new Set(getLocallyDeletedClientIdsDB());
-    if (locallyDeletedIds.size > 0) {
-      console.log(`🗑️ Found ${locallyDeletedIds.size} locally deleted clients to skip`);
+    // Process tombstones - delete from cloud and clear tombstones
+    const tombstoneIds = getTombstonesDB('client');
+    const locallyDeletedIds = new Set(tombstoneIds);
+    if (tombstoneIds.length > 0) {
+      console.log(`🪦 Found ${tombstoneIds.length} client tombstones to process`);
 
-      // Clean up orphans: delete from cloud any clients that were deleted locally
-      for (const deletedId of locallyDeletedIds) {
+      // Delete from cloud and clear tombstones
+      for (const deletedId of tombstoneIds) {
         try {
           await deleteClientFromCloud(deletedId);
+          // Clear tombstone after successful cloud deletion
+          deleteTombstoneDB(deletedId, 'client');
         } catch (error) {
-          // Silently continue - might already be deleted or not exist
+          // Keep tombstone to retry on next sync
+          console.warn(`Failed to delete client ${deletedId} from cloud, will retry:`, error);
         }
       }
     }

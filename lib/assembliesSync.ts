@@ -4,6 +4,7 @@
 import { supabase } from "./supabase";
 import { getCurrentUserId } from "./authUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getTombstonesDB, deleteTombstoneDB } from "./database";
 
 // Import types from assemblies module
 import type { Assembly } from "@/modules/assemblies/types";
@@ -275,7 +276,7 @@ export async function migrateLocalAssembliesToCloud(): Promise<{
     }
 
     // Dynamic import to avoid circular dependency
-    const { listAssemblies } = await import("@/modules/assemblies/storage");
+    const { listAssemblies } = await import("@/modules/assemblies");
     const localAssemblies = await listAssemblies();
 
     if (localAssemblies.length === 0) {
@@ -369,9 +370,7 @@ export async function syncAssemblies(): Promise<{
       listAssemblies,
       saveAssemblyLocally,
       saveAssembliesBatch,
-      getLocallyDeletedAssemblyIds,
-      clearDeletedAssemblyIds,
-    } = await import("@/modules/assemblies/storage");
+    } = await import("@/modules/assemblies");
 
     const localAssemblies = await listAssemblies();
 
@@ -379,18 +378,21 @@ export async function syncAssemblies(): Promise<{
     const cloudMap = new Map(cloudAssemblies.map((a) => [a.id, a]));
     const localMap = new Map(localAssemblies.map((a) => [a.id, a]));
 
-    // Handle locally deleted assemblies
-    const locallyDeletedIds = new Set(await getLocallyDeletedAssemblyIds());
-    if (locallyDeletedIds.size > 0) {
-      console.log(`🗑️ Found ${locallyDeletedIds.size} locally deleted assemblies to clean up`);
-      for (const deletedId of locallyDeletedIds) {
+    // Process tombstones - delete from cloud and clear tombstones
+    const tombstoneIds = getTombstonesDB('assembly');
+    const locallyDeletedIds = new Set(tombstoneIds);
+    if (tombstoneIds.length > 0) {
+      console.log(`🪦 Found ${tombstoneIds.length} assembly tombstones to process`);
+      for (const deletedId of tombstoneIds) {
         try {
           await deleteAssemblyFromCloud(deletedId);
+          // Clear tombstone after successful cloud deletion
+          deleteTombstoneDB(deletedId, 'assembly');
         } catch (error) {
-          // Continue
+          // Keep tombstone to retry on next sync
+          console.warn(`Failed to delete assembly ${deletedId} from cloud, will retry:`, error);
         }
       }
-      await clearDeletedAssemblyIds();
     }
 
     // Process cloud assemblies -> local

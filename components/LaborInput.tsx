@@ -102,6 +102,9 @@ export function LaborInput({ value, onChange, defaultRate = 0, initialEntry }: P
         const estimatedHours = flatNum / defaultRateNum;
         setHours(estimatedHours.toFixed(1));
         setRate(defaultRateNum.toString());
+      } else if (defaultRateNum > 0 && !rate) {
+        // Pre-fill rate from default even when starting fresh (no flat amount)
+        setRate(defaultRateNum.toString());
       }
       setMode("calculated");
     } else {

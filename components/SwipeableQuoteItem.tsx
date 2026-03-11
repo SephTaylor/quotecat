@@ -9,8 +9,10 @@ import { calculateQuoteTotal } from "@/lib/calculations";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateAndSharePDF } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
-import { getUserState } from "@/lib/user";
+import { getUserState, incrementPdfCount } from "@/lib/user";
 import { getCachedLogo } from "@/lib/logo";
+import { canExportPDF } from "@/lib/features";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 
 type SwipeableQuoteItemProps = {
   item: Quote;
@@ -63,39 +65,70 @@ export const SwipeableQuoteItem = React.memo(
     };
 
     const exportSinglePDF = async () => {
-      try {
-        setIsExporting(true);
+      // Check limits first
+      const userState = await getUserState();
+      const { allowed, reason, remaining } = canExportPDF(userState);
 
-        // Load user state, preferences, and logo
-        const [userState, prefs] = await Promise.all([
-          getUserState(),
-          loadPreferences(),
-        ]);
-
-        // Try to load logo (note: in current implementation, logo requires userId from Supabase auth)
-        // For now, logo will be null since auth isn't implemented yet
-        let logo = null;
-        try {
-          logo = await getCachedLogo();
-        } catch {
-          // Logo loading failed, continue without it
-        }
-
-        // Generate and share PDF
-        // Strip data URL prefix if present - PDF template adds it back
-        const rawBase64 = logo?.base64?.replace(/^data:image\/\w+;base64,/, '');
-        await generateAndSharePDF(item, {
-          includeBranding: userState.tier === "free",
-          companyDetails: prefs.company,
-          logoBase64: rawBase64,
-        });
-      } catch (error) {
+      if (!allowed) {
         Alert.alert(
-          "Export Failed",
-          error instanceof Error ? error.message : "Failed to export PDF"
+          "Limit Reached",
+          reason,
+          [
+            { text: "OK", style: "cancel" },
+            { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+          ]
         );
-      } finally {
-        setIsExporting(false);
+        return;
+      }
+
+      const doExport = async () => {
+        try {
+          setIsExporting(true);
+
+          // Load preferences and logo
+          const prefs = await loadPreferences();
+
+          let logo = null;
+          try {
+            logo = await getCachedLogo();
+          } catch {
+            // Logo loading failed, continue without it
+          }
+
+          // Generate and share PDF
+          const rawBase64 = logo?.base64?.replace(/^data:image\/\w+;base64,/, '');
+          await generateAndSharePDF(item, {
+            includeBranding: userState.tier === "free",
+            companyDetails: prefs.company,
+            logoBase64: rawBase64,
+          });
+
+          // Increment counter for free users
+          if (userState.tier === "free") {
+            await incrementPdfCount();
+          }
+        } catch (error) {
+          Alert.alert(
+            "Export Failed",
+            error instanceof Error ? error.message : "Failed to export PDF"
+          );
+        } finally {
+          setIsExporting(false);
+        }
+      };
+
+      // Show confirmation for free users
+      if (userState.tier === "free" && remaining !== undefined) {
+        Alert.alert(
+          "Export PDF",
+          `This will use 1 of your ${remaining} remaining PDF exports.`,
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Export", onPress: doExport }
+          ]
+        );
+      } else {
+        await doExport();
       }
     };
 
