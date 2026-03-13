@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>The Contractor Pricing Guide</title>
+  <style>
+    @page {
+      margin: 0;
+      size: letter;
+    }
+
+    @page :first {
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.5;
+      color: #1a1a1a;
+      margin: 0;
+      padding: 0;
+    }
+
+    .content-page {
+      padding: 0.5in 0.75in;
+    }
+
+    .cover {
+      page-break-after: always;
+      text-align: center;
+      padding: 0;
+      margin: 0;
+    }
+
+    .cover-header {
+      background: #F97316;
+      margin: 0;
+      padding: 80px 40px 60px 40px;
+      text-align: center;
+    }
+
+    .logo-circle {
+      width: 160px;
+      height: 160px;
+      background: white;
+      border-radius: 50%;
+      margin: 0 auto;
+      padding: 15px;
+    }
+
+    .logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .cover-title {
+      font-size: 42pt;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-top: 80px;
+      margin-bottom: 20px;
+    }
+
+    .cover-subtitle {
+      font-size: 28pt;
+      font-weight: 600;
+      color: #F97316;
+      margin-bottom: 60px;
+    }
+
+    .cover-tagline {
+      font-size: 14pt;
+      color: #666;
+      margin-bottom: 200px;
+    }
+
+    .cover-divider {
+      width: 200px;
+      height: 3px;
+      background: #F97316;
+      margin: 40px auto;
+    }
+
+    .cover-footer {
+      margin-top: auto;
+    }
+
+    .cover-url {
+      color: #F97316;
+      font-weight: 600;
+      font-size: 12pt;
+    }
+
+    .cover-copyright {
+      color: #999;
+      font-size: 10pt;
+      margin-top: 10px;
+    }
+
+    .page-header {
+      text-align: right;
+      color: #999;
+      font-size: 9pt;
+      margin-bottom: 20px;
+    }
+
+    .section-header {
+      background: #F97316;
+      color: white;
+      padding: 12px 20px;
+      font-size: 16pt;
+      font-weight: 600;
+      margin: 30px -20px 20px -20px;
+      border-radius: 4px;
+    }
+
+    h1 {
+      font-size: 24pt;
+      color: #1a1a1a;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      page-break-after: avoid;
+    }
+
+    h2 {
+      font-size: 16pt;
+      color: #F97316;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      page-break-after: avoid;
+    }
+
+    h3 {
+      font-size: 13pt;
+      color: #F97316;
+      margin-top: 25px;
+      margin-bottom: 10px;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin-bottom: 12px;
+    }
+
+    strong {
+      color: #1a1a1a;
+    }
+
+    blockquote {
+      background: #f5f5f5;
+      border-left: 4px solid #F97316;
+      padding: 15px 20px;
+      margin: 20px 0;
+      font-style: italic;
+    }
+
+    .callout {
+      background: #FFF7ED;
+      border: 1px solid #FDBA74;
+      border-radius: 6px;
+      padding: 15px 20px;
+      margin: 20px 0;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      color: #F97316;
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 10pt;
+    }
+
+    th {
+      background: #F97316;
+      color: white;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    ul, ol {
+      margin-bottom: 15px;
+      padding-left: 25px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    .checkbox {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ccc;
+      border-radius: 2px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .checklist-item {
+      margin-bottom: 10px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e5e5e5;
+      margin: 30px 0;
+    }
+
+    .page-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 9pt;
+      color: #999;
+      padding: 10px;
+    }
+
+    .page-number {
+      text-align: center;
+      font-size: 9pt;
+      color: #999;
+      margin-top: 40px;
+    }
+
+    .star {
+      color: #F97316;
+      font-weight: bold;
+    }
+
+    .highlight {
+      background: #FEF3C7;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .cta-box {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 25px;
+      text-align: center;
+      margin: 30px 0;
+    }
+
+    .cta-box h3 {
+      color: #1a1a1a;
+      margin-top: 0;
+    }
+
+    .cta-link {
+      color: #F97316;
+      font-weight: 600;
+    }
+
+    .about-section {
+      margin-top: 60px;
+      padding-top: 30px;
+      border-top: 2px solid #F97316;
+      text-align: center;
+    }
+
+    .about-title {
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .final-footer {
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .final-url {
+      color: #F97316;
+      font-weight: 700;
+      font-size: 14pt;
+    }
+
+    .final-copyright {
+      color: #999;
+      font-size: 10pt;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <div class="cover-header">
+    <div class="logo-circle">
+      <img class="logo-img" src="../website/images/logo.png" alt="QuoteCat">
+    </div>
+  </div>
+
+  <h1 class="cover-title">The Contractor</h1>
+  <h2 class="cover-subtitle">Pricing Guide</h2>
+
+  <div class="cover-divider"></div>
+
+  <p class="cover-tagline">Stop Undercharging. Start Profiting.</p>
+
+  <div class="cover-footer">
+    <p class="cover-url">quotecat.ai</p>
+    <p class="cover-copyright">&copy; 2026 QuoteCat</p>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="content-page">
+<div class="page-header">quotecat.ai</div>
+
+<div class="section-header">Introduction: Are You Leaving $100K on the Table?</div>
+
+<p>You've been running your business for a few years now. Kitchens, bathrooms, decks, additions&mdash;you do it all. You're busy, too. Really busy. Nights, weekends, hardly a day off. You've put 180,000 miles on your truck and countless maintenance hours into this thing.</p>
+
+<p>But here's the thing: you're not getting ahead.</p>
+
+<p>Not broke, exactly. More like "where did all the money go?" You finish a $45,000 kitchen and wonder why there's only $3,000 left after paying your guys, your subs, and your suppliers.</p>
+
+<p>Let me ask you a question: <strong>What's your markup?</strong></p>
+
+<p>If you said 20%, you're in good company. That's what most contractors charge. "Same as everyone around here."</p>
+
+<p>Do you want to see if that actually works?</p>
+
+<p>A 20% markup on a $35,000 job cost means you're selling for $42,000 and "making" $7,000.</p>
+
+<p>But that $7,000 has to cover your overhead, your salary, AND your profit. After you pay for your truck, insurance, gas, tools, phone, license fees, and all the callbacks you eat, you're paying yourself less than your lead carpenter.</p>
+
+<p>Here's the reality: to pay yourself $80,000 a year, cover $60,000 in overhead, and make a real 15% profit margin, you need to mark up by <strong>43%</strong>, not 20%.</p>
+
+<p>So on that same $35,000 job, you should charge <strong>$50,000</strong>, not $42,000.</p>
+
+<p>That's $8,000 you're leaving on the table.</p>
+
+<p>Every job.</p>
+
+<p>If you do 15 jobs a year, that's <strong>$120,000</strong> you're giving away.</p>
+
+<hr>
+
+<p>You're good at your trade. You show up, do quality work, take care of people. But nobody ever taught you how to price. Trade school covered code and technique. It didn't cover profit margins.</p>
+
+<p>So you did what everyone does: you looked at what other guys charged and matched it. Or you undercut them to win jobs. Or you pulled a number out of thin air that "felt right."</p>
+
+<p>And now you're working 60-hour weeks wondering why you can't afford a vacation.</p>
+
+<p><strong>This guide is going to fix that.</strong></p>
+
+<p>Not with theory. Not with complicated formulas. With simple, practical steps you can use on your next quote.</p>
+
+<p>By the end, you'll know:</p>
+<ul>
+  <li>What you actually need to charge (the real number, not the "going rate")</li>
+  <li>How to present prices so clients say yes</li>
+  <li>How to stop losing money on every job</li>
+</ul>
+
+<p>Let's get into it.</p>
+
+<div class="page-number">2 | quotecat.ai</div>
+
+<!-- PAGE 3 -->
+<div class="section-header">Part 1: Know Your Numbers</div>
+
+<h2>Chapter 1: What It Really Costs You</h2>
+
+<p>What does it cost you to show up at a job?</p>
+
+<p>Most contractors answer with their hourly rate. "$75 an hour." Or "$100." Whatever.</p>
+
+<p>But that's not what I'm asking. I'm asking what it <strong>costs</strong> you, not what you charge. Before you make a single dollar of profit, what does it cost just to exist as a contractor?</p>
+
+<h3>The Truck Equation</h3>
+
+<p>Start with your truck.</p>
+
+<ul>
+  <li>Payment or savings for replacement: $500/month</li>
+  <li>Insurance: $200/month</li>
+  <li>Gas: $400/month (you're probably underestimating this)</li>
+  <li>Maintenance, tires, repairs: $200/month</li>
+</ul>
+
+<p>That's $1,300/month just to have a truck. <strong>$15,600 per year.</strong></p>
+
+<p>And you need that truck whether you have jobs or not.</p>
+
+<h3>The Tool Tax</h3>
+
+<p>Every year, tools break, wear out, or walk off the job.</p>
+
+<ul>
+  <li>Replacements and upgrades: $2,000-4,000/year</li>
+  <li>Batteries, blades, bits: $1,000-2,000/year</li>
+</ul>
+
+<p>Call it <strong>$4,000/year</strong> to stay equipped.</p>
+
+<h3>The Insurance Reality</h3>
+
+<ul>
+  <li>General liability: $2,000/year (more if you're high-risk)</li>
+  <li>Workers comp: 3-15% of payroll depending on trade</li>
+  <li>Vehicle (if not above): included</li>
+</ul>
+
+<p>Let's say <strong>$4,000/year</strong> for a small operation.</p>
+
+<h3>The Stuff Nobody Thinks About</h3>
+
+<ul>
+  <li>Phone and internet: $150/month = $1,800/year</li>
+  <li>Software (accounting, estimating): $100/month = $1,200/year</li>
+  <li>License renewals and continuing ed: $500/year</li>
+  <li>Accountant: $1,500/year</li>
+  <li>Marketing (even just basic): $2,000/year</li>
+</ul>
+
+<p>That's another <strong>$7,000/year</strong>.</p>
+
+<h3>The Hidden Killers</h3>
+
+<p>Here's where it gets ugly.</p>
+
+<p><strong>Callbacks</strong></p>
+
+<p>Every callback costs you twice: once for the time, again for the materials. You can't bill for it. Budget 2-3% of your revenue for warranty work.</p>
+
+<p><strong>Unbilled time</strong></p>
+
+<p>For every hour you bill, you're probably working another 20-30 minutes you can't charge for. Driving to estimates, picking up materials, answering calls, doing boring paperwork. That time isn't free.</p>
+
+<p><strong>Slow seasons</strong></p>
+
+<p>If you're in a seasonal trade, your busy months need to pay for your slow months. A Minnesota plumber might only have 9 productive months. Those 9 months need to cover 12 months of overhead.</p>
+
+<p><strong>Mistakes</strong></p>
+
+<p>Of course everyone screws up sometimes. Measure twice, cut once, but sometimes you still cut wrong. Budget for it.</p>
+
+<div class="page-number">3 | quotecat.ai</div>
+
+<!-- PAGE 4 -->
+<h3>Add It Up</h3>
+
+<p>Here's a realistic overhead for a one-person operation:</p>
+
+<table>
+  <tr>
+    <th>Category</th>
+    <th>Annual Cost</th>
+  </tr>
+  <tr>
+    <td>Vehicle</td>
+    <td>$15,600</td>
+  </tr>
+  <tr>
+    <td>Tools</td>
+    <td>$4,000</td>
+  </tr>
+  <tr>
+    <td>Insurance</td>
+    <td>$4,000</td>
+  </tr>
+  <tr>
+    <td>Phone, software, admin</td>
+    <td>$7,000</td>
+  </tr>
+  <tr>
+    <td>Marketing</td>
+    <td>$2,000</td>
+  </tr>
+  <tr>
+    <td>Callbacks (2% of $200K revenue)</td>
+    <td>$4,000</td>
+  </tr>
+  <tr>
+    <td>Miscellaneous</td>
+    <td>$3,000</td>
+  </tr>
+  <tr>
+    <td><strong>Total</strong></td>
+    <td><strong>$39,600</strong></td>
+  </tr>
+</table>
+
+<p>Round it to <strong>$40,000/year</strong> just to keep the lights on.</p>
+
+<p>That's $40,000 you need to earn before you pay yourself a single dollar.</p>
+
+<hr>
+
+<div class="callout">
+  <div class="callout-title">The number that matters:</div>
+  <p>Take your annual overhead and divide it by your billable hours.</p>
+  <p>If you work 2,000 hours a year but only bill 1,400 of them (the rest is unbilled time), use 1,400.</p>
+  <p>$40,000 &divide; 1,400 = <strong>$28.57 per billable hour</strong> just for overhead.</p>
+  <p>Every hour you work costs you almost $30 before you make anything.</p>
+  <p>Write that number down. You need it for Chapter 2.</p>
+</div>
+
+<h2>Chapter 2: What You Need to Charge</h2>
+
+<p>Now for the question everyone gets wrong: What should your hourly rate be?</p>
+
+<p>The common approach is to figure out what you want to make, divide by hours, and that's your rate.</p>
+
+<p>"I want $100,000. That's $50 an hour."</p>
+
+<p><strong>This is how contractors go broke.</strong></p>
+
+<h3>The Math That Actually Works</h3>
+
+<p>Here's how to build your rate from the ground up.</p>
+
+<p><strong>Step 1: What do you want to earn?</strong></p>
+
+<p>Be honest. Not what sounds humble. What do you actually want to take home?</p>
+
+<p>Let's say $90,000. That's a reasonable living for a skilled tradesperson.</p>
+
+<p><strong>Step 2: Add the cost of employing yourself</strong></p>
+
+<p>If you pay yourself as an employee (which you probably should for tax reasons), add:</p>
+<ul>
+  <li>Payroll taxes: ~7.65% = $6,885</li>
+  <li>Health insurance: $8,000-15,000/year (let's say $10,000)</li>
+  <li>Retirement contributions: 10% = $9,000</li>
+</ul>
+
+<p>Total cost to pay yourself $90K: <strong>$115,885</strong></p>
+
+<p><strong>Step 3: Add your overhead</strong></p>
+
+<p>From Chapter 1: $40,000</p>
+
+<p>Running total: <strong>$155,885</strong></p>
+
+<div class="page-number">4 | quotecat.ai</div>
+
+<!-- PAGE 5 -->
+<p><strong>Step 4: Add profit</strong></p>
+
+<p>"Wait, I already included my salary. Why do I need profit too?"</p>
+
+<p>Because your salary is the cost of your labor. Profit is the return on your risk.</p>
+
+<p>You could work for someone else, make $90K, and go home at 5pm with zero stress. Instead, you're running a business and taking on risks: callbacks, slow seasons, bad clients, liability.</p>
+
+<p>You deserve a return on that risk.</p>
+
+<p>Industry benchmark: 10-15% net profit margin.</p>
+
+<p>To get 15% net profit: $155,885 &divide; 0.85 = <strong>$183,394</strong></p>
+
+<p><strong>Step 5: Divide by billable hours</strong></p>
+
+<p>$183,394 &divide; 1,400 billable hours = <strong>$131 per hour</strong></p>
+
+<p>Not $50. Not $75. <strong>$131.</strong></p>
+
+<hr>
+
+<h3>"But nobody around here charges that much!"</h3>
+
+<p>Two things:</p>
+
+<p><strong>First:</strong> You'd be surprised. The contractors who are actually making money aren't advertising their rates. They're quietly charging $120, $150, $180 and their clients are happy to pay because they're worth it.</p>
+
+<p><strong>Second:</strong> You don't have to quote hourly.</p>
+
+<p>Most of the time, you're quoting projects. The client doesn't see "$131/hour x 8 hours." They see "$1,050 to install your ceiling fan." If your competitor quotes $600 for the same job but does sloppy work and won't return calls.</p>
+
+<p>Guess who's actually the better deal?</p>
+
+<h3>The Real Rates by Trade</h3>
+
+<p>Here's what contractors actually charge (not employee wages&mdash;what they bill clients):</p>
+
+<table>
+  <tr>
+    <th>Trade</th>
+    <th>Typical Range</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Electrician</td>
+    <td>$85-175/hour</td>
+    <td>Apprentice lower, master higher</td>
+  </tr>
+  <tr>
+    <td>Plumber</td>
+    <td>$90-175/hour</td>
+    <td>Service work at the high end</td>
+  </tr>
+  <tr>
+    <td>HVAC</td>
+    <td>$85-175/hour</td>
+    <td>Plus parts markup</td>
+  </tr>
+  <tr>
+    <td>General Contractor</td>
+    <td>$75-150/hour</td>
+    <td>Or 15-25% of project cost</td>
+  </tr>
+  <tr>
+    <td>Carpenter</td>
+    <td>$50-110/hour</td>
+    <td>Finish work pays more</td>
+  </tr>
+</table>
+
+<p>These are 2026 numbers from actual market data. Your region matters, and coastal cities run 20-40% higher than rural areas.</p>
+
+<p><strong>The point:</strong> $130/hour isn't crazy.</p>
+
+<p>It's what you need to run a real business.</p>
+
+<h3>The Exercise</h3>
+
+<p>When you're ready, calculate your real hourly rate:</p>
+
+<ol>
+  <li>Desired salary: $_________</li>
+  <li>Add benefits/taxes (25%): $_________</li>
+  <li>Add overhead (Ch. 1): $_________</li>
+  <li>Subtotal: $_________</li>
+  <li>Divide by 0.85 (for 15% profit): $_________</li>
+  <li>Divide by billable hours: $_________ <strong>/hour</strong></li>
+</ol>
+
+<p>That's your number!</p>
+
+<p>Everything else is money on the table.</p>
+
+<div class="page-number">5 | quotecat.ai</div>
+
+<!-- PAGE 6 -->
+<h2>Chapter 3: Markup vs. Margin (The Difference That Costs You Real Money)</h2>
+
+<p>Quick quiz: You buy materials for $1,000 and mark them up 30%. What's your profit margin?</p>
+
+<p>If you said 30%, you're not alone.</p>
+
+<p>But you'd be wrong.</p>
+
+<h3>It's a Trap!</h3>
+
+<p>Markup and margin are different things.</p>
+
+<p>Confusing them is costing you, every year.</p>
+
+<p><strong>Markup</strong> = what you add to cost<br>
+<strong>Margin</strong> = what you keep from the sale</p>
+
+<p>Here's the $1,000 example:</p>
+<ul>
+  <li>Cost: $1,000</li>
+  <li>30% markup: $300</li>
+  <li>Selling price: $1,300</li>
+  <li>Your profit: $300</li>
+  <li>Margin: $300 &divide; $1,300 = <strong>23%</strong></li>
+</ul>
+
+<p>You marked up 30% but only made 23%.</p>
+
+<h3>The Conversion Table</h3>
+
+<p>Memorize this (or screenshot it):</p>
+
+<table>
+  <tr>
+    <th>You Mark Up...</th>
+    <th>You Actually Keep...</th>
+  </tr>
+  <tr>
+    <td>10%</td>
+    <td>9%</td>
+  </tr>
+  <tr>
+    <td>20%</td>
+    <td>17%</td>
+  </tr>
+  <tr>
+    <td>25%</td>
+    <td>20%</td>
+  </tr>
+  <tr>
+    <td>30%</td>
+    <td>23%</td>
+  </tr>
+  <tr>
+    <td>40%</td>
+    <td>29%</td>
+  </tr>
+  <tr>
+    <td>50%</td>
+    <td>33%</td>
+  </tr>
+  <tr>
+    <td>100%</td>
+    <td>50%</td>
+  </tr>
+</table>
+
+<p>Want a 30% margin? You need a <strong>43% markup.</strong></p>
+
+<p>The formula: Margin &divide; (1 - Margin) = Required Markup</p>
+
+<p>30% margin: 0.30 &divide; 0.70 = 0.43 = 43% markup</p>
+
+<hr>
+
+<h3>What This Means in Real Money</h3>
+
+<p>Say you do $300,000 in revenue this year. You've been using a 25% markup thinking you're making 25%.</p>
+
+<p>You're actually making 20% gross margin.</p>
+
+<p>If you'd used the correct 43% markup to hit 30% margin, that's an extra $30,000 in your pocket.</p>
+
+<p>Same jobs. Same clients. Same hours. $30,000 more.</p>
+
+<p>That's the difference between a family vacation and another year of grinding.</p>
+
+<h3>Recommended Markups</h3>
+
+<table>
+  <tr>
+    <th>What You're Selling</th>
+    <th>Markup</th>
+  </tr>
+  <tr>
+    <td>Materials</td>
+    <td>25-35%</td>
+  </tr>
+  <tr>
+    <td>Subcontractor work</td>
+    <td>15-25%</td>
+  </tr>
+  <tr>
+    <td>Flat-rate jobs</td>
+    <td>50-75% on cost</td>
+  </tr>
+  <tr>
+    <td>Time &amp; materials</td>
+    <td>40-50% overall</td>
+  </tr>
+</table>
+
+<p>These markups give you 20-40% gross margins. That's what you need to cover overhead and make a profit.</p>
+
+<div class="page-number">6 | quotecat.ai</div>
+
+<!-- PAGE 7 -->
+<h2>Chapter 4: Good, Better, Best (Your Secret Weapon)</h2>
+
+<p>Here's how most contractors quote a job:</p>
+
+<ol>
+  <li>Look at what needs to be done</li>
+  <li>Add up materials and labor</li>
+  <li>Slap on some markup</li>
+  <li>Send one number</li>
+</ol>
+
+<p>The client says yes or no. Usually no.</p>
+
+<p><strong>There's a better way.</strong></p>
+
+<h3>The Problem with One Price</h3>
+
+<p>One price turns every quote into a yes-or-no question. The client has two options: take your number or call someone else.</p>
+
+<p>You have zero room to negotiate. Zero way to show value. Zero chance to upsell.</p>
+
+<h3>The Solution: Three Options</h3>
+
+<p>Instead of one price, present three:</p>
+
+<ul>
+  <li><strong>Good:</strong> Solves the problem, basic approach</li>
+  <li><strong>Better:</strong> Solves it better, adds value (your target)</li>
+  <li><strong>Best:</strong> The premium option with everything</li>
+</ul>
+
+<p>Now the client isn't deciding whether to hire you. They're deciding which option to pick. The psychology shifts completely.</p>
+
+<h3>Why This Works (It's Science)</h3>
+
+<p>This isn't just a sales trick. Researchers have been studying it for decades:</p>
+
+<p><strong>The middle option wins.</strong> When people see three choices, they almost never pick the cheapest (feels risky) or the most expensive (feels excessive). The middle feels "just right." 60-70% of buyers pick it.</p>
+
+<p><strong>Anchoring is real.</strong> The first number someone sees sets their expectations. If they see $8,000 first (your Best option), suddenly $5,500 (Better) looks reasonable. Without that anchor, $5,500 might seem expensive.</p>
+
+<p><strong>People want control.</strong> One price feels like an ultimatum. Three prices feel like a choice. Same outcome, better feeling.</p>
+
+<h3>How to Structure Your Tiers</h3>
+
+<p>Bad tiering: "Same job, just more expensive for no reason."</p>
+
+<p>Good tiering: "Different solutions for different needs."</p>
+
+<p><strong>Good (Entry):</strong></p>
+<ul>
+  <li>Solves the immediate problem</li>
+  <li>Standard materials and methods</li>
+  <li>Basic warranty</li>
+  <li>This is not a crappy option. It's legitimately good.</li>
+</ul>
+
+<p><strong>Better (Your Target):</strong></p>
+<ul>
+  <li>Solves the problem better</li>
+  <li>Upgraded materials or methods</li>
+  <li>Enhanced warranty</li>
+  <li>Where 60% of clients should land</li>
+</ul>
+
+<p><strong>Best (Premium):</strong></p>
+<ul>
+  <li>The complete solution</li>
+  <li>Best materials, longest warranty</li>
+  <li>Future-proofing and extras</li>
+  <li>For clients who want the best and don't mind paying</li>
+</ul>
+
+<div class="page-number">7 | quotecat.ai</div>
+
+<!-- PAGE 8 -->
+<h3>Real Example: Electrical Panel Upgrade</h3>
+
+<p>Client needs to go from 100A to 200A service.</p>
+
+<p><strong>Good - $3,400</strong></p>
+<ul>
+  <li>200A panel upgrade, code compliant</li>
+  <li>Standard breakers</li>
+  <li>1-year workmanship warranty</li>
+  <li>Gets the job done right</li>
+</ul>
+
+<p><strong>Better - $4,600</strong> <span class="star">&#9733; Most Popular</span></p>
+<ul>
+  <li>Everything in Good, plus:</li>
+  <li>Arc-fault breakers where required</li>
+  <li>Whole-house surge protector</li>
+  <li>Panel schedule and labeling</li>
+  <li>3-year warranty</li>
+</ul>
+
+<p><strong>Best - $6,200</strong></p>
+<ul>
+  <li>Everything in Better, plus:</li>
+  <li>Smart panel with app monitoring</li>
+  <li>EV charger circuit pre-wired</li>
+  <li>Garage sub-panel feed ready</li>
+  <li>5-year warranty</li>
+</ul>
+
+<h3>The Math That'll Change Your Mind</h3>
+
+<p>Say you quote 10 panel upgrades this month.</p>
+
+<p><strong>Old way (one price, $3,400):</strong></p>
+<ul>
+  <li>6 clients say yes: $20,400</li>
+</ul>
+
+<p><strong>New way (three options):</strong></p>
+<ul>
+  <li>2 pick Good ($3,400): $6,800</li>
+  <li>5 pick Better ($4,600): $23,000</li>
+  <li>1 picks Best ($6,200): $6,200</li>
+  <li>Total: <strong>$36,000</strong></li>
+</ul>
+
+<p>Same 8 jobs. <strong>$15,600 more revenue.</strong> That's 76% higher.</p>
+
+<p>And you didn't work any harder. You just presented options.</p>
+
+<h3>How to Present It</h3>
+
+<p>Don't email a PDF with three prices and hope they pick the middle one. Walk them through it.</p>
+
+<p><strong>Script:</strong></p>
+
+<blockquote>
+"I put together three options based on what you need. Let me walk you through them.<br><br>
+The first option handles everything&mdash;it's solid, up to code, and a lot of my customers are happy with it.<br><br>
+The second option is what I'd personally recommend for your situation. It adds [surge protection and the arc-fault breakers], which means [your electronics are protected and you meet the newer code]. Most of my clients end up going with this one.<br><br>
+The third option is for people who want to do it once and do it right. It includes [the smart panel and the EV circuit], so if you're planning to [get an electric car or want to monitor your usage], you're set.<br><br>
+Which one feels closest to what you're looking for?"
+</blockquote>
+
+<p><strong>Key moves:</strong></p>
+<ul>
+  <li>Start with Good (establish the baseline)</li>
+  <li>Recommend Better explicitly</li>
+  <li>Mention "most of my clients" pick Better (social proof)</li>
+  <li>Let them choose (autonomy)</li>
+  <li>Shut up and wait for their answer</li>
+</ul>
+
+<div class="page-number">8 | quotecat.ai</div>
+
+<!-- PAGE 9 -->
+<h3>Common Mistakes</h3>
+
+<p><strong>Gap too big between tiers</strong></p>
+
+<p>If Good is $3,000 and Better is $7,000, you've lost them. Keep it 25-40% between tiers.</p>
+
+<p><strong>Padding with junk</strong></p>
+
+<p>Adding a $50 item to justify a $1,000 jump insults their intelligence. Each tier needs real value differences.</p>
+
+<p><strong>Four or five options</strong></p>
+
+<p>Three. Not four. Not five.</p>
+
+<p>More than three causes decision paralysis.</p>
+
+<p><strong>Not knowing why</strong></p>
+
+<p>If they ask "Why is Better $1,200 more?", you better have a confident answer.</p>
+
+<p>If you can't justify the gap, neither can they.</p>
+
+<hr>
+
+<p>Try Good/Better/Best on your next five quotes. Track the results. Most contractors see 25-35% higher average tickets immediately.</p>
+
+<div class="section-header">Part 2: Win the Job</div>
+
+<h2>Chapter 5: Flat Rate vs. Time &amp; Materials</h2>
+
+<p>Every contractor faces this choice: do you quote a fixed price, or bill for time and materials?</p>
+
+<p>Both have their place.</p>
+
+<p>The key is knowing when to use which.</p>
+
+<h3>When to Use Flat Rate</h3>
+
+<p><strong>You've done this job a hundred times</strong></p>
+
+<p>You know exactly how long it takes, what can go wrong, and what materials you need. Your speed becomes your profit.</p>
+
+<p><strong>The scope is clear</strong></p>
+
+<p>Water heater replacement. Panel upgrade. Faucet install. Defined start and end, no mysteries.</p>
+
+<p><strong>The client wants certainty</strong></p>
+
+<p>"How much?" is answered with a number, not a range. They can budget, approve, and stop worrying.</p>
+
+<p><strong>Flat rate advantage</strong></p>
+
+<p>If you quote $800 and finish in 3 hours instead of 4, you just gave yourself a raise. Your efficiency is rewarded.</p>
+
+<h3>When to Use Time &amp; Materials</h3>
+
+<p><strong>The scope is uncertain</strong></p>
+
+<p>"My lights keep flickering." "There's water somewhere under the house." You don't know what you'll find until you open it up.</p>
+
+<p><strong>Old construction</strong></p>
+
+<p>Pre-1970s homes are surprise factories. What's behind that wall? Nobody knows. Don't lock in a price.</p>
+
+<p><strong>Scope keeps changing</strong></p>
+
+<p>"While you're here, can you also..." If the client likes adding things, T&amp;M keeps you protected.</p>
+
+<p><strong>T&amp;M advantage</strong></p>
+
+<p>When you find knob-and-tube wiring, active leaks, or a family of raccoons, you're not stuck eating the cost.</p>
+
+<div class="page-number">9 | quotecat.ai</div>
+
+<!-- PAGE 10 -->
+<h3>The Hybrid Approach</h3>
+
+<p>Best of both worlds: <strong>Quote flat rate for the defined scope. Bill T&amp;M for surprises.</strong></p>
+
+<blockquote>
+"This quote covers replacing your water heater&mdash;$1,850 installed. If we find any issues with the gas line or venting that need repair, I'll stop and give you options before proceeding. Any additional work is billed at $145/hour plus materials."
+</blockquote>
+
+<p>Client gets certainty for the expected work. You're protected for the unexpected.</p>
+
+<h3>Presenting T&amp;M Without Scaring Them</h3>
+
+<p>T&amp;M makes clients nervous. They imagine a runaway bill with no end.</p>
+
+<p><strong>Do this</strong></p>
+
+<ul>
+  <li>Give a realistic range: "Based on what I'm seeing, figure 3-4 hours at $140/hour plus maybe $200 in parts. You're probably looking at $600-800 total."</li>
+  <li>Offer a cap: "I'll stop at 4 hours and check in with you before continuing."</li>
+  <li>Communicate during: "Good news, we're halfway done and on track."</li>
+</ul>
+
+<p><strong>Don't do this</strong></p>
+
+<ul>
+  <li>Start work without discussing rates</li>
+  <li>Give no estimate at all</li>
+  <li>Surprise them with a bill double what they expected</li>
+</ul>
+
+<h2>Chapter 6: The Psychology of Pricing</h2>
+
+<p>The number matters.</p>
+
+<p>How you present it matters more!</p>
+
+<h3>Anchoring: First Number Wins</h3>
+
+<p>Remember anchoring from Chapter 4? The first number someone sees sets their expectations.</p>
+
+<p>Always show your premium option first. When $12,000 is on the page, $8,000 feels like a deal.</p>
+
+<h3>Charm Pricing: Skip It</h3>
+
+<p>$4,997 instead of $5,000. Does it work?</p>
+
+<p>For retail, maybe. For contractor services, it looks gimmicky.</p>
+
+<p>You're not a used car lot. Use round numbers. $5,000 or $4,900.</p>
+
+<h3>Confidence: The Closer</h3>
+
+<p>Here's the thing: hesitation kills deals.</p>
+
+<p>"Um, so it would probably be around, I don't know, maybe $8,500 or so?" = Client hears: "He's not sure. Maybe I can negotiate."</p>
+
+<p>"This job is $8,500. That includes materials, labor, permit, and a 3-year warranty." = Client hears: "He knows what he's doing."</p>
+
+<p>Same price. Different close rate.</p>
+
+<p><strong>Confidence comes from:</strong></p>
+<ul>
+  <li>Knowing your numbers (you've done the math)</li>
+  <li>Having a system (Good/Better/Best, flat rate book)</li>
+  <li>Believing you're worth it (because you are)</li>
+</ul>
+
+<div class="page-number">10 | quotecat.ai</div>
+
+<!-- PAGE 11 -->
+<h2>Chapter 7: What Makes a Quote Close</h2>
+
+<p>A quote isn't a price. It's a trust document.</p>
+
+<p>The client is looking at your quote thinking: "Can I trust this person to do what they say for what they're charging?"</p>
+
+<p>Your quote either builds that trust or undermines it.</p>
+
+<h3>The Must-Haves</h3>
+
+<p><strong>Professional appearance</strong></p>
+
+<p>Clean layout, your logo, readable fonts. The client is comparing your quote to two others. The one that looks like a real business wins, even if it costs more.</p>
+
+<p><strong>Clear scope</strong></p>
+
+<p>Exactly what you're doing. Specific enough there's no confusion, short enough they'll read it.</p>
+
+<p><strong>What's included</strong></p>
+
+<p>Materials (specific: "50-gallon Rheem water heater Model XYZ"), labor, permits, cleanup, warranty.</p>
+
+<p><strong>What's NOT included</strong></p>
+
+<p>This is critical. "Does not include: electrical upgrades, drywall repair, painting." Prevents "But I thought that was included" arguments.</p>
+
+<p><strong>The price</strong></p>
+
+<p>Clear and prominent. If Good/Better/Best, all three visible.</p>
+
+<p><strong>Terms</strong></p>
+
+<p>Payment schedule, change order policy, warranty, expiration date.</p>
+
+<p><strong>Signature line</strong></p>
+
+<p>Turns it from a quote into a contract when they sign.</p>
+
+<h3>The Deal-Killers</h3>
+
+<p><strong>Detailed cost breakdowns showing your markup</strong></p>
+
+<p>Don't show "Materials: $1,000 + 25% = $1,250." Show "Materials: $1,250." They don't need to see your margins.</p>
+
+<p><strong>Hourly rate on flat-rate quotes</strong></p>
+
+<p>They'll do the math and decide you're "too expensive per hour" even when the project price is fair.</p>
+
+<p><strong>Wishy-washy language</strong></p>
+
+<p>"I think this should cover it." "Prices may change." Either know your price or don't quote.</p>
+
+<h3>Terms That Protect You</h3>
+
+<p><strong>Payment:</strong> "50% deposit to start. Balance due on completion."</p>
+
+<p><strong>Changes:</strong> "Work not in this quote requires a signed change order before proceeding."</p>
+
+<p><strong>Validity:</strong> "Quote valid for 30 days." Creates urgency, protects you from material price changes.</p>
+
+<p><strong>Warranty:</strong> "Workmanship guaranteed 3 years. Manufacturer warranties on all equipment."</p>
+
+<div class="page-number">11 | quotecat.ai</div>
+
+<!-- PAGE 12 -->
+<h2>Chapter 8: Speed Wins</h2>
+
+<p>Here's a stat worth knowing:</p>
+
+<p><strong>78% of buyers choose the first company that responds.</strong> Not the best. Not the cheapest. The first.</p>
+
+<p>Research from Harvard Business Review found:</p>
+<ul>
+  <li>Companies that respond within 5 minutes are 21x more likely to connect</li>
+  <li>Within 1 hour: 7x more likely</li>
+  <li>After 24 hours: basically dead</li>
+</ul>
+
+<p>Yet the average contractor takes 2-3 days to send a quote.</p>
+
+<h3>The On-Site Quote Advantage</h3>
+
+<p>If you can quote before you leave the driveway, do it.</p>
+
+<p>Bring:</p>
+<ul>
+  <li>Phone or tablet with quoting app</li>
+  <li>Your standard pricing for common jobs</li>
+  <li>Ability to generate a PDF on the spot</li>
+</ul>
+
+<p>Leave with a signed contract, not a "I'll think about it."</p>
+
+<h3>Templates Save You</h3>
+
+<p>You shouldn't create every quote from scratch.</p>
+
+<p>Build templates for your common jobs:</p>
+<ul>
+  <li>Service call (diagnostic + common repairs)</li>
+  <li>Equipment replacement (Good/Better/Best pre-built)</li>
+  <li>Standard installations</li>
+</ul>
+
+<p>Fill in the specifics, send in minutes.</p>
+
+<h3>The Follow-Up That Works</h3>
+
+<p><strong>Quoted on-site:</strong> Next day text. "Hey, just checking if you had any questions about that panel quote."</p>
+
+<p><strong>Quoted remotely:</strong> 2-3 days later. "Wanted to make sure you got the quote. Happy to walk through it if that's helpful."</p>
+
+<p><strong>No response after a week:</strong> One more try. "I know things get busy. If you've decided to go another direction, no worries, just let me know so I can close out the file."</p>
+
+<p><strong>Don't:</strong></p>
+<ul>
+  <li>Call every day (desperate)</li>
+  <li>Lower your price without being asked (weak)</li>
+  <li>Bad-mouth competitors (unprofessional)</li>
+</ul>
+
+<h2>Chapter 9: Handling "That's Too Expensive"</h2>
+
+<p>No matter how good your pricing, you'll hear objections. Here's how to handle the common ones without caving.</p>
+
+<h3>"That's more than I expected."</h3>
+
+<p><strong>Don't say:</strong> "Well, what were you expecting?" (puts them on defense)</p>
+
+<p><strong>Do say:</strong> "I get it, these projects add up. Let me walk you through what's included so you can see where the investment goes."</p>
+
+<p>Then: Review scope, emphasize value (warranty, quality, your experience).</p>
+
+<p>If needed, offer to adjust scope to meet budget.</p>
+
+<div class="page-number">12 | quotecat.ai</div>
+
+<!-- PAGE 13 -->
+<h3>"Can you do any better on price?"</h3>
+
+<p><strong>Translation:</strong> "I want to feel like I got a deal."</p>
+
+<p><strong>Option 1 - Hold firm:</strong> "This is my price for the scope we discussed. I've priced it fairly and I stand behind the work. If budget is a concern, we could look at our options."</p>
+
+<p><strong>Option 2 - Small concession (not price):</strong> "I can't go lower on price, but I can throw in [extended warranty / free service call / removal of old equipment] if we move forward today."</p>
+
+<p><strong>Option 3 - Reduce scope:</strong> "I can bring it down if we go with the standard fixtures instead of the upgraded ones. That saves about $600. Would that work?"</p>
+
+<h3>"The other guy was cheaper."</h3>
+
+<p><strong>Don't:</strong> "You get what you pay for" (condescending) or "He's probably unlicensed" (defensive).</p>
+
+<p><strong>Do:</strong> "I can't speak to their pricing, but here's what's in mine: [warranty, insurance, specific materials, my experience]. Are you comparing the same scope?"</p>
+
+<p>Often cheaper quotes leave things out.</p>
+
+<p>Help them see it.</p>
+
+<p><strong>Also valid:</strong> "If their price works for your budget, I understand. If anything comes up later, give me a call. I'm happy to help."</p>
+
+<p>Sometimes the cheap guy burns them. Play the long game.</p>
+
+<h3>"Let me think about it."</h3>
+
+<p><strong>Translation:</strong> Could be anything. Get specific.</p>
+
+<p><strong>Say:</strong> "Of course, big decision. Is there anything specific you're unsure about, or any info I could provide?"</p>
+
+<p>This opens the door to the real objection. Maybe it's price, timing, spousal approval, or waiting on another quote.</p>
+
+<p>Now you can address it.</p>
+
+<div class="section-header">Part 3: Keep Your Money</div>
+
+<h2>Chapter 10: Change Orders (Where Profits Go to Die)</h2>
+
+<p>"While you're here, can you also..."</p>
+
+<p>Those five words have killed more profit margins than any competitor.</p>
+
+<h3>The Problem</h3>
+
+<p><strong>Scope creep</strong> is when the job keeps getting bigger but your price stays the same. A little extra here, a small addition there, and suddenly you've done 20% more work for 0% more money.</p>
+
+<h3>The Fix</h3>
+
+<p>Every addition gets priced before you do it.</p>
+
+<p><strong>The conversation:</strong></p>
+
+<ol>
+  <li>"Sure, I can do that."</li>
+  <li>"That would be an additional $350."</li>
+  <li>"Want me to write that up?"</li>
+  <li>Get approval in writing (text or email works)</li>
+  <li>Do the work</li>
+</ol>
+
+<p><strong>Script:</strong></p>
+
+<blockquote>
+"Hey, just want to make sure we're on the same page. Adding that outlet isn't in the original scope, so it's an extra $150. If that works, I just need a quick OK from you before I start on it."
+</blockquote>
+
+<p>This isn't awkward. This is professional.</p>
+
+<div class="page-number">13 | quotecat.ai</div>
+
+<!-- PAGE 14 -->
+<h3>Why Contractors Don't Do This</h3>
+
+<p>You feel like you're nickel-and-diming them. You want to be the "good guy." You figure it'll only take 20 minutes.</p>
+
+<p><strong>Reality check:</strong> Twenty minutes here, thirty there, a few callbacks. Suddenly you've given away a full day's labor this month. Every month. For years.</p>
+
+<p>That free work adds up, fast.</p>
+
+<h3>Documentation</h3>
+
+<p>Doesn't need to be formal. Just written.</p>
+
+<p>Text: "Per our conversation, adding the outlet for $275. Total is now $3,475. OK to proceed?"</p>
+
+<p>Client: "Yes"</p>
+
+<p>Done. Protected.</p>
+
+<h2>Chapter 11: The Software Fee Trap</h2>
+
+<p>How much of your revenue goes to software fees?</p>
+
+<p>Most contractors have no idea.</p>
+
+<h3>The Hidden 3%</h3>
+
+<p>Many contractor apps include payment processing. Convenient, right?</p>
+
+<p>Check the rates:</p>
+<ul>
+  <li>Stripe: 2.9% + $0.30 per transaction</li>
+  <li>Square: 2.6-3.3% + per-transaction fees</li>
+  <li>Jobber Payments: 2.9% + $0.30</li>
+  <li>Housecall Pro: 2.5-2.9%</li>
+</ul>
+
+<p>And here's the catch: <strong>most platforms don't let you use cheaper processors.</strong> They make money on your transaction fees, so you're locked in.</p>
+
+<h3>The Real Cost</h3>
+
+<table>
+  <tr>
+    <th>Your Revenue</th>
+    <th>At 2.9%</th>
+    <th>What You Lose</th>
+  </tr>
+  <tr>
+    <td>$100,000</td>
+    <td>$2,900</td>
+    <td>A week's pay</td>
+  </tr>
+  <tr>
+    <td>$300,000</td>
+    <td>$8,700</td>
+    <td>New tools</td>
+  </tr>
+  <tr>
+    <td>$500,000</td>
+    <td>$14,500</td>
+    <td>A helper for 3 months</td>
+  </tr>
+</table>
+
+<p>That's every year. Forever.</p>
+
+<h3>What to Look For</h3>
+
+<p><strong>Questions to ask about any software</strong></p>
+
+<ul>
+  <li>Can I use my own payment processor?</li>
+  <li>What are the transaction fees?</li>
+  <li>Are there per-invoice or per-quote charges?</li>
+  <li>What does it cost to export my own data?</li>
+</ul>
+
+<p>Your software should help you make money, not skim off every dollar.</p>
+
+<div class="page-number">14 | quotecat.ai</div>
+
+<!-- PAGE 15 -->
+<h2>Chapter 12: Get Paid Faster</h2>
+
+<p>You did the work. Now get paid.</p>
+
+<h3>Payment Terms That Work</h3>
+
+<p><strong>Under $2,000:</strong> Due on completion. Maybe net-7 for good clients.</p>
+
+<p><strong>$2,000-10,000:</strong> 50% deposit to start. 50% on completion.</p>
+
+<p><strong>Over $10,000:</strong> 30-50% deposit. Progress payments at milestones. 10% on final walkthrough.</p>
+
+<h3>Why Deposits Matter</h3>
+
+<p><strong>Cash flow</strong></p>
+
+<p>Materials and payroll don't wait.</p>
+
+<p><strong>Commitment</strong></p>
+
+<p>Money down = serious client.</p>
+
+<p><strong>Protection</strong></p>
+
+<p>If they ghost, you're not fully exposed.</p>
+
+<h3>Invoice Immediately</h3>
+
+<p>Send the invoice the second you finish. Not tomorrow. Not "when you get to it." Today.</p>
+
+<p>Why:</p>
+<ul>
+  <li>Client is happy (you just finished)</li>
+  <li>Number is fresh in their mind</li>
+  <li>Momentum is on your side</li>
+</ul>
+
+<p>Every day you wait is a day you wait to get paid.</p>
+
+<h3>Following Up</h3>
+
+<p><strong>Day 1 past due:</strong> "Hey, just checking in. Looks like payment's past due. Any questions?"</p>
+
+<p><strong>Day 7:</strong> "Following up on that invoice. Let me know if you need it resent."</p>
+
+<p><strong>Day 14:</strong> "This is now two weeks overdue. Please let me know your plan for payment."</p>
+
+<p><strong>Day 30+:</strong> Decision time. Small claims, collections, or write it off.</p>
+
+<p>Stay professional. Document everything. Don't let complaints about the work become an excuse not to pay.</p>
+
+<h3>Fire Bad Clients</h3>
+
+<p>Some clients aren't worth it. Consider firing them if:</p>
+<ul>
+  <li>They consistently pay late</li>
+  <li>They dispute every invoice</li>
+  <li>They're abusive to you or your crew</li>
+  <li>The drama exceeds the revenue</li>
+</ul>
+
+<p><strong>How:</strong> "I don't think we're the best fit for your needs. I'd recommend [other contractor]. Best of luck."</p>
+
+<p>No explanation needed. Move on.</p>
+
+<div class="page-number">15 | quotecat.ai</div>
+
+<!-- PAGE 16 -->
+<div class="section-header">Conclusion: Go Make Money</div>
+
+<p>What we covered.</p>
+
+<p><strong>Know your numbers</strong></p>
+
+<p>Your true costs are higher than you think. Your labor rate needs to cover overhead, profit, and benefits, not just what you want to take home.</p>
+
+<p><strong>Understand markup vs. margin</strong></p>
+
+<p>If you're marking up 25% thinking you're making 25%, you're losing money. Learn the conversion.</p>
+
+<p><strong>Use Good/Better/Best</strong></p>
+
+<p>One price is a yes-or-no question. Three prices put you in control and increase your average ticket by 25-35%.</p>
+
+<p><strong>Quote fast, quote professional</strong></p>
+
+<p>Speed wins. The first to quote usually gets the job. Make your quotes look like they came from a real business.</p>
+
+<p><strong>Handle objections without caving</strong></p>
+
+<p>"That's expensive" doesn't mean "lower your price." It means "show me the value."</p>
+
+<p><strong>Protect your profit</strong></p>
+
+<p>Change orders in writing. Watch software fees. Invoice immediately. Fire bad clients.</p>
+
+<hr>
+
+<h3>Before Your Next Quote</h3>
+
+<div class="checklist-item"><span class="checkbox"></span> I know my overhead cost per hour</div>
+<div class="checklist-item"><span class="checkbox"></span> My labor rate includes profit, not just salary</div>
+<div class="checklist-item"><span class="checkbox"></span> I'm using the right markup to hit my margin target</div>
+<div class="checklist-item"><span class="checkbox"></span> I'm offering three options, not one</div>
+<div class="checklist-item"><span class="checkbox"></span> My quote looks professional</div>
+<div class="checklist-item"><span class="checkbox"></span> I have clear terms and change order language</div>
+<div class="checklist-item"><span class="checkbox"></span> I'm confident in my price</div>
+
+<h3>Your Homework, If You Choose To Accept It</h3>
+
+<ol>
+  <li><strong>Today:</strong> Calculate your real overhead (Chapter 1)</li>
+  <li><strong>This week:</strong> Calculate your real hourly rate (Chapter 2)</li>
+  <li><strong>Next quote:</strong> Use Good/Better/Best</li>
+  <li><strong>This month:</strong> Raise your prices 10% and see what happens</li>
+</ol>
+
+<p>Most contractors are surprised: they raise prices and close the same percentage of jobs. The clients who only care about price were never going to be good clients anyway.</p>
+
+<hr>
+
+<p>You're good at your trade. You show up, do quality work, take care of people.</p>
+
+<p>It's time to charge what you're worth!</p>
+
+<div class="page-number">16 | quotecat.ai</div>
+
+<!-- PAGE 17 - FINAL -->
+<div class="cta-box">
+  <p><em>You just learned the math. QuoteCat does it for you&mdash;calculates your rates, tracks your margins, and builds professional Good/Better/Best quotes in minutes. Try it free at quotecat.ai</em></p>
+</div>
+
+<div class="about-section">
+  <p class="about-title">About QuoteCat</p>
+  <p>QuoteCat helps contractors quote faster, win more jobs, and get paid. Quotes, invoices, contracts, real supplier pricing, and an AI assistant that helps you build quotes on the fly.</p>
+</div>
+
+<div class="final-footer">
+  <p class="final-url">quotecat.ai</p>
+  <p class="final-copyright">&copy; 2026 QuoteCat. All rights reserved.</p>
+</div>
+
+</div><!-- end content-page -->
+
+</body>
+</html>

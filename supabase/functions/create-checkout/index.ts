@@ -1,5 +1,5 @@
 // supabase/functions/create-checkout/index.ts
-// Creates a Stripe Checkout session for Pro/Premium subscriptions
+// Creates a Stripe Checkout session for subscriptions and one-time purchases
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
@@ -12,6 +12,14 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// One-time purchase products (mode: "payment")
+const ONE_TIME_PRODUCTS: Record<string, { successUrl: string }> = {
+  // Pricing Guide - $29
+  "price_1TAbNKCz2LFZfwAIUmDthbeb": {
+    successUrl: "https://quotecat.ai/resources/pricing-guide-thanks"
+  },
 };
 
 serve(async (req) => {
@@ -37,8 +45,11 @@ serve(async (req) => {
       );
     }
 
+    // Check if this is a one-time purchase
+    const isOneTime = priceId in ONE_TIME_PRODUCTS;
+
     // Validate price ID is one of our known prices (LIVE MODE)
-    const validPriceIds = [
+    const validSubscriptionPriceIds = [
       // === FOUNDER PRICES (limited: 100 Pro, 50 Premium) ===
       "price_1T1uXbCz2LFZfwAIva1Pfr7y", // Founder Pro Monthly - $29/mo
       "price_1T1uYyCz2LFZfwAIPyDQTA28", // Founder Pro Yearly - $290/yr
@@ -51,6 +62,8 @@ serve(async (req) => {
       "price_1T1uZ1Cz2LFZfwAIQ94BNZ02", // Premium Monthly - $99/mo
       "price_1T1uZ1Cz2LFZfwAIuqAtNru0", // Premium Yearly - $948/yr
     ];
+
+    const validPriceIds = [...validSubscriptionPriceIds, ...Object.keys(ONE_TIME_PRODUCTS)];
 
     if (!validPriceIds.includes(priceId)) {
       return new Response(
@@ -70,27 +83,34 @@ serve(async (req) => {
       customerId = existingCustomers.data[0].id;
     }
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
+    // Create checkout session - different config for subscriptions vs one-time
+    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+      mode: isOneTime ? "payment" : "subscription",
       payment_method_types: ["card"],
       customer: customerId,
       customer_email: customerId ? undefined : email,
-      currency: "usd", // Force USD only, no local currency conversion
+      currency: "usd",
       line_items: [
         {
           price: priceId,
           quantity: 1,
         },
       ],
-      success_url: "https://quotecat.ai/payment-success.html?session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "https://quotecat.ai/#pricing",
+      success_url: isOneTime
+        ? ONE_TIME_PRODUCTS[priceId].successUrl + "?session_id={CHECKOUT_SESSION_ID}"
+        : "https://quotecat.ai/payment-success.html?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: isOneTime
+        ? "https://quotecat.ai/resources/pricing-guide"
+        : "https://quotecat.ai/#pricing",
       allow_promotion_codes: true,
       billing_address_collection: "auto",
       metadata: {
         email: email,
+        product_type: isOneTime ? "one_time" : "subscription",
       },
-    });
+    };
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     return new Response(
       JSON.stringify({ url: session.url }),

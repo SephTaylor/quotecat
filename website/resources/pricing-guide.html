@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Contractor Pricing Guide - QuoteCat</title>
+    <meta name="description" content="Stop leaving money on the table. Learn to price jobs profitably, understand markup vs margin, and win more work with the Good/Better/Best strategy.">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://quotecat.ai/resources/pricing-guide">
+    <meta property="og:title" content="The Contractor Pricing Guide - QuoteCat">
+    <meta property="og:description" content="Stop leaving money on the table. Learn to price jobs profitably with proven strategies.">
+    <meta property="og:image" content="https://quotecat.ai/logo.png">
+    <link rel="canonical" href="https://quotecat.ai/resources/pricing-guide">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #f97316;
+            --text: #ffffff;
+            --text-muted: #9ca3af;
+            --bg: #111111;
+            --card: rgba(255,255,255,0.05);
+            --border: rgba(249,115,22,0.2);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+        }
+        .container { max-width: 700px; margin: 0 auto; padding: 0 20px; }
+
+        /* Header */
+        header {
+            padding: 12px 0;
+            background: rgba(17,17,17,0.95);
+            border-bottom: 1px solid var(--border);
+        }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            padding: 0 16px 0 0;
+            border-radius: 10px;
+            text-decoration: none;
+        }
+        .logo img { height: 40px; margin-right: -4px; }
+        .logo span { font-size: 18px; font-weight: 700; color: #fff; }
+        .back-link { color: var(--primary); text-decoration: none; font-weight: 600; font-size: 14px; }
+
+        /* Hero */
+        .hero { padding: 32px 0 28px; text-align: center; }
+        .badge {
+            display: inline-block;
+            background: rgba(249,115,22,0.15);
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
+        }
+        h1 { font-size: 32px; font-weight: 800; margin-bottom: 12px; line-height: 1.2; }
+        h1 span { color: var(--primary); }
+        .subtitle { font-size: 16px; color: var(--text-muted); max-width: 520px; margin: 0 auto 24px; }
+
+        /* CTA */
+        .cta-section { text-align: center; margin-bottom: 20px; }
+        .email-form { display: flex; gap: 10px; max-width: 420px; margin: 0 auto; }
+        .email-form input[type="email"] {
+            flex: 1;
+            padding: 14px 16px;
+            font-size: 15px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.4);
+            color: white;
+        }
+        .email-form input::placeholder { color: #666; }
+        .email-form input:focus { outline: none; border-color: var(--primary); }
+        .buy-btn {
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .buy-btn:hover { box-shadow: 0 4px 20px rgba(249,115,22,0.4); }
+        .buy-btn:disabled { opacity: 0.7; cursor: wait; }
+        .price-note { font-size: 13px; color: var(--text-muted); margin-top: 10px; }
+        .error-msg { color: #ef4444; font-size: 13px; margin-top: 10px; }
+
+        /* Benefits Grid */
+        .benefits { padding: 28px 0 20px; }
+        .benefits-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .benefit {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .benefit-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(249,115,22,0.15);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .benefit-icon svg { width: 18px; height: 18px; stroke: var(--primary); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .benefit-text h3 { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+        .benefit-text p { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+        /* What's Inside */
+        .whats-inside { padding: 20px 0 28px; }
+        .whats-inside h2 { font-size: 20px; margin-bottom: 14px; }
+        .inside-list {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 20px;
+        }
+        .inside-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .inside-item:last-child { border-bottom: none; }
+        .check {
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .check svg { width: 12px; height: 12px; stroke: #000; stroke-width: 3; fill: none; }
+        .inside-item p { font-size: 14px; }
+        .inside-item strong { color: var(--text); }
+
+        /* Testimonial */
+        .testimonial {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .testimonial-quote { font-size: 16px; font-style: italic; margin-bottom: 12px; }
+        .testimonial-author { font-size: 13px; color: var(--text-muted); }
+
+        /* Bottom CTA */
+        .bottom-cta {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            text-align: center;
+            margin: 20px 0 30px;
+        }
+        .bottom-cta h3 { font-size: 20px; margin-bottom: 8px; }
+        .bottom-cta p { color: var(--text-muted); margin-bottom: 16px; }
+
+        /* Footer */
+        footer { padding: 24px 0; text-align: center; border-top: 1px solid rgba(255,255,255,0.08); }
+        footer p { color: var(--text-muted); font-size: 13px; }
+        footer a { color: var(--primary); text-decoration: none; }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 26px; }
+            .benefits-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <img src="/qc-splash.png" alt="QuoteCat">
+                    <span>QuoteCat</span>
+                </a>
+                <a href="/resources" class="back-link">&larr; Resources</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <span class="badge">PRICING GUIDE</span>
+                <h1>Stop Leaving <span>$100K on the Table</span></h1>
+                <p class="subtitle">Most contractors use the wrong markup. They're leaving $30,000+ on the table every year. This guide shows you exactly how to fix it.</p>
+
+                <div class="cta-section">
+                    <form id="checkout-form" class="email-form">
+                        <input type="email" id="email" placeholder="you@example.com" required>
+                        <button type="submit" class="buy-btn" id="buy-btn">Buy for $29</button>
+                    </form>
+                    <p class="price-note">Instant PDF download after purchase. 17 pages of actionable strategies.</p>
+                    <p id="error-msg" class="error-msg" style="display: none;"></p>
+                </div>
+            </div>
+        </section>
+
+        <section class="benefits">
+            <div class="container">
+                <div class="benefits-grid">
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                        </div>
+                        <div class="benefit-text">
+                            <h3>Know Your Real Numbers</h3>
+                            <p>Calculate what you actually need to charge per hour</p>
+                        </div>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+                        </div>
+                        <div class="benefit-text">
+                            <h3>Markup vs. Margin</h3>
+                            <p>Stop confusing these two - it's costing you thousands</p>
+                        </div>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                        </div>
+                        <div class="benefit-text">
+                            <h3>Good/Better/Best</h3>
+                            <p>The strategy that increases revenue 25-35%</p>
+                        </div>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                        </div>
+                        <div class="benefit-text">
+                            <h3>Handle Objections</h3>
+                            <p>Scripts for "That's too expensive"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="whats-inside">
+            <div class="container">
+                <h2>What's Inside</h2>
+                <div class="inside-list">
+                    <div class="inside-item">
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Part 1: Know Your Numbers</strong> - Overhead, labor rates, and the math that works</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Markup vs. Margin</strong> - The conversion table you need to memorize</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Good/Better/Best Strategy</strong> - How to present 3 options and win more</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Part 2: Win the Job</strong> - Flat rate vs. T&M, psychology of pricing</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>What Makes a Quote Close</strong> - The must-haves and deal-killers</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Handling Objections</strong> - Scripts for every "that's too expensive"</p>
+                    </div>
+                    <div class="inside-item">
+                        <span class="check"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <p><strong>Part 3: Keep Your Money</strong> - Change orders, fees, getting paid faster</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="container">
+                <div class="testimonial">
+                    <p class="testimonial-quote">"I raised my prices 15% after reading this. Closed the same number of jobs. That's an extra $18K this year for the same work."</p>
+                    <p class="testimonial-author">- Electrical contractor, Michigan</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="container">
+                <div class="bottom-cta">
+                    <h3>Stop Undercharging. Start Profiting.</h3>
+                    <p>The math you need to run a real business, not just stay busy.</p>
+                    <form id="checkout-form-bottom" class="email-form" style="justify-content: center;">
+                        <input type="email" id="email-bottom" placeholder="you@example.com" required>
+                        <button type="submit" class="buy-btn">Get the Guide - $29</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 QuoteCat. <a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a></p>
+        </div>
+    </footer>
+
+    <script>
+        const SUPABASE_URL = 'https://eouikzjzsartaabvlbee.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWtempzenNhcnRhYWJ2bGJlZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzMxNTI3NzQwLCJleHAiOjIwNDcxMDM3NDB9.HqzDfljC8RpSoJREAadyNvC7xb8647CiT2d9V6sskGA';
+        const PRICING_GUIDE_PRICE_ID = 'price_1TAbNKCz2LFZfwAIUmDthbeb';
+
+        async function handleCheckout(email) {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({
+                    priceId: PRICING_GUIDE_PRICE_ID,
+                    email: email,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            if (data.url) {
+                window.location.href = data.url;
+            }
+        }
+
+        // Top form
+        document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const btn = document.getElementById('buy-btn');
+            const errorMsg = document.getElementById('error-msg');
+
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            errorMsg.style.display = 'none';
+
+            try {
+                await handleCheckout(email);
+            } catch (err) {
+                errorMsg.textContent = err.message || 'Something went wrong. Please try again.';
+                errorMsg.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Buy for $29';
+            }
+        });
+
+        // Bottom form
+        document.getElementById('checkout-form-bottom').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email-bottom').value;
+            const btn = e.target.querySelector('button');
+
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+
+            try {
+                await handleCheckout(email);
+            } catch (err) {
+                alert(err.message || 'Something went wrong. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Get the Guide - $29';
+            }
+        });
+    </script>
+</body>
+</html>

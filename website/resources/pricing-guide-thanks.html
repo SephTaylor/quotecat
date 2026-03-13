@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You - Pricing Guide Download - QuoteCat</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #f97316;
+            --text: #ffffff;
+            --text-muted: #9ca3af;
+            --bg: #111111;
+            --card: rgba(255,255,255,0.05);
+            --border: rgba(249,115,22,0.2);
+            --success: #22c55e;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
+
+        /* Header */
+        header {
+            padding: 12px 0;
+            background: rgba(17,17,17,0.95);
+            border-bottom: 1px solid var(--border);
+        }
+        .header-content { display: flex; justify-content: center; align-items: center; }
+        .logo {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            padding: 0 16px 0 0;
+            border-radius: 10px;
+            text-decoration: none;
+        }
+        .logo img { height: 40px; margin-right: -4px; }
+        .logo span { font-size: 18px; font-weight: 700; color: #fff; }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 40px 0;
+        }
+
+        .success-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(34, 197, 94, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+        .success-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--success);
+            stroke-width: 3;
+            fill: none;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 36px;
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+        .download-btn:hover {
+            box-shadow: 0 4px 20px rgba(249,115,22,0.4);
+            transform: translateY(-1px);
+        }
+        .download-btn svg {
+            width: 22px;
+            height: 22px;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .download-note {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .tips-section {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            text-align: left;
+        }
+
+        .tips-section h3 {
+            font-size: 14px;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .tips-list {
+            list-style: none;
+        }
+        .tips-list li {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+        .tips-list li::before {
+            content: "1.";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .tips-list li:nth-child(2)::before { content: "2."; }
+        .tips-list li:nth-child(3)::before { content: "3."; }
+
+        /* Footer */
+        footer {
+            padding: 24px 0;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        footer p { color: var(--text-muted); font-size: 13px; }
+        footer a { color: var(--primary); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <img src="/qc-splash.png" alt="QuoteCat">
+                    <span>QuoteCat</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="success-card">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+
+                <h1>Payment Successful!</h1>
+                <p class="subtitle">Thank you for your purchase. Your Pricing Guide is ready.</p>
+
+                <a href="/downloads/The-Contractor-Pricing-Guide.pdf" class="download-btn" download>
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Download Your Guide
+                </a>
+
+                <p class="download-note">PDF will download automatically. Check your Downloads folder.</p>
+
+                <div class="tips-section">
+                    <h3>Quick Start Tips</h3>
+                    <ul class="tips-list">
+                        <li>Start with Chapter 1 - calculate your real overhead today</li>
+                        <li>Use the markup table on page 6 for your next quote</li>
+                        <li>Try Good/Better/Best on your next 5 quotes</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Questions? <a href="mailto:hello@quotecat.ai">hello@quotecat.ai</a></p>
+            <p style="margin-top: 8px;">&copy; 2026 QuoteCat. <a href="/resources">More Resources</a></p>
+        </div>
+    </footer>
+</body>
+</html>
