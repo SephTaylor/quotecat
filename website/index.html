@@ -1846,7 +1846,7 @@
                         <li>Zero additional fees</li>
                     </ul>
                     <button onclick="handleGetPro()" class="tier-button">Get Pro Now</button>
-                    <div class="tier-note">Regular price: $39/mo after 50 spots filled</div>
+                    <div class="tier-note">Regular price: $49/mo after 50 spots filled</div>
                 </div>
                 <div class="tier-card fade-in-up stagger-3">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
@@ -1869,7 +1869,7 @@
                         <li>Zero additional fees</li>
                     </ul>
                     <button onclick="handleGetPremium()" class="tier-button">Get Premium Now</button>
-                    <div class="tier-note">Regular price: $99/mo after 25 spots filled</div>
+                    <div class="tier-note">Regular price: $109/mo after 25 spots filled</div>
                 </div>
             </div>
         </div>
@@ -2292,7 +2292,7 @@
                     // Update the note text
                     const note = card.querySelector('.tier-note');
                     if (note && spotsData.remaining !== undefined) {
-                        const regularPrice = tier === 'pro' ? '$39/mo' : '$99/mo';
+                        const regularPrice = tier === 'pro' ? '$49/mo' : '$109/mo';
                         note.textContent = `Regular price: ${regularPrice} after ${spotsData.remaining} spots filled`;
                     }
                 }
