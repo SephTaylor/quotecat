@@ -661,6 +661,7 @@ export default function Dashboard() {
   }
 
   return (
+    <>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GradientBackground>
         <ScrollView
@@ -882,10 +883,12 @@ export default function Dashboard() {
           onDismiss={handleDismissUndo}
         />
 
-        {/* Quote Wizard FAB */}
-        <WizardFAB />
-      </GradientBackground>
+        </GradientBackground>
     </GestureHandlerRootView>
+
+    {/* Quote Wizard FAB - outside GestureHandlerRootView for Android compatibility */}
+    <WizardFAB />
+  </>
   );
 }
 

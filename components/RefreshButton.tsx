@@ -12,6 +12,7 @@ import {
   View,
   Text,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { refreshProducts } from "@/modules/catalog/productService";
 import { syncQuotes } from "@/lib/quotesSync";
@@ -167,6 +168,7 @@ export function RefreshButton() {
         style={{
           padding: 8,
           marginRight: 4,
+          marginLeft: Platform.OS === 'android' ? 12 : 0,
           opacity: syncing ? 0.6 : 1,
         }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
