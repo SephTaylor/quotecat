@@ -25,6 +25,8 @@ export type Assembly = {
   // timestamps for cloud sync
   createdAt?: string;
   updatedAt?: string;
+  // If shared to community, track the shared assembly ID for auto-cleanup
+  sharedAssemblyId?: string;
 };
 
 export type PricedLine = {

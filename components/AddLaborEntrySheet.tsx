@@ -97,8 +97,8 @@ export function AddLaborEntrySheet({
       if (member) {
         setName(member.name);
         setRole(member.role || "");
-        if (member.defaultRate > 0) {
-          setRate(member.defaultRate.toString());
+        if (member.billableRate > 0) {
+          setRate(member.billableRate.toString());
         }
       }
     }
@@ -328,7 +328,7 @@ export function AddLaborEntrySheet({
                 </View>
                 {showRate && (
                   <View style={styles.halfInput}>
-                    <Text style={styles.sectionLabel}>Rate ($/hr)</Text>
+                    <Text style={styles.sectionLabel}>Billable Rate ($/hr)</Text>
                     <View style={styles.currencyInput}>
                       <Text style={styles.currencySymbol}>$</Text>
                       <TextInput

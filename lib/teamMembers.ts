@@ -21,7 +21,7 @@ import {
 export function createTeamMember(data: {
   name: string;
   role?: string;
-  defaultRate: number;
+  billableRate: number;
   phone?: string;
   email?: string;
 }): TeamMember {
@@ -30,7 +30,7 @@ export function createTeamMember(data: {
     id: uuid(),
     name: data.name,
     role: data.role,
-    defaultRate: data.defaultRate,
+    billableRate: data.billableRate,
     phone: data.phone,
     email: data.email,
     isActive: true,

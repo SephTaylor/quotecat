@@ -16,6 +16,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { shareAssembly } from "@/lib/sharedAssembliesApi";
 import { loadPreferences } from "@/lib/preferences";
+import { saveAssembly } from "@/modules/assemblies";
 import type { Assembly } from "@/modules/assemblies/types";
 import type { AssemblyTrade, SharedAssemblyItem } from "@/lib/types";
 import { ASSEMBLY_TRADES } from "@/lib/types";
@@ -84,7 +85,7 @@ export function ShareAssemblyModal({ visible, onClose, assembly, onSuccess }: Pr
     setIsSubmitting(true);
 
     try {
-      await shareAssembly({
+      const sharedAssembly = await shareAssembly({
         name: name.trim(),
         description: description.trim() || undefined,
         trade,
@@ -92,6 +93,12 @@ export function ShareAssemblyModal({ visible, onClose, assembly, onSuccess }: Pr
         items,
         showCompanyName,
         companyName: companyName.trim() || undefined,
+      });
+
+      // Save the shared assembly ID back to local assembly for auto-cleanup on delete
+      await saveAssembly({
+        ...assembly,
+        sharedAssemblyId: sharedAssembly.id,
       });
 
       Alert.alert(
@@ -121,8 +128,12 @@ export function ShareAssemblyModal({ visible, onClose, assembly, onSuccess }: Pr
       onRequestClose={onClose}
     >
       <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.container} onPress={(e) => e.stopPropagation()}>
-          <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.title}>Share to Community</Text>
@@ -255,7 +266,7 @@ export function ShareAssemblyModal({ visible, onClose, assembly, onSuccess }: Pr
               </Pressable>
             </View>
           </ScrollView>
-        </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );

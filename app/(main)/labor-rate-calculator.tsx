@@ -17,6 +17,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { updatePricingSettings } from "@/lib/preferences";
 
 export default function LaborRateCalculator() {
@@ -53,6 +54,13 @@ export default function LaborRateCalculator() {
   const totalRequired = baseCost + profitAmount;
   const hourlyRate = hours > 0 ? totalRequired / hours : 0;
 
+  // Cost rate = what it actually costs you per hour (salary + benefits, no overhead/profit)
+  // This is used for accurate job profit calculations
+  const directLaborCost = salary + totalBenefits;
+  const costRate = hours > 0 ? directLaborCost / hours : 0;
+  const profitPerHour = hourlyRate - costRate;
+  const isLosingMoney = costRate >= hourlyRate && hourlyRate > 0;
+
   const handleReset = () => {
     setDesiredSalary("");
     setHealthInsurance("");
@@ -67,13 +75,36 @@ export default function LaborRateCalculator() {
       Alert.alert("Enter Your Info", "Fill in your salary and costs to calculate a rate first.");
       return;
     }
+
     const roundedRate = Math.round(hourlyRate);
-    await updatePricingSettings({ defaultLaborRate: roundedRate });
-    Alert.alert(
-      "Rate Saved",
-      `$${roundedRate}/hr saved as your default labor rate.\n\nThis will be used when adding labor to quotes.`,
-      [{ text: "OK" }]
-    );
+    const roundedCostRate = Math.round(costRate);
+
+    const doSave = async () => {
+      await updatePricingSettings({
+        defaultLaborRate: roundedRate,
+        defaultLaborCostRate: roundedCostRate,
+      });
+      Alert.alert(
+        "Rates Saved",
+        `Billable: $${roundedRate}/hr\nCost: $${roundedCostRate}/hr\n\nYour profit on labor: $${roundedRate - roundedCostRate}/hr`,
+        [{ text: "OK" }]
+      );
+    };
+
+    // Warn if losing money on labor
+    if (roundedCostRate >= roundedRate) {
+      Alert.alert(
+        "Warning: Losing Money",
+        `Your cost ($${roundedCostRate}/hr) exceeds your rate ($${roundedRate}/hr).\n\nYou'll lose money on every hour worked. Consider increasing your rate or reducing costs.`,
+        [
+          { text: "Save Anyway", onPress: doSave },
+          { text: "Go Back", style: "cancel" }
+        ]
+      );
+      return;
+    }
+
+    await doSave();
   };
 
   return (
@@ -269,6 +300,26 @@ export default function LaborRateCalculator() {
                 </View>
               </View>
 
+              {/* Warning if losing money on labor */}
+              {isLosingMoney && (
+                <View style={styles.warningBanner}>
+                  <Ionicons name="warning" size={20} color="#ef4444" />
+                  <Text style={styles.warningText}>
+                    Your costs exceed your billable rate. You&apos;re losing money on every hour worked.
+                    Increase your rate or reduce costs.
+                  </Text>
+                </View>
+              )}
+
+              {/* Show profit per hour when not losing money */}
+              {!isLosingMoney && hourlyRate > 0 && (
+                <View style={styles.profitBanner}>
+                  <Text style={styles.profitBannerText}>
+                    Your profit on labor: ${Math.round(profitPerHour)}/hr
+                  </Text>
+                </View>
+              )}
+
               <Text style={styles.helperText}>
                 This is the minimum you should charge per hour to meet your financial goals.
                 Many contractors round up to the nearest $5 or $10.
@@ -434,6 +485,37 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: theme.colors.muted,
       marginTop: theme.spacing(2),
       lineHeight: 18,
+    },
+    warningBanner: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+      backgroundColor: "#fef2f2",
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(1.5),
+      marginTop: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: "#fecaca",
+    },
+    warningText: {
+      flex: 1,
+      fontSize: 13,
+      color: "#b91c1c",
+      lineHeight: 18,
+    },
+    profitBanner: {
+      backgroundColor: "#f0fdf4",
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(1.5),
+      marginTop: theme.spacing(2),
+      borderWidth: 1,
+      borderColor: "#bbf7d0",
+      alignItems: "center",
+    },
+    profitBannerText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#166534",
     },
     saveButton: {
       alignItems: "center",

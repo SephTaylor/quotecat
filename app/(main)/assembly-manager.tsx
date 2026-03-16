@@ -12,7 +12,9 @@ import React, { useState, useCallback } from "react";
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -330,47 +332,52 @@ export default function AssemblyManager() {
           setAssemblyName("");
         }}
       >
-        <Pressable
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalOverlay}
-          onPress={() => {
-            setShowCreateModal(false);
-            setAssemblyName("");
-          }}
         >
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Create Assembly</Text>
-            <Text style={styles.modalDescription}>
-              Enter a name for your new assembly template
-            </Text>
+          <Pressable
+            style={styles.modalOverlayPressable}
+            onPress={() => {
+              setShowCreateModal(false);
+              setAssemblyName("");
+            }}
+          >
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <Text style={styles.modalTitle}>Create Assembly</Text>
+              <Text style={styles.modalDescription}>
+                Enter a name for your new assembly template
+              </Text>
 
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Assembly name..."
-              placeholderTextColor={theme.colors.muted}
-              value={assemblyName}
-              onChangeText={setAssemblyName}
-              autoFocus
-            />
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Assembly name..."
+                placeholderTextColor={theme.colors.muted}
+                value={assemblyName}
+                onChangeText={setAssemblyName}
+                autoFocus
+              />
 
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={styles.modalCancelBtn}
-                onPress={() => {
-                  setShowCreateModal(false);
-                  setAssemblyName("");
-                }}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={styles.modalSaveBtn}
-                onPress={confirmCreateAssembly}
-              >
-                <Text style={styles.modalSaveText}>Create</Text>
-              </Pressable>
-            </View>
+              <View style={styles.modalButtons}>
+                <Pressable
+                  style={styles.modalCancelBtn}
+                  onPress={() => {
+                    setShowCreateModal(false);
+                    setAssemblyName("");
+                  }}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.modalSaveBtn}
+                  onPress={confirmCreateAssembly}
+                >
+                  <Text style={styles.modalSaveText}>Create</Text>
+                </Pressable>
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Share Assembly Modal */}
@@ -548,6 +555,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     modalOverlay: {
       flex: 1,
       backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    modalOverlayPressable: {
+      flex: 1,
       justifyContent: "center",
       alignItems: "center",
     },

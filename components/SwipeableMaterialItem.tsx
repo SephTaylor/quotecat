@@ -24,6 +24,7 @@ type SwipeableMaterialItemProps = {
   isNew?: boolean;
   showPricing?: boolean; // Hide pricing for techs without permission
   isCustom?: boolean; // Tinted background for custom items
+  onEdit?: () => void; // Called when custom item is tapped to edit name/price
 };
 
 export const SwipeableMaterialItem = React.memo(
@@ -40,6 +41,7 @@ export const SwipeableMaterialItem = React.memo(
     isNew = false,
     showPricing = true,
     isCustom,
+    onEdit,
   }: SwipeableMaterialItemProps) => {
     const { theme, mode } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
@@ -75,6 +77,7 @@ export const SwipeableMaterialItem = React.memo(
       );
     };
 
+    // All items use swipe to delete, custom items also support tap-to-edit
     return (
       <Swipeable
         ref={swipeableRef}
@@ -88,14 +91,25 @@ export const SwipeableMaterialItem = React.memo(
             isLastItem && { borderBottomWidth: 0 },
           ]}
         >
-          <View style={styles.itemInfo}>
-            <Text style={styles.itemName}>{item.name}</Text>
-            {showPricing && (
-              <Text style={styles.itemPrice}>
-                ${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each
-              </Text>
-            )}
-          </View>
+          {isCustomItem && onEdit ? (
+            <Pressable style={styles.itemInfo} onPress={onEdit}>
+              <Text style={styles.itemName}>{item.name}</Text>
+              {showPricing && (
+                <Text style={styles.itemPrice}>
+                  ${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each · tap to edit
+                </Text>
+              )}
+            </Pressable>
+          ) : (
+            <View style={styles.itemInfo}>
+              <Text style={styles.itemName}>{item.name}</Text>
+              {showPricing && (
+                <Text style={styles.itemPrice}>
+                  ${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each
+                </Text>
+              )}
+            </View>
+          )}
 
           <View style={styles.itemControls}>
             <View style={styles.stepper}>

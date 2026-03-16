@@ -28,6 +28,7 @@ import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { LaborInput } from "@/components/LaborInput";
+import { LaborModeToggle, type LaborMode } from "@/components/LaborModeToggle";
 import { Ionicons } from "@expo/vector-icons";
 import { mergeById } from "@/modules/quotes/merge";
 import { formatNetChange } from "@/modules/changeOrders/diff";
@@ -63,11 +64,18 @@ export default function EditQuote() {
   const [editingQty, setEditingQty] = useState<string>("");
   const [showMenu, setShowMenu] = useState(false);
 
+  // Custom item edit modal state
+  const [editingCustomItem, setEditingCustomItem] = useState<QuoteItem | null>(null);
+  const [editCustomName, setEditCustomName] = useState("");
+  const [editCustomPrice, setEditCustomPrice] = useState("");
+  const [editCustomQty, setEditCustomQty] = useState("");
+
   // Client picker state
   const [isPro, setIsPro] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [targetMaterialsMarginPercent, setTargetMaterialsMarginPercent] = useState(0);
   const [defaultLaborRate, setDefaultLaborRate] = useState(0);
+  const [defaultLaborCostRate, setDefaultLaborCostRate] = useState(0);
   const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
   const [savedClients, setSavedClients] = useState<Client[]>([]);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
@@ -80,6 +88,10 @@ export default function EditQuote() {
   const [showAddLaborSheet, setShowAddLaborSheet] = useState(false);
   const [showWorkerPicker, setShowWorkerPicker] = useState(false);
   const [editingLaborEntry, setEditingLaborEntry] = useState<LaborEntry | null>(null);
+
+  // Premium labor mode: "simple" (flat/calculator) or "team" (assigned workers)
+  // Default to "team" if team members exist, otherwise "simple"
+  const [laborMode, setLaborMode] = useState<LaborMode>("simple");
 
   // Undo functionality for material deletion
   const [showUndoSnackbar, setShowUndoSnackbar] = useState(false);
@@ -116,7 +128,7 @@ export default function EditQuote() {
     calculations,
     load,
     handleSave,
-    handleGoBack,
+    handleGoBack: handleGoBackBase,
     validateRequiredFields,
     ensureQuoteExists,
     formatLaborInput,
@@ -231,6 +243,7 @@ export default function EditQuote() {
         // Load preferences for all users (defaultLaborRate used by LaborInput)
         const prefs = await loadPreferences();
         setDefaultLaborRate(prefs.pricing?.defaultLaborRate || 0);
+        setDefaultLaborCostRate(prefs.pricing?.defaultLaborCostRate || 0);
 
         // Load saved clients for all users
         const clients = await getClients();
@@ -244,6 +257,8 @@ export default function EditQuote() {
         if (premiumStatus) {
           const members = getLocalTeamMembers();
           setTeamMembers(members);
+          // Default to "team" mode if user has team members set up, otherwise "simple"
+          setLaborMode(members.length > 0 ? "team" : "simple");
         }
       } catch (error) {
         console.error("Failed to load Pro status or clients:", error);
@@ -318,13 +333,13 @@ export default function EditQuote() {
     }
   }, [isPremium, quote]);
 
-  // Sync labor total when entries change (Premium feature)
+  // Sync labor total when entries change (Premium team mode)
   useEffect(() => {
-    if (isPremium && laborEntries.length > 0) {
+    if (isPremium && laborMode === "team" && laborEntries.length > 0) {
       const total = computeLaborTotal(laborEntries);
       setLabor(total.toFixed(2));
     }
-  }, [laborEntries, isPremium, setLabor]);
+  }, [laborEntries, isPremium, laborMode, setLabor]);
 
   // Labor entry CRUD handlers (Premium feature)
   const handleAddLaborEntry = useCallback((entry: LaborEntry) => {
@@ -450,6 +465,12 @@ export default function EditQuote() {
       );
     });
   }, [isNewClientName, clientName, clientEmail, clientPhone, clientAddress]);
+
+  // Wrap handleGoBack to prompt for saving new client first
+  const handleGoBack = useCallback(async () => {
+    await maybePromptToSaveClient();
+    await handleGoBackBase();
+  }, [maybePromptToSaveClient, handleGoBackBase]);
 
   // Helper to format change history entry for notes
   const formatChangeHistory = useCallback((diff: NonNullable<ReturnType<typeof checkForChanges>>) => {
@@ -908,7 +929,8 @@ export default function EditQuote() {
   // Handle adding custom line item
   const handleAddCustomItem = async (name: string, qty: number, price: number) => {
     const newItem: QuoteItem = {
-      id: `custom_${Date.now()}`,
+      // Use timestamp + random suffix to prevent ID collisions when adding quickly
+      id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       name,
       qty,
       unitPrice: price,
@@ -928,8 +950,51 @@ export default function EditQuote() {
     });
   };
 
-  // State for showing additional blank rows
-  const [additionalBlankRows, setAdditionalBlankRows] = useState(0);
+  // State for showing additional blank rows - use unique IDs to prevent key/state issues
+  const [blankRowIds, setBlankRowIds] = useState<string[]>([]);
+
+  // Open edit modal for a custom item
+  const handleEditCustomItem = (item: QuoteItem) => {
+    setEditingCustomItem(item);
+    setEditCustomName(item.name);
+    setEditCustomPrice(item.unitPrice.toFixed(2));
+    setEditCustomQty(item.qty.toString());
+  };
+
+  // Save edited custom item
+  const handleSaveCustomItem = async () => {
+    if (!editingCustomItem || !effectiveId) return;
+
+    const trimmedName = editCustomName.trim();
+    if (!trimmedName) {
+      Alert.alert("Name Required", "Please enter a name for this item.");
+      return;
+    }
+
+    const newPrice = parseFloat(editCustomPrice) || 0;
+    const newQty = parseInt(editCustomQty, 10) || 1;
+
+    const updatedItems = items.map((item) => {
+      if (item.id === editingCustomItem.id) {
+        return {
+          ...item,
+          name: trimmedName,
+          unitPrice: newPrice,
+          qty: newQty,
+        };
+      }
+      return item;
+    });
+
+    setItems(updatedItems);
+
+    // Auto-save if quote exists
+    if (effectiveId !== "new" && !shouldTrackChanges) {
+      await updateQuote(effectiveId, { items: updatedItems });
+    }
+
+    setEditingCustomItem(null);
+  };
 
   return (
     <>
@@ -1190,6 +1255,7 @@ export default function EditQuote() {
                     onQtyChange={handleQtyChange}
                     onUpdateQty={handleUpdateItemQty}
                     showPricing={canViewPricing}
+                    onEdit={!item.productId ? () => handleEditCustomItem(item) : undefined}
                   />
                 );
               })}
@@ -1198,18 +1264,18 @@ export default function EditQuote() {
         )}
 
         {/* Quick Custom Items Section - only show rows when user taps Add */}
-        {additionalBlankRows > 0 && (
+        {blankRowIds.length > 0 && (
           <View style={styles.customItemsSection}>
-            {Array.from({ length: additionalBlankRows }).map((_, index) => (
+            {blankRowIds.map((rowId, index) => (
               <AddItemRow
-                key={`blank-${index}`}
+                key={rowId}
                 onAddItem={(name, qty, price) => {
                   handleAddCustomItem(name, qty, price);
-                  // Remove this row after adding
-                  setAdditionalBlankRows((prev) => Math.max(0, prev - 1));
+                  // Remove this specific row after adding
+                  setBlankRowIds((prev) => prev.filter((id) => id !== rowId));
                 }}
-                isLastItem={index === additionalBlankRows - 1}
-                onDelete={() => setAdditionalBlankRows((prev) => Math.max(0, prev - 1))}
+                isLastItem={index === blankRowIds.length - 1}
+                onDelete={() => setBlankRowIds((prev) => prev.filter((id) => id !== rowId))}
               />
             ))}
           </View>
@@ -1218,7 +1284,11 @@ export default function EditQuote() {
         {/* Add Custom Item Button */}
         <View style={styles.addRowContainer}>
           <Pressable
-            onPress={() => setAdditionalBlankRows((prev) => prev + 1)}
+            onPress={() => {
+              // Generate unique ID for this blank row to prevent key/state issues
+              const newRowId = `blank_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+              setBlankRowIds((prev) => [...prev, newRowId]);
+            }}
             style={({ pressed }) => [
               styles.addRowBtn,
               { opacity: pressed ? 0.6 : 1 },
@@ -1263,79 +1333,90 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(3) }} />
 
-        {/* Labor section - canViewPricing controls dollar amounts visibility */}
+        {/* Labor section - tier-based UI */}
+        {/* Free: flat fee only, Pro: flat OR calculator, Premium: toggle between Simple/Team */}
         {canViewPricing && (
           <>
             <Text style={styles.label}>Labor</Text>
-            {/* All users get LaborInput with hours × rate calculator */}
-            {/* Disabled when assigned workers are used (Premium) */}
-            <View style={laborEntries.length > 0 ? { opacity: 0.4 } : undefined}>
-              <LaborInput
-                value={laborEntries.length > 0 ? 0 : (parseFloat(labor) || 0)}
-                onChange={(value) => {
-                  if (laborEntries.length === 0) {
-                    setLabor(value.toFixed(2));
-                  }
-                }}
-                defaultRate={defaultLaborRate}
-              />
-              {laborEntries.length > 0 && (
-                <Text style={styles.disabledHint}>
-                  Using assigned workers below
-                </Text>
-              )}
-            </View>
-            <View style={{ height: theme.spacing(3) }} />
-          </>
-        )}
 
-        {/* Assigned Workers Section - Premium + canAssignWorkers permission */}
-        {isPremium && canAssignWorkers && (
-          <>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Assigned Workers</Text>
-              <Pressable
-                onPress={() => setShowWorkerPicker(true)}
-                hitSlop={8}
-              >
-                <Text style={styles.browseTag}>Browse</Text>
-              </Pressable>
-            </View>
-            {laborEntries.length > 0 ? (
+            {/* Premium: Show mode toggle between Simple and Team */}
+            {isPremium && canAssignWorkers && (
               <>
-                <GestureHandlerRootView style={styles.itemsList}>
-                  {laborEntries.map((entry, index) => (
-                    <SwipeableLaborEntry
-                      key={entry.id}
-                      entry={entry}
-                      onDelete={() => handleDeleteLaborEntry(entry.id)}
-                      onEdit={() => handleEditLaborEntry(entry)}
-                      onHoursChange={(hours) => handleLaborEntryHoursChange(entry.id, hours)}
-                      isLastItem={index === laborEntries.length - 1}
-                      showRate={canViewLaborRates}
-                    />
-                  ))}
-                </GestureHandlerRootView>
-                {/* Total Labor - only show if canViewPricing */}
-                {canViewPricing && (
-                  <View style={styles.laborTotalRow}>
-                    <Text style={styles.laborTotalLabel}>Total Labor</Text>
-                    <Text style={styles.laborTotalValue}>
-                      ${computeLaborTotal(laborEntries).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <LaborModeToggle
+                  mode={laborMode}
+                  onChange={(newMode) => {
+                    // Clear the other mode's data when switching
+                    if (newMode === "team" && parseFloat(labor) > 0) {
+                      // Switching to team mode - clear simple labor value
+                      setLabor("0");
+                    } else if (newMode === "simple" && laborEntries.length > 0) {
+                      // Switching to simple mode - clear team entries
+                      setLaborEntries([]);
+                    }
+                    setLaborMode(newMode);
+                  }}
+                />
+                <View style={{ height: theme.spacing(2) }} />
+              </>
+            )}
+
+            {/* Simple mode: LaborInput (shown for Free/Pro, or Premium in simple mode) */}
+            {(!isPremium || laborMode === "simple") && (
+              <LaborInput
+                value={parseFloat(labor) || 0}
+                onChange={(value) => setLabor(value.toFixed(2))}
+                defaultRate={defaultLaborRate}
+                              />
+            )}
+
+            {/* Team mode: Assigned Workers (Premium only) */}
+            {isPremium && canAssignWorkers && laborMode === "team" && (
+              <>
+                <View style={styles.labelRow}>
+                  <Text style={[styles.label, { marginBottom: 0 }]}>Assigned Workers</Text>
+                  <Pressable
+                    onPress={() => setShowWorkerPicker(true)}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.browseTag}>Browse</Text>
+                  </Pressable>
+                </View>
+                {laborEntries.length > 0 ? (
+                  <>
+                    <GestureHandlerRootView style={styles.itemsList}>
+                      {laborEntries.map((entry, index) => (
+                        <SwipeableLaborEntry
+                          key={entry.id}
+                          entry={entry}
+                          onDelete={() => handleDeleteLaborEntry(entry.id)}
+                          onEdit={() => handleEditLaborEntry(entry)}
+                          onHoursChange={(hours) => handleLaborEntryHoursChange(entry.id, hours)}
+                          isLastItem={index === laborEntries.length - 1}
+                          showRate={canViewLaborRates}
+                        />
+                      ))}
+                    </GestureHandlerRootView>
+                    {/* Total Labor */}
+                    <View style={styles.laborTotalRow}>
+                      <Text style={styles.laborTotalLabel}>Total Labor</Text>
+                      <Text style={styles.laborTotalValue}>
+                        ${computeLaborTotal(laborEntries).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <Pressable
+                    style={styles.emptyLaborCard}
+                    onPress={() => setShowWorkerPicker(true)}
+                  >
+                    <Text style={styles.emptyLaborText}>
+                      Tap to assign workers to this job
                     </Text>
-                  </View>
+                  </Pressable>
                 )}
               </>
-            ) : (
-              <Pressable
-                style={styles.emptyLaborCard}
-                onPress={() => setShowWorkerPicker(true)}
-              >
-                <Text style={styles.emptyLaborText}>
-                  Tap to assign workers to this job
-                </Text>
-              </Pressable>
             )}
+
             <View style={{ height: theme.spacing(3) }} />
           </>
         )}
@@ -1597,22 +1678,21 @@ export default function EditQuote() {
 
             {/* Profitability Indicator - Pro+ only, when overhead settings exist */}
             {isPro && overheadSettings && calculations.total > 0 && (() => {
-              // Check if overhead is properly configured
-              const overheadPercent = overheadSettings.overheadPercent;
-              const isOverheadConfigured = typeof overheadPercent === 'number' && overheadPercent > 0 && !isNaN(overheadPercent);
+              // Check if cost rate is set (from Labor Rate Calculator)
+              const hasCostRate = defaultLaborCostRate > 0 && defaultLaborRate > 0;
               const targetMargin = overheadSettings.targetProfitMarginPercent;
 
-              // If overhead not configured, show setup prompt
-              if (!isOverheadConfigured) {
+              // If cost rate not set, prompt to run Labor Rate Calculator
+              if (!hasCostRate) {
                 return (
                   <>
                     <View style={styles.totalsDivider} />
                     <Pressable
                       style={styles.totalsRow}
-                      onPress={() => router.push('/(main)/business-settings')}
+                      onPress={() => router.push('/(main)/labor-rate-calculator')}
                     >
                       <Text style={[styles.totalsLabel, { color: theme.colors.accent }]}>
-                        Set up overhead to see profit
+                        Set up labor rate to see profit
                       </Text>
                       <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
                     </Pressable>
@@ -1620,12 +1700,14 @@ export default function EditQuote() {
                 );
               }
 
-              // Calculate profitability using current form values
-              const revenue = calculations.total;
+              // Calculate profitability using cost rate
+              // Labor COST = billed labor × (costRate / billableRate)
+              // This gives the true cost, not what you charge the client
+              const revenue = calculations.subtotal;
               const materialsCost = calculations.materialsFromItems; // Before markup
-              const laborCost = calculations.laborValue;
-              const overheadCost = laborCost * (overheadPercent / 100);
-              const profit = revenue - materialsCost - laborCost - overheadCost;
+              const costRatio = defaultLaborCostRate / defaultLaborRate;
+              const laborCost = calculations.laborValue * costRatio;
+              const profit = revenue - materialsCost - laborCost;
               const marginPercent = revenue > 0 ? (profit / revenue) * 100 : 0;
 
               return (
@@ -1878,6 +1960,84 @@ export default function EditQuote() {
               </Pressable>
             </Pressable>
           </View>
+        </Pressable>
+      </Modal>
+
+      {/* Custom Item Edit Modal */}
+      <Modal
+        visible={!!editingCustomItem}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingCustomItem(null)}
+      >
+        <Pressable
+          style={styles.pickerOverlay}
+          onPress={() => setEditingCustomItem(null)}
+        >
+          <Pressable style={styles.customEditContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Edit Item</Text>
+              <Pressable
+                onPress={() => setEditingCustomItem(null)}
+                hitSlop={8}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </Pressable>
+            </View>
+
+            <View style={styles.customEditForm}>
+              <Text style={styles.customEditLabel}>Name</Text>
+              <TextInput
+                style={styles.customEditInput}
+                value={editCustomName}
+                onChangeText={setEditCustomName}
+                placeholder="Item name"
+                placeholderTextColor={theme.colors.muted}
+                autoFocus
+              />
+
+              <Text style={styles.customEditLabel}>Price (each)</Text>
+              <TextInput
+                style={styles.customEditInput}
+                value={editCustomPrice}
+                onChangeText={(text) => {
+                  const cleaned = text.replace(/[^0-9.]/g, "");
+                  setEditCustomPrice(cleaned);
+                }}
+                placeholder="0.00"
+                placeholderTextColor={theme.colors.muted}
+                keyboardType="decimal-pad"
+              />
+
+              <Text style={styles.customEditLabel}>Quantity</Text>
+              <TextInput
+                style={styles.customEditInput}
+                value={editCustomQty}
+                onChangeText={(text) => {
+                  const cleaned = text.replace(/[^0-9]/g, "");
+                  setEditCustomQty(cleaned);
+                }}
+                placeholder="1"
+                placeholderTextColor={theme.colors.muted}
+                keyboardType="number-pad"
+              />
+            </View>
+
+            <View style={styles.customEditButtons}>
+              <Pressable
+                style={styles.customEditCancelBtn}
+                onPress={() => setEditingCustomItem(null)}
+              >
+                <Text style={styles.customEditCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.customEditSaveBtn}
+                onPress={handleSaveCustomItem}
+              >
+                <Text style={styles.customEditSaveText}>Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -2439,6 +2599,63 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       height: 1,
       backgroundColor: theme.colors.border,
       marginVertical: theme.spacing(0.5),
+    },
+    // Custom Item Edit Modal styles
+    customEditContent: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing(3),
+      width: "85%",
+      maxWidth: 400,
+    },
+    customEditForm: {
+      marginBottom: theme.spacing(3),
+    },
+    customEditLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(0.5),
+      marginTop: theme.spacing(2),
+    },
+    customEditInput: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      fontSize: 16,
+      color: theme.colors.text,
+    },
+    customEditButtons: {
+      flexDirection: "row",
+      gap: theme.spacing(2),
+    },
+    customEditCancelBtn: {
+      flex: 1,
+      paddingVertical: theme.spacing(1.5),
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: "center",
+    },
+    customEditCancelText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    customEditSaveBtn: {
+      flex: 1,
+      paddingVertical: theme.spacing(1.5),
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.accent,
+      alignItems: "center",
+    },
+    customEditSaveText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
     },
   });
 }

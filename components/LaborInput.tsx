@@ -21,14 +21,16 @@ type Props = {
   onChange: (value: number, entry?: LaborEntry) => void;
   defaultRate?: number; // Default hourly rate from settings
   initialEntry?: LaborEntry; // Existing entry to edit
+  flatFeeOnly?: boolean; // Free tier: only flat fee, no calculator toggle
 };
 
-export function LaborInput({ value, onChange, defaultRate = 0, initialEntry }: Props) {
+export function LaborInput({ value, onChange, defaultRate = 0, initialEntry, flatFeeOnly = false }: Props) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-  // Determine initial mode based on existing entry
+  // Determine initial mode based on existing entry (flat only if flatFeeOnly prop is true)
   const [mode, setMode] = useState<LaborInputMode>(() => {
+    if (flatFeeOnly) return "flat";
     if (initialEntry?.hours && initialEntry?.rate) return "calculated";
     return "flat";
   });
@@ -142,9 +144,11 @@ export function LaborInput({ value, onChange, defaultRate = 0, initialEntry }: P
               keyboardType="decimal-pad"
             />
           </View>
-          <Pressable onPress={toggleMode} hitSlop={8}>
-            <Text style={styles.modeToggle}>or use calculator</Text>
-          </Pressable>
+          {!flatFeeOnly && (
+            <Pressable onPress={toggleMode} hitSlop={8}>
+              <Text style={styles.modeToggle}>or use calculator</Text>
+            </Pressable>
+          )}
         </View>
       ) : (
         // Calculated mode (hours × rate)

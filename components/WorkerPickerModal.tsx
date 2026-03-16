@@ -56,6 +56,7 @@ export function WorkerPickerModal({
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newRate, setNewRate] = useState("");
+  const [newCostRate, setNewCostRate] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Reset selection when modal opens
@@ -67,6 +68,7 @@ export function WorkerPickerModal({
       setNewName("");
       setNewRole("");
       setNewRate("");
+      setNewCostRate("");
     }
   }, [visible]);
 
@@ -112,7 +114,7 @@ export function WorkerPickerModal({
           name: member.name,
           role: member.role || undefined,
           hours: 0,  // Start with 0 - user fills in actual hours
-          rate: member.defaultRate || 0,
+          rate: member.billableRate || 0,
         });
       }
     });
@@ -130,7 +132,8 @@ export function WorkerPickerModal({
       const created = await uploadTeamMember({
         name: newName.trim(),
         role: newRole.trim() || undefined,
-        defaultRate: parseFloat(newRate) || 0,
+        billableRate: parseFloat(newRate) || 0,
+        costRate: parseFloat(newCostRate) || undefined,
       });
 
       if (created) {
@@ -140,6 +143,7 @@ export function WorkerPickerModal({
         setNewName("");
         setNewRole("");
         setNewRate("");
+        setNewCostRate("");
         // Notify parent to refresh team members
         onTeamMembersChanged?.();
       }
@@ -194,8 +198,11 @@ export function WorkerPickerModal({
                     onChangeText={setNewRole}
                     autoCapitalize="words"
                   />
-                  {showRates && (
+                </View>
+                {showRates && (
+                  <View style={styles.newWorkerRow}>
                     <View style={styles.rateInputWrapper}>
+                      <Text style={styles.rateLabel}>Bill</Text>
                       <Text style={styles.ratePrefix}>$</Text>
                       <TextInput
                         style={[styles.newWorkerInput, styles.rateInput]}
@@ -207,8 +214,21 @@ export function WorkerPickerModal({
                       />
                       <Text style={styles.rateSuffix}>/hr</Text>
                     </View>
-                  )}
-                </View>
+                    <View style={styles.rateInputWrapper}>
+                      <Text style={styles.rateLabel}>Cost</Text>
+                      <Text style={styles.ratePrefix}>$</Text>
+                      <TextInput
+                        style={[styles.newWorkerInput, styles.rateInput]}
+                        placeholder="0"
+                        placeholderTextColor={theme.colors.muted}
+                        value={newCostRate}
+                        onChangeText={(t) => setNewCostRate(t.replace(/[^0-9.]/g, ""))}
+                        keyboardType="decimal-pad"
+                      />
+                      <Text style={styles.rateSuffix}>/hr</Text>
+                    </View>
+                  </View>
+                )}
                 <View style={styles.newWorkerActions}>
                   <Pressable
                     style={styles.newWorkerCancel}
@@ -319,9 +339,9 @@ export function WorkerPickerModal({
                               {member.role && (
                                 <Text style={styles.workerRole}>{member.role}</Text>
                               )}
-                              {showRates && member.defaultRate > 0 && (
+                              {showRates && member.billableRate > 0 && (
                                 <Text style={styles.workerRate}>
-                                  ${member.defaultRate.toFixed(2)}/hr
+                                  ${member.billableRate.toFixed(2)}/hr
                                 </Text>
                               )}
                               {alreadyAssigned && (
@@ -554,6 +574,12 @@ function createStyles(
       paddingHorizontal: theme.spacing(1.5),
       paddingVertical: theme.spacing(1),
       minWidth: 100,
+    },
+    rateLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: theme.colors.muted,
+      marginRight: 4,
     },
     ratePrefix: {
       fontSize: 16,

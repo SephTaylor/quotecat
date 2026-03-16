@@ -25,7 +25,8 @@ export type ReminderType =
   | "assembly_unhealthy"  // Assembly has unavailable products
   | "assembly_vote_up"    // Someone liked a shared assembly
   | "assembly_copied"     // Someone copied a shared assembly
-  | "assembly_comment";   // Someone commented on a shared assembly
+  | "assembly_comment"    // Someone commented on a shared assembly
+  | "onboarding_incomplete"; // User skipped onboarding, can resume
 
 export type Reminder = {
   id: string;
@@ -569,5 +570,55 @@ export async function getAssemblyHealthReminders(): Promise<Reminder[]> {
   } catch (error) {
     console.error("Error checking assembly health:", error);
     return [];
+  }
+}
+
+// ============================================
+// Onboarding Reminder (for users who skipped)
+// ============================================
+
+const ONBOARDING_REMINDER_ID = "onboarding_incomplete";
+
+/**
+ * Create the onboarding incomplete reminder
+ */
+export function createOnboardingReminder(): Reminder {
+  const now = new Date().toISOString();
+  return {
+    id: ONBOARDING_REMINDER_ID,
+    type: "onboarding_incomplete",
+    entityId: "system",
+    entityType: "system",
+    title: "Finish setting up QuoteCat",
+    subtitle: "Complete your setup to get the most out of QuoteCat.",
+    dueDate: now,
+    createdAt: now,
+  };
+}
+
+/**
+ * Get the onboarding reminder if user skipped but hasn't completed
+ */
+export async function getOnboardingReminder(): Promise<Reminder | null> {
+  try {
+    // Dynamic import to avoid circular dependency
+    const { loadPreferences } = await import("./preferences");
+    const prefs = await loadPreferences();
+
+    const hasCompleted = !!prefs.onboarding?.completedAt;
+    const hasSkipped = !!prefs.onboarding?.skippedAt;
+
+    // Only show if skipped but not completed
+    if (hasSkipped && !hasCompleted) {
+      const dismissed = await loadDismissedReminders();
+      if (isReminderDismissed(ONBOARDING_REMINDER_ID, dismissed)) return null;
+
+      return createOnboardingReminder();
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error getting onboarding reminder:", error);
+    return null;
   }
 }

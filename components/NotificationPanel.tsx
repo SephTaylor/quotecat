@@ -23,6 +23,7 @@ import {
   markPremiumWelcomeAsSeen,
   markNotificationAsRead,
 } from "@/lib/reminders";
+import { RefreshEvents, RESUME_ONBOARDING } from "@/lib/refreshEvents";
 
 const PANEL_WIDTH = Dimensions.get("window").width * 0.85;
 const MAX_PANEL_WIDTH = 400;
@@ -88,6 +89,13 @@ export function NotificationPanel({
   const handleTap = useCallback(async (reminder: Reminder) => {
     if (reminder.type === "pro_welcome") {
       // Pro welcome doesn't navigate anywhere on tap
+      return;
+    }
+
+    // Handle onboarding reminder - emit event to show modal on dashboard
+    if (reminder.type === "onboarding_incomplete") {
+      onClose();
+      RefreshEvents.emit(RESUME_ONBOARDING);
       return;
     }
 

@@ -1034,6 +1034,9 @@ Features to consider for future releases (not blockers for launch):
 ### General
 - **Drew Visibility Toggle** - Add a button in the header to show/hide Drew (WizardFAB). Useful for users who want a cleaner screen sometimes or prefer to "summon" Drew only when needed. Could be a small icon that toggles Drew's visibility. (Discussed Jan 7, 2026)
 
+### Marketing / Onboarding Messaging
+- **"Double-Counting Overhead" Differentiator** - Most contractors using spreadsheets or other apps build overhead into their labor rate AND deduct it again when calculating profit. QuoteCat does the math correctly by design (overhead is embedded in the rate, not subtracted again). This means contractors who switch will see their true margins for the first time - often higher than they expected. **Messaging opportunities:** (1) Overhead Calculator completion: "Your overhead rate is X%. Your labor rate already covers this - we won't double-count it like spreadsheets do." (2) First profit indicator view: "This is your real margin. Most tools show it wrong by subtracting overhead twice." (3) Website pricing guide: call out the mistake explicitly. (4) Onboarding for switchers: "If your margins look higher than expected, that's because they are. You were double-counting before." The "aha moment" of seeing higher (correct) margins builds trust. (Discussed Mar 16, 2026)
+
 ---
 
 ## 🎬 Vision

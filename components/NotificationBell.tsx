@@ -9,7 +9,7 @@ import { useFocusEffect } from "expo-router";
 import { listQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { loadPreferences } from "@/lib/preferences";
-import { getActiveReminders, getProWelcomeReminder, getPremiumWelcomeReminder, getCloudNotifications, getAssemblyHealthReminders, type Reminder } from "@/lib/reminders";
+import { getActiveReminders, getProWelcomeReminder, getPremiumWelcomeReminder, getCloudNotifications, getAssemblyHealthReminders, getOnboardingReminder, type Reminder } from "@/lib/reminders";
 import { getUserState } from "@/lib/user";
 import { NotificationPanel } from "./NotificationPanel";
 
@@ -70,6 +70,12 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
       if (userState.tier === "pro" || userState.tier === "premium") {
         const cloudNotifications = await getCloudNotifications();
         active.unshift(...cloudNotifications);
+      }
+
+      // Add onboarding reminder if applicable (user skipped but hasn't completed)
+      const onboardingReminder = await getOnboardingReminder();
+      if (onboardingReminder) {
+        active.unshift(onboardingReminder);
       }
 
       setReminders(active);

@@ -58,7 +58,8 @@ export type PricingSettings = {
   locationId: string; // Location for supplier pricing: 'kalamazoo' | 'battle_creek' | 'lansing' | ''
   defaultTaxPercent: number; // Default tax % for new quotes
   defaultMarkupPercent: number; // Default markup % for new quotes
-  defaultLaborRate: number; // Default hourly labor rate
+  defaultLaborRate: number; // Default hourly labor rate (billable - what you charge clients)
+  defaultLaborCostRate: number; // Hourly cost rate (what it costs you - salary + benefits)
   targetMaterialsMarginPercent: number; // Target materials margin % (0 = not set)
 };
 
@@ -89,6 +90,20 @@ export type PaymentMethods = {
   other: PaymentMethod; // Custom instructions
 };
 
+/**
+ * Onboarding flow progress tracking
+ */
+export type OnboardingPreferences = {
+  completedAt?: string;   // ISO date - all steps done
+  skippedAt?: string;     // ISO date - user skipped
+  steps: {
+    companySetup: boolean;
+    overheadCalc: boolean;
+    laborRate: boolean;
+    targetMargin: boolean;
+  };
+};
+
 export type UserPreferences = {
   dashboard: DashboardPreferences;
   privacy: PrivacyPreferences;
@@ -100,6 +115,7 @@ export type UserPreferences = {
   pricing: PricingSettings;
   paymentMethods: PaymentMethods;
   overhead?: OverheadSettings; // Profitability overhead settings (configured via portal)
+  onboarding?: OnboardingPreferences; // Onboarding flow progress
 };
 
 const PREFERENCES_KEY = "@quotecat/preferences";
@@ -156,6 +172,7 @@ export function getDefaultPreferences(): UserPreferences {
       defaultTaxPercent: 0,
       defaultMarkupPercent: 0,
       defaultLaborRate: 0,
+      defaultLaborCostRate: 0,
       targetMaterialsMarginPercent: 0,
     },
     paymentMethods: {
@@ -166,6 +183,16 @@ export function getDefaultPreferences(): UserPreferences {
       check: { enabled: false, value: "" },
       wire: { enabled: false, value: "" },
       other: { enabled: false, value: "" },
+    },
+    onboarding: {
+      completedAt: undefined,
+      skippedAt: undefined,
+      steps: {
+        companySetup: false,
+        overheadCalc: false,
+        laborRate: false,
+        targetMargin: false,
+      },
     },
   };
 }
@@ -224,6 +251,17 @@ export async function loadPreferences(): Promise<UserPreferences> {
       },
       // Overhead settings (optional, configured via portal)
       overhead: stored.overhead || undefined,
+      // Onboarding progress
+      onboarding: stored.onboarding
+        ? {
+            ...getDefaultPreferences().onboarding,
+            ...stored.onboarding,
+            steps: {
+              ...getDefaultPreferences().onboarding?.steps,
+              ...(stored.onboarding?.steps || {}),
+            },
+          }
+        : getDefaultPreferences().onboarding,
     };
 
     // Save migrated preferences back to storage to clean up
@@ -405,6 +443,29 @@ export async function updateOverheadSettings(
   const updated: UserPreferences = {
     ...prefs,
     overhead,
+  };
+  await savePreferences(updated);
+  return updated;
+}
+
+/**
+ * Update onboarding preferences
+ */
+export async function updateOnboardingPreferences(
+  updates: Partial<OnboardingPreferences>,
+): Promise<UserPreferences> {
+  const prefs = await loadPreferences();
+  const current = prefs.onboarding || getDefaultPreferences().onboarding!;
+  const updated: UserPreferences = {
+    ...prefs,
+    onboarding: {
+      ...current,
+      ...updates,
+      steps: {
+        ...current.steps,
+        ...(updates.steps || {}),
+      },
+    },
   };
   await savePreferences(updated);
   return updated;

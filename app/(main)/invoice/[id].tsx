@@ -24,8 +24,9 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTechContext } from "@/contexts/TechContext";
 import { Ionicons } from "@expo/vector-icons";
-import type { Invoice, InvoiceStatus } from "@/lib/types";
+import type { Invoice, InvoiceStatus, TeamMember } from "@/lib/types";
 import { InvoiceStatusMeta } from "@/lib/types";
+import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 import {
   getInvoiceById,
   updateInvoice,
@@ -114,6 +115,9 @@ export default function InvoiceDetailScreen() {
 
   // Profitability state
   const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
+  const [defaultLaborRate, setDefaultLaborRate] = useState(0);
+  const [defaultLaborCostRate, setDefaultLaborCostRate] = useState(0);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   // SMS configuration (Twilio number from portal)
   const [smsPhone, setSmsPhone] = useState<string | undefined>(undefined);
 
@@ -150,13 +154,19 @@ export default function InvoiceDetailScreen() {
     loadInvoice();
   }, [loadInvoice]);
 
-  // Load overhead settings and SMS configuration
+  // Load overhead settings, pricing settings, SMS configuration, and team members
   useEffect(() => {
     (async () => {
       try {
         const prefs = await loadPreferences();
         setOverheadSettings(prefs.overhead);
+        setDefaultLaborRate(prefs.pricing.defaultLaborRate);
+        setDefaultLaborCostRate(prefs.pricing.defaultLaborCostRate);
         setSmsPhone(prefs.company?.smsPhone);
+
+        // Load team members for per-worker cost rates
+        const members = getLocalTeamMembers();
+        setTeamMembers(members);
       } catch (error) {
         console.error("Failed to load preferences:", error);
       }
@@ -781,9 +791,12 @@ Thank you!`;
   const totals = calculateInvoiceTotals(invoice);
   const { materialsFromItems, materialEstimate, labor, subtotal, markupAmount, taxAmount, total } = totals;
 
-  // Calculate profitability (Pro/Premium with overhead configured)
+  // Calculate profitability (Pro/Premium with overhead configured + cost rate)
   const profitability = overheadSettings
-    ? calculateInvoiceProfitability(invoice, overheadSettings)
+    ? calculateInvoiceProfitability(invoice, overheadSettings, {
+        defaultLaborRate,
+        defaultLaborCostRate,
+      }, teamMembers)
     : null;
 
   // Format dates

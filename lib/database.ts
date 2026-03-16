@@ -10,7 +10,7 @@ import type { Product, Category } from "@/modules/catalog/seed";
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 18;
 
 /**
  * Get or create the database instance
@@ -537,6 +537,7 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
         items TEXT NOT NULL DEFAULT '[]',
         defaults TEXT,
         user_id TEXT,
+        shared_assembly_id TEXT,
         synced_at TEXT,
         deleted_at TEXT,
         created_at TEXT,
@@ -673,6 +674,42 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     }
 
     console.log(`🏷️ Added tier_group_id column and migrated ${processed.size} quotes to new tier group system`);
+  }
+
+  if (fromVersion < 17) {
+    // Add shared_assembly_id column to track community-shared assemblies
+    // Used for auto-cleanup when local assembly is deleted
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(assemblies)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("shared_assembly_id")) {
+      database.execSync(`ALTER TABLE assemblies ADD COLUMN shared_assembly_id TEXT;`);
+    }
+  }
+
+  // v18: Rename team_members.default_rate → billable_rate, add cost_rate
+  // Supports the new two-rate system for accurate job costing
+  if (fromVersion < 18) {
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(team_members)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    // SQLite doesn't support RENAME COLUMN before version 3.25.0
+    // Create new columns instead and copy data
+    if (!columnNames.has("billable_rate")) {
+      // Add new billable_rate column
+      database.execSync(`ALTER TABLE team_members ADD COLUMN billable_rate REAL DEFAULT 0;`);
+      // Copy data from default_rate to billable_rate
+      database.execSync(`UPDATE team_members SET billable_rate = COALESCE(default_rate, 0);`);
+    }
+
+    if (!columnNames.has("cost_rate")) {
+      // Add cost_rate for future job costing
+      database.execSync(`ALTER TABLE team_members ADD COLUMN cost_rate REAL;`);
+    }
   }
 
   // Update version
@@ -2230,7 +2267,9 @@ function rowToTeamMember(row: any): TeamMember {
     phone: row.phone || undefined,
     email: row.email || undefined,
     role: row.role || undefined,
-    defaultRate: row.default_rate || 0,
+    // Read from billable_rate (v18+) with fallback to default_rate for old schema
+    billableRate: row.billable_rate ?? row.default_rate ?? 0,
+    costRate: row.cost_rate || undefined,
     isActive: row.is_active === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -2296,9 +2335,9 @@ export function saveTeamMemberDB(member: TeamMember): void {
 
     database.runSync(
       `INSERT OR REPLACE INTO team_members (
-        id, user_id, name, phone, email, role, default_rate,
+        id, user_id, name, phone, email, role, billable_rate, cost_rate,
         is_active, created_at, updated_at, synced_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         member.id,
         member.userId || null,
@@ -2306,7 +2345,8 @@ export function saveTeamMemberDB(member: TeamMember): void {
         member.phone || null,
         member.email || null,
         member.role || null,
-        member.defaultRate || 0,
+        member.billableRate || 0,
+        member.costRate || null,
         member.isActive === false ? 0 : 1,
         member.createdAt,
         member.updatedAt,
@@ -2406,6 +2446,7 @@ export type AssemblyDB = {
   items: string; // JSON string of AssemblyItem[]
   defaults?: string; // JSON string of AssemblyVarBag
   userId?: string;
+  sharedAssemblyId?: string; // If shared to community, track for auto-cleanup
   syncedAt?: string;
   deletedAt?: string;
   createdAt?: string;
@@ -2425,6 +2466,7 @@ function rowToAssembly(row: any): AssemblyDB {
     items: row.items || "[]",
     defaults: row.defaults || undefined,
     userId: row.user_id || undefined,
+    sharedAssemblyId: row.shared_assembly_id || undefined,
     syncedAt: row.synced_at || undefined,
     deletedAt: row.deleted_at || undefined,
     createdAt: row.created_at || undefined,
@@ -2511,8 +2553,8 @@ export function saveAssemblyDB(assembly: AssemblyDB): void {
     database.runSync(
       `INSERT OR REPLACE INTO assemblies (
         id, name, description, category, items, defaults,
-        user_id, synced_at, deleted_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        user_id, shared_assembly_id, synced_at, deleted_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         assembly.id,
         assembly.name,
@@ -2521,6 +2563,7 @@ export function saveAssemblyDB(assembly: AssemblyDB): void {
         assembly.items,
         assembly.defaults || null,
         assembly.userId || null,
+        assembly.sharedAssemblyId || null,
         assembly.syncedAt || null,
         assembly.deletedAt || null,
         assembly.createdAt || now,

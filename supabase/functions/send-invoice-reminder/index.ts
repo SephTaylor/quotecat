@@ -177,7 +177,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "QuoteCat <noreply@quotecat.ai>",
+          from: "QuoteCat <hello@quotecat.ai>",
           to: [invoice.client_email],
           subject,
           html: emailHtml,

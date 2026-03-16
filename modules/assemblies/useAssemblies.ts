@@ -1,6 +1,6 @@
 // modules/assemblies/useAssemblies.ts
 import { useCallback, useEffect, useState } from "react";
-import { listAssemblies } from "./storage";
+import { listAssemblies } from "./storageSQLite";
 import type { Assembly } from "./types";
 
 /**

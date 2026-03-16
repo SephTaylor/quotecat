@@ -628,11 +628,12 @@ export type WorkerRole = "apprentice" | "journeyman" | "master" | "custom";
 
 /**
  * Worker role metadata for UI display
+ * defaultBillableRate is what you charge clients (not wage)
  */
-export const WorkerRoleMeta: Record<WorkerRole, { label: string; defaultRate?: number }> = {
-  apprentice: { label: "Apprentice", defaultRate: 25 },
-  journeyman: { label: "Journeyman", defaultRate: 45 },
-  master: { label: "Master", defaultRate: 65 },
+export const WorkerRoleMeta: Record<WorkerRole, { label: string; defaultBillableRate?: number }> = {
+  apprentice: { label: "Apprentice", defaultBillableRate: 65 },
+  journeyman: { label: "Journeyman", defaultBillableRate: 95 },
+  master: { label: "Master", defaultBillableRate: 125 },
   custom: { label: "Custom" },
 };
 
@@ -665,7 +666,8 @@ export type TeamMember = {
   phone?: string;
   email?: string;
   role?: string; // Free text: "Lead Installer", "Helper", etc.
-  defaultRate: number;
+  billableRate: number; // What you charge clients for this person's time
+  costRate?: number; // What you pay them (optional, for job costing - future feature)
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

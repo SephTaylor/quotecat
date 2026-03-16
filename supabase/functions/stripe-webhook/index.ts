@@ -12,6 +12,7 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 
 // Map Stripe price IDs to tiers
 const PRICE_TO_TIER: Record<string, "pro" | "premium"> = {
@@ -178,6 +179,126 @@ async function handleCheckoutCompleted(
     } else {
       console.log(`Created profile for ${customerEmail} with tier: ${tier}`);
     }
+
+    // Send welcome email with pricing guide
+    await sendWelcomeEmail(customerEmail, tier);
+  }
+}
+
+/**
+ * Send welcome email with pricing guide to new subscribers
+ */
+async function sendWelcomeEmail(email: string, tier: "pro" | "premium") {
+  if (!RESEND_API_KEY) {
+    console.error("RESEND_API_KEY not configured, skipping welcome email");
+    return;
+  }
+
+  const tierName = tier === "premium" ? "Premium" : "Pro";
+
+  const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #111111; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #111111; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #1a1a1a; border-radius: 16px; overflow: hidden;">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); padding: 32px; text-align: center;">
+              <table cellpadding="0" cellspacing="0" style="margin: 0 auto 16px;">
+                <tr>
+                  <td style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 12px; padding: 0 16px 0 0;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td><img src="https://quotecat.ai/qc-splash.png" alt="QuoteCat" width="50" height="50" style="display: block;"></td>
+                        <td style="color: #ffffff; font-size: 22px; font-weight: 700; padding-left: 4px;">QuoteCat</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800;">Welcome to ${tierName}!</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 32px;">
+              <p style="margin: 0 0 20px; color: #ffffff; font-size: 16px; line-height: 1.6;">
+                Thank you for subscribing! You now have access to all ${tierName} features.
+              </p>
+
+              <!-- Pricing Guide Section -->
+              <div style="background-color: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3); border-radius: 12px; padding: 24px; margin: 24px 0;">
+                <h2 style="margin: 0 0 12px; color: #f97316; font-size: 18px; font-weight: 700;">Your Free Bonus: The Contractor Pricing Guide</h2>
+                <p style="margin: 0 0 16px; color: #d1d5db; font-size: 14px; line-height: 1.5;">
+                  As a thank you for subscribing, here's your free copy of The Contractor Pricing Guide — a $29 value.
+                </p>
+                <a href="https://quotecat.ai/downloads/The-Contractor-Pricing-Guide.pdf" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: #000000; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px;">
+                  Download Your Guide (PDF)
+                </a>
+              </div>
+
+              <p style="margin: 0 0 12px; color: #9ca3af; font-size: 14px; font-weight: 600;">This guide covers:</p>
+              <ul style="margin: 0 0 24px; padding-left: 20px; color: #d1d5db; font-size: 14px; line-height: 1.8;">
+                <li>How to calculate your true overhead</li>
+                <li>Markup vs margin (and why it matters)</li>
+                <li>The Good/Better/Best pricing strategy</li>
+                <li>Scripts for handling price objections</li>
+              </ul>
+
+              <p style="margin: 0; color: #9ca3af; font-size: 14px; line-height: 1.6;">
+                Questions? Just reply to this email — we're here to help.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 32px; border-top: 1px solid rgba(255, 255, 255, 0.1); text-align: center;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">
+                © 2026 QuoteCat. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "QuoteCat <hello@quotecat.ai>",
+        to: [email],
+        subject: `Welcome to QuoteCat ${tierName} + Your Free Pricing Guide`,
+        html: emailHtml,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to send welcome email:", errorText);
+    } else {
+      const result = await response.json();
+      console.log(`Welcome email sent to ${email}:`, result.id);
+    }
+  } catch (error) {
+    console.error("Error sending welcome email:", error);
   }
 }
 

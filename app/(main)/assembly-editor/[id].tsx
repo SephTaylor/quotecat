@@ -12,6 +12,7 @@ import {
   MaterialsPicker,
   useSelection,
 } from "@/modules/materials";
+import { AddItemRow } from "@/components/AddItemRow";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
@@ -22,12 +23,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   Keyboard,
   RefreshControl,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import type { ItemSource } from "@/modules/assemblies/types";
 
 export default function AssemblyEditorScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
@@ -43,11 +47,23 @@ export default function AssemblyEditorScreen() {
   const [showExistingItems, setShowExistingItems] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pricebookItems, setPricebookItems] = useState<PricebookItem[]>([]);
+  const [activeSource, setActiveSource] = useState<ItemSource>("catalog");
+  const [additionalBlankRows, setAdditionalBlankRows] = useState(0);
+  const [pricebookSearchQuery, setPricebookSearchQuery] = useState("");
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // Use the same selection hook as quote materials
+  // Use the same selection hook as quote materials - separate for catalog and pricebook
   const { selection, inc, dec, clear, units, setQty, getSelection } = useSelection(new Map());
+  const {
+    selection: pricebookSelection,
+    inc: pricebookInc,
+    dec: pricebookDec,
+    clear: pricebookClear,
+    units: pricebookUnits,
+    setQty: pricebookSetQty,
+    getSelection: getPricebookSelection
+  } = useSelection(new Map());
 
   // Load assembly and pricebook items
   useEffect(() => {
@@ -83,12 +99,76 @@ export default function AssemblyEditorScreen() {
     return grouped;
   }, [products]);
 
+  // Convert pricebook items to Product format for the picker
+  const pricebookAsProducts = useMemo((): Product[] => {
+    return pricebookItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      unit: item.unitType || "ea",
+      unitPrice: item.unitPrice,
+      categoryId: item.category || "Custom",
+    }));
+  }, [pricebookItems]);
+
+  // Filter pricebook products by search query
+  const filteredPricebookProducts = useMemo(() => {
+    if (!pricebookSearchQuery.trim()) return pricebookAsProducts;
+    const query = pricebookSearchQuery.toLowerCase();
+    return pricebookAsProducts.filter((p) =>
+      p.name.toLowerCase().includes(query)
+    );
+  }, [pricebookAsProducts, pricebookSearchQuery]);
+
+  // Group pricebook products by category
+  const pricebookByCategory = useMemo(() => {
+    const grouped: Record<string, Product[]> = {};
+    filteredPricebookProducts.forEach((product) => {
+      const cat = product.categoryId || "Custom";
+      if (!grouped[cat]) {
+        grouped[cat] = [];
+      }
+      grouped[cat].push(product);
+    });
+    return grouped;
+  }, [filteredPricebookProducts]);
+
+  // Get unique pricebook categories
+  const pricebookCategories = useMemo(() => {
+    const cats = new Set<string>();
+    pricebookItems.forEach((item) => cats.add(item.category || "Custom"));
+    return Array.from(cats)
+      .sort()
+      .map((cat) => ({ id: cat, name: cat }));
+  }, [pricebookItems]);
+
   // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
   }, [refresh]);
+
+  // Handle adding custom line item to assembly
+  const handleAddCustomItem = (name: string, qty: number, price: number) => {
+    if (!assembly) return;
+
+    // Generate a unique ID for the custom item
+    const customId = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const newItem: AssemblyItem = {
+      productId: customId,
+      source: "pricebook" as ItemSource, // Custom items are treated like pricebook items
+      qty,
+      name, // Store the name since custom items aren't in any lookup
+    };
+
+    // Add to assembly items immediately
+    const updatedItems = [...assembly.items, newItem];
+    setAssembly({ ...assembly, items: updatedItems });
+
+    // Show existing items so user can see the added item
+    setShowExistingItems(true);
+  };
 
   const handleSave = async (goBack: boolean) => {
     // Dismiss keyboard to trigger onBlur and commit any pending quantity edits
@@ -105,9 +185,10 @@ export default function AssemblyEditorScreen() {
       return;
     }
 
-    const currentSelection = getSelection();
+    const catalogSelection = getSelection();
+    const pbSelection = getPricebookSelection();
 
-    if (assembly.items.length === 0 && currentSelection.size === 0) {
+    if (assembly.items.length === 0 && catalogSelection.size === 0 && pbSelection.size === 0) {
       Alert.alert(
         "No Products",
         "Please add at least one product to this assembly.",
@@ -120,45 +201,91 @@ export default function AssemblyEditorScreen() {
       // Get existing assembly items
       const existingItems = assembly.items || [];
 
-      // Convert newly selected products to assembly items (all have fixed qty)
-      // Store product name for display when product becomes unavailable
-      const newlySelectedItems = Array.from(currentSelection.entries()).map(
+      // Convert newly selected catalog products to assembly items
+      const newCatalogItems: AssemblyItem[] = Array.from(catalogSelection.entries()).map(
         ([productId, { qty }]) => {
           const product = products.find((p) => p.id === productId);
           return {
             productId,
+            source: "catalog" as ItemSource,
             qty,
             name: product?.name,
           };
         }
       );
 
-      // Merge existing items with newly selected items
-      const mergedMap = new Map<string, number>();
-
-      // Add existing items
-      existingItems.forEach((item) => {
-        if ("qty" in item) {
-          mergedMap.set(item.productId, item.qty);
-        }
-      });
-
-      // Merge in newly selected items (add quantities)
-      newlySelectedItems.forEach((item) => {
-        const current = mergedMap.get(item.productId) || 0;
-        mergedMap.set(item.productId, current + item.qty);
-      });
-
-      // Convert back to array, preserving names from existing or new items
-      const mergedItems: AssemblyItem[] = Array.from(mergedMap.entries()).map(
-        ([productId, qty]) => {
-          // Try to find name from existing items first, then new items
-          const existingItem = existingItems.find((i) => i.productId === productId);
-          const newItem = newlySelectedItems.find((i) => i.productId === productId);
-          const name = existingItem?.name || newItem?.name;
-          return { productId, qty, ...(name && { name }) };
+      // Convert newly selected pricebook items to assembly items
+      const newPricebookItems: AssemblyItem[] = Array.from(pbSelection.entries()).map(
+        ([productId, { qty }]) => {
+          const pbItem = pricebookItems.find((p) => p.id === productId);
+          return {
+            productId,
+            source: "pricebook" as ItemSource,
+            qty,
+            name: pbItem?.name,
+          };
         }
       );
+
+      // Create a map for merging: key is "source:productId" to handle same ID in different sources
+      const mergedMap = new Map<string, { productId: string; source?: ItemSource; qty: number; name?: string }>();
+
+      // Add existing items (preserve their source)
+      existingItems.forEach((item) => {
+        if ("qty" in item) {
+          const key = `${item.source || "catalog"}:${item.productId}`;
+          mergedMap.set(key, {
+            productId: item.productId,
+            source: item.source,
+            qty: item.qty,
+            name: item.name,
+          });
+        }
+      });
+
+      // Merge in newly selected catalog items (add quantities)
+      newCatalogItems.forEach((item) => {
+        if ("qty" in item) {
+          const key = `catalog:${item.productId}`;
+          const existing = mergedMap.get(key);
+          if (existing) {
+            mergedMap.set(key, { ...existing, qty: existing.qty + item.qty });
+          } else {
+            mergedMap.set(key, {
+              productId: item.productId,
+              source: "catalog",
+              qty: item.qty,
+              name: item.name,
+            });
+          }
+        }
+      });
+
+      // Merge in newly selected pricebook items (add quantities)
+      newPricebookItems.forEach((item) => {
+        if ("qty" in item) {
+          const key = `pricebook:${item.productId}`;
+          const existing = mergedMap.get(key);
+          if (existing) {
+            mergedMap.set(key, { ...existing, qty: existing.qty + item.qty });
+          } else {
+            mergedMap.set(key, {
+              productId: item.productId,
+              source: "pricebook",
+              qty: item.qty,
+              name: item.name,
+            });
+          }
+        }
+      });
+
+      // Convert back to array
+      const mergedItems: AssemblyItem[] = Array.from(mergedMap.values()).map((item) => ({
+        productId: item.productId,
+        ...(item.source && { source: item.source }),
+        qty: item.qty,
+        ...(item.name && { name: item.name }),
+      }));
 
       const updatedAssembly: Assembly = {
         ...assembly,
@@ -174,8 +301,9 @@ export default function AssemblyEditorScreen() {
         // Update local assembly state
         setAssembly(updatedAssembly);
 
-        // Clear selection so user can add more
+        // Clear selections so user can add more
         clear();
+        pricebookClear();
 
         // Show success message
         setShowSuccessMessage(true);
@@ -447,35 +575,129 @@ export default function AssemblyEditorScreen() {
           </View>
         )}
 
-        {/* MaterialsPicker - same as quote materials screen */}
-        <View style={styles.pickerContainer}>
-          <MaterialsPicker
-            categories={categories}
-            itemsByCategory={productsByCategory}
-            selection={selection}
-            onInc={inc}
-            onDec={dec}
-            onSetQty={setQty}
-            recentProductIds={[]}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={theme.colors.accent}
-              />
-            }
-          />
+        {/* Source Tabs: Catalog / Pricebook */}
+        <View style={styles.sourceTabsContainer}>
+          <Pressable
+            style={[
+              styles.sourceTab,
+              activeSource === "catalog" && styles.sourceTabActive,
+            ]}
+            onPress={() => setActiveSource("catalog")}
+          >
+            <Text
+              style={[
+                styles.sourceTabText,
+                activeSource === "catalog" && styles.sourceTabTextActive,
+              ]}
+            >
+              Catalog
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.sourceTab,
+              activeSource === "pricebook" && styles.sourceTabActive,
+            ]}
+            onPress={() => setActiveSource("pricebook")}
+          >
+            <Text
+              style={[
+                styles.sourceTabText,
+                activeSource === "pricebook" && styles.sourceTabTextActive,
+              ]}
+            >
+              Pricebook
+            </Text>
+          </Pressable>
         </View>
+
+        {/* Catalog Picker */}
+        {activeSource === "catalog" && (
+          <View style={styles.pickerContainer}>
+            <MaterialsPicker
+              categories={categories}
+              itemsByCategory={productsByCategory}
+              selection={selection}
+              onInc={inc}
+              onDec={dec}
+              onSetQty={setQty}
+              recentProductIds={[]}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={theme.colors.accent}
+                />
+              }
+            />
+          </View>
+        )}
+
+        {/* Pricebook Picker */}
+        {activeSource === "pricebook" && (
+          <View style={styles.pickerContainer}>
+            {pricebookItems.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>No Pricebook Items</Text>
+                <Text style={styles.emptyText}>
+                  Add custom products to your pricebook in Pro Tools to use them here.
+                </Text>
+              </View>
+            ) : (
+              <MaterialsPicker
+                categories={pricebookCategories}
+                itemsByCategory={pricebookByCategory}
+                selection={pricebookSelection}
+                onInc={pricebookInc}
+                onDec={pricebookDec}
+                onSetQty={pricebookSetQty}
+                recentProductIds={[]}
+              />
+            )}
+
+            {/* Custom Item Entry */}
+            <View style={styles.customItemsSection}>
+              {additionalBlankRows > 0 && (
+                <>
+                  {Array.from({ length: additionalBlankRows }).map((_, index) => (
+                    <AddItemRow
+                      key={`blank-${index}`}
+                      onAddItem={(name, qty, price) => {
+                        handleAddCustomItem(name, qty, price);
+                        setAdditionalBlankRows((prev) => Math.max(0, prev - 1));
+                      }}
+                      isLastItem={index === additionalBlankRows - 1}
+                      onDelete={() => setAdditionalBlankRows((prev) => Math.max(0, prev - 1))}
+                    />
+                  ))}
+                </>
+              )}
+              <View style={styles.addRowContainer}>
+                <Pressable
+                  onPress={() => setAdditionalBlankRows((prev) => prev + 1)}
+                  style={({ pressed }) => [
+                    styles.addRowBtn,
+                    { opacity: pressed ? 0.6 : 1 },
+                  ]}
+                  hitSlop={8}
+                >
+                  <Ionicons name="add-circle" size={18} color="#34C759" />
+                  <Text style={styles.addRowText}>Add custom item</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
       </View>
 
       <BottomBar>
-        {units > 0 ? (
+        {(units + pricebookUnits) > 0 ? (
           <>
             <Button
               variant="secondary"
               onPress={() => handleSave(false)}
             >
-              Add {units} {units === 1 ? 'item' : 'items'}
+              Add {units + pricebookUnits} {(units + pricebookUnits) === 1 ? 'item' : 'items'}
             </Button>
             <Button
               variant="primary"
@@ -679,6 +901,73 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       color: "#FFFFFF",
       fontSize: 14,
       fontWeight: "600",
+    },
+    // Source tabs
+    sourceTabsContainer: {
+      flexDirection: "row",
+      marginHorizontal: theme.spacing(2),
+      marginBottom: theme.spacing(2),
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.md,
+      padding: 3,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    sourceTab: {
+      flex: 1,
+      paddingVertical: theme.spacing(0.75),
+      paddingHorizontal: theme.spacing(1),
+      borderRadius: theme.radius.sm,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+    },
+    sourceTabActive: {
+      backgroundColor: theme.colors.accent,
+    },
+    sourceTabText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.muted,
+    },
+    sourceTabTextActive: {
+      color: "#000",
+    },
+    // Empty state
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: theme.spacing(4),
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+    },
+    emptyText: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      textAlign: "center",
+    },
+    // Custom items section
+    customItemsSection: {
+      marginTop: theme.spacing(2),
+      marginHorizontal: theme.spacing(2),
+    },
+    addRowContainer: {
+      paddingVertical: theme.spacing(1),
+    },
+    addRowBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(0.5),
+    },
+    addRowText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#34C759",
     },
   });
 }

@@ -41,3 +41,4 @@ export const RefreshEvents = {
 
 // Event names
 export const REFRESH_QUOTES_LIST = "refresh:quotes";
+export const RESUME_ONBOARDING = "resume:onboarding";

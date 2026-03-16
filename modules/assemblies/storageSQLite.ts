@@ -13,6 +13,7 @@ import {
   deleteTombstoneDB,
   type AssemblyDB,
 } from "@/lib/database";
+import { deleteSharedAssembly } from "@/lib/sharedAssembliesApi";
 
 /**
  * Convert SQLite row to Assembly object
@@ -26,6 +27,7 @@ function dbRowToAssembly(row: AssemblyDB): Assembly {
     category: row.category,
     items: JSON.parse(row.items || "[]"),
     defaults: row.defaults ? JSON.parse(row.defaults) : undefined,
+    sharedAssemblyId: row.sharedAssemblyId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -44,6 +46,7 @@ function assemblyToDBRow(assembly: Assembly, userId?: string): AssemblyDB {
     items: JSON.stringify(assembly.items || []),
     defaults: assembly.defaults ? JSON.stringify(assembly.defaults) : undefined,
     userId,
+    sharedAssemblyId: assembly.sharedAssemblyId,
     createdAt: assembly.createdAt,
     updatedAt: assembly.updatedAt,
   };
@@ -111,9 +114,22 @@ export async function saveAssembliesBatch(assemblies: Assembly[]): Promise<void>
 }
 
 /**
- * Delete an assembly by ID (soft delete).
+ * Delete an assembly by ID.
+ * If the assembly was shared to community, also deletes from community.
  */
 export async function deleteAssembly(id: string): Promise<void> {
+  // Check if assembly was shared to community
+  const assembly = getAssemblyByIdDB(id);
+  if (assembly?.sharedAssemblyId) {
+    try {
+      await deleteSharedAssembly(assembly.sharedAssemblyId);
+      console.log(`✅ Auto-deleted shared assembly ${assembly.sharedAssemblyId} from community`);
+    } catch (error) {
+      // Log but don't block local deletion
+      console.warn(`Failed to delete shared assembly from community:`, error);
+    }
+  }
+
   deleteAssemblyDB(id);
 }
 

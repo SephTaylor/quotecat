@@ -38,6 +38,8 @@ import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { createInvoiceFromQuote } from "@/lib/invoices";
 import { createContractFromQuote } from "@/lib/contracts";
 import { uploadQuote } from "@/lib/quotesSync";
+import { getLocalTeamMembers } from "@/lib/teamMembersSync";
+import type { TeamMember } from "@/lib/types";
 import { ChangeOrderList } from "@/modules/changeOrders/ui";
 
 export default function QuoteReviewScreen() {
@@ -62,6 +64,9 @@ export default function QuoteReviewScreen() {
   const [isCreatingContract, setIsCreatingContract] = useState(false);
   const [targetMaterialsMarginPercent, setTargetMaterialsMarginPercent] = useState(0);
   const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
+  const [defaultLaborRate, setDefaultLaborRate] = useState(0);
+  const [defaultLaborCostRate, setDefaultLaborCostRate] = useState(0);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -77,6 +82,12 @@ export default function QuoteReviewScreen() {
         setCompanyDetails(prefs.company);
         setTargetMaterialsMarginPercent(prefs.pricing?.targetMaterialsMarginPercent || 0);
         setOverheadSettings(prefs.overhead);
+        setDefaultLaborRate(prefs.pricing?.defaultLaborRate || 0);
+        setDefaultLaborCostRate(prefs.pricing?.defaultLaborCostRate || 0);
+
+        // Load team members for per-worker cost rates
+        const members = getLocalTeamMembers();
+        setTeamMembers(members);
 
         // Load logo from local storage
         try {
@@ -105,9 +116,9 @@ export default function QuoteReviewScreen() {
   const taxAmount = totals?.taxAmount ?? 0;
   const grandTotal = totals?.total ?? 0;
 
-  // Calculate profitability (Pro/Premium with overhead configured)
-  const profitability = quote && overheadSettings
-    ? calculateQuoteProfitability(quote, overheadSettings)
+  // Calculate profitability (Pro/Premium with overhead and cost rate configured)
+  const profitability = quote && overheadSettings && defaultLaborCostRate > 0 && defaultLaborRate > 0
+    ? calculateQuoteProfitability(quote, overheadSettings, { defaultLaborRate, defaultLaborCostRate }, teamMembers)
     : null;
 
   const handleExportPDF = async () => {

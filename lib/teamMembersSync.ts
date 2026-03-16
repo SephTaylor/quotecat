@@ -115,7 +115,8 @@ export async function downloadTeamMembers(): Promise<TeamMember[]> {
       phone: row.phone || undefined,
       email: row.email || undefined,
       role: row.role || undefined,
-      defaultRate: row.default_rate || 0,
+      billableRate: row.default_rate || 0,
+      costRate: row.cost_rate || undefined,
       isActive: row.is_active ?? true,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -170,7 +171,7 @@ export async function downloadTechAccounts(): Promise<TeamMember[]> {
       phone: row.phone || undefined,
       email: row.email || undefined,
       role: row.role === "admin" ? "Admin (Tech)" : "Tech",
-      defaultRate: 0, // Techs don't have hourly rates in this table
+      billableRate: 0, // Techs don't have hourly rates in this table
       isActive: row.status === "active",
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -270,7 +271,8 @@ export async function getTeamMembersLastSyncTime(): Promise<Date | null> {
 export async function uploadTeamMember(data: {
   name: string;
   role?: string;
-  defaultRate: number;
+  billableRate: number;
+  costRate?: number;
   phone?: string;
   email?: string;
 }): Promise<TeamMember | null> {
@@ -287,7 +289,8 @@ export async function uploadTeamMember(data: {
         user_id: userId,
         name: data.name,
         role: data.role || null,
-        default_rate: data.defaultRate,
+        default_rate: data.billableRate,
+        cost_rate: data.costRate || null,
         phone: data.phone || null,
         email: data.email || null,
         is_active: true,
@@ -308,7 +311,8 @@ export async function uploadTeamMember(data: {
       phone: inserted.phone || undefined,
       email: inserted.email || undefined,
       role: inserted.role || undefined,
-      defaultRate: inserted.default_rate || 0,
+      billableRate: inserted.default_rate || 0,
+      costRate: inserted.cost_rate || undefined,
       isActive: inserted.is_active,
       createdAt: inserted.created_at,
       updatedAt: inserted.updated_at,
@@ -333,7 +337,8 @@ export async function updateTeamMemberCloud(
   updates: Partial<{
     name: string;
     role: string;
-    defaultRate: number;
+    billableRate: number;
+    costRate: number;
     phone: string;
     email: string;
     isActive: boolean;
@@ -349,7 +354,8 @@ export async function updateTeamMemberCloud(
     const updateData: any = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.role !== undefined) updateData.role = updates.role;
-    if (updates.defaultRate !== undefined) updateData.default_rate = updates.defaultRate;
+    if (updates.billableRate !== undefined) updateData.default_rate = updates.billableRate;
+    if (updates.costRate !== undefined) updateData.cost_rate = updates.costRate;
     if (updates.phone !== undefined) updateData.phone = updates.phone;
     if (updates.email !== undefined) updateData.email = updates.email;
     if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
@@ -376,7 +382,8 @@ export async function updateTeamMemberCloud(
       phone: updated.phone || undefined,
       email: updated.email || undefined,
       role: updated.role || undefined,
-      defaultRate: updated.default_rate || 0,
+      billableRate: updated.default_rate || 0,
+      costRate: updated.cost_rate || undefined,
       isActive: updated.is_active,
       createdAt: updated.created_at,
       updatedAt: updated.updated_at,

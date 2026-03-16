@@ -115,7 +115,7 @@ export function useSettingsState() {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // Load assemblies count
-    const { listAssemblies } = await import("@/modules/assemblies/storage");
+    const { listAssemblies } = await import("@/modules/assemblies/storageSQLite");
     const localAssemblies = await listAssemblies();
     const assembliesCount = localAssemblies.length;
 
@@ -340,7 +340,7 @@ export function useSettingsState() {
         const clientsCount = localClients.length;
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        const { listAssemblies } = await import("@/modules/assemblies/storage");
+        const { listAssemblies } = await import("@/modules/assemblies/storageSQLite");
         const localAssemblies = await listAssemblies();
         const assembliesCount = localAssemblies.length;
 
@@ -425,7 +425,7 @@ export function useSettingsState() {
                 const clientsCount = localClients.length;
                 await new Promise(resolve => setTimeout(resolve, 100));
 
-                const { listAssemblies } = await import("@/modules/assemblies/storage");
+                const { listAssemblies } = await import("@/modules/assemblies/storageSQLite");
                 const localAssemblies = await listAssemblies();
                 const assembliesCount = localAssemblies.length;
 

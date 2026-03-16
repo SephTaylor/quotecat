@@ -2,7 +2,7 @@
 // Centralized calculation functions for quotes and invoices
 // Single source of truth - do not duplicate these elsewhere
 
-import type { Quote, QuoteItem, Invoice } from "./types";
+import { type Quote, type QuoteItem, type Invoice, type TeamMember, type LaborEntry, computeLaborEntryTotal } from "./types";
 import type { OverheadSettings } from "./preferences";
 
 /**
@@ -162,35 +162,73 @@ export type ProfitabilityResult = {
 };
 
 /**
+ * Pricing settings needed for profit calculation
+ */
+export type ProfitPricingSettings = {
+  defaultLaborRate: number;     // Billable rate (what you charge clients)
+  defaultLaborCostRate: number; // Cost rate (what it costs you - salary + benefits)
+};
+
+/**
  * Calculate profitability for a quote
  *
  * Formula:
+ * - Revenue = quote subtotal (excluding tax - tax is pass-through, not profit)
  * - Materials Cost = line items total (BEFORE markup)
- * - Labor Cost = labor field
- * - Overhead Cost = Labor × (Overhead % / 100)
- * - Revenue = quote total (what client pays)
- * - Profit = Revenue - Materials Cost - Labor Cost - Overhead Cost
+ * - Labor Cost = labor billed × (costRate / billableRate)
+ * - Profit = Revenue - Materials Cost - Labor Cost
  * - Margin % = (Profit / Revenue) × 100
+ *
+ * The labor COST is different from labor BILLED:
+ * - Labor billed = what client pays (e.g., 8 hrs × $95/hr = $760)
+ * - Labor cost = what it costs you (e.g., 8 hrs × $56/hr = $448)
+ * - Labor profit = $760 - $448 = $312
+ *
+ * The cost rate comes from the Labor Rate Calculator:
+ * costRate = (salary + benefits + payrollTaxes) / billableHours
+ * This excludes overhead and profit margin, which are embedded in the billable rate.
  */
 export function calculateQuoteProfitability(
   quote: Quote,
-  overheadSettings: OverheadSettings | undefined
+  overheadSettings: OverheadSettings | undefined,
+  pricingSettings?: ProfitPricingSettings,
+  teamMembers?: TeamMember[]
 ): ProfitabilityResult | null {
-  if (!overheadSettings || !overheadSettings.overheadPercent) {
+  // Require overhead settings to be completed
+  if (!overheadSettings || !overheadSettings.completedAt) {
+    return null;
+  }
+
+  // Require cost rate to be set for accurate calculation
+  if (!pricingSettings?.defaultLaborCostRate || !pricingSettings?.defaultLaborRate) {
     return null;
   }
 
   const totals = calculateQuoteTotals(quote);
-  const revenue = totals.total;
+  // Use subtotal, not total - tax is pass-through, not profit
+  const revenue = totals.subtotal;
   const materialsCost = totals.materialsFromItems; // Before markup
-  const laborCost = totals.labor;
-  const overheadPercent = overheadSettings.overheadPercent;
 
-  // Overhead is calculated on labor
-  const overheadCost = laborCost * (overheadPercent / 100);
+  // Calculate TRUE labor cost
+  // Default cost ratio for entries without per-worker rates
+  const defaultCostRatio = pricingSettings.defaultLaborCostRate / pricingSettings.defaultLaborRate;
 
-  // Profit = Revenue - all costs
-  const profit = revenue - materialsCost - laborCost - overheadCost;
+  let laborCost: number;
+
+  // If quote has labor entries and team members provided, use per-worker rates
+  if (quote.laborEntries && quote.laborEntries.length > 0 && teamMembers && teamMembers.length > 0) {
+    laborCost = calculateLaborCostWithWorkerRates(
+      quote.laborEntries,
+      teamMembers,
+      defaultCostRatio
+    );
+  } else {
+    // Fall back to global ratio for all labor
+    laborCost = totals.labor * defaultCostRatio;
+  }
+
+  // Profit = Revenue - direct costs only
+  const profit = revenue - materialsCost - laborCost;
 
   // Margin = Profit / Revenue
   const marginPercent = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -199,36 +237,103 @@ export function calculateQuoteProfitability(
     revenue,
     materialsCost,
     laborCost,
-    overheadCost,
+    overheadCost: 0, // Overhead is in the billable rate, not separated
     profit,
     marginPercent,
   };
 }
 
 /**
+ * Calculate labor cost using per-worker cost rates when available
+ *
+ * For each labor entry:
+ * - If entry has a workerId and that worker has costRate and billableRate set,
+ *   use that worker's specific cost ratio
+ * - Otherwise, fall back to the default cost ratio
+ */
+function calculateLaborCostWithWorkerRates(
+  laborEntries: LaborEntry[],
+  teamMembers: TeamMember[],
+  defaultCostRatio: number
+): number {
+  // Build lookup map for team members
+  const memberMap = new Map<string, TeamMember>();
+  for (const member of teamMembers) {
+    memberMap.set(member.id, member);
+  }
+
+  let totalCost = 0;
+
+  for (const entry of laborEntries) {
+    const entryBilled = computeLaborEntryTotal(entry);
+
+    // Try to get worker-specific cost ratio
+    let costRatio = defaultCostRatio;
+
+    if (entry.workerId) {
+      const worker = memberMap.get(entry.workerId);
+      if (worker && worker.costRate && worker.costRate > 0 && worker.billableRate > 0) {
+        // Use worker's specific cost ratio
+        costRatio = worker.costRate / worker.billableRate;
+      }
+    }
+
+    totalCost += entryBilled * costRatio;
+  }
+
+  return totalCost;
+}
+
+/**
  * Calculate profitability for an invoice
  *
- * Same formula as quotes, but uses invoice totals
+ * Same formula as quotes - uses cost ratio to calculate true labor cost.
+ * Supports per-worker cost rates when laborEntries and teamMembers are available.
  */
 export function calculateInvoiceProfitability(
   invoice: Invoice,
-  overheadSettings: OverheadSettings | undefined
+  overheadSettings: OverheadSettings | undefined,
+  pricingSettings?: ProfitPricingSettings,
+  teamMembers?: TeamMember[]
 ): ProfitabilityResult | null {
-  if (!overheadSettings || !overheadSettings.overheadPercent) {
+  // Require overhead settings to be completed
+  if (!overheadSettings || !overheadSettings.completedAt) {
+    return null;
+  }
+
+  // Require cost rate to be set for accurate calculation
+  if (!pricingSettings?.defaultLaborCostRate || !pricingSettings?.defaultLaborRate) {
     return null;
   }
 
   const totals = calculateInvoiceTotals(invoice);
-  const revenue = totals.total;
+  // Use subtotal, not total - tax is pass-through, not profit
+  const revenue = totals.subtotal;
   const materialsCost = totals.materialsFromItems; // Before markup
-  const laborCost = totals.labor;
-  const overheadPercent = overheadSettings.overheadPercent;
 
-  // Overhead is calculated on labor
-  const overheadCost = laborCost * (overheadPercent / 100);
+  // Calculate TRUE labor cost
+  // Default cost ratio for entries without per-worker rates
+  const defaultCostRatio = pricingSettings.defaultLaborCostRate / pricingSettings.defaultLaborRate;
 
-  // Profit = Revenue - all costs
-  const profit = revenue - materialsCost - laborCost - overheadCost;
+  let laborCost: number;
+
+  // Check for laborEntries on invoice (stored as extra field)
+  const laborEntries = (invoice as any).laborEntries as LaborEntry[] | undefined;
+
+  // If invoice has labor entries and team members provided, use per-worker rates
+  if (laborEntries && laborEntries.length > 0 && teamMembers && teamMembers.length > 0) {
+    laborCost = calculateLaborCostWithWorkerRates(
+      laborEntries,
+      teamMembers,
+      defaultCostRatio
+    );
+  } else {
+    // Fall back to global ratio for all labor
+    laborCost = totals.labor * defaultCostRatio;
+  }
+
+  // Profit = Revenue - direct costs only
+  const profit = revenue - materialsCost - laborCost;
 
   // Margin = Profit / Revenue
   const marginPercent = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -237,7 +342,7 @@ export function calculateInvoiceProfitability(
     revenue,
     materialsCost,
     laborCost,
-    overheadCost,
+    overheadCost: 0, // Overhead is in the billable rate, not separated
     profit,
     marginPercent,
   };

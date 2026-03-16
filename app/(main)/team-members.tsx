@@ -162,7 +162,7 @@ export default function TeamMembersScreen() {
     setEditingMember(member);
     setFormName(member.name);
     setFormRole(member.role || "");
-    setFormRate(member.defaultRate > 0 ? member.defaultRate.toString() : "");
+    setFormRate(member.billableRate > 0 ? member.billableRate.toString() : "");
     setFormPhone(member.phone || "");
     setFormEmail(member.email || "");
     setShowModal(true);
@@ -179,7 +179,7 @@ export default function TeamMembersScreen() {
       const data = {
         name: formName.trim(),
         role: formRole.trim() || undefined,
-        defaultRate: parseFloat(formRate) || 0,
+        billableRate: parseFloat(formRate) || 0,
         phone: formPhone.trim() || undefined,
         email: formEmail.trim() || undefined,
       };
@@ -456,7 +456,7 @@ export default function TeamMembersScreen() {
               autoCapitalize="words"
             />
 
-            <Text style={styles.formLabel}>Default Rate ($/hr)</Text>
+            <Text style={styles.formLabel}>Billable Rate ($/hr)</Text>
             <View style={styles.currencyInput}>
               <Text style={styles.currencySymbol}>$</Text>
               <TextInput
@@ -700,7 +700,7 @@ function SwipeableMemberCard({
                 </Text>
               </View>
             )}
-            {member.defaultRate > 0 && (
+            {member.billableRate > 0 && (
               <View
                 style={{
                   backgroundColor: isDark ? "#1F2D1F" : "#D1FAE5",
@@ -716,7 +716,7 @@ function SwipeableMemberCard({
                     color: "#34C759",
                   }}
                 >
-                  ${member.defaultRate.toFixed(2)}/hr
+                  ${member.billableRate.toFixed(2)}/hr
                 </Text>
               </View>
             )}

@@ -2,7 +2,8 @@
 // Dashboard screen - Overview and quick stats
 import { useTheme } from "@/contexts/ThemeContext";
 import { listQuotes, type Quote } from "@/lib/quotes";
-import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, type Contract } from "@/lib/types";
+import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, type Contract, type TeamMember } from "@/lib/types";
+import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 import { calculateQuoteTotal, calculateInvoiceTotal, calculateInvoiceProfitability, getMarginColor } from "@/lib/calculations";
 import { loadPreferences, type DashboardPreferences, type OverheadSettings } from "@/lib/preferences";
 import { deleteQuote, saveQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
@@ -17,10 +18,11 @@ import { SwipeableContractItem } from "@/components/SwipeableContractItem";
 import { QuoteGroup } from "@/components/QuoteGroup";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
+import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { RefreshEvents, REFRESH_QUOTES_LIST } from "@/lib/refreshEvents";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshEvents, REFRESH_QUOTES_LIST, RESUME_ONBOARDING } from "@/lib/refreshEvents";
+import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getLastSyncTime, isSyncAvailable, syncQuotes } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
 import { syncClients } from "@/lib/clientsSync";
@@ -84,6 +86,10 @@ export default function Dashboard() {
     totalValue: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [defaultLaborRate, setDefaultLaborRate] = useState(0);
+  const [defaultLaborCostRate, setDefaultLaborCostRate] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // Track when we last loaded data (for smart refresh after sync)
   const lastLoadedAt = useRef<number>(0);
@@ -105,6 +111,19 @@ export default function Dashboard() {
       const prefs = await loadPreferences();
       setPreferences(prefs.dashboard);
       setOverheadSettings(prefs.overhead);
+      setDefaultLaborRate(prefs.pricing.defaultLaborRate);
+      setDefaultLaborCostRate(prefs.pricing.defaultLaborCostRate);
+
+      // Load team members for per-worker cost rates
+      const members = getLocalTeamMembers();
+      setTeamMembers(members);
+
+      // Check if onboarding should show (first launch)
+      const hasCompleted = !!prefs.onboarding?.completedAt;
+      const hasSkipped = !!prefs.onboarding?.skippedAt;
+      if (!hasCompleted && !hasSkipped) {
+        setShowOnboarding(true);
+      }
 
       const syncTime = await getLastSyncTime();
       setLastSyncTime(syncTime);
@@ -172,6 +191,14 @@ export default function Dashboard() {
     const unsubscribe = RefreshEvents.subscribe(REFRESH_QUOTES_LIST, load);
     return unsubscribe;
   }, [load]);
+
+  // Listen for resume onboarding event (from notification tap)
+  useEffect(() => {
+    const unsubscribe = RefreshEvents.subscribe(RESUME_ONBOARDING, () => {
+      setShowOnboarding(true);
+    });
+    return unsubscribe;
+  }, []);
 
   // Pull-to-refresh handler - triggers cloud sync for Pro/Premium users
   const onRefresh = useCallback(async () => {
@@ -384,7 +411,10 @@ export default function Dashboard() {
     let validCount = 0;
 
     for (const inv of paidInvoices) {
-      const profitability = calculateInvoiceProfitability(inv, overheadSettings);
+      const profitability = calculateInvoiceProfitability(inv, overheadSettings, {
+        defaultLaborRate,
+        defaultLaborCostRate,
+      }, teamMembers);
       if (profitability) {
         totalProfit += profitability.profit;
         totalRevenue += profitability.revenue;
@@ -405,7 +435,7 @@ export default function Dashboard() {
       totalProfit,
       invoiceCount: validCount,
     };
-  }, [isPro, overheadSettings, invoices]);
+  }, [isPro, overheadSettings, invoices, defaultLaborRate, defaultLaborCostRate]);
 
   const performDelete = useCallback(async (quote: Quote) => {
     // Store deleted quote for undo
@@ -888,6 +918,15 @@ export default function Dashboard() {
 
     {/* Quote Wizard FAB - outside GestureHandlerRootView for Android compatibility */}
     <WizardFAB />
+
+    {/* Onboarding Modal */}
+    <Modal
+      visible={showOnboarding}
+      animationType="slide"
+      presentationStyle="pageSheet"
+    >
+      <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
+    </Modal>
   </>
   );
 }
