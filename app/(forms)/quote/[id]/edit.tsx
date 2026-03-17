@@ -4,7 +4,7 @@ import { useTechContext } from "@/contexts/TechContext";
 import { updateQuote, getQuoteById, duplicateQuote, createTierFromQuote, deleteQuote, getLinkedQuotes } from "@/lib/quotes";
 import { getClients, getAndClearLastCreatedClientId, getClientById, createClient, type Client } from "@/lib/clients";
 import { loadPreferences, type OverheadSettings } from "@/lib/preferences";
-import { calculateQuoteProfitability, getMarginColor, getMarginIcon } from "@/lib/calculations";
+import { calculateQuoteProfitability, calculateLaborCostWithWorkerRates, getMarginColor, getMarginIcon } from "@/lib/calculations";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { getItemId } from "@/lib/validation";
 import type { QuoteStatus, QuoteItem, LaborEntry, TeamMember } from "@/lib/types";
@@ -1700,13 +1700,16 @@ export default function EditQuote() {
                 );
               }
 
-              // Calculate profitability using cost rate
-              // Labor COST = billed labor × (costRate / billableRate)
-              // This gives the true cost, not what you charge the client
+              // Calculate profitability using per-worker cost rates when available
               const revenue = calculations.subtotal;
               const materialsCost = calculations.materialsFromItems; // Before markup
-              const costRatio = defaultLaborCostRate / defaultLaborRate;
-              const laborCost = calculations.laborValue * costRatio;
+              const laborCost = calculateLaborCostWithWorkerRates(
+                laborEntries,
+                calculations.laborValue,
+                teamMembers,
+                defaultLaborRate,
+                defaultLaborCostRate
+              );
               const profit = revenue - materialsCost - laborCost;
               const marginPercent = revenue > 0 ? (profit / revenue) * 100 : 0;
 
