@@ -80,6 +80,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     laborRate: false,
     targetMargin: false,
   });
+  const [navigating, setNavigating] = useState(false);
 
   const allComplete = Object.values(steps).every(Boolean);
 
@@ -129,12 +130,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Re-check on focus (when returning from a step screen)
   useFocusEffect(
     useCallback(() => {
+      setNavigating(false); // Reset navigation lock
       checkAndUpdateSteps();
     }, [checkAndUpdateSteps])
   );
 
-  // Handle skip
+  // Handle skip (with double-tap protection)
   const handleSkip = async () => {
+    if (navigating) return;
+    setNavigating(true);
     await updateOnboardingPreferences({
       skippedAt: new Date().toISOString(),
     });
@@ -149,8 +153,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     onComplete();
   };
 
-  // Navigate to step
+  // Navigate to step (with double-tap protection)
   const handleStepPress = (route: string) => {
+    if (navigating) return;
+    setNavigating(true);
     router.push(route as any);
   };
 
