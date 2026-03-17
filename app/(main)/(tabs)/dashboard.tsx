@@ -925,7 +925,9 @@ export default function Dashboard() {
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
+      </GestureHandlerRootView>
     </Modal>
   </>
   );

@@ -617,8 +617,8 @@ export default function QuoteReviewScreen() {
         }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Logo Preview */}
-        {logo?.base64 && (
+        {/* Logo Preview - Pro+ only */}
+        {isPro && logo?.base64 && (
           <View style={styles.logoContainer}>
             <Image
               source={{ uri: logo.base64 }}
@@ -628,8 +628,8 @@ export default function QuoteReviewScreen() {
           </View>
         )}
 
-        {/* Company Details Section */}
-        {companyDetails && (companyDetails.companyName || companyDetails.email || companyDetails.phone || companyDetails.website || companyDetails.address) && (
+        {/* Company Details Section - Pro+ only */}
+        {isPro && companyDetails && (companyDetails.companyName || companyDetails.email || companyDetails.phone || companyDetails.website || companyDetails.address) && (
           <View style={styles.companyCard}>
             {companyDetails.companyName && (
               <Text style={styles.companyName}>{companyDetails.companyName}</Text>

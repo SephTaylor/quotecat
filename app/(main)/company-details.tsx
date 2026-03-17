@@ -2,6 +2,7 @@
 // Edit company details for quotes and PDFs
 import { useTheme } from "@/contexts/ThemeContext";
 import { loadPreferences, updateCompanyDetails, type CompanyDetails } from "@/lib/preferences";
+import { getUserState } from "@/lib/user";
 import { FormInput, BottomBar, Button } from "@/modules/core/ui";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
 import React, { useState, useCallback } from "react";
@@ -92,16 +93,23 @@ export default function CompanyDetailsScreen() {
         address,
       });
 
-      Alert.alert(
-        "Saved",
-        "Your company details have been saved.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.back(),
-          },
-        ]
-      );
+      // Show tier-aware success message
+      const userState = await getUserState();
+      const isPro = userState.tier === "pro" || userState.tier === "premium";
+
+      if (isPro) {
+        Alert.alert(
+          "Company Details Saved",
+          "Your company info will appear on all quotes and invoices.",
+          [{ text: "Done", onPress: () => router.back() }]
+        );
+      } else {
+        Alert.alert(
+          "Company Details Saved",
+          "We've saved your company info. It will appear on your quotes and invoices when you upgrade to Pro.",
+          [{ text: "Done", onPress: () => router.back() }]
+        );
+      }
     } catch (error) {
       console.error("Failed to save company details:", error);
       Alert.alert("Error", "Could not save company details. Please try again.");

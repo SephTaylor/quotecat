@@ -105,7 +105,8 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
   const brandingFooter = '';
 
   // Company header with logo on left, details on right
-  const companyHeader = `
+  // Only show for Pro+ users (when includeBranding is false)
+  const companyHeader = !includeBranding && companyDetails ? `
     <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
       ${logoBase64 ? `
         <div style="flex-shrink: 0;">
@@ -120,7 +121,7 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
         ${companyDetails?.address ? `<div style="font-size: 12px; color: #666;">${companyDetails.address}</div>` : ''}
       </div>
     </div>
-  `;
+  ` : '';
 
   // No separate logo HTML needed - it's now inline
   const logoHTML = '';
@@ -507,7 +508,8 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
   const brandingFooter = '';
 
   // Company header with logo on left, details on right - compact
-  const companyHeader = `
+  // Only show for Pro+ users (when includeBranding is false)
+  const companyHeader = !includeBranding && companyDetails ? `
     <div style="margin-bottom: 10px; padding: 8px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 10px;">
       ${logoBase64 ? `
         <div style="flex-shrink: 0;">
@@ -522,7 +524,7 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
         ${companyDetails?.address ? `<div style="font-size: 10px; color: #666;">${companyDetails.address}</div>` : ''}
       </div>
     </div>
-  `;
+  ` : '';
 
   // No separate logo HTML needed - it's now inline
   const logoHTML = '';
@@ -1100,7 +1102,8 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
   const brandingFooter = '';
 
   // Company header with logo on left, details on right
-  const companyHeader = `
+  // Only show for Pro+ users (when includeBranding is false)
+  const companyHeader = !includeBranding && companyDetails ? `
     <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
       ${logoBase64 ? `
         <div style="flex-shrink: 0;">
@@ -1113,7 +1116,7 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
         ${companyDetails?.phone ? `<div style="font-size: 12px; color: #666;">${companyDetails.phone}</div>` : ''}
       </div>
     </div>
-  `;
+  ` : '';
 
   // No separate logo HTML needed - it's now inline
   const logoHTML = '';
@@ -1360,7 +1363,8 @@ function generateChangeOrderHTML(
   };
 
   // Company header
-  const companyHeader = companyDetails ? `
+  // Only show for Pro+ users (when includeBranding is false)
+  const companyHeader = !includeBranding && companyDetails ? `
     <div style="margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-radius: 4px; display: flex; align-items: center; gap: 16px;">
       ${logoBase64 ? `
         <div style="flex-shrink: 0;">
