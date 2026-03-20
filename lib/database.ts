@@ -5,6 +5,7 @@
 import * as SQLite from "expo-sqlite";
 import type { Quote, Invoice, Client, QuoteItem, PricebookItem, InvoicePayment, LaborEntry, TeamMember } from "./types";
 import type { Product, Category } from "@/modules/catalog/seed";
+import { logSearch } from "./searchAnalytics";
 
 // Database instance (lazy initialized)
 let db: SQLite.SQLiteDatabase | null = null;
@@ -2005,7 +2006,7 @@ export function setSynonymsBatchDB(synonyms: Array<{ term: string; canonical: st
  * Supports:
  * - Word stemming (running → run)
  * - Prefix matching (dry* → drywall)
- * - Synonym expansion (2x4 → 2 in x 4 in)
+ * - Per-word synonym expansion (2x4 lumber → 2 in x 4 in lumber)
  * - Relevance ranking
  */
 export function searchProductsFTS(query: string, limit = 100): Product[] {
@@ -2013,13 +2014,23 @@ export function searchProductsFTS(query: string, limit = 100): Product[] {
 
   try {
     const database = getDatabase();
-    const originalQuery = query.trim().toLowerCase();
+    let normalizedQuery = query.trim().toLowerCase();
 
-    // Check for synonym expansion first (e.g., "2x4" → "2 in x 4 in")
-    const synonym = getSynonymDB(originalQuery);
+    // Normalize dimensional patterns BEFORE synonym lookup
+    // Handles: "2 x4", "2x 4", "2 x 4", "2  x  4" → "2x4"
+    normalizedQuery = normalizedQuery.replace(
+      /(\d+)\s*x\s*(\d+)/g,
+      (_, w, h) => `${w}x${h}`
+    );
 
-    // Use synonym if available, otherwise use original
-    const searchText = synonym || originalQuery;
+    // Split into words and expand synonyms PER WORD
+    // This allows "2x4 lumber" to expand "2x4" while keeping "lumber"
+    const words = normalizedQuery.split(/\s+/).filter(w => w.length > 0);
+    const expandedWords = words.map(word => {
+      const synonym = getSynonymDB(word);
+      return synonym || word;
+    });
+    const searchText = expandedWords.join(' ');
 
     // Clean and tokenize for FTS
     const terms = searchText
@@ -2044,7 +2055,16 @@ export function searchProductsFTS(query: string, limit = 100): Product[] {
       [ftsQuery, limit]
     );
 
-    return rows.map(rowToProduct);
+    const results = rows.map(rowToProduct);
+
+    // Log search for analytics (non-blocking)
+    logSearch({
+      query: query,
+      normalized_query: searchText,
+      results_count: results.length,
+    });
+
+    return results;
   } catch (error) {
     console.error("[FTS] Search failed, falling back to LIKE:", error);
     // Fallback to simple LIKE search if FTS fails

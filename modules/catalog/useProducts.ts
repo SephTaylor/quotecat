@@ -10,6 +10,7 @@ import {
   syncAllProducts,
   syncCategories,
 } from "./productService";
+import { buildOramaIndex, clearOramaIndex } from "@/lib/oramaSearch";
 
 export type SyncProgress = {
   loaded: number;
@@ -59,6 +60,9 @@ export function useProducts() {
       console.log(`[useProducts] Loaded ${productData.length} products, ${allCategories.length} categories (${categoryData.length} from table, ${allCategories.length - categoryData.length} from products)`);
       setCategories(allCategories);
 
+      // Build Orama search index in background (never blocks UI)
+      buildOramaIndex(productData);
+
       const syncTime = await getLastSyncTime();
       setLastSync(syncTime);
     } catch (error) {
@@ -74,6 +78,9 @@ export function useProducts() {
       console.log("🔄 Background sync triggered (weekly sync)");
       setSyncing(true);
       setSyncProgress({ loaded: 0, total: 0 });
+
+      // Clear Orama index during sync (searches fall back to FTS5)
+      clearOramaIndex();
 
       // Sync products with progress callback, categories in parallel
       await Promise.all([
@@ -94,6 +101,9 @@ export function useProducts() {
   const manualRefresh = useCallback(async () => {
     setSyncing(true);
     setSyncProgress({ loaded: 0, total: 0 });
+
+    // Clear Orama index during sync (searches fall back to FTS5)
+    clearOramaIndex();
 
     // Refresh products with progress callback, categories in parallel
     const [productSuccess, categorySuccess] = await Promise.all([

@@ -46,19 +46,28 @@ const SUPPLIER_MAP: Record<string, string> = {
 const DIMENSION_PATTERNS = [
   // "2-in x 8-in" format (dashes)
   { regex: /(\d+)-in x (\d+)-in/gi, expand: (w: string, h: string) =>
-    `${w}x${h} ${w}-in x ${h}-in ${w} in x ${h} in ${w} x ${h}` },
+    `${w}x${h} ${w}X${h} ${w}-in x ${h}-in ${w} in x ${h} in ${w} x ${h}` },
   // "2 in. x 8 in." format (periods - common in xByte)
   { regex: /(\d+) in\. x (\d+) in\./gi, expand: (w: string, h: string) =>
-    `${w}x${h} ${w}-in x ${h}-in ${w} in x ${h} in ${w} x ${h}` },
+    `${w}x${h} ${w}X${h} ${w}-in x ${h}-in ${w} in x ${h} in ${w} x ${h}` },
   // "2 in x 8 in" format (no periods)
   { regex: /(\d+) in x (\d+) in/gi, expand: (w: string, h: string) =>
-    `${w}x${h} ${w}-in x ${h}-in ${w} in x ${h} in ${w} x ${h}` },
+    `${w}x${h} ${w}X${h} ${w}-in x ${h}-in ${w} in x ${h} in ${w} x ${h}` },
   // "4 x 4" format (no units - common for post bases, hangers)
   { regex: /(\d+) x (\d+)(?!\d| in| ft)/gi, expand: (w: string, h: string) =>
-    `${w}x${h} ${w} x ${h}` },
+    `${w}x${h} ${w}X${h} ${w} x ${h}` },
+  // Three dimensions with length: "2 in. x 4 in. x 8 ft" → "2x4x8"
+  { regex: /(\d+)\s*in\.?\s*x\s*(\d+)\s*in\.?\s*x\s*(\d+)\s*ft/gi, expand: (w: string, h: string, l: string) =>
+    `${w}x${h}x${l} ${w}x${h} ${l}ft ${l} foot ${l} feet` },
   // Length patterns like "x 8 ft" or "x 12 ft"
   { regex: /x (\d+) ft/gi, expand: (len: string) =>
-    `x ${len} ft ${len}ft ${len} foot` },
+    `x ${len} ft ${len}ft ${len} foot ${len} feet` },
+  // Fractional dimensions: "5/4 x 6" or "1-1/2 x 8" (deck boards)
+  { regex: /(\d+[\/-]\d+)\s*x\s*(\d+)/gi, expand: (frac: string, h: string) =>
+    `${frac}x${h} ${frac} x ${h} five quarter` },
+  // Standalone fractions for deck boards
+  { regex: /\b5\/4\b/gi, expand: () =>
+    `5/4 five quarter 5 quarter deck` },
 ];
 
 // Material synonym expansions
@@ -70,7 +79,16 @@ const MATERIAL_SYNONYMS: Record<string, string> = {
   'douglas fir': 'douglas fir df fir',
   'stainless steel': 'stainless steel ss stainless',
   'prime': 'prime #2 number 2 grade',
-  'ground contact': 'ground contact gc burial underground',
+  'ground contact': 'ground contact gc burial underground exterior',
+  'kiln dried': 'kiln dried kd s-dry kiln-dried',
+  'kiln-dried': 'kiln dried kd s-dry',
+  '#2': '#2 number 2 no 2 grade 2 standard',
+  '#1': '#1 number 1 no 1 grade 1 premium select',
+  'ac2': 'ac2 mca ca-c treated preservative',
+  'cedar': 'cedar western red aromatic',
+  'redwood': 'redwood red wood',
+  'composite': 'composite trex timbertech azek deck',
+  'treated': 'treated pressure treated pt exterior',
 };
 
 // Unit expansions
@@ -81,18 +99,24 @@ const UNIT_EXPANSIONS: Record<string, string> = {
   'in': 'in inch inches',
   'gal': 'gal gallon gallons',
   'qt': 'qt quart quarts',
-  'sq ft': 'sq ft sqft square feet square foot',
+  'sq ft': 'sq ft sqft square feet square foot sf',
+  'lin ft': 'lin ft lft linear foot linear feet lineal lf',
+  'bd ft': 'bd ft bf board foot board feet',
+  'cu ft': 'cu ft cubic foot cubic feet cf',
+  'cu yd': 'cu yd cubic yard cubic yards cy',
+  'pk': 'pk pack package',
+  'ea': 'ea each piece pc',
 };
 
 // Category-specific term expansions (helps cross-match search terms)
 const CATEGORY_TERMS: Record<string, string> = {
   'baluster': 'baluster spindle railing deck porch',
   'joist hanger': 'joist hanger bracket simpson lus hardware',
-  'concrete mix': 'concrete mix cement bag',
-  'quikrete': 'quikrete quickcrete concrete cement mix',
+  'concrete mix': 'concrete mix cement bag ready mix',
+  'quikrete': 'quikrete quickcrete quick crete concrete cement mix',
   'sakrete': 'sakrete concrete cement mix',
-  'deck screw': 'deck screw fastener exterior wood',
-  'drywall screw': 'drywall screw sheetrock gypsum',
+  'deck screw': 'deck screw fastener exterior wood outdoor',
+  'drywall screw': 'drywall screw sheetrock gypsum wallboard',
   'stringer': 'stringer stair stairs step deck',
   'tread': 'tread stair stairs step',
   'post base': 'post base anchor bracket simpson',
@@ -100,21 +124,58 @@ const CATEGORY_TERMS: Record<string, string> = {
   'rim joist': 'rim joist band board perimeter',
   'joist': 'joist floor deck framing',
   'rafter': 'rafter roof framing',
-  'stud': 'stud wall framing',
+  'stud': 'stud wall framing 2x4 2x6',
   'plate': 'plate top bottom wall framing',
-  'header': 'header door window framing',
-  'sheathing': 'sheathing plywood osb wall roof',
+  'header': 'header door window framing lvl',
+  'sheathing': 'sheathing plywood osb wall roof cdx',
   'underlayment': 'underlayment subfloor floor',
   'lvp': 'lvp luxury vinyl plank flooring',
   'laminate': 'laminate flooring floor',
   'hardwood': 'hardwood flooring floor wood',
   'tile': 'tile flooring floor ceramic porcelain',
-  'grout': 'grout tile floor',
+  'grout': 'grout tile floor cement',
   'thinset': 'thinset mortar tile adhesive',
-  'romex': 'romex nm-b wire electrical',
-  'pex': 'pex tubing pipe plumbing',
+  'romex': 'romex nm-b nm wire electrical cable',
+  'pex': 'pex tubing pipe plumbing flexible',
   'cpvc': 'cpvc pipe plumbing',
   'copper': 'copper pipe tubing plumbing',
+  // Electrical
+  'gfci': 'gfci gfi ground fault outlet receptacle',
+  'afci': 'afci arc fault breaker',
+  'breaker': 'breaker circuit breaker panel box',
+  'outlet': 'outlet receptacle plug electrical',
+  'switch': 'switch light electrical dimmer toggle',
+  'wire': 'wire cable electrical romex thhn',
+  'conduit': 'conduit emt pvc electrical pipe',
+  // Plumbing
+  'fitting': 'fitting connector coupling elbow tee plumbing',
+  'valve': 'valve shutoff gate ball plumbing',
+  'faucet': 'faucet tap sink kitchen bath',
+  'toilet': 'toilet commode wc bathroom',
+  'sharkbite': 'sharkbite shark bite push fit fitting',
+  // Fasteners
+  'nail': 'nail nails framing finish brad',
+  'screw': 'screw screws fastener',
+  'bolt': 'bolt bolts carriage lag hex',
+  'anchor': 'anchor concrete masonry tapcon wedge',
+  // Insulation
+  'insulation': 'insulation batt roll blown fiberglass foam',
+  'r-13': 'r-13 r13 insulation wall',
+  'r-19': 'r-19 r19 insulation floor',
+  'r-30': 'r-30 r30 insulation attic ceiling',
+  'r-38': 'r-38 r38 insulation attic',
+  // Drywall
+  'drywall': 'drywall sheetrock gypsum wallboard gyp board',
+  'sheetrock': 'sheetrock drywall gypsum wallboard',
+  'joint compound': 'joint compound mud drywall tape',
+  // Roofing
+  'shingle': 'shingle shingles roof asphalt architectural',
+  'flashing': 'flashing drip edge roof metal',
+  // Paint
+  'paint': 'paint primer coating finish',
+  'primer': 'primer paint prep undercoat',
+  'stain': 'stain wood deck sealer',
+  'caulk': 'caulk caulking sealant silicone',
 };
 
 /**

@@ -39,7 +39,9 @@ export function OnboardingStepCard({
   const textOpacity = isPending ? 0.5 : 1;
 
   return (
-    <View
+    <Pressable
+      onPress={onPress}
+      disabled={isPending}
       style={[
         styles.container,
         {
@@ -50,71 +52,76 @@ export function OnboardingStepCard({
         },
       ]}
     >
-      {/* Left icon */}
-      <View style={styles.iconContainer}>
-        {isComplete ? (
-          <Ionicons name="checkmark-circle" size={28} color={iconColor} />
-        ) : isCurrent ? (
-          <Ionicons name="arrow-forward-circle" size={28} color={iconColor} />
-        ) : (
-          <Ionicons name="ellipse-outline" size={28} color={iconColor} />
+      {/* Top row: icon + content + done badge */}
+      <View style={styles.topRow}>
+        {/* Left icon */}
+        <View style={styles.iconContainer}>
+          {isComplete ? (
+            <Ionicons name="checkmark-circle" size={28} color={iconColor} />
+          ) : (
+            <Ionicons name="ellipse-outline" size={28} color={iconColor} />
+          )}
+        </View>
+
+        {/* Content */}
+        <View style={styles.content}>
+          <Text
+            style={[
+              styles.title,
+              { color: theme.colors.text, opacity: textOpacity },
+            ]}
+          >
+            {title}
+          </Text>
+          <Text
+            style={[
+              styles.subtitle,
+              { color: theme.colors.muted, opacity: textOpacity },
+            ]}
+          >
+            {subtitle}
+          </Text>
+        </View>
+
+        {/* Done badge for complete steps */}
+        {isComplete && (
+          <View style={styles.actionContainer}>
+            <Text style={[styles.doneText, { color: "#22c55e" }]}>Done</Text>
+          </View>
         )}
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        <Text
-          style={[
-            styles.title,
-            { color: theme.colors.text, opacity: textOpacity },
-          ]}
-        >
-          {title}
-        </Text>
-        <Text
-          style={[
-            styles.subtitle,
-            { color: theme.colors.muted, opacity: textOpacity },
-          ]}
-        >
-          {subtitle}
-        </Text>
-      </View>
-
-      {/* Right action */}
-      <View style={styles.actionContainer}>
-        {isComplete ? (
-          <Pressable onPress={onPress} style={styles.doneButton}>
-            <Text style={[styles.doneText, { color: "#22c55e" }]}>Done</Text>
-          </Pressable>
-        ) : isCurrent ? (
-          <Pressable
-            onPress={onPress}
+      {/* Bottom row: CTA button for incomplete steps */}
+      {isCurrent && (
+        <View style={styles.ctaRow}>
+          <View
             style={[styles.ctaButton, { backgroundColor: theme.colors.accent }]}
           >
             <Text style={styles.ctaText}>{ctaLabel}</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    </View>
+          </View>
+        </View>
+      )}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: 12,
     marginBottom: 12,
   },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
   iconContainer: {
     marginRight: 12,
+    marginTop: 2,
   },
   content: {
     flex: 1,
-    marginRight: 12,
   },
   title: {
     fontSize: 16,
@@ -126,21 +133,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   actionContainer: {
-    alignItems: "flex-end",
+    marginLeft: 12,
+  },
+  ctaRow: {
+    marginTop: 12,
+    alignItems: "flex-start",
   },
   ctaButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
   },
   ctaText: {
     color: "#ffffff",
     fontSize: 14,
     fontWeight: "600",
-  },
-  doneButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
   },
   doneText: {
     fontSize: 14,

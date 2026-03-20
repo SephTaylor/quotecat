@@ -108,6 +108,7 @@ export async function downloadTeamMembers(): Promise<TeamMember[]> {
     }
 
     // Map Supabase data to local TeamMember type
+    // Use billable_rate (new column) with fallback to default_rate (legacy)
     const members: TeamMember[] = data.map((row) => ({
       id: row.id,
       userId: row.user_id,
@@ -115,7 +116,7 @@ export async function downloadTeamMembers(): Promise<TeamMember[]> {
       phone: row.phone || undefined,
       email: row.email || undefined,
       role: row.role || undefined,
-      billableRate: row.default_rate || 0,
+      billableRate: row.billable_rate || row.default_rate || 0,
       costRate: row.cost_rate || undefined,
       isActive: row.is_active ?? true,
       createdAt: row.created_at,

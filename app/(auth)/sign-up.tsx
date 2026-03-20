@@ -171,7 +171,7 @@ export default function SignUpScreen() {
           // Email confirmation required
           Alert.alert(
             "Check Your Email",
-            "We sent you a confirmation link. Please check your email to verify your account, then sign in.",
+            "We sent you a confirmation link. Please check your email (and junk/spam folder) to verify your account, then sign in.",
             [
               {
                 text: "OK",

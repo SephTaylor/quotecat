@@ -1676,14 +1676,15 @@ export default function EditQuote() {
               </Text>
             </View>
 
-            {/* Profitability Indicator - Pro+ only, when overhead settings exist */}
-            {isPro && overheadSettings && calculations.total > 0 && (() => {
-              // Check if cost rate is set (from Labor Rate Calculator)
-              const hasCostRate = defaultLaborCostRate > 0 && defaultLaborRate > 0;
-              const targetMargin = overheadSettings.targetProfitMarginPercent;
+            {/* Profitability Indicator - Pro+ only, when cost rates configured */}
+            {isPro && calculations.total > 0 && (() => {
+              // Check if both rates are set for profitability calculation
+              const hasLaborRate = defaultLaborRate > 0;
+              const hasCostRate = defaultLaborCostRate > 0;
+              const targetMargin = overheadSettings?.targetProfitMarginPercent;
 
-              // If cost rate not set, prompt to run Labor Rate Calculator
-              if (!hasCostRate) {
+              // If neither rate set, prompt to run Labor Rate Calculator
+              if (!hasLaborRate) {
                 return (
                   <>
                     <View style={styles.totalsDivider} />
@@ -1692,9 +1693,27 @@ export default function EditQuote() {
                       onPress={() => router.push('/(main)/labor-rate-calculator')}
                     >
                       <Text style={[styles.totalsLabel, { color: theme.colors.accent }]}>
-                        Set up labor rate to see profit
+                        Set up billable rate to see profit
                       </Text>
                       <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+                    </Pressable>
+                  </>
+                );
+              }
+
+              // If labor rate set but cost rate missing, prompt to add cost rate
+              if (!hasCostRate) {
+                return (
+                  <>
+                    <View style={styles.totalsDivider} />
+                    <Pressable
+                      style={styles.totalsRow}
+                      onPress={() => router.push('/(main)/business-settings')}
+                    >
+                      <Text style={[styles.totalsLabel, { color: theme.colors.muted }]}>
+                        Add cost rate in Settings to see margin
+                      </Text>
+                      <Ionicons name="chevron-forward" size={16} color={theme.colors.muted} />
                     </Pressable>
                   </>
                 );

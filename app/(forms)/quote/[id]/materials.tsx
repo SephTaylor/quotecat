@@ -803,6 +803,11 @@ export default function QuoteMaterials() {
             onFilterPress={handleFilterPress}
             activeFilters={activeFilters}
             onRemoveFilter={handleRemoveFilter}
+            allProducts={productsWithPrices}
+            selectedSuppliers={selectedSuppliers}
+            selectedCategories={selectedCategories}
+            onSupplierToggle={toggleSupplier}
+            onCategoryToggle={toggleCategory}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -911,6 +916,11 @@ export default function QuoteMaterials() {
             onFilterPress={activeSource === "catalog" ? handleFilterPress : undefined}
             activeFilters={activeSource === "catalog" ? activeFilters : []}
             onRemoveFilter={activeSource === "catalog" ? handleRemoveFilter : undefined}
+            allProducts={activeSource === "catalog" ? productsWithPrices : []}
+            selectedSuppliers={activeSource === "catalog" ? selectedSuppliers : []}
+            selectedCategories={activeSource === "catalog" ? selectedCategories : []}
+            onSupplierToggle={activeSource === "catalog" ? toggleSupplier : undefined}
+            onCategoryToggle={activeSource === "catalog" ? toggleCategory : undefined}
             refreshControl={
               activeSource === "catalog" ? (
                 <RefreshControl

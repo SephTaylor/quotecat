@@ -20,10 +20,12 @@ import {
 import {
   loadPreferences,
   updateOnboardingPreferences,
+  updateOverheadSettings,
 } from "@/lib/preferences";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
+  tier?: 'free' | 'pro' | 'premium';
 }
 
 type StepKey = "companySetup" | "overheadCalc" | "laborRate" | "targetMargin";
@@ -70,7 +72,8 @@ const STEP_CONFIG: {
   },
 ];
 
-export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProps) {
+  const isFree = tier === 'free';
   const { theme } = useTheme();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -112,6 +115,22 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
       if (changed) {
         await updateOnboardingPreferences({ steps: newSteps });
+      }
+
+      // Auto-set overhead.completedAt if data present but no timestamp
+      // This ensures financial intel shows even when data was entered manually
+      const overheadDataPresent = newSteps.overheadCalc || newSteps.targetMargin;
+      if (overheadDataPresent && !prefs.overhead?.completedAt) {
+        await updateOverheadSettings({
+          ...prefs.overhead,
+          completedAt: new Date().toISOString(),
+        });
+      }
+
+      // Auto-complete onboarding if all steps done
+      const allStepsComplete = Object.values(newSteps).every(Boolean);
+      if (allStepsComplete && !prefs.onboarding?.completedAt) {
+        await updateOnboardingPreferences({ completedAt: new Date().toISOString() });
       }
 
       setSteps(newSteps);
@@ -167,15 +186,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     // If this step is complete, show complete
     if (steps[stepKey]) return "complete";
 
-    // Find the first incomplete step
-    for (let i = 0; i < STEP_CONFIG.length; i++) {
-      if (!steps[STEP_CONFIG[i].key]) {
-        // This is the first incomplete step
-        return i === index ? "current" : "pending";
-      }
-    }
-
-    return "pending";
+    // All incomplete steps are clickable (not sequential)
+    // This allows users to complete steps in any order
+    return "current";
   };
 
   if (loading) {
@@ -215,16 +228,23 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         {/* Steps */}
         {!allComplete && (
           <View style={styles.stepsContainer}>
-            {STEP_CONFIG.map((step, index) => (
-              <OnboardingStepCard
-                key={step.key}
-                title={step.title}
-                subtitle={step.subtitle}
-                ctaLabel={step.ctaLabel}
-                status={getStepStatus(index)}
-                onPress={() => handleStepPress(step.route)}
-              />
-            ))}
+            {STEP_CONFIG.map((step, index) => {
+              // Add note for free users on company setup step
+              let subtitle = step.subtitle;
+              if (step.key === "companySetup" && isFree) {
+                subtitle += " Stored locally until you upgrade.";
+              }
+              return (
+                <OnboardingStepCard
+                  key={step.key}
+                  title={step.title}
+                  subtitle={subtitle}
+                  ctaLabel={step.ctaLabel}
+                  status={getStepStatus(index)}
+                  onPress={() => handleStepPress(step.route)}
+                />
+              );
+            })}
           </View>
         )}
 

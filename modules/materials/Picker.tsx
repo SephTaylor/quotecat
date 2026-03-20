@@ -8,6 +8,7 @@ import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import type { Selection } from "./types";
 import { searchProductsFTS } from "@/lib/database";
 import { openProductSearch, getStoreName } from "@/lib/browser";
+import { searchOrama, isOramaReady, onOramaReady, type OramaFacets } from "@/lib/oramaSearch";
 
 export type Category = {
   id: string;
@@ -24,6 +25,12 @@ export type ActiveFilter = {
   label: string;
 };
 
+// Facet counts for Amazon-style refinement
+export type FacetCounts = {
+  suppliers: Record<string, number>;
+  categories: Record<string, number>;
+};
+
 export type MaterialsPickerProps = {
   categories: Category[];
   itemsByCategory: Record<string, ProductWithPrice[]>;
@@ -38,6 +45,12 @@ export type MaterialsPickerProps = {
   onFilterPress?: () => void;
   activeFilters?: ActiveFilter[];
   onRemoveFilter?: (filter: ActiveFilter) => void;
+  // Faceted search props
+  allProducts?: ProductWithPrice[];
+  selectedSuppliers?: string[];
+  selectedCategories?: string[];
+  onSupplierToggle?: (supplierId: string) => void;
+  onCategoryToggle?: (categoryId: string) => void;
 };
 
 // List item types for FlashList
@@ -164,6 +177,41 @@ const CategoryHeader = memo(function CategoryHeader({
   );
 });
 
+// Helper to extract category from product
+// Uses categoryId to match the filter modal's category system
+function getProductCategory(p: ProductWithPrice): string {
+  return p.categoryId || 'Other';
+}
+
+// Facet chip component for Amazon-style refinement
+const FacetChip = memo(function FacetChip({
+  label,
+  count,
+  selected,
+  onPress,
+  styles,
+  accentColor,
+}: {
+  label: string;
+  count: number;
+  selected: boolean;
+  onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
+  accentColor: string;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.facetChip, selected && styles.facetChipSelected]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={[styles.facetChipText, selected && styles.facetChipTextSelected]}>
+        {label} ({count})
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
 function MaterialsPicker({
   categories,
   itemsByCategory,
@@ -176,6 +224,12 @@ function MaterialsPicker({
   onFilterPress,
   activeFilters = [],
   onRemoveFilter,
+  // Faceted search props
+  allProducts = [],
+  selectedSuppliers = [],
+  selectedCategories = [],
+  onSupplierToggle,
+  onCategoryToggle,
 }: MaterialsPickerProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -184,32 +238,132 @@ function MaterialsPicker({
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [ftsMatchIds, setFtsMatchIds] = useState<Set<string> | null>(null);
+  const [oramaReady, setOramaReady] = useState(isOramaReady());
+  const [oramaFacets, setOramaFacets] = useState<OramaFacets | null>(null);
 
-  // FTS search effect - calls SQLite FTS5 for synonym expansion and stemming
+  // Subscribe to Orama ready state changes
+  useEffect(() => {
+    const unsubscribe = onOramaReady((ready) => {
+      setOramaReady(ready);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Search effect - tries Orama first (typo tolerance), falls back to FTS5
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFtsMatchIds(null);
+      setOramaFacets(null);
       return;
     }
 
     // Debounce search by 150ms
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
+      const query = searchQuery.trim();
+
+      // Try Orama first if ready (has typo tolerance)
+      if (oramaReady) {
+        try {
+          const oramaResult = await searchOrama(query, {
+            limit: 500,
+            supplierFilter: selectedSuppliers.length > 0 ? selectedSuppliers : undefined,
+            categoryFilter: selectedCategories.length > 0 ? selectedCategories : undefined,
+          });
+
+          if (oramaResult) {
+            setFtsMatchIds(new Set(oramaResult.hits.map(p => p.id)));
+            setOramaFacets(oramaResult.facets);
+            console.log(`[Picker] Orama search "${query}": ${oramaResult.hits.length} results in ${oramaResult.elapsed}ms`);
+            return;
+          }
+        } catch (error) {
+          console.warn("[Picker] Orama search failed, falling back to FTS5:", error);
+        }
+      }
+
+      // Fall back to FTS5 (SQLite)
       try {
-        const results = searchProductsFTS(searchQuery.trim(), 500);
+        const results = searchProductsFTS(query, 500);
         setFtsMatchIds(new Set(results.map(p => p.id)));
+        setOramaFacets(null); // No native facets from FTS5
+        console.log(`[Picker] FTS5 search "${query}": ${results.length} results`);
       } catch (error) {
         console.error("FTS search error:", error);
-        setFtsMatchIds(null); // Fall back to showing all
+        setFtsMatchIds(null);
+        setOramaFacets(null);
       }
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, oramaReady, selectedSuppliers, selectedCategories]);
 
   // Sort categories alphabetically by name
   const sortedCategories = useMemo(() => {
     return [...categories].sort((a, b) => a.name.localeCompare(b.name));
   }, [categories]);
+
+  // Compute facet counts - uses Orama native facets when available, falls back to manual computation
+  const facetCounts = useMemo((): FacetCounts => {
+    // Only compute facets when actively searching
+    if (!searchQuery.trim() || ftsMatchIds === null) {
+      return { suppliers: {}, categories: {} };
+    }
+
+    // Use Orama's native facets if available (more accurate with typo tolerance)
+    if (oramaFacets) {
+      return {
+        suppliers: oramaFacets.supplierId,
+        categories: oramaFacets.categoryId,
+      };
+    }
+
+    // Fall back to manual computation for FTS5 results
+    let matchingProducts = allProducts.filter(p => ftsMatchIds.has(p.id));
+
+    // For supplier counts: filter by selected categories first (so counts are accurate)
+    let productsForSupplierCounts = matchingProducts;
+    if (selectedCategories.length > 0) {
+      productsForSupplierCounts = matchingProducts.filter(p =>
+        selectedCategories.includes(getProductCategory(p))
+      );
+    }
+
+    // For category counts: filter by selected suppliers first (so counts are accurate)
+    let productsForCategoryCounts = matchingProducts;
+    if (selectedSuppliers.length > 0) {
+      productsForCategoryCounts = matchingProducts.filter(p =>
+        selectedSuppliers.includes(p.supplierId || '')
+      );
+    }
+
+    // Count by supplier (considering category filters)
+    const suppliers: Record<string, number> = {};
+    productsForSupplierCounts.forEach(p => {
+      const supplierId = p.supplierId || 'unknown';
+      suppliers[supplierId] = (suppliers[supplierId] || 0) + 1;
+    });
+
+    // Count by category (considering supplier filters)
+    const cats: Record<string, number> = {};
+    productsForCategoryCounts.forEach(p => {
+      const cat = getProductCategory(p);
+      cats[cat] = (cats[cat] || 0) + 1;
+    });
+
+    return { suppliers, categories: cats };
+  }, [searchQuery, ftsMatchIds, oramaFacets, allProducts, selectedSuppliers, selectedCategories]);
+
+  // Get sorted facets for display (by count descending)
+  const sortedSupplierFacets = useMemo(() => {
+    return Object.entries(facetCounts.suppliers)
+      .sort((a, b) => b[1] - a[1]);
+  }, [facetCounts.suppliers]);
+
+  const sortedCategoryFacets = useMemo(() => {
+    return Object.entries(facetCounts.categories)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8); // Show top 8 categories
+  }, [facetCounts.categories]);
 
   // State for inline editing
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -288,6 +442,16 @@ function MaterialsPicker({
         products = products.filter(p => ftsMatchIds.has(p.id));
       }
 
+      // Filter by selected supplier facets (when searching)
+      if (selectedSuppliers.length > 0 && searchQuery.trim()) {
+        products = products.filter(p => selectedSuppliers.includes(p.supplierId || ''));
+      }
+
+      // Filter by selected category facets (when searching)
+      if (selectedCategories.length > 0 && searchQuery.trim()) {
+        products = products.filter(p => selectedCategories.includes(getProductCategory(p)));
+      }
+
       if (products.length === 0) continue;
 
       items.push({
@@ -303,7 +467,7 @@ function MaterialsPicker({
     }
 
     return items;
-  }, [itemsByCategory, searchQuery, ftsMatchIds, sortedCategories]);
+  }, [itemsByCategory, searchQuery, ftsMatchIds, sortedCategories, selectedSuppliers, selectedCategories]);
 
   // Render item for FlashList
   const renderItem = useCallback(({ item }: { item: ListItem }) => {
@@ -449,6 +613,49 @@ function MaterialsPicker({
             ))}
           </ScrollView>
         )}
+
+        {/* Amazon-style Facet Bar - shows when searching with results */}
+        {searchQuery.trim() && (sortedSupplierFacets.length > 0 || sortedCategoryFacets.length > 0) && (
+          <View style={styles.facetBarContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.facetBarContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Supplier facets */}
+              {sortedSupplierFacets.map(([supplierId, count]) => (
+                <FacetChip
+                  key={`supplier-${supplierId}`}
+                  label={SUPPLIER_NAMES[supplierId] || supplierId}
+                  count={count}
+                  selected={selectedSuppliers.includes(supplierId)}
+                  onPress={() => onSupplierToggle?.(supplierId)}
+                  styles={styles}
+                  accentColor={theme.colors.accent}
+                />
+              ))}
+
+              {/* Divider between suppliers and categories */}
+              {sortedSupplierFacets.length > 0 && sortedCategoryFacets.length > 0 && (
+                <View style={styles.facetDivider} />
+              )}
+
+              {/* Category facets */}
+              {sortedCategoryFacets.map(([category, count]) => (
+                <FacetChip
+                  key={`cat-${category}`}
+                  label={category}
+                  count={count}
+                  selected={selectedCategories.includes(category)}
+                  onPress={() => onCategoryToggle?.(category)}
+                  styles={styles}
+                  accentColor={theme.colors.accent}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* Virtualized Product List - wrapped in View for proper FlashList layout */}
@@ -461,6 +668,21 @@ function MaterialsPicker({
           getItemType={getItemType}
           estimatedItemSize={56}
           ListHeaderComponent={renderRecentProducts}
+          ListEmptyComponent={
+            searchQuery.trim() ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="search-outline" size={48} color={theme.colors.muted} />
+                <Text style={styles.emptyTitle}>No results for "{searchQuery}"</Text>
+                <Text style={styles.emptyHint}>Try these tips:</Text>
+                <View style={styles.emptyTips}>
+                  <Text style={styles.emptyTip}>• Use dimensions like "2x4" instead of "2 x 4"</Text>
+                  <Text style={styles.emptyTip}>• Try simpler terms (e.g., "lumber" instead of "framing lumber")</Text>
+                  <Text style={styles.emptyTip}>• Check spelling</Text>
+                  <Text style={styles.emptyTip}>• Clear filters above if active</Text>
+                </View>
+              </View>
+            ) : null
+          }
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           onScrollBeginDrag={handleScrollBeginDrag}
@@ -551,6 +773,76 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     activeFilterText: {
       fontSize: 13,
       color: theme.colors.text,
+    },
+
+    // Facet bar styles (Amazon-style refinement chips)
+    facetBarContainer: {
+      paddingBottom: theme.spacing(1),
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      marginTop: theme.spacing(0.5),
+    },
+    facetBarContent: {
+      paddingHorizontal: theme.spacing(1.5),
+      paddingTop: theme.spacing(1),
+      gap: theme.spacing(0.5),
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    facetChip: {
+      paddingHorizontal: theme.spacing(1.25),
+      paddingVertical: theme.spacing(0.5),
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    facetChipSelected: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    facetChipText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+    facetChipTextSelected: {
+      color: "#000",
+    },
+    facetDivider: {
+      width: 1,
+      height: 20,
+      backgroundColor: theme.colors.border,
+      marginHorizontal: theme.spacing(0.5),
+    },
+
+    // Empty state styles
+    emptyState: {
+      alignItems: "center",
+      paddingVertical: theme.spacing(6),
+      paddingHorizontal: theme.spacing(4),
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginTop: theme.spacing(2),
+      marginBottom: theme.spacing(1),
+      textAlign: "center",
+    },
+    emptyHint: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(1),
+    },
+    emptyTips: {
+      alignItems: "flex-start",
+    },
+    emptyTip: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      marginBottom: theme.spacing(0.5),
     },
 
     recentCard: {

@@ -5,7 +5,7 @@ import { listQuotes, type Quote } from "@/lib/quotes";
 import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, type Contract, type TeamMember } from "@/lib/types";
 import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 import { calculateQuoteTotal, calculateInvoiceTotal, calculateInvoiceProfitability, getMarginColor } from "@/lib/calculations";
-import { loadPreferences, type DashboardPreferences, type OverheadSettings } from "@/lib/preferences";
+import { loadPreferences, updateDashboardPreferences, type DashboardPreferences, type OverheadSettings } from "@/lib/preferences";
 import { deleteQuote, saveQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
 import { listInvoices, getToInvoiceStats, deleteInvoice } from "@/lib/invoices";
 import { listContracts, deleteContract } from "@/lib/contracts";
@@ -394,9 +394,15 @@ export default function Dashboard() {
     return sorted.slice(0, 5);
   }, [contracts]);
 
-  // Calculate average margin from paid invoices (Pro+ only, requires overhead)
+  // Check if user has any way to calculate labor costs
+  const hasDefaultRates = defaultLaborRate > 0 && defaultLaborCostRate > 0;
+  const hasTeamMemberRates = teamMembers.some(m => m.billableRate > 0 && m.costRate && m.costRate > 0);
+  const canCalculateMargins = hasDefaultRates || hasTeamMemberRates;
+
+  // Calculate average margin from paid invoices (Pro+ only, requires cost rates)
   const marginStats = React.useMemo(() => {
-    if (!isPro || !overheadSettings?.overheadPercent) {
+    // Need either default rates or team member rates to calculate margins
+    if (!isPro || !canCalculateMargins) {
       return null;
     }
 
@@ -427,7 +433,7 @@ export default function Dashboard() {
     }
 
     const avgMargin = (totalProfit / totalRevenue) * 100;
-    const targetMargin = overheadSettings.targetProfitMarginPercent;
+    const targetMargin = overheadSettings?.targetProfitMarginPercent;
 
     return {
       avgMargin,
@@ -435,7 +441,7 @@ export default function Dashboard() {
       totalProfit,
       invoiceCount: validCount,
     };
-  }, [isPro, overheadSettings, invoices, defaultLaborRate, defaultLaborCostRate]);
+  }, [isPro, canCalculateMargins, overheadSettings, invoices, defaultLaborRate, defaultLaborCostRate, teamMembers]);
 
   const performDelete = useCallback(async (quote: Quote) => {
     // Store deleted quote for undo
@@ -678,6 +684,12 @@ export default function Dashboard() {
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
+  // Handle dismissing a dashboard section
+  const handleDismissSection = useCallback(async (key: keyof DashboardPreferences) => {
+    const updated = await updateDashboardPreferences({ [key]: false });
+    setPreferences(updated.dashboard);
+  }, []);
+
   if (loading) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -713,7 +725,11 @@ export default function Dashboard() {
 
           {/* Quick Stats */}
           {preferences.showStats && (
-            <View style={styles.statsGrid}>
+            <View style={{ marginBottom: theme.spacing(1.5) }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: theme.spacing(0.5) }}>
+                <DismissButton onPress={() => handleDismissSection('showStats')} theme={theme} />
+              </View>
+              <View style={styles.statsGrid}>
               <StatCard
                 label="All"
                 value={stats.total}
@@ -756,13 +772,17 @@ export default function Dashboard() {
                 theme={theme}
                 onPress={() => router.push("./quotes?filter=completed" as any)}
               />
+              </View>
             </View>
           )}
 
           {/* Business Value Tracking */}
           {preferences.showValueTracking && (
             <View style={styles.valueSection}>
-              <Text style={styles.valueSectionTitle}>Business Value</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.valueSectionTitle}>Business Value</Text>
+                <DismissButton onPress={() => handleDismissSection('showValueTracking')} theme={theme} />
+              </View>
               <View style={styles.valueGrid}>
                 <View style={styles.valueRow}>
                   <Text style={styles.valueLabel}>Sent</Text>
@@ -786,47 +806,74 @@ export default function Dashboard() {
             </View>
           )}
 
-          {/* Margin Card (Pro+ only, requires overhead setup) */}
-          {isPro && preferences.showMargin && marginStats && (
+          {/* Margin Card (Pro+ only) */}
+          {/* Margin Card (Pro+ only) */}
+          {isPro && preferences.showMargin && (
             <View style={styles.marginSection}>
-              <Text style={styles.valueSectionTitle}>Profit Margin</Text>
-              <View style={styles.marginCard}>
-                <View style={styles.marginMainRow}>
-                  <View style={[styles.marginIndicator, { backgroundColor: getMarginColor(marginStats.avgMargin, marginStats.targetMargin) }]} />
-                  <Text style={styles.marginValue}>{marginStats.avgMargin.toFixed(1)}%</Text>
-                  <Text style={styles.marginLabel}>avg margin</Text>
-                </View>
-                <View style={styles.marginDetailsRow}>
-                  <Text style={styles.marginDetailText}>
-                    ${marginStats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} profit from {marginStats.invoiceCount} paid invoice{marginStats.invoiceCount !== 1 ? 's' : ''}
-                  </Text>
-                </View>
-                {marginStats.targetMargin && marginStats.targetMargin > 0 && (
-                  <View style={styles.marginTargetRow}>
-                    <Text style={[
-                      styles.marginTargetText,
-                      { color: getMarginColor(marginStats.avgMargin, marginStats.targetMargin) }
-                    ]}>
-                      {marginStats.avgMargin >= marginStats.targetMargin
-                        ? `At target (${marginStats.targetMargin}%)`
-                        : marginStats.avgMargin >= marginStats.targetMargin - 5
-                          ? `Close to target (${marginStats.targetMargin}%)`
-                          : `Below target (${marginStats.targetMargin}%)`}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.valueSectionTitle}>Profit Margin</Text>
+                <DismissButton onPress={() => handleDismissSection('showMargin')} theme={theme} />
+              </View>
+              {marginStats ? (
+                /* State 3: Both rates set AND paid invoices exist */
+                <View style={styles.marginCard}>
+                  <View style={styles.marginMainRow}>
+                    <View style={[styles.marginIndicator, { backgroundColor: getMarginColor(marginStats.avgMargin, marginStats.targetMargin) }]} />
+                    <Text style={styles.marginValue}>{marginStats.avgMargin.toFixed(1)}%</Text>
+                    <Text style={styles.marginLabel}>avg margin</Text>
+                  </View>
+                  <View style={styles.marginDetailsRow}>
+                    <Text style={styles.marginDetailText}>
+                      ${marginStats.totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} profit from {marginStats.invoiceCount} paid invoice{marginStats.invoiceCount !== 1 ? 's' : ''}
                     </Text>
                   </View>
-                )}
-              </View>
+                  {marginStats.targetMargin && marginStats.targetMargin > 0 && (
+                    <View style={styles.marginTargetRow}>
+                      <Text style={[
+                        styles.marginTargetText,
+                        { color: getMarginColor(marginStats.avgMargin, marginStats.targetMargin) }
+                      ]}>
+                        {marginStats.avgMargin >= marginStats.targetMargin
+                          ? `At target (${marginStats.targetMargin}%)`
+                          : marginStats.avgMargin >= marginStats.targetMargin - 5
+                            ? `Close to target (${marginStats.targetMargin}%)`
+                            : `Below target (${marginStats.targetMargin}%)`}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ) : !canCalculateMargins ? (
+                /* State 1: No rates configured (neither default nor team member) */
+                <Pressable
+                  style={styles.marginCard}
+                  onPress={() => router.push('/(main)/labor-rate-calculator')}
+                >
+                  <Text style={[styles.marginDetailText, { color: theme.colors.accent }]}>
+                    Set up labor rates to see profit margins
+                  </Text>
+                </Pressable>
+              ) : (
+                /* State 3: Both rates set but no paid invoices yet */
+                <View style={styles.marginCard}>
+                  <Text style={styles.marginDetailText}>
+                    No paid invoices yet. Margins will appear after your first payment.
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 
-          {/* Recent Activity */}
+          {/* Recent Quotes */}
           {preferences.showRecentQuotes && (
             <View style={styles.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                <Text style={styles.sectionTitle}>Recent Quotes</Text>
-                <Text style={{ fontSize: 12, color: theme.colors.muted, marginLeft: 8 }}>
-                  *swipe for options
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Text style={styles.sectionTitle}>Recent Quotes</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.muted, marginLeft: 8 }}>
+                    *swipe for options
+                  </Text>
+                </View>
+                <DismissButton onPress={() => handleDismissSection('showRecentQuotes')} theme={theme} />
               </View>
               {groupedRecentQuotes.length === 0 ? (
                 <View style={styles.emptyStateSimple}>
@@ -873,7 +920,10 @@ export default function Dashboard() {
           {/* Recent Invoices - available to all users */}
           {preferences.showRecentInvoices && recentInvoices.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Invoices</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.sectionTitle}>Recent Invoices</Text>
+                <DismissButton onPress={() => handleDismissSection('showRecentInvoices')} theme={theme} />
+              </View>
               {recentInvoices.map((invoice) => (
                 <SwipeableInvoiceItem
                   key={invoice.id}
@@ -891,7 +941,10 @@ export default function Dashboard() {
           {/* Recent Contracts - Premium only */}
           {isPremium && preferences.showRecentContracts && recentContracts.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Contracts</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.sectionTitle}>Recent Contracts</Text>
+                <DismissButton onPress={() => handleDismissSection('showRecentContracts')} theme={theme} />
+              </View>
               {recentContracts.map((contract) => (
                 <SwipeableContractItem
                   key={contract.id}
@@ -926,7 +979,10 @@ export default function Dashboard() {
       presentationStyle="pageSheet"
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
+        <OnboardingFlow
+          onComplete={() => setShowOnboarding(false)}
+          tier={isPremium ? 'premium' : isPro ? 'pro' : 'free'}
+        />
       </GestureHandlerRootView>
     </Modal>
   </>
@@ -955,6 +1011,27 @@ function StatCard({
     <Pressable style={styles.statCard} onPress={onPress}>
       <Text style={[styles.statValue, { color: displayColor }]}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function DismissButton({
+  onPress,
+  theme,
+}: {
+  onPress: () => void;
+  theme: ReturnType<typeof useTheme>["theme"];
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      style={{
+        padding: 4,
+        opacity: 0.4,
+      }}
+    >
+      <Text style={{ fontSize: 16, color: theme.colors.muted }}>✕</Text>
     </Pressable>
   );
 }

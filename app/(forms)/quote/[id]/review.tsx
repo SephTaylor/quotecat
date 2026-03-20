@@ -116,8 +116,8 @@ export default function QuoteReviewScreen() {
   const taxAmount = totals?.taxAmount ?? 0;
   const grandTotal = totals?.total ?? 0;
 
-  // Calculate profitability (Pro/Premium with overhead and cost rate configured)
-  const profitability = quote && overheadSettings && defaultLaborCostRate > 0 && defaultLaborRate > 0
+  // Calculate profitability (Pro/Premium with cost rate configured)
+  const profitability = quote && defaultLaborCostRate > 0 && defaultLaborRate > 0
     ? calculateQuoteProfitability(quote, overheadSettings, { defaultLaborRate, defaultLaborCostRate }, teamMembers)
     : null;
 
@@ -791,6 +791,36 @@ export default function QuoteReviewScreen() {
         {/* Change Orders Section - Pro/Premium only */}
         {(isPro || isPremium) && qid && (
           <ChangeOrderList quoteId={qid} theme={theme} limit={3} />
+        )}
+
+        {/* Profitability Setup Prompt - State 1: Neither rate set */}
+        {(isPro || isPremium) && !profitability && defaultLaborRate === 0 && (
+          <Pressable
+            style={styles.section}
+            onPress={() => router.push('/(main)/labor-rate-calculator')}
+          >
+            <View style={[styles.totalsCard, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+              <Text style={[styles.totalLabel, { color: theme.colors.accent }]}>
+                Set up billable rate to see profit
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+            </View>
+          </Pressable>
+        )}
+
+        {/* Profitability Setup Prompt - State 2: Billable set, cost rate missing */}
+        {(isPro || isPremium) && !profitability && defaultLaborRate > 0 && defaultLaborCostRate === 0 && (
+          <Pressable
+            style={styles.section}
+            onPress={() => router.push('/(main)/business-settings')}
+          >
+            <View style={[styles.totalsCard, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+              <Text style={[styles.totalLabel, { color: theme.colors.muted }]}>
+                Add cost rate in Settings to see margin
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.muted} />
+            </View>
+          </Pressable>
         )}
 
         {/* Profitability Section - Pro/Premium with overhead configured */}

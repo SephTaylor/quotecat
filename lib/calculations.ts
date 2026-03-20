@@ -194,12 +194,8 @@ export function calculateQuoteProfitability(
   pricingSettings?: ProfitPricingSettings,
   teamMembers?: TeamMember[]
 ): ProfitabilityResult | null {
-  // Require overhead settings to be completed
-  if (!overheadSettings || !overheadSettings.completedAt) {
-    return null;
-  }
-
   // Require cost rate to be set for accurate calculation
+  // Note: overheadSettings is optional - only used for targetProfitMarginPercent coloring
   if (!pricingSettings?.defaultLaborCostRate || !pricingSettings?.defaultLaborRate) {
     return null;
   }
@@ -217,7 +213,7 @@ export function calculateQuoteProfitability(
 
   // If quote has labor entries and team members provided, use per-worker rates
   if (quote.laborEntries && quote.laborEntries.length > 0 && teamMembers && teamMembers.length > 0) {
-    laborCost = calculateLaborCostWithWorkerRates(
+    laborCost = calculateLaborCostWithWorkerRatesInternal(
       quote.laborEntries,
       teamMembers,
       defaultCostRatio
@@ -233,11 +229,21 @@ export function calculateQuoteProfitability(
   // Margin = Profit / Revenue
   const marginPercent = revenue > 0 ? (profit / revenue) * 100 : 0;
 
+  // Design decision: overheadCost is intentionally 0 because overhead is embedded
+  // in the billable rate via the Labor Rate Calculator, not subtracted as a separate
+  // line item. Subtracting it separately would cause double-counting.
+  //
+  // Required inputs for profitability:
+  // - defaultLaborRate (what you charge clients)
+  // - defaultLaborCostRate (your actual cost: salary + benefits + payroll taxes)
+  //
+  // overheadSettings is optional and only used for targetProfitMarginPercent
+  // to color the margin indicator green/yellow/red.
   return {
     revenue,
     materialsCost,
     laborCost,
-    overheadCost: 0, // Overhead is in the billable rate, not separated
+    overheadCost: 0,
     profit,
     marginPercent,
   };
@@ -251,7 +257,7 @@ export function calculateQuoteProfitability(
  *   use that worker's specific cost ratio
  * - Otherwise, fall back to the default cost ratio
  */
-function calculateLaborCostWithWorkerRates(
+function calculateLaborCostWithWorkerRatesInternal(
   laborEntries: LaborEntry[],
   teamMembers: TeamMember[],
   defaultCostRatio: number
@@ -285,6 +291,33 @@ function calculateLaborCostWithWorkerRates(
 }
 
 /**
+ * Exported helper for calculating labor cost with per-worker rates
+ *
+ * Handles both cases:
+ * - Premium users with laborEntries: uses per-worker cost rates
+ * - Pro users with simple labor: uses fallbackLaborValue with default cost ratio
+ */
+export function calculateLaborCostWithWorkerRates(
+  laborEntries: LaborEntry[],
+  fallbackLaborValue: number,
+  teamMembers: TeamMember[],
+  defaultLaborRate: number,
+  defaultLaborCostRate: number
+): number {
+  const defaultCostRatio = defaultLaborRate > 0
+    ? defaultLaborCostRate / defaultLaborRate
+    : 0;
+
+  // If we have labor entries (Premium), use per-worker calculation
+  if (laborEntries && laborEntries.length > 0) {
+    return calculateLaborCostWithWorkerRatesInternal(laborEntries, teamMembers, defaultCostRatio);
+  }
+
+  // Otherwise (Pro with simple labor), use fallback value with default ratio
+  return fallbackLaborValue * defaultCostRatio;
+}
+
+/**
  * Calculate profitability for an invoice
  *
  * Same formula as quotes - uses cost ratio to calculate true labor cost.
@@ -296,12 +329,8 @@ export function calculateInvoiceProfitability(
   pricingSettings?: ProfitPricingSettings,
   teamMembers?: TeamMember[]
 ): ProfitabilityResult | null {
-  // Require overhead settings to be completed
-  if (!overheadSettings || !overheadSettings.completedAt) {
-    return null;
-  }
-
   // Require cost rate to be set for accurate calculation
+  // Note: overheadSettings is optional - only used for targetProfitMarginPercent coloring
   if (!pricingSettings?.defaultLaborCostRate || !pricingSettings?.defaultLaborRate) {
     return null;
   }
@@ -322,7 +351,7 @@ export function calculateInvoiceProfitability(
 
   // If invoice has labor entries and team members provided, use per-worker rates
   if (laborEntries && laborEntries.length > 0 && teamMembers && teamMembers.length > 0) {
-    laborCost = calculateLaborCostWithWorkerRates(
+    laborCost = calculateLaborCostWithWorkerRatesInternal(
       laborEntries,
       teamMembers,
       defaultCostRatio
@@ -338,11 +367,12 @@ export function calculateInvoiceProfitability(
   // Margin = Profit / Revenue
   const marginPercent = revenue > 0 ? (profit / revenue) * 100 : 0;
 
+  // See calculateQuoteProfitability for design decision on why overheadCost is 0
   return {
     revenue,
     materialsCost,
     laborCost,
-    overheadCost: 0, // Overhead is in the billable rate, not separated
+    overheadCost: 0,
     profit,
     marginPercent,
   };

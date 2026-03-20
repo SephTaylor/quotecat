@@ -368,13 +368,24 @@ export default function BusinessSettings() {
               readOnly={isTech}
             />
             <InlineField
-              label="Default Labor Rate"
+              label="Billable Rate (what you charge)"
               value={String(preferences.pricing?.defaultLaborRate || 0)}
               prefix="$"
               suffix="/hr"
               keyboardType="decimal-pad"
               enabled={canEdit}
               onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0) setPreferences(await updatePricingSettings({ defaultLaborRate: n })); }}
+              theme={theme}
+              readOnly={isTech}
+            />
+            <InlineField
+              label="Cost Rate (what it costs you)"
+              value={String(preferences.pricing?.defaultLaborCostRate || 0)}
+              prefix="$"
+              suffix="/hr"
+              keyboardType="decimal-pad"
+              enabled={canEdit}
+              onSave={async (v) => { const n = parseFloat(v) || 0; if (n >= 0) setPreferences(await updatePricingSettings({ defaultLaborCostRate: n })); }}
               theme={theme}
               readOnly={isTech}
             />

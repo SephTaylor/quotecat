@@ -791,8 +791,9 @@ Thank you!`;
   const totals = calculateInvoiceTotals(invoice);
   const { materialsFromItems, materialEstimate, labor, subtotal, markupAmount, taxAmount, total } = totals;
 
-  // Calculate profitability (Pro/Premium with overhead configured + cost rate)
-  const profitability = overheadSettings
+  // Calculate profitability (Pro/Premium with cost rates configured)
+  // Note: overheadSettings is optional - only used for targetProfitMarginPercent coloring
+  const profitability = defaultLaborRate > 0 && defaultLaborCostRate > 0
     ? calculateInvoiceProfitability(invoice, overheadSettings, {
         defaultLaborRate,
         defaultLaborCostRate,
@@ -1131,7 +1132,37 @@ Thank you!`;
             </Pressable>
           </View>
 
-          {/* Profitability Section - Pro/Premium with overhead configured */}
+          {/* Profitability Setup Prompt - State 1: Neither rate set */}
+          {isPro && !profitability && defaultLaborRate === 0 && (
+            <Pressable
+              style={styles.section}
+              onPress={() => router.push('/(main)/labor-rate-calculator')}
+            >
+              <View style={[styles.costRow, { justifyContent: 'space-between' }]}>
+                <Text style={[styles.costLabel, { color: theme.colors.accent }]}>
+                  Set up billable rate to see profit
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+              </View>
+            </Pressable>
+          )}
+
+          {/* Profitability Setup Prompt - State 2: Billable set, cost rate missing */}
+          {isPro && !profitability && defaultLaborRate > 0 && defaultLaborCostRate === 0 && (
+            <Pressable
+              style={styles.section}
+              onPress={() => router.push('/(main)/business-settings')}
+            >
+              <View style={[styles.costRow, { justifyContent: 'space-between' }]}>
+                <Text style={[styles.costLabel, { color: theme.colors.muted }]}>
+                  Add cost rate in Settings to see margin
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.muted} />
+              </View>
+            </Pressable>
+          )}
+
+          {/* Profitability Section - Pro/Premium with cost rates configured */}
           {isPro && profitability && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Profitability</Text>
