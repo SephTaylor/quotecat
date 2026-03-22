@@ -2025,8 +2025,15 @@ export function searchProductsFTS(query: string, limit = 100): Product[] {
 
     // Split into words and expand synonyms PER WORD
     // This allows "2x4 lumber" to expand "2x4" while keeping "lumber"
+    // NOTE: Don't expand dimensional patterns (2x4, 4x4, etc.) - these are already
+    // expanded in search_name by sync-xbyte. Synonym expansion was breaking search
+    // because "2 in x 4 in" doesn't match Menards products that use "2 x 4".
     const words = normalizedQuery.split(/\s+/).filter(w => w.length > 0);
     const expandedWords = words.map(word => {
+      // Skip synonym expansion for dimensional patterns - already in search_name
+      if (/^\d+x\d+$/.test(word)) {
+        return word;
+      }
       const synonym = getSynonymDB(word);
       return synonym || word;
     });
