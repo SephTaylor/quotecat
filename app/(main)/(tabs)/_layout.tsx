@@ -66,15 +66,26 @@ export default function DrawerLayout() {
     >
       <Drawer.Screen
         name="dashboard"
-        options={{
+        options={({ navigation }) => ({
           title: "Dashboard",
           drawerLabel: "Dashboard",
           drawerIcon: ({ color, size }: IconProps) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
+          headerLeft: () => (
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Pressable
+                onPress={() => navigation.toggleDrawer()}
+                style={{ marginLeft: 16, padding: 4 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="menu" size={28} color={theme.colors.text} />
+              </Pressable>
+              <RefreshButton side="left" />
+            </View>
+          ),
           headerRight: () => (
             <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <RefreshButton />
               <NotificationBell side="right" />
               {canCreateQuotes && (
                 <HeaderIconButton
@@ -85,7 +96,7 @@ export default function DrawerLayout() {
               )}
             </View>
           ),
-        }}
+        })}
       />
       <Drawer.Screen
         name="quotes"

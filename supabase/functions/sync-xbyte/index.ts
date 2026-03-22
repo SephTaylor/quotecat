@@ -179,6 +179,23 @@ const CATEGORY_TERMS: Record<string, string> = {
 };
 
 /**
+ * Clean a product name for display.
+ * Removes trademark symbols and normalizes spacing.
+ * NOTE: We keep parenthetical content like "(21.26 sq ft / Carton)" because
+ * that's useful info for the user - it's extracted to coverage_sqft field separately.
+ */
+function cleanProductName(name: string): string {
+  return name
+    // Remove trademark/copyright symbols
+    .replace(/[®™©]/g, '')
+    // Normalize dashes with spaces around them
+    .replace(/\s*-\s*/g, ' - ')
+    // Collapse multiple spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Normalize a product name to include all searchable variations.
  * This is the core function that enables users to search "2x8" and find "2-in x 8-in" products.
  */
@@ -362,12 +379,13 @@ Deno.serve(async (req) => {
             const productMap = new Map();
             for (const item of data.data) {
               const id = `xbyte-${item["Retailer Identifier"].toLowerCase()}-${item["Product ID / SKU"]}`;
-              const productName = item["Product Name"];
+              const rawProductName = item["Product Name"];
+              const cleanedName = cleanProductName(rawProductName);
               const category = item["Category"] || "";
               productMap.set(id, {
                 id,
-                name: productName,
-                search_name: normalizeProductName(productName), // Normalized for FTS
+                name: cleanedName, // Cleaned for display (no ®™© symbols)
+                search_name: normalizeProductName(cleanedName), // Normalized for FTS
                 sku: String(item["Product ID / SKU"]),
                 unit: item["Unit of Measure"] || "each",
                 unit_price: item["Price (USD)"], // Required field
@@ -380,7 +398,7 @@ Deno.serve(async (req) => {
                 in_stock: item["In-Stock Status"] === "In Stock",
                 data_source: "retailer_scraped",
                 retailer: item["Retailer Identifier"],
-                coverage_sqft: extractCoverageSqft(productName, category), // sq ft per carton/case for flooring
+                coverage_sqft: extractCoverageSqft(rawProductName, category), // sq ft per carton/case for flooring (uses raw name to find patterns)
                 last_synced_at: new Date().toISOString(),
               });
             }

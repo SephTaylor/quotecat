@@ -12,7 +12,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Platform,
 } from "react-native";
 import { refreshProducts } from "@/modules/catalog/productService";
 import { syncQuotes } from "@/lib/quotesSync";
@@ -21,7 +20,11 @@ import { syncClients } from "@/lib/clientsSync";
 import { isAuthenticated } from "@/lib/auth";
 import { getUserState } from "@/lib/user";
 
-export function RefreshButton() {
+type RefreshButtonProps = {
+  side?: "left" | "right";
+};
+
+export function RefreshButton({ side = "right" }: RefreshButtonProps) {
   const { theme } = useTheme();
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState({ loaded: 0, total: 0, phase: "" });
@@ -167,8 +170,8 @@ export function RefreshButton() {
         disabled={syncing}
         style={{
           padding: 8,
-          marginRight: 4,
-          marginLeft: Platform.OS === 'android' ? 12 : 0,
+          marginLeft: side === "left" ? 8 : 0,
+          marginRight: side === "right" ? 4 : 0,
           opacity: syncing ? 0.6 : 1,
         }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

@@ -15,6 +15,27 @@ const GOOGLE_SITE_SEARCH: Record<string, string> = {
 };
 
 /**
+ * Simplify a product name for search.
+ * Removes special characters (®, ™, etc.) and truncates to key words.
+ */
+function simplifyProductName(name: string): string {
+  return name
+    // Remove trademark symbols
+    .replace(/[®™©]/g, '')
+    // Remove parenthetical content like "(21.26 sq ft / Carton)"
+    .replace(/\([^)]*\)/g, '')
+    // Remove common noise words at the end
+    .replace(/\s*-\s*\d+\s*(lb|oz|ft|in|pk|ct|box|bag|each)\.?\s*$/i, '')
+    // Collapse multiple spaces
+    .replace(/\s+/g, ' ')
+    .trim()
+    // Take first 8 words max (keeps search focused)
+    .split(' ')
+    .slice(0, 8)
+    .join(' ');
+}
+
+/**
  * Open a Google search scoped to the retailer's site.
  *
  * We route through Google because retailers (Lowe's, Home Depot, Menards)
@@ -30,9 +51,10 @@ export async function openProductSearch(
 
   try {
     const siteFilter = GOOGLE_SITE_SEARCH[supplierId || ''] || '';
+    const simplifiedName = simplifyProductName(productName);
     const query = siteFilter
-      ? `${siteFilter} ${productName}`
-      : productName;
+      ? `${siteFilter} ${simplifiedName}`
+      : simplifiedName;
     const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
     await Linking.openURL(googleUrl);
   } catch (error) {

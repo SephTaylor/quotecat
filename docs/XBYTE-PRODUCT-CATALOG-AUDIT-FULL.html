@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>xByte Product Catalog Audit - QuoteCat</title>
+  <style>
+    @page {
+      margin: 0;
+      size: letter;
+    }
+
+    @page :first {
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.5;
+      color: #1a1a1a;
+      margin: 0;
+      padding: 0;
+    }
+
+    .content-page {
+      padding: 0.5in 0.75in;
+    }
+
+    .cover {
+      page-break-after: always;
+      text-align: center;
+      padding: 0;
+      margin: 0;
+    }
+
+    .cover-header {
+      background: #F97316;
+      margin: 0;
+      padding: 80px 40px 60px 40px;
+      text-align: center;
+    }
+
+    .logo-circle {
+      width: 160px;
+      height: 160px;
+      background: white;
+      border-radius: 50%;
+      margin: 0 auto;
+      padding: 15px;
+    }
+
+    .logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .cover-title {
+      font-size: 36pt;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-top: 80px;
+      margin-bottom: 20px;
+    }
+
+    .cover-subtitle {
+      font-size: 24pt;
+      font-weight: 600;
+      color: #F97316;
+      margin-bottom: 40px;
+    }
+
+    .cover-tagline {
+      font-size: 14pt;
+      color: #666;
+      margin-bottom: 60px;
+    }
+
+    .cover-meta {
+      font-size: 12pt;
+      color: #666;
+      margin-bottom: 150px;
+    }
+
+    .cover-divider {
+      width: 200px;
+      height: 3px;
+      background: #F97316;
+      margin: 40px auto;
+    }
+
+    .cover-footer {
+      margin-top: auto;
+    }
+
+    .cover-url {
+      color: #F97316;
+      font-weight: 600;
+      font-size: 12pt;
+    }
+
+    .cover-copyright {
+      color: #999;
+      font-size: 10pt;
+      margin-top: 10px;
+    }
+
+    .page-header {
+      text-align: right;
+      color: #999;
+      font-size: 9pt;
+      margin-bottom: 20px;
+    }
+
+    .section-header {
+      background: #F97316;
+      color: white;
+      padding: 12px 20px;
+      font-size: 16pt;
+      font-weight: 600;
+      margin: 30px -20px 20px -20px;
+      border-radius: 4px;
+    }
+
+    h1 {
+      font-size: 24pt;
+      color: #1a1a1a;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      page-break-after: avoid;
+    }
+
+    h2 {
+      font-size: 16pt;
+      color: #F97316;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      page-break-after: avoid;
+    }
+
+    h3 {
+      font-size: 13pt;
+      color: #F97316;
+      margin-top: 25px;
+      margin-bottom: 10px;
+      page-break-after: avoid;
+    }
+
+    h4 {
+      font-size: 11pt;
+      color: #1a1a1a;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin-bottom: 12px;
+    }
+
+    strong {
+      color: #1a1a1a;
+    }
+
+    .callout {
+      background: #FFF7ED;
+      border: 1px solid #FDBA74;
+      border-radius: 6px;
+      padding: 15px 20px;
+      margin: 20px 0;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      color: #F97316;
+      margin-bottom: 8px;
+    }
+
+    .callout-critical {
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+    }
+
+    .callout-critical .callout-title {
+      color: #DC2626;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 10pt;
+    }
+
+    th {
+      background: #F97316;
+      color: white;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    ul, ol {
+      margin-bottom: 15px;
+      padding-left: 25px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    .critical {
+      color: #DC2626;
+      font-weight: 700;
+    }
+
+    .warning {
+      color: #D97706;
+      font-weight: 600;
+    }
+
+    .good {
+      color: #16A34A;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 9pt;
+      font-weight: 600;
+    }
+
+    .tag-critical {
+      background: #FEF2F2;
+      color: #DC2626;
+    }
+
+    .tag-warning {
+      background: #FFFBEB;
+      color: #D97706;
+    }
+
+    .tag-good {
+      background: #F0FDF4;
+      color: #16A34A;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e5e5e5;
+      margin: 30px 0;
+    }
+
+    .page-number {
+      text-align: center;
+      font-size: 9pt;
+      color: #999;
+      margin-top: 40px;
+    }
+
+    .about-section {
+      margin-top: 60px;
+      padding-top: 30px;
+      border-top: 2px solid #F97316;
+      text-align: center;
+    }
+
+    .about-title {
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .final-footer {
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .final-url {
+      color: #F97316;
+      font-weight: 700;
+      font-size: 14pt;
+    }
+
+    .final-copyright {
+      color: #999;
+      font-size: 10pt;
+      margin-top: 10px;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <div class="cover-header">
+    <div class="logo-circle">
+      <img class="logo-img" src="../website/images/logo.png" alt="QuoteCat">
+    </div>
+  </div>
+
+  <h1 class="cover-title">Product Catalog</h1>
+  <h2 class="cover-subtitle">Completeness Audit</h2>
+
+  <div class="cover-divider"></div>
+
+  <p class="cover-tagline">Prepared for xByte API Team</p>
+  <p class="cover-meta">March 22, 2026</p>
+
+  <div class="cover-footer">
+    <p class="cover-url">quotecat.ai</p>
+    <p class="cover-copyright">&copy; 2026 QuoteCat</p>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="content-page">
+<div class="page-header">quotecat.ai</div>
+
+<div class="section-header">Executive Summary</div>
+
+<p>We conducted a comprehensive audit of the product catalog data across all three suppliers (Home Depot, Lowe's, Menards) for our Michigan service areas (Lansing, Kalamazoo, Battle Creek).</p>
+
+<div class="callout">
+  <div class="callout-title">Key Findings</div>
+  <ul>
+    <li><strong>Menards</strong> is missing entire product categories critical for construction (plywood, OSB, drywall panels, concrete, framing lumber)</li>
+    <li><strong>Home Depot</strong> has suspiciously low product counts in several core categories</li>
+    <li><strong>Lowe's</strong> has the most complete coverage across categories</li>
+  </ul>
+</div>
+
+<p><strong>Total Products Analyzed:</strong> 54,188</p>
+<ul>
+  <li>Home Depot: 15,127</li>
+  <li>Lowe's: 20,210</li>
+  <li>Menards: 18,851</li>
+</ul>
+
+<hr>
+
+<h2>Critical Gaps (Zero Products)</h2>
+
+<p>These categories have <strong>zero products</strong> for one or more suppliers, making the data unusable for contractors.</p>
+
+<table>
+  <tr>
+    <th>Category</th>
+    <th>Home Depot</th>
+    <th>Lowe's</th>
+    <th>Menards</th>
+    <th>Status</th>
+  </tr>
+  <tr>
+    <td>Plywood Sheets (CDX/BCX 4x8)</td>
+    <td>8</td>
+    <td>41</td>
+    <td class="critical">0</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+  <tr>
+    <td>OSB Sheathing</td>
+    <td>12</td>
+    <td>13</td>
+    <td class="critical">0</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+  <tr>
+    <td>Drywall Panels (4x8)</td>
+    <td>54</td>
+    <td>79</td>
+    <td class="critical">0</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+  <tr>
+    <td>Concrete/Mortar Mix</td>
+    <td>40</td>
+    <td>53</td>
+    <td class="critical">0</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+  <tr>
+    <td>Ice & Water Shield</td>
+    <td>4</td>
+    <td>17</td>
+    <td class="critical">0</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+  <tr>
+    <td>HVAC/Furnace/Ductwork</td>
+    <td class="critical">3</td>
+    <td>436</td>
+    <td class="critical">0</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+  <tr>
+    <td>Untreated Framing Studs</td>
+    <td>13</td>
+    <td>177</td>
+    <td class="critical">0*</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+</table>
+
+<p><em>*Menards "untreated" counts include hardwood boards (red oak, maple), not framing lumber</em></p>
+
+<div class="page-number">2 | quotecat.ai</div>
+
+<!-- PAGE 3 -->
+<div class="section-header">Suspiciously Low Counts</div>
+
+<p>These categories have product counts that are significantly lower than expected when compared across suppliers.</p>
+
+<table>
+  <tr>
+    <th>Category</th>
+    <th>Home Depot</th>
+    <th>Lowe's</th>
+    <th>Menards</th>
+    <th>Flag</th>
+  </tr>
+  <tr>
+    <td>2x4 Untreated</td>
+    <td class="warning">13</td>
+    <td>177</td>
+    <td>137*</td>
+    <td><span class="tag tag-warning">HD LOW</span></td>
+  </tr>
+  <tr>
+    <td>2x6 Untreated</td>
+    <td class="warning">12</td>
+    <td>82</td>
+    <td>80*</td>
+    <td><span class="tag tag-warning">HD LOW</span></td>
+  </tr>
+  <tr>
+    <td>2x8 Untreated</td>
+    <td class="warning">2</td>
+    <td>68</td>
+    <td>45*</td>
+    <td><span class="tag tag-warning">HD LOW</span></td>
+  </tr>
+  <tr>
+    <td>Pressure Treated</td>
+    <td class="warning">13</td>
+    <td>122</td>
+    <td>89</td>
+    <td><span class="tag tag-warning">HD LOW</span></td>
+  </tr>
+  <tr>
+    <td>Doors</td>
+    <td class="warning">137</td>
+    <td>1,434</td>
+    <td>647</td>
+    <td><span class="tag tag-warning">HD 10x LOW</span></td>
+  </tr>
+  <tr>
+    <td>Cabinets</td>
+    <td class="warning">41</td>
+    <td>144</td>
+    <td>404</td>
+    <td><span class="tag tag-warning">HD LOW</span></td>
+  </tr>
+  <tr>
+    <td>Romex/NM-B Wire</td>
+    <td>51</td>
+    <td>112</td>
+    <td class="warning">26</td>
+    <td><span class="tag tag-warning">MEN LOW</span></td>
+  </tr>
+  <tr>
+    <td>Copper Pipe</td>
+    <td class="warning">20</td>
+    <td>44</td>
+    <td class="warning">9</td>
+    <td><span class="tag tag-warning">HD/MEN LOW</span></td>
+  </tr>
+</table>
+
+<p><em>*Menards counts include hardwood boards, not framing lumber</em></p>
+
+<div class="page-number">3 | quotecat.ai</div>
+
+<!-- PAGE 4 -->
+<div class="page-break"></div>
+<div class="page-header">quotecat.ai</div>
+
+<div class="section-header">Detailed Category Audit</div>
+
+<h2>1. Framing Lumber (Untreated)</h2>
+
+<p>Standard dimensional lumber used for wall framing, floor joists, and roof rafters.</p>
+
+<table>
+  <tr>
+    <th>Size</th>
+    <th>Home Depot</th>
+    <th>Lowe's</th>
+    <th>Menards</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>2x4</td>
+    <td class="warning">13</td>
+    <td>177</td>
+    <td>137*</td>
+    <td>HD very low</td>
+  </tr>
+  <tr>
+    <td>2x6</td>
+    <td class="warning">12</td>
+    <td>82</td>
+    <td>80*</td>
+    <td>HD very low</td>
+  </tr>
+  <tr>
+    <td>2x8</td>
+    <td class="warning">2</td>
+    <td>68</td>
+    <td>45*</td>
+    <td>HD very low</td>
+  </tr>
+  <tr>
+    <td>2x10</td>
+    <td class="warning">5</td>
+    <td>93</td>
+    <td>44*</td>
+    <td>HD very low</td>
+  </tr>
+  <tr>
+    <td>2x12</td>
+    <td class="warning">9</td>
+    <td>118</td>
+    <td>202*</td>
+    <td>HD very low</td>
+  </tr>
+</table>
+
+<div class="callout callout-critical">
+  <div class="callout-title">Menards Framing Lumber Issue</div>
+  <p>Menards counts include hardwood boards (red oak, hickory, maple) from the Mastercraft line&mdash;<strong>NOT framing lumber</strong>. Actual framing stud count is effectively <strong>zero</strong>.</p>
+  <p><strong>Sample Menards "2x4" products (none are framing studs):</strong></p>
+  <ul>
+    <li>AC2&reg; 2 x 4 x 8' #2 Prime Ground Contact Green Pressure Treated Lumber</li>
+    <li>Mastercraft&reg; 2 x 4 x 4' Red Oak Lumber</li>
+    <li>American Pacific 32 x 48 Wainscot Panel (false positive)</li>
+  </ul>
+</div>
+
+<h4>What's Missing from Menards:</h4>
+<ul>
+  <li>2x4 x 8' Kiln-Dried Stud</li>
+  <li>2x4 x 92-5/8" Precut Stud</li>
+  <li>2x4 x 96" SPF Lumber</li>
+  <li>2x6, 2x8, 2x10, 2x12 standard boards</li>
+</ul>
+
+<div class="page-number">4 | quotecat.ai</div>
+
+<!-- PAGE 5 -->
+<div class="page-break"></div>
+<div class="page-header">quotecat.ai</div>
+
+<h2>2. Sheet Goods</h2>
+
+<h3>Plywood (4x8 sheets, CDX/BCX grades)</h3>
+
+<table>
+  <tr>
+    <th>Supplier</th>
+    <th>Count</th>
+    <th>Status</th>
+  </tr>
+  <tr>
+    <td>Home Depot</td>
+    <td>8</td>
+    <td><span class="tag tag-warning">Low</span></td>
+  </tr>
+  <tr>
+    <td>Lowe's</td>
+    <td>41</td>
+    <td><span class="tag tag-good">Good</span></td>
+  </tr>
+  <tr>
+    <td>Menards</td>
+    <td class="critical">0</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+</table>
+
+<p><strong>Menards "Plywood" Products (not actual sheets):</strong></p>
+<ul>
+  <li>MiTek&reg; 5/8 G90 Steel Plywood Clips - 250 Count</li>
+  <li>MiTek&reg; 7/16 G90 Steel Plywood Clips - 250 Count</li>
+  <li>ScaffoldMart 7' Severe Duty Aluminum Plywood Walkboard</li>
+</ul>
+
+<h3>OSB Sheathing</h3>
+
+<table>
+  <tr>
+    <th>Supplier</th>
+    <th>Count</th>
+    <th>Status</th>
+  </tr>
+  <tr>
+    <td>Home Depot</td>
+    <td>12</td>
+    <td><span class="tag tag-good">OK</span></td>
+  </tr>
+  <tr>
+    <td>Lowe's</td>
+    <td>13</td>
+    <td><span class="tag tag-good">OK</span></td>
+  </tr>
+  <tr>
+    <td>Menards</td>
+    <td class="critical">0</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+</table>
+
+<h2>3. Drywall Panels</h2>
+
+<table>
+  <tr>
+    <th>Supplier</th>
+    <th>Panels</th>
+    <th>Total "Drywall" Items</th>
+    <th>Status</th>
+  </tr>
+  <tr>
+    <td>Home Depot</td>
+    <td>54</td>
+    <td>567</td>
+    <td><span class="tag tag-good">Good</span></td>
+  </tr>
+  <tr>
+    <td>Lowe's</td>
+    <td>79</td>
+    <td>361</td>
+    <td><span class="tag tag-good">Good</span></td>
+  </tr>
+  <tr>
+    <td>Menards</td>
+    <td class="critical">0</td>
+    <td>161 (all accessories)</td>
+    <td><span class="tag tag-critical">MISSING</span></td>
+  </tr>
+</table>
+
+<p><strong>Menards "Drywall" Products (all accessories, zero panels):</strong></p>
+<ul>
+  <li>3M CLAW Drywall Picture Hanger</li>
+  <li>ADFORS FibaTape Fiberglass Mesh Joint Tape</li>
+  <li>DAP Eclipse Drywall Repair Patch</li>
+  <li>Grip Fast Drywall Screws</li>
+  <li>Norton WallSand Drywall Sanding Sheet</li>
+</ul>
+
+<div class="page-number">5 | quotecat.ai</div>
+
+<!-- PAGE 6 -->
+<div class="page-break"></div>
+<div class="page-header">quotecat.ai</div>
+
+<h2>4. Categories with Adequate Coverage</h2>
+
+<table>
+  <tr>
+    <th>Category</th>
+    <th>Home Depot</th>
+    <th>Lowe's</th>
+    <th>Menards</th>
+    <th>Status</th>
+  </tr>
+  <tr>
+    <td>Fasteners (screws/nails)</td>
+    <td>1,989</td>
+    <td>554</td>
+    <td>1,355</td>
+    <td><span class="tag tag-good">Good</span></td>
+  </tr>
+  <tr>
+    <td>Outlets/Switches</td>
+    <td>387</td>
+    <td>960</td>
+    <td>507</td>
+    <td><span class="tag tag-good">Good</span></td>
+  </tr>
+  <tr>
+    <td>PEX Pipe</td>
+    <td>41</td>
+    <td>217</td>
+    <td>174</td>
+    <td><span class="tag tag-good">Good</span></td>
+  </tr>
+  <tr>
+    <td>Plumbing Fixtures</td>
+    <td>169</td>
+    <td>467</td>
+    <td>496</td>
+    <td><span class="tag tag-good">Good</span></td>
+  </tr>
+  <tr>
+    <td>Flooring</td>
+    <td>594</td>
+    <td>960</td>
+    <td>494</td>
+    <td><span class="tag tag-good">Good</span></td>
+  </tr>
+  <tr>
+    <td>Trim/Molding</td>
+    <td>256</td>
+    <td>213</td>
+    <td>236</td>
+    <td><span class="tag tag-good">Good</span></td>
+  </tr>
+  <tr>
+    <td>Windows</td>
+    <td>52</td>
+    <td>86</td>
+    <td>84</td>
+    <td><span class="tag tag-good">OK</span></td>
+  </tr>
+  <tr>
+    <td>Electrical Boxes</td>
+    <td>31</td>
+    <td>125</td>
+    <td>123</td>
+    <td><span class="tag tag-good">OK</span></td>
+  </tr>
+  <tr>
+    <td>Insulation</td>
+    <td>85</td>
+    <td>330</td>
+    <td>55</td>
+    <td><span class="tag tag-good">OK</span></td>
+  </tr>
+  <tr>
+    <td>Roofing Underlayment</td>
+    <td>91</td>
+    <td>148</td>
+    <td>48</td>
+    <td><span class="tag tag-good">OK</span></td>
+  </tr>
+  <tr>
+    <td>Shingles</td>
+    <td>86</td>
+    <td>139</td>
+    <td>43</td>
+    <td><span class="tag tag-good">OK</span></td>
+  </tr>
+</table>
+
+<div class="page-number">6 | quotecat.ai</div>
+
+<!-- PAGE 7 -->
+<div class="page-break"></div>
+<div class="page-header">quotecat.ai</div>
+
+<div class="section-header">Recommendations</div>
+
+<h2>Priority 1 &mdash; Menards (Critical)</h2>
+
+<p>Add these missing product categories:</p>
+
+<ol>
+  <li><strong>Framing Lumber (Untreated)</strong>
+    <ul>
+      <li>2x4 studs (8', 92-5/8", 96", 104-5/8")</li>
+      <li>2x6 lumber (8', 10', 12', 14', 16')</li>
+      <li>2x8, 2x10, 2x12 boards</li>
+    </ul>
+  </li>
+  <li><strong>Plywood Sheets</strong>
+    <ul>
+      <li>1/4", 3/8", 1/2", 5/8", 3/4" thicknesses</li>
+      <li>CDX sheathing, BCX sanded, AC sanded</li>
+    </ul>
+  </li>
+  <li><strong>OSB Sheathing</strong>
+    <ul>
+      <li>7/16" wall sheathing</li>
+      <li>15/32" sheathing</li>
+      <li>23/32" T&G subfloor</li>
+    </ul>
+  </li>
+  <li><strong>Drywall Panels</strong>
+    <ul>
+      <li>1/4", 1/2", 5/8" thicknesses</li>
+      <li>Regular, moisture resistant, fire rated (Type X)</li>
+    </ul>
+  </li>
+  <li><strong>Concrete & Mortar</strong>
+    <ul>
+      <li>Quikrete, Sakrete products</li>
+      <li>Concrete mix, mortar mix, fast-setting</li>
+    </ul>
+  </li>
+  <li><strong>Ice & Water Shield</strong></li>
+  <li><strong>HVAC Products</strong></li>
+</ol>
+
+<h2>Priority 2 &mdash; Home Depot (Investigation Needed)</h2>
+
+<p>These categories have suspiciously low counts compared to Lowe's:</p>
+
+<table>
+  <tr>
+    <th>Category</th>
+    <th>HD Count</th>
+    <th>Lowe's Count</th>
+    <th>Difference</th>
+  </tr>
+  <tr>
+    <td>Dimensional Lumber</td>
+    <td>2-13</td>
+    <td>68-177</td>
+    <td>5-34x lower</td>
+  </tr>
+  <tr>
+    <td>Doors</td>
+    <td>137</td>
+    <td>1,434</td>
+    <td>10x lower</td>
+  </tr>
+  <tr>
+    <td>Cabinets</td>
+    <td>41</td>
+    <td>144</td>
+    <td>3.5x lower</td>
+  </tr>
+  <tr>
+    <td>HVAC</td>
+    <td>3</td>
+    <td>436</td>
+    <td>145x lower</td>
+  </tr>
+</table>
+
+<p><strong>Possible causes:</strong></p>
+<ul>
+  <li>Scraper not reaching all category pages</li>
+  <li>Different URL structure for these categories</li>
+  <li>Rate limiting or blocking on specific sections</li>
+</ul>
+
+<div class="page-number">7 | quotecat.ai</div>
+
+<!-- PAGE 8 - FINAL -->
+<div class="page-break"></div>
+<div class="page-header">quotecat.ai</div>
+
+<div class="section-header">Impact on Contractors</div>
+
+<p>These gaps are <strong>critical for contractors</strong> because these are the most fundamental building materials:</p>
+
+<div class="callout callout-critical">
+  <div class="callout-title">A contractor building a basic room addition needs:</div>
+  <ol>
+    <li>Framing studs (2x4, 2x6) &mdash; <strong class="critical">Menards: NOT AVAILABLE</strong></li>
+    <li>Plywood/OSB sheathing &mdash; <strong class="critical">Menards: NOT AVAILABLE</strong></li>
+    <li>Drywall panels &mdash; <strong class="critical">Menards: NOT AVAILABLE</strong></li>
+    <li>Concrete for footings &mdash; <strong class="critical">Menards: NOT AVAILABLE</strong></li>
+  </ol>
+</div>
+
+<p>Without these materials, <strong>Menards cannot be used as a primary supplier</strong> for most construction projects with the current data. These materials account for 60-70% of a typical framing or interior finishing job's material list.</p>
+
+<hr>
+
+<h2>Summary</h2>
+
+<table>
+  <tr>
+    <th>Supplier</th>
+    <th>Status</th>
+    <th>Action Needed</th>
+  </tr>
+  <tr>
+    <td><strong>Menards</strong></td>
+    <td><span class="tag tag-critical">Critical Issues</span></td>
+    <td>Add framing lumber, plywood, OSB, drywall, concrete, HVAC</td>
+  </tr>
+  <tr>
+    <td><strong>Home Depot</strong></td>
+    <td><span class="tag tag-warning">Investigation Needed</span></td>
+    <td>Check scraper for lumber, doors, cabinets, HVAC categories</td>
+  </tr>
+  <tr>
+    <td><strong>Lowe's</strong></td>
+    <td><span class="tag tag-good">Good Coverage</span></td>
+    <td>Minor: Add deck boards</td>
+  </tr>
+</table>
+
+<hr>
+
+<div class="about-section">
+  <p class="about-title">About This Report</p>
+  <p>This audit was conducted by QuoteCat using SQL queries against the product catalog database. Data source: Supabase products table. Cities covered: Lansing, Kalamazoo, Battle Creek (Michigan).</p>
+  <p>Questions? Contact us at hello@quotecat.ai</p>
+</div>
+
+<div class="final-footer">
+  <p class="final-url">quotecat.ai</p>
+  <p class="final-copyright">&copy; 2026 QuoteCat. All rights reserved.</p>
+</div>
+
+</div><!-- end content-page -->
+
+</body>
+</html>
