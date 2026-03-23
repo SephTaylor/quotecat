@@ -7,6 +7,20 @@ import type { Quote, Invoice, Client, QuoteItem, PricebookItem, InvoicePayment, 
 import type { Product, Category } from "@/modules/catalog/seed";
 import { logSearch } from "./searchAnalytics";
 
+/**
+ * Safely parse JSON with fallback to default value
+ * Prevents crashes from corrupted data
+ */
+function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch (e) {
+    console.error("JSON parse error, using fallback:", e);
+    return fallback;
+  }
+}
+
 // Database instance (lazy initialized)
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -643,7 +657,7 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     for (const quote of quotesWithLinks) {
       if (processed.has(quote.id)) continue;
 
-      const linkedIds = JSON.parse(quote.linked_quote_ids || "[]") as string[];
+      const linkedIds = safeJsonParse<string[]>(quote.linked_quote_ids, []);
       if (linkedIds.length === 0) continue;
 
       // Generate a new tierGroupId for this group
@@ -659,7 +673,7 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
           [linkedId]
         );
         if (linked?.linked_quote_ids) {
-          const moreIds = JSON.parse(linked.linked_quote_ids) as string[];
+          const moreIds = safeJsonParse<string[]>(linked.linked_quote_ids, []);
           moreIds.forEach((id) => groupIds.add(id));
         }
       }
@@ -755,9 +769,9 @@ function rowToQuote(row: any): Quote {
     clientEmail: row.client_email || undefined,
     clientPhone: row.client_phone || undefined,
     clientAddress: row.client_address || undefined,
-    items: JSON.parse(row.items || "[]") as QuoteItem[],
+    items: safeJsonParse<QuoteItem[]>(row.items, []),
     labor: row.labor || 0,
-    laborEntries: row.labor_entries ? JSON.parse(row.labor_entries) as LaborEntry[] : undefined,
+    laborEntries: row.labor_entries ? safeJsonParse<LaborEntry[]>(row.labor_entries, []) : undefined,
     materialEstimate: row.material_estimate || undefined,
     overhead: row.overhead || undefined,
     markupPercent: row.markup_percent || undefined,
@@ -771,7 +785,7 @@ function rowToQuote(row: any): Quote {
     pinned: row.pinned === 1,
     tier: row.tier || undefined,
     tierGroupId: row.tier_group_id || undefined,
-    linkedQuoteIds: row.linked_quote_ids ? JSON.parse(row.linked_quote_ids) : undefined,
+    linkedQuoteIds: row.linked_quote_ids ? safeJsonParse<string[]>(row.linked_quote_ids, []) : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at || undefined,
@@ -991,9 +1005,9 @@ function rowToInvoice(row: any): Invoice {
     clientEmail: row.client_email || undefined,
     clientPhone: row.client_phone || undefined,
     clientAddress: row.client_address || undefined,
-    items: JSON.parse(row.items || "[]") as QuoteItem[],
+    items: safeJsonParse<QuoteItem[]>(row.items, []),
     labor: row.labor || 0,
-    laborEntries: row.labor_entries ? JSON.parse(row.labor_entries) as LaborEntry[] : undefined,
+    laborEntries: row.labor_entries ? safeJsonParse<LaborEntry[]>(row.labor_entries, []) : undefined,
     materialEstimate: row.material_estimate || undefined,
     overhead: row.overhead || undefined,
     markupPercent: row.markup_percent || undefined,

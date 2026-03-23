@@ -3,13 +3,13 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
   SafeAreaView,
 } from "react-native";
-import { Pressable } from "react-native-gesture-handler";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";

@@ -541,7 +541,7 @@ function InlineField({
   enabled: boolean;
   premium?: boolean;
   onSave: (v: string) => Promise<void>;
-  onLocked: () => void;
+  onLocked?: () => void;
   theme: ReturnType<typeof useTheme>["theme"];
   readOnly?: boolean;
   formatCurrency?: boolean;
