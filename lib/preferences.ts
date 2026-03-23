@@ -71,6 +71,7 @@ export type OverheadSettings = {
   annualOverhead: number; // Annual overhead costs in dollars
   annualLaborRevenue: number; // Annual labor revenue in dollars
   overheadPercent: number; // Calculated: (annualOverhead / annualLaborRevenue) * 100
+  materialsMixPercent?: number; // Typical % of job that is materials (default 40%)
   targetProfitMarginPercent?: number; // User's target profit margin % (e.g., 25)
   completedAt?: string; // ISO 8601 date when setup was completed
 };

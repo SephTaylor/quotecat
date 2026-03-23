@@ -33,6 +33,7 @@ import { hasSyncCompletedSince, onSyncComplete } from "@/lib/syncState";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { getActiveChangeOrderCount } from "@/modules/changeOrders";
 import { WizardFAB } from "@/components/WizardFAB";
+import { TextInputModal } from "@/components/TextInputModal";
 
 /**
  * Format sync time as relative time (e.g., "just now", "2 minutes ago")
@@ -73,6 +74,8 @@ export default function Dashboard() {
   const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
   const [deletedQuote, setDeletedQuote] = useState<Quote | null>(null);
   const [showUndo, setShowUndo] = useState(false);
+  const [showTierModal, setShowTierModal] = useState(false);
+  const [tierQuote, setTierQuote] = useState<Quote | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncAvailable, setSyncAvailable] = useState(false);
   const [isPro, setIsPro] = useState(false);
@@ -527,31 +530,25 @@ export default function Dashboard() {
   }, [load]);
 
   const handleCreateTier = useCallback((quote: Quote) => {
-    Alert.prompt(
-      "Create Tier",
-      `Enter a name for this tier option (e.g., "Better", "Best", "With Generator")`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Create",
-          onPress: async (tierName: string | undefined) => {
-            if (!tierName?.trim()) {
-              Alert.alert("Error", "Please enter a tier name");
-              return;
-            }
-            const newTier = await createTierFromQuote(quote.id, tierName.trim());
-            if (newTier) {
-              await load();
-              router.push(`/quote/${newTier.id}/edit`);
-            }
-          },
-        },
-      ],
-      "plain-text",
-      "",
-      "default"
-    );
-  }, [load, router]);
+    setTierQuote(quote);
+    setShowTierModal(true);
+  }, []);
+
+  const handleTierSubmit = useCallback(async (tierName: string) => {
+    setShowTierModal(false);
+    if (!tierName?.trim()) {
+      Alert.alert("Error", "Please enter a tier name");
+      return;
+    }
+    if (!tierQuote) return;
+
+    const newTier = await createTierFromQuote(tierQuote.id, tierName.trim());
+    if (newTier) {
+      await load();
+      router.push(`/quote/${newTier.id}/edit`);
+    }
+    setTierQuote(null);
+  }, [tierQuote, load, router]);
 
   const handleExportAllTiers = useCallback(async (quote: Quote) => {
     try {
@@ -985,6 +982,20 @@ export default function Dashboard() {
         />
       </GestureHandlerRootView>
     </Modal>
+
+    {/* Create Tier Modal */}
+    <TextInputModal
+      visible={showTierModal}
+      title="Create Tier"
+      message='Enter a name for this tier option (e.g., "Better", "Best", "With Generator")'
+      placeholder="Tier name"
+      submitLabel="Create"
+      onSubmit={handleTierSubmit}
+      onCancel={() => {
+        setShowTierModal(false);
+        setTierQuote(null);
+      }}
+    />
   </>
   );
 }

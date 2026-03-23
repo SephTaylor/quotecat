@@ -7,9 +7,9 @@ import {
   StyleSheet,
   Text,
   View,
-  Pressable,
   SafeAreaView,
 } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -64,11 +64,11 @@ const STEP_CONFIG: {
   },
   {
     key: "targetMargin",
-    title: "Set Your Target Margin",
+    title: "Confirm Your Target Margin",
     subtitle:
-      "QuoteCat flags any quote that falls short. Most contractors aim for 20-25%.",
-    ctaLabel: "Set My Target",
-    route: "/business-settings?scrollTo=margin",
+      "Quotes below this margin show a warning. Verify your target or adjust if needed.",
+    ctaLabel: "Review Target",
+    route: "/confirm-target-margin",
   },
 ];
 
@@ -176,7 +176,11 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
   const handleStepPress = (route: string) => {
     if (navigating) return;
     setNavigating(true);
-    router.push(route as any);
+    onComplete(); // Close modal before navigating
+    // Small delay to let modal animation complete
+    setTimeout(() => {
+      router.push(route as any);
+    }, 100);
   };
 
   // Calculate step status
@@ -223,6 +227,13 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
               ? "You're all set!"
               : "Let's get you set up to win."}
           </Text>
+          {!allComplete && (
+            <Pressable onPress={handleSkip} style={styles.skipButtonTop}>
+              <Text style={[styles.skipButtonText, { color: theme.colors.muted }]}>
+                Skip for now
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Steps */}
@@ -237,7 +248,7 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
               return (
                 <OnboardingStepCard
                   key={step.key}
-                  title={step.title}
+                  title={`${index + 1}. ${step.title}`}
                   subtitle={subtitle}
                   ctaLabel={step.ctaLabel}
                   status={getStepStatus(index)}
@@ -268,14 +279,14 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
         )}
       </ScrollView>
 
-      {/* Bottom actions */}
-      <View
-        style={[
-          styles.bottomActions,
-          { borderTopColor: theme.colors.border },
-        ]}
-      >
-        {allComplete ? (
+      {/* Bottom actions - only show when all complete */}
+      {allComplete && (
+        <View
+          style={[
+            styles.bottomActions,
+            { borderTopColor: theme.colors.border },
+          ]}
+        >
           <Pressable
             onPress={handleStartQuoting}
             style={[
@@ -285,14 +296,8 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
           >
             <Text style={styles.primaryButtonText}>Start Quoting</Text>
           </Pressable>
-        ) : (
-          <Pressable onPress={handleSkip} style={styles.skipButton}>
-            <Text style={[styles.skipButtonText, { color: theme.colors.muted }]}>
-              Skip for now
-            </Text>
-          </Pressable>
-        )}
-      </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -305,8 +310,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 24,
-    paddingBottom: 100,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -317,7 +323,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   header: {
-    marginBottom: 32,
+    marginBottom: 16,
     alignItems: "center",
   },
   title: {
@@ -330,7 +336,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   stepsContainer: {
-    marginTop: 8,
+    marginTop: 4,
   },
   completionContainer: {
     alignItems: "center",
@@ -368,11 +374,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
-  skipButton: {
-    paddingVertical: 16,
-    alignItems: "center",
+  skipButtonTop: {
+    marginTop: 12,
+    paddingVertical: 6,
   },
   skipButtonText: {
-    fontSize: 16,
+    fontSize: 15,
+    textDecorationLine: "underline",
   },
 });

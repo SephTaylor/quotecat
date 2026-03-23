@@ -1,5 +1,5 @@
 // components/SwipeableMaterialItem.tsx
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View, Pressable, TextInput } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";

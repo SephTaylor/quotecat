@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HeaderBackButton } from '@/components/HeaderBackButton';
 import { GradientBackground } from '@/components/GradientBackground';
+import { TextInputModal } from '@/components/TextInputModal';
 import {
   sendWizardMessage,
   searchCatalog,
@@ -78,6 +79,9 @@ export default function WizardScreen() {
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<'none' | 'remove' | 'quantity'>('none');
+  const [showQtyModal, setShowQtyModal] = useState(false);
+  const [qtyEditIndex, setQtyEditIndex] = useState<number | null>(null);
+  const [qtyEditItem, setQtyEditItem] = useState<QuoteItem | null>(null);
   // Track product selections: { productId: quantity }
   const [selections, setSelections] = useState<Record<string, number>>({});
   // Track checklist selections: { category: isSelected }
@@ -586,6 +590,17 @@ export default function WizardScreen() {
     setQuickReplies(['Save Quote', 'Make Changes', 'Start Over']);
   };
 
+  // Handler for qty modal submit
+  const handleQtySubmit = (val: string) => {
+    setShowQtyModal(false);
+    if (qtyEditIndex !== null) {
+      const newQty = parseInt(val || '1') || 1;
+      updateItemQty(qtyEditIndex, newQty);
+    }
+    setQtyEditIndex(null);
+    setQtyEditItem(null);
+  };
+
   // apiMessage is what's sent to the API (may differ from displayed message)
   const sendMessageLoop = async (currentMessages: Message[], apiMessage?: string) => {
     // Scroll to bottom
@@ -1039,16 +1054,9 @@ export default function WizardScreen() {
                               if (editMode === 'remove') {
                                 removeItem(i);
                               } else if (editMode === 'quantity') {
-                                Alert.prompt(
-                                  'Change Quantity',
-                                  `Enter new quantity for ${item.name}:`,
-                                  [
-                                    { text: 'Cancel', style: 'cancel', onPress: () => setEditMode('none') },
-                                    { text: 'Update', onPress: (val: string | undefined) => updateItemQty(i, parseInt(val || '1') || 1) },
-                                  ],
-                                  'plain-text',
-                                  String(item.qty)
-                                );
+                                setQtyEditIndex(i);
+                                setQtyEditItem(item);
+                                setShowQtyModal(true);
                               }
                             }}
                             style={[
@@ -1158,6 +1166,24 @@ export default function WizardScreen() {
           )}
         </SafeAreaView>
       </GradientBackground>
+
+      {/* Quantity Edit Modal */}
+      <TextInputModal
+        visible={showQtyModal}
+        title="Change Quantity"
+        message={qtyEditItem ? `Enter new quantity for ${qtyEditItem.name}:` : ''}
+        placeholder="1"
+        defaultValue={qtyEditItem ? String(qtyEditItem.qty) : '1'}
+        keyboardType="number-pad"
+        submitLabel="Update"
+        onSubmit={handleQtySubmit}
+        onCancel={() => {
+          setShowQtyModal(false);
+          setQtyEditIndex(null);
+          setQtyEditItem(null);
+          setEditMode('none');
+        }}
+      />
     </>
   );
 }

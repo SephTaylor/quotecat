@@ -11,6 +11,11 @@ import {
   getNextChangeOrderNumberDB,
   type ChangeOrderDB,
 } from "@/lib/database";
+import {
+  isChangeOrderSyncAvailable,
+  uploadChangeOrder,
+  deleteChangeOrderFromCloud,
+} from "@/lib/changeOrdersSync";
 
 /**
  * Convert SQLite row to ChangeOrder object
@@ -104,6 +109,16 @@ export async function getNextChangeOrderNumber(
 }
 
 /**
+ * Save a change order locally without triggering cloud upload
+ * Used by sync to avoid sync loops
+ */
+export async function saveChangeOrderLocally(
+  changeOrder: ChangeOrder
+): Promise<void> {
+  saveChangeOrderDB(changeOrderToDBRow(changeOrder));
+}
+
+/**
  * Save a new change order (auto-assigns CO number)
  * Expects quoteNumber to be passed in from the quote
  */
@@ -123,6 +138,15 @@ export async function createChangeOrder(
   };
 
   saveChangeOrderDB(changeOrderToDBRow(coWithNumber));
+
+  // Trigger cloud upload for Pro+ (non-blocking)
+  isChangeOrderSyncAvailable().then((available) => {
+    if (available) {
+      uploadChangeOrder(coWithNumber).catch((error) =>
+        console.error("Failed to upload new change order:", error)
+      );
+    }
+  });
 
   return coWithNumber;
 }
@@ -153,6 +177,15 @@ export async function updateChangeOrder(
   };
 
   saveChangeOrderDB(changeOrderToDBRow(updated));
+
+  // Trigger cloud upload for Pro+ (non-blocking)
+  isChangeOrderSyncAvailable().then((available) => {
+    if (available) {
+      uploadChangeOrder(updated).catch((error) =>
+        console.error("Failed to upload updated change order:", error)
+      );
+    }
+  });
 }
 
 /**
@@ -177,6 +210,15 @@ export async function deleteChangeOrder(
   }
 
   deleteChangeOrderDB(changeOrderId);
+
+  // Trigger cloud soft delete for Pro+ (non-blocking)
+  isChangeOrderSyncAvailable().then((available) => {
+    if (available) {
+      deleteChangeOrderFromCloud(changeOrderId).catch((error) =>
+        console.error("Failed to delete change order from cloud:", error)
+      );
+    }
+  });
 }
 
 /**

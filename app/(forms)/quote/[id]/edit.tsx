@@ -29,6 +29,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { LaborInput } from "@/components/LaborInput";
 import { LaborModeToggle, type LaborMode } from "@/components/LaborModeToggle";
+import { TextInputModal } from "@/components/TextInputModal";
 import { Ionicons } from "@expo/vector-icons";
 import { mergeById } from "@/modules/quotes/merge";
 import { formatNetChange } from "@/modules/changeOrders/diff";
@@ -63,6 +64,7 @@ export default function EditQuote() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
   const [showMenu, setShowMenu] = useState(false);
+  const [showTierModal, setShowTierModal] = useState(false);
 
   // Custom item edit modal state
   const [editingCustomItem, setEditingCustomItem] = useState<QuoteItem | null>(null);
@@ -743,35 +745,26 @@ export default function EditQuote() {
   const handleCreateTier = useCallback(() => {
     setShowMenu(false);
     if (!effectiveId || !isQuoteSaved) return;
+    setShowTierModal(true);
+  }, [effectiveId, isQuoteSaved]);
 
-    Alert.prompt(
-      "Create Tier",
-      `Enter a name for this tier option (e.g., "Better", "Best", "With Generator")`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Create",
-          onPress: async (tierName: string | undefined) => {
-            if (!tierName?.trim()) {
-              Alert.alert("Error", "Please enter a tier name");
-              return;
-            }
-            try {
-              const newTierQuote = await createTierFromQuote(effectiveId, tierName.trim());
-              if (newTierQuote) {
-                router.push(`/(forms)/quote/${newTierQuote.id}/edit`);
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to create tier. Please try again.");
-            }
-          },
-        },
-      ],
-      "plain-text",
-      "",
-      "default"
-    );
-  }, [effectiveId, isQuoteSaved, router]);
+  const handleTierSubmit = useCallback(async (tierName: string) => {
+    setShowTierModal(false);
+    if (!tierName?.trim()) {
+      Alert.alert("Error", "Please enter a tier name");
+      return;
+    }
+    if (!effectiveId) return;
+
+    try {
+      const newTierQuote = await createTierFromQuote(effectiveId, tierName.trim());
+      if (newTierQuote) {
+        router.push(`/(forms)/quote/${newTierQuote.id}/edit`);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to create tier. Please try again.");
+    }
+  }, [effectiveId, router]);
 
   const handleDuplicateQuote = useCallback(async () => {
     setShowMenu(false);
@@ -2062,6 +2055,17 @@ export default function EditQuote() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Create Tier Modal */}
+      <TextInputModal
+        visible={showTierModal}
+        title="Create Tier"
+        message='Enter a name for this tier option (e.g., "Better", "Best", "With Generator")'
+        placeholder="Tier name"
+        submitLabel="Create"
+        onSubmit={handleTierSubmit}
+        onCancel={() => setShowTierModal(false)}
+      />
 
     </>
   );

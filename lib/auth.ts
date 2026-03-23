@@ -11,6 +11,7 @@ import { syncPricebook } from "./pricebookSync";
 import { syncAssemblies, hasAssembliesMigrated, migrateLocalAssembliesToCloud } from "./assembliesSync";
 import { syncBusinessSettings, downloadBusinessSettings } from "./businessSettingsSync";
 import { syncTeamMembers } from "./teamMembersSync";
+import { syncChangeOrders, isChangeOrderSyncAvailable } from "./changeOrdersSync";
 import { markSyncComplete } from "./syncState";
 import { logOutRevenueCat } from "./revenuecat";
 // identifyUser removed - RevenueCat now links user lazily when showing paywall
@@ -294,6 +295,16 @@ async function runBackgroundSync(): Promise<void> {
     await gcBreak();
   } catch (error) {
     console.error("❌ Assemblies sync failed:", error);
+  }
+
+  // Sync change orders for Pro/Premium users
+  try {
+    if (await isChangeOrderSyncAvailable()) {
+      await syncChangeOrders();
+      await gcBreak();
+    }
+  } catch (error) {
+    console.error("❌ Change orders sync failed:", error);
   }
 
   // Sync pricebook for Premium users

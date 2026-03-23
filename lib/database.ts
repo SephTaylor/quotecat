@@ -11,7 +11,7 @@ import { logSearch } from "./searchAnalytics";
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 /**
  * Get or create the database instance
@@ -711,6 +711,23 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
       // Add cost_rate for future job costing
       database.execSync(`ALTER TABLE team_members ADD COLUMN cost_rate REAL;`);
     }
+  }
+
+  // v19: Add sync columns to change_orders for cloud sync (Pro/Premium)
+  if (fromVersion < 19) {
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(change_orders)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("synced_at")) {
+      database.execSync(`ALTER TABLE change_orders ADD COLUMN synced_at TEXT;`);
+    }
+    if (!columnNames.has("user_id")) {
+      database.execSync(`ALTER TABLE change_orders ADD COLUMN user_id TEXT;`);
+    }
+
+    console.log(`📦 Added sync columns to change_orders`);
   }
 
   // Update version
@@ -2695,6 +2712,8 @@ export type ChangeOrderDB = {
   status: string;
   createdAt: string;
   updatedAt: string;
+  syncedAt?: string;
+  userId?: string;
 };
 
 /**
@@ -2717,6 +2736,8 @@ function rowToChangeOrder(row: any): ChangeOrderDB {
     status: row.status || "pending",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    syncedAt: row.synced_at || undefined,
+    userId: row.user_id || undefined,
   };
 }
 
@@ -2783,8 +2804,8 @@ export function saveChangeOrderDB(changeOrder: ChangeOrderDB): void {
         id, quote_id, quote_number, number, items,
         labor_before, labor_after, labor_delta,
         net_change, quote_total_before, quote_total_after,
-        note, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        note, status, created_at, updated_at, synced_at, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         changeOrder.id,
         changeOrder.quoteId,
@@ -2801,6 +2822,8 @@ export function saveChangeOrderDB(changeOrder: ChangeOrderDB): void {
         changeOrder.status,
         changeOrder.createdAt || now,
         changeOrder.updatedAt || now,
+        changeOrder.syncedAt || null,
+        changeOrder.userId || null,
       ]
     );
   } catch (error) {

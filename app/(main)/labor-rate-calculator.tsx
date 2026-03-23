@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { Stack, useRouter } from "expo-router";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -18,7 +18,7 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { updatePricingSettings } from "@/lib/preferences";
+import { updatePricingSettings, updateOverheadSettings, loadPreferences } from "@/lib/preferences";
 
 export default function LaborRateCalculator() {
   const router = useRouter();
@@ -30,8 +30,28 @@ export default function LaborRateCalculator() {
   const [healthInsurance, setHealthInsurance] = useState("");
   const [retirement, setRetirement] = useState(""); // % of salary
   const [annualOverhead, setAnnualOverhead] = useState("");
-  const [profitMargin, setProfitMargin] = useState("15"); // default 15%
+  const [profitMargin, setProfitMargin] = useState("20"); // default 20%
   const [billableHours, setBillableHours] = useState("1500"); // default 1500
+
+  // Load saved values from other onboarding steps (if completed)
+  useEffect(() => {
+    const loadSavedValues = async () => {
+      try {
+        const prefs = await loadPreferences();
+        // Load annual overhead from overhead calculator
+        if (prefs.overhead?.annualOverhead && prefs.overhead.annualOverhead > 0) {
+          setAnnualOverhead(String(Math.round(prefs.overhead.annualOverhead)));
+        }
+        // Load target profit margin from business settings
+        if (prefs.overhead?.targetProfitMarginPercent && prefs.overhead.targetProfitMarginPercent > 0) {
+          setProfitMargin(String(prefs.overhead.targetProfitMarginPercent));
+        }
+      } catch (error) {
+        console.error("Failed to load saved settings:", error);
+      }
+    };
+    loadSavedValues();
+  }, []);
 
   // Filter to numbers and decimal only
   const filterNumber = (value: string) =>
@@ -66,7 +86,7 @@ export default function LaborRateCalculator() {
     setHealthInsurance("");
     setRetirement("");
     setAnnualOverhead("");
-    setProfitMargin("15");
+    setProfitMargin("20");
     setBillableHours("1500");
   };
 
@@ -80,10 +100,19 @@ export default function LaborRateCalculator() {
     const roundedCostRate = Math.round(costRate);
 
     const doSave = async () => {
+      // Save labor rates
       await updatePricingSettings({
         defaultLaborRate: roundedRate,
         defaultLaborCostRate: roundedCostRate,
       });
+
+      // Also save profit margin as target margin (powers the margin indicator on quotes)
+      const prefs = await loadPreferences();
+      await updateOverheadSettings({
+        ...prefs.overhead,
+        targetProfitMarginPercent: profitPct > 0 ? profitPct : undefined,
+      });
+
       Alert.alert(
         "Rates Saved",
         `Billable: $${roundedRate}/hr\nCost: $${roundedCostRate}/hr\n\nYour profit on labor: $${roundedRate - roundedCostRate}/hr`,
@@ -206,7 +235,7 @@ export default function LaborRateCalculator() {
                     style={styles.input}
                     value={profitMargin}
                     onChangeText={(v) => setProfitMargin(filterNumber(v))}
-                    placeholder="15"
+                    placeholder="20"
                     placeholderTextColor={theme.colors.muted}
                     keyboardType="decimal-pad"
                     blurOnSubmit

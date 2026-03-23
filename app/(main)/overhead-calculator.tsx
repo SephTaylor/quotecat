@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Slider } from "@miblanchard/react-native-slider";
 
 const PROGRESS_KEY = "@quotecat/overhead_wizard_progress";
 
@@ -77,6 +78,14 @@ const WIZARD_STEPS = [
     icon: "ellipsis-horizontal-outline" as const,
   },
   {
+    id: "materialsMix",
+    title: "Typical Materials Mix",
+    description: "What percentage of a typical job is materials?",
+    placeholder: "40",
+    icon: "construct-outline" as const,
+    isSlider: true,
+  },
+  {
     id: "laborRevenue",
     title: "Monthly Labor Revenue",
     description: "How much do you typically bill in labor per month?",
@@ -107,15 +116,17 @@ export default function OverheadCalculator() {
   const isLastStep = currentStep === WIZARD_STEPS.length - 1;
   const isSummaryStep = currentStep === WIZARD_STEPS.length;
 
-  // Calculate totals
-  const monthlyOverhead = WIZARD_STEPS.slice(0, 7).reduce(
-    (sum, step) => sum + (parseFloat(values[step.id]) || 0),
+  // Calculate totals (first 7 steps are expense categories, materialsMix is step 7, laborRevenue is step 8)
+  const expenseStepIds = ["vehicle", "insurance", "tools", "software", "office", "marketing", "other"];
+  const monthlyOverhead = expenseStepIds.reduce(
+    (sum, stepId) => sum + (parseFloat(values[stepId]) || 0),
     0
   );
   const annualOverhead = monthlyOverhead * 12;
   const monthlyLaborRevenue = parseFloat(values.laborRevenue) || 0;
   const annualLaborRevenue = monthlyLaborRevenue * 12;
   const overheadPercent = annualLaborRevenue > 0 ? (annualOverhead / annualLaborRevenue) * 100 : 0;
+  const materialsMixPercent = parseFloat(values.materialsMix) || 40;
 
   // Load saved progress and existing settings
   useEffect(() => {
@@ -194,6 +205,7 @@ export default function OverheadCalculator() {
       annualOverhead,
       annualLaborRevenue,
       overheadPercent,
+      materialsMixPercent,
       targetProfitMarginPercent: existingSettings?.targetProfitMarginPercent,
       completedAt: new Date().toISOString(),
     };
@@ -241,6 +253,9 @@ export default function OverheadCalculator() {
   const renderInputStep = () => {
     if (!currentStepData) return null;
 
+    const isSliderStep = (currentStepData as any).isSlider;
+    const sliderValue = parseFloat(values[currentStepData.id]) || 40;
+
     return (
       <View style={styles.stepContent}>
         <View style={styles.stepHeader}>
@@ -252,24 +267,56 @@ export default function OverheadCalculator() {
         </View>
 
         <View style={styles.inputSection}>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.inputPrefix}>$</Text>
-            <TextInput
-              style={styles.input}
-              value={values[currentStepData.id] || ""}
-              onChangeText={handleValueChange}
-              onBlur={() => saveProgress(currentStep, values)}
-              placeholder={currentStepData.placeholder}
-              placeholderTextColor={theme.colors.muted}
-              keyboardType="decimal-pad"
-              blurOnSubmit
-              autoFocus
-            />
-            <Text style={styles.inputSuffix}>/month</Text>
-          </View>
+          {isSliderStep ? (
+            <View style={styles.sliderContainer}>
+              <Text style={styles.sliderValue}>{Math.round(sliderValue)}%</Text>
+              <Slider
+                containerStyle={styles.slider}
+                minimumValue={10}
+                maximumValue={90}
+                step={5}
+                value={sliderValue}
+                onValueChange={(val) => {
+                  const newValues = { ...values, [currentStepData.id]: String(Math.round(val[0])) };
+                  setValues(newValues);
+                }}
+                onSlidingComplete={(val) => {
+                  const newValues = { ...values, [currentStepData.id]: String(Math.round(val[0])) };
+                  setValues(newValues);
+                  saveProgress(currentStep, newValues);
+                }}
+                minimumTrackTintColor={theme.colors.accent}
+                maximumTrackTintColor={theme.colors.border}
+                thumbTintColor={theme.colors.accent}
+              />
+              <View style={styles.sliderLabels}>
+                <Text style={styles.sliderLabel}>10%</Text>
+                <Text style={styles.sliderLabel}>90%</Text>
+              </View>
+              <Text style={styles.sliderHint}>
+                Lower = labor-heavy. Higher = materials-heavy.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputPrefix}>$</Text>
+              <TextInput
+                style={styles.input}
+                value={values[currentStepData.id] || ""}
+                onChangeText={handleValueChange}
+                onBlur={() => saveProgress(currentStep, values)}
+                placeholder={currentStepData.placeholder}
+                placeholderTextColor={theme.colors.muted}
+                keyboardType="decimal-pad"
+                blurOnSubmit
+                autoFocus
+              />
+              <Text style={styles.inputSuffix}>/month</Text>
+            </View>
+          )}
         </View>
 
-        {/* Running total */}
+        {/* Running total - show for expense steps only (indices 0-6) */}
         {currentStep < 7 && (
           <View style={styles.runningTotal}>
             <Text style={styles.runningTotalLabel}>Monthly Overhead So Far</Text>
@@ -293,15 +340,16 @@ export default function OverheadCalculator() {
           <Text style={styles.stepDescription}>Tap any category to edit</Text>
         </View>
 
-        {/* Category breakdown */}
+        {/* Category breakdown - expense steps only (first 7) */}
         <View style={styles.summaryCard}>
-          {WIZARD_STEPS.slice(0, 7).map((step, index) => {
+          {WIZARD_STEPS.filter(s => !(s as any).isSlider && s.id !== "laborRevenue").map((step) => {
+            const stepIndex = WIZARD_STEPS.findIndex(s => s.id === step.id);
             const value = parseFloat(values[step.id]) || 0;
             return (
               <Pressable
                 key={step.id}
                 style={styles.summaryRow}
-                onPress={() => handleStepTap(index)}
+                onPress={() => handleStepTap(stepIndex)}
               >
                 <View style={styles.summaryRowLeft}>
                   <Ionicons name={step.icon} size={18} color={theme.colors.muted} />
@@ -327,8 +375,19 @@ export default function OverheadCalculator() {
           </View>
         </View>
 
-        {/* Labor revenue */}
+        {/* Materials mix */}
         <Pressable style={styles.laborRevenueCard} onPress={() => handleStepTap(7)}>
+          <View style={styles.summaryRowLeft}>
+            <Ionicons name="construct-outline" size={18} color={theme.colors.muted} />
+            <Text style={styles.summaryRowLabel}>Typical Materials Mix</Text>
+          </View>
+          <Text style={styles.summaryRowValue}>
+            {materialsMixPercent}%
+          </Text>
+        </Pressable>
+
+        {/* Labor revenue */}
+        <Pressable style={styles.laborRevenueCard} onPress={() => handleStepTap(8)}>
           <View style={styles.summaryRowLeft}>
             <Ionicons name="cash-outline" size={18} color={theme.colors.muted} />
             <Text style={styles.summaryRowLabel}>Monthly Labor Revenue</Text>
@@ -522,6 +581,41 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     inputSection: {
       marginBottom: theme.spacing(4),
+    },
+    sliderContainer: {
+      backgroundColor: theme.colors.card,
+      borderRadius: theme.radius.lg,
+      borderWidth: 2,
+      borderColor: theme.colors.accent,
+      padding: theme.spacing(3),
+      alignItems: "center",
+    },
+    sliderValue: {
+      fontSize: 48,
+      fontWeight: "800",
+      color: theme.colors.accent,
+      marginBottom: theme.spacing(2),
+    },
+    slider: {
+      width: "100%",
+      height: 40,
+    },
+    sliderLabels: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      width: "100%",
+      marginTop: theme.spacing(0.5),
+    },
+    sliderLabel: {
+      fontSize: 12,
+      color: theme.colors.muted,
+    },
+    sliderHint: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      textAlign: "center",
+      lineHeight: 18,
+      marginTop: theme.spacing(2),
     },
     inputWrapper: {
       flexDirection: "row",

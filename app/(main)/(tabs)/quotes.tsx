@@ -47,6 +47,7 @@ import { GradientBackground } from "@/components/GradientBackground";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTechContext } from "@/contexts/TechContext";
+import { TextInputModal } from "@/components/TextInputModal";
 
 export default function QuotesList() {
   const router = useRouter();
@@ -65,6 +66,8 @@ export default function QuotesList() {
   const [sortBy, setSortBy] = useState<"date" | "amount" | "name" | "client" | "followUp">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showSortModal, setShowSortModal] = useState(false);
+  const [showTierModal, setShowTierModal] = useState(false);
+  const [tierQuote, setTierQuote] = useState<Quote | null>(null);
 
   // Multi-select mode
   const [selectMode, setSelectMode] = useState(false);
@@ -320,38 +323,32 @@ export default function QuotesList() {
   }, [router]);
 
   const handleCreateTier = useCallback((quote: Quote) => {
-    Alert.prompt(
-      "Create Tier",
-      `Enter a name for this tier option (e.g., "Better", "Best", "With Generator")`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Create",
-          onPress: async (tierName: string | undefined) => {
-            if (!tierName?.trim()) {
-              Alert.alert("Error", "Please enter a tier name");
-              return;
-            }
-            try {
-              const newTier = await createTierFromQuote(quote.id, tierName.trim());
-              if (newTier) {
-                // Reload list to get updated linked quotes
-                await load();
-                // Navigate to edit the new tier
-                router.push(`/quote/${newTier.id}/edit`);
-              }
-            } catch (error) {
-              console.error("Failed to create tier:", error);
-              Alert.alert("Error", "Failed to create tier. Please try again.");
-            }
-          },
-        },
-      ],
-      "plain-text",
-      "",
-      "default"
-    );
-  }, [load, router]);
+    setTierQuote(quote);
+    setShowTierModal(true);
+  }, []);
+
+  const handleTierSubmit = useCallback(async (tierName: string) => {
+    setShowTierModal(false);
+    if (!tierName?.trim()) {
+      Alert.alert("Error", "Please enter a tier name");
+      return;
+    }
+    if (!tierQuote) return;
+
+    try {
+      const newTier = await createTierFromQuote(tierQuote.id, tierName.trim());
+      if (newTier) {
+        // Reload list to get updated linked quotes
+        await load();
+        // Navigate to edit the new tier
+        router.push(`/quote/${newTier.id}/edit`);
+      }
+    } catch (error) {
+      console.error("Failed to create tier:", error);
+      Alert.alert("Error", "Failed to create tier. Please try again.");
+    }
+    setTierQuote(null);
+  }, [tierQuote, load, router]);
 
   const handleExportAllTiers = useCallback(async (quote: Quote) => {
     try {
@@ -1021,6 +1018,20 @@ export default function QuotesList() {
           </View>
         )}
       </GradientBackground>
+
+      {/* Create Tier Modal */}
+      <TextInputModal
+        visible={showTierModal}
+        title="Create Tier"
+        message='Enter a name for this tier option (e.g., "Better", "Best", "With Generator")'
+        placeholder="Tier name"
+        submitLabel="Create"
+        onSubmit={handleTierSubmit}
+        onCancel={() => {
+          setShowTierModal(false);
+          setTierQuote(null);
+        }}
+      />
     </GestureHandlerRootView>
   );
 }
