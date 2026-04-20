@@ -65,13 +65,19 @@ serve(async (req) => {
     // Get the Supabase user ID (we set this when calling Purchases.logIn())
     const userId = event.app_user_id;
 
-    // Skip anonymous IDs (start with $RCAnonymousID:)
+    // Reject anonymous IDs (start with $RCAnonymousID:)
+    // This should never happen since we require login before paywall
     if (userId.startsWith("$RCAnonymousID:")) {
-      console.log("Skipping anonymous user event");
-      return new Response(JSON.stringify({ received: true }), {
-        headers: { "Content-Type": "application/json" },
-        status: 200,
+      console.error("CRITICAL: Anonymous RevenueCat purchase - payment not linked to user!", {
+        userId,
+        eventType: event.type,
+        productId: event.product_id,
       });
+      // Return 400 so RevenueCat knows this failed
+      return new Response(
+        JSON.stringify({ error: "Anonymous purchases not supported" }),
+        { headers: { "Content-Type": "application/json" }, status: 400 }
+      );
     }
 
     switch (event.type) {
@@ -141,13 +147,17 @@ async function handlePurchase(
 
   console.log(`Setting user ${userId} to tier: ${tier} (entitlements: ${entitlementIds.join(", ")})`);
 
+  // Use upsert as safety net in case profile doesn't exist yet
   const { error } = await supabase
     .from("profiles")
-    .update({
-      tier,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", userId);
+    .upsert(
+      {
+        id: userId,
+        tier,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
 
   if (error) {
     console.error("Error updating profile:", error);
@@ -166,13 +176,17 @@ async function handleExpiration(
 ) {
   console.log(`Subscription expired for user ${userId}, downgrading to free`);
 
+  // Use upsert as safety net in case profile doesn't exist yet
   const { error } = await supabase
     .from("profiles")
-    .update({
-      tier: "free",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", userId);
+    .upsert(
+      {
+        id: userId,
+        tier: "free",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
 
   if (error) {
     console.error("Error downgrading user:", error);

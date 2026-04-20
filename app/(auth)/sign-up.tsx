@@ -115,6 +115,20 @@ export default function SignUpScreen() {
       if (error) throw error;
 
       if (data.user) {
+        // Create profile for new user so entitlements sync correctly
+        try {
+          await supabase.from("profiles").insert({
+            id: data.user.id,
+            email: data.user.email,
+            tier: "free",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        } catch (profileError) {
+          // Profile might already exist (e.g., created by Stripe webhook), ignore error
+          console.log("Profile creation skipped (may already exist):", profileError);
+        }
+
         // Save email for next time
         await AsyncStorage.setItem(LAST_EMAIL_KEY, email.trim());
 

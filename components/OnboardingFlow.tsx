@@ -22,13 +22,14 @@ import {
   updateOnboardingPreferences,
   updateOverheadSettings,
 } from "@/lib/preferences";
+import { getCurrentUserId } from "@/lib/authUtils";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
   tier?: 'free' | 'pro' | 'premium';
 }
 
-type StepKey = "companySetup" | "overheadCalc" | "laborRate" | "targetMargin";
+type StepKey = "createAccount" | "companySetup" | "overheadCalc" | "laborRate" | "targetMargin";
 
 type Steps = Record<StepKey, boolean>;
 
@@ -39,6 +40,13 @@ const STEP_CONFIG: {
   ctaLabel: string;
   route: string;
 }[] = [
+  {
+    key: "createAccount",
+    title: "Create Your Account",
+    subtitle: "Sign up to save your quotes and sync across devices.",
+    ctaLabel: "Create Account",
+    route: "/(auth)/sign-up",
+  },
   {
     key: "companySetup",
     title: "Set Up Your Business",
@@ -78,6 +86,7 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [steps, setSteps] = useState<Steps>({
+    createAccount: false,
     companySetup: false,
     overheadCalc: false,
     laborRate: false,
@@ -92,22 +101,29 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
     try {
       const prefs = await loadPreferences();
 
+      // Check if user is logged in (step 1: createAccount)
+      const userId = await getCurrentUserId();
+      const isLoggedIn = !!userId;
+
       const newSteps: Steps = {
-        // Step 1: Company name set
+        // Step 1: User is logged in
+        createAccount: isLoggedIn,
+        // Step 2: Company name set
         companySetup: !!prefs.company?.companyName,
-        // Step 2: Overhead calculator completed (sets annualOverhead > 0)
+        // Step 3: Overhead calculator completed (sets annualOverhead > 0)
         overheadCalc: (prefs.overhead?.annualOverhead ?? 0) > 0,
-        // Step 3: Labor Rate Calculator completed (both rates set)
+        // Step 4: Labor Rate Calculator completed (both rates set)
         laborRate:
           (prefs.pricing?.defaultLaborRate ?? 0) > 0 &&
           (prefs.pricing?.defaultLaborCostRate ?? 0) > 0,
-        // Step 4: Target margin set
+        // Step 5: Target margin set
         targetMargin: (prefs.overhead?.targetProfitMarginPercent ?? 0) > 0,
       };
 
       // Only update if changed
       const current = prefs.onboarding?.steps;
       const changed =
+        (current as any)?.createAccount !== newSteps.createAccount ||
         current?.companySetup !== newSteps.companySetup ||
         current?.overheadCalc !== newSteps.overheadCalc ||
         current?.laborRate !== newSteps.laborRate ||
@@ -154,7 +170,7 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
     }, [checkAndUpdateSteps])
   );
 
-  // Handle skip (with double-tap protection)
+  // Handle skip (only available after account creation)
   const handleSkip = async () => {
     if (navigating) return;
     setNavigating(true);
@@ -190,8 +206,13 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
     // If this step is complete, show complete
     if (steps[stepKey]) return "complete";
 
-    // All incomplete steps are clickable (not sequential)
-    // This allows users to complete steps in any order
+    // Step 1 (createAccount) is always accessible if not complete
+    if (index === 0) return "current";
+
+    // Steps 2-5 are locked (pending) until account is created
+    if (!steps.createAccount) return "pending";
+
+    // Once logged in, remaining steps are clickable (not sequential)
     return "current";
   };
 
@@ -227,7 +248,8 @@ export function OnboardingFlow({ onComplete, tier = 'free' }: OnboardingFlowProp
               ? "You're all set!"
               : "Let's get you set up to win."}
           </Text>
-          {!allComplete && (
+          {/* Show skip only after account is created */}
+          {!allComplete && steps.createAccount && (
             <Pressable onPress={handleSkip} style={styles.skipButtonTop}>
               <Text style={[styles.skipButtonText, { color: theme.colors.muted }]}>
                 Skip for now
@@ -382,4 +404,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textDecorationLine: "underline",
   },
-});
+  });
