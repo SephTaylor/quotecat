@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -267,6 +268,10 @@ export default function AssembliesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           style={styles.list}
+          windowSize={10}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          removeClippedSubviews={Platform.OS === 'android'}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }

@@ -1045,7 +1045,7 @@ export default function QuotesList() {
   );
 }
 
-function FilterChip({
+const FilterChip = React.memo(function FilterChip({
   label,
   active,
   onPress,
@@ -1075,7 +1075,7 @@ function FilterChip({
       </Text>
     </Pressable>
   );
-}
+});
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({

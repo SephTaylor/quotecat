@@ -249,7 +249,7 @@ export default function ProTools() {
   );
 }
 
-function ProFeatureCard({
+const ProFeatureCard = React.memo(function ProFeatureCard({
   title,
   description,
   locked,
@@ -332,7 +332,7 @@ function ProFeatureCard({
       </View>
     </Pressable>
   );
-}
+});
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({

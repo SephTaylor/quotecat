@@ -997,7 +997,7 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({
+const StatCard = React.memo(function StatCard({
   label,
   value,
   color,
@@ -1021,9 +1021,9 @@ function StatCard({
       <Text style={styles.statLabel}>{label}</Text>
     </Pressable>
   );
-}
+});
 
-function DismissButton({
+const DismissButton = React.memo(function DismissButton({
   onPress,
   theme,
 }: {
@@ -1042,7 +1042,7 @@ function DismissButton({
       <Text style={{ fontSize: 16, color: theme.colors.muted }}>✕</Text>
     </Pressable>
   );
-}
+});
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
