@@ -68,6 +68,11 @@
     "android": {
       "package": "ai.quotecat.app",
       "icon": "./assets/images/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#F97316",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "forceDarkAllowed": false,
