@@ -83,10 +83,10 @@ export function canAccessAssemblies(user: UserState): boolean {
 }
 
 /**
- * Check if user can access pricebook (Pro and Premium)
+ * Check if user can access pricebook (all users - free tier limited to 50 items)
  */
-export function canAccessPricebook(user: UserState): boolean {
-  return user.tier === "pro" || user.tier === "premium";
+export function canAccessPricebook(_user: UserState): boolean {
+  return true; // All users have pricebook access now
 }
 
 /**

@@ -1,5 +1,5 @@
 // constants/theme.ts
-export type ThemeMode = "light" | "dark";
+export type ThemeMode = "light" | "dark" | "system";
 
 export type ColorScheme = {
   bg: string;

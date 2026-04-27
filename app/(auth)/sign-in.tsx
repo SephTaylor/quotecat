@@ -22,6 +22,12 @@ import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier, setUserEmail } from "@/lib/user";
 import { needsSync, syncAllProducts, hasProductCache } from "@/modules/catalog/productService";
+import { ensureProfileExists } from "@/lib/authUtils";
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as Google from "expo-auth-session/providers/google";
+import * as WebBrowser from "expo-web-browser";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const LAST_EMAIL_KEY = "@quotecat/last-email";
 
@@ -36,9 +42,41 @@ export default function SignInScreen() {
   const [resetLoading, setResetLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ loaded: 0, total: 0 });
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   const isMountedRef = useRef(true);
   const spinValue = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+
+  // Google Sign-In setup
+  // Note: Android uses web client ID because expo-auth-session uses web-based OAuth flow
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useIdTokenAuthRequest({
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+
+  // Check Apple Sign-In availability (iOS only)
+  useEffect(() => {
+    if (Platform.OS === "ios") {
+      AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
+    }
+  }, []);
+
+  // Handle Google Sign-In response
+  useEffect(() => {
+    if (googleResponse?.type === "success") {
+      const { id_token } = googleResponse.params;
+      handleGoogleToken(id_token);
+    } else if (googleResponse?.type === "error") {
+      console.error("Google OAuth error:", googleResponse.error);
+      Alert.alert(
+        "Google Sign-In Failed",
+        googleResponse.error?.message || "An error occurred during Google sign-in"
+      );
+    } else if (googleResponse?.type === "dismiss") {
+      console.log("Google OAuth dismissed by user");
+    }
+  }, [googleResponse]);
 
   // Spin animation while syncing
   useEffect(() => {
@@ -89,6 +127,142 @@ export default function SignInScreen() {
       if (savedEmail && isMountedRef.current) setEmail(savedEmail);
     });
   }, []);
+
+  // Shared post-OAuth sign-in flow
+  const handleOAuthPostSignIn = async (user: { id: string; email?: string | null }) => {
+    // Ensure profile exists (creates one if OAuth user is new)
+    await ensureProfileExists(user);
+
+    // Fetch user's tier
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("tier, email")
+      .eq("id", user.id)
+      .single();
+
+    if (profile) {
+      if (profile.tier === "premium") {
+        await activatePremiumTier(profile.email);
+      } else if (profile.tier === "pro") {
+        await activateProTier(profile.email);
+      } else {
+        await setUserEmail(profile.email || user.email || "");
+      }
+    } else {
+      await setUserEmail(user.email || "");
+    }
+
+    // Prompt for product catalog sync if needed
+    const hasCache = await hasProductCache();
+    const shouldSyncProducts = await needsSync();
+
+    if (shouldSyncProducts && !hasCache) {
+      const userConsents = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          "Download Product Catalog",
+          "QuoteCat needs to download the product catalog (~100 MB) to enable material pricing. This is a one-time download.\n\nDownload now?",
+          [
+            { text: "Later", style: "cancel", onPress: () => resolve(false) },
+            { text: "Download", onPress: () => resolve(true) },
+          ]
+        );
+      });
+
+      if (userConsents) {
+        setSyncing(true);
+        setSyncProgress({ loaded: 0, total: 100 });
+        progressAnim.setValue(0);
+
+        const success = await syncAllProducts((loaded, total) => {
+          if (isMountedRef.current) {
+            setSyncProgress({ loaded, total });
+          }
+        });
+
+        await new Promise((r) => setTimeout(r, 300));
+        setSyncing(false);
+
+        if (!success) {
+          Alert.alert("Warning", "Could not download product catalog. Some features may be limited.");
+        }
+      }
+    }
+
+    router.replace("/(main)/(tabs)/dashboard");
+  };
+
+  // Apple Sign-In handler
+  const handleAppleSignIn = async () => {
+    if (loading) return;
+    setLoading(true);
+
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        throw new Error("No identity token received from Apple");
+      }
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        await handleOAuthPostSignIn(data.user);
+      }
+    } catch (error: any) {
+      if (error.code === "ERR_REQUEST_CANCELED") {
+        // User cancelled, don't show error
+      } else {
+        console.error("Apple Sign-In error:", error);
+        Alert.alert("Sign In Failed", error.message || "Please try again");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Google Sign-In token handler
+  const handleGoogleToken = async (idToken: string) => {
+    setLoading(true);
+    console.log("🔵 handleGoogleToken called with token length:", idToken?.length);
+
+    try {
+      console.log("🔵 Calling supabase.auth.signInWithIdToken...");
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: idToken,
+      });
+
+      console.log("🔵 Supabase response - data:", !!data, "error:", error?.message);
+
+      if (error) throw error;
+
+      if (data.user) {
+        console.log("🔵 User authenticated:", data.user.id, data.user.email);
+        await handleOAuthPostSignIn(data.user);
+      } else {
+        console.log("🔵 No user in response data");
+      }
+    } catch (error) {
+      console.error("🔴 Google Sign-In error:", error);
+      Alert.alert("Sign In Failed", error instanceof Error ? error.message : "Please try again");
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  };
 
   const handleSignIn = async () => {
     if (!email.trim() || !password) {
@@ -270,6 +444,39 @@ export default function SignInScreen() {
             <Text style={styles.subtitle}>Sign in with your QuoteCat account</Text>
 
             <View style={styles.form}>
+              {/* Social Login Buttons */}
+              {Platform.OS === "ios" && appleAuthAvailable && (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                  cornerRadius={12}
+                  style={styles.socialButton}
+                  onPress={handleAppleSignIn}
+                />
+              )}
+
+              <Pressable
+                style={[styles.googleButton, loading && styles.buttonDisabled]}
+                onPress={() => {
+                  console.log("🔵 Google button pressed, googleRequest ready:", !!googleRequest);
+                  googlePromptAsync().then(result => {
+                    console.log("🔵 googlePromptAsync result:", JSON.stringify(result, null, 2));
+                  }).catch(err => {
+                    console.error("🔴 googlePromptAsync error:", err);
+                  });
+                }}
+                disabled={loading || !googleRequest}
+              >
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
+              </Pressable>
+
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Email</Text>
                 <TextInput
@@ -414,7 +621,40 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       textAlign: "center",
     },
     form: {
-      gap: theme.spacing(3),
+      gap: theme.spacing(2),
+    },
+    socialButton: {
+      height: 50,
+      width: "100%",
+    },
+    googleButton: {
+      height: 50,
+      backgroundColor: "#fff",
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    googleButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: "#1f1f1f",
+    },
+    divider: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginVertical: theme.spacing(1),
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: theme.colors.border,
+    },
+    dividerText: {
+      marginHorizontal: theme.spacing(2),
+      fontSize: 14,
+      color: theme.colors.muted,
     },
     inputGroup: {
       gap: theme.spacing(1),

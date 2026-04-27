@@ -8,6 +8,7 @@ import React from "react";
 import {
   FlatList,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -158,6 +159,10 @@ export default function InvoicesList() {
           data={filteredInvoices}
           keyExtractor={(inv) => inv.id}
           contentContainerStyle={styles.listContent}
+          windowSize={10}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          removeClippedSubviews={Platform.OS === 'android'}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }

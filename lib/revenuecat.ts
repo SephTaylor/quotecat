@@ -14,7 +14,7 @@ let LOG_LEVEL: any = null;
 
 // API Keys - Get these from RevenueCat dashboard
 const REVENUECAT_IOS_KEY = 'appl_ExkgnPkiEZCaTifCLtvAjbgBoPf';
-const REVENUECAT_ANDROID_KEY = 'test_JMfMXQVdDJPruXJknXvgZTQutmz';
+const REVENUECAT_ANDROID_KEY = 'goog_WMUEXXKDginLWBHcqozxEUEWOqF';
 
 // Entitlement IDs - must match RevenueCat dashboard
 export const ENTITLEMENTS = {

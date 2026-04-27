@@ -1977,10 +1977,12 @@ serve(async (req) => {
       quoteItems: [],
     };
     const userSettings: UserSettings = body.userSettings || {};
-    const mode = body.mode || 'quote';  // Default to quote mode for backwards compatibility
+    // Quote-building mode disabled while product catalog is on hold
+    // All requests redirect to support mode for help/FAQ functionality
+    const mode = body.mode === 'sms' ? 'sms' : 'support';
 
     console.log('[drew-agent] User message:', userMessage.substring(0, 100));
-    console.log('[drew-agent] Mode:', mode);
+    console.log('[drew-agent] Mode:', mode, '(quote mode disabled)');
 
     // ==========================================================================
     // SUPPORT MODE - Handle FAQ and feedback (skips state machine)

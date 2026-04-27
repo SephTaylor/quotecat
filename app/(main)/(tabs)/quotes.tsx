@@ -30,6 +30,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -874,6 +875,10 @@ export default function QuotesList() {
             data={filteredQuotes}
             keyExtractor={(q) => q.id}
             contentContainerStyle={styles.listContent}
+            windowSize={10}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            removeClippedSubviews={Platform.OS === 'android'}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
@@ -911,6 +916,10 @@ export default function QuotesList() {
               item.type === "single" ? item.quote.id : item.quotes[0].id
             }
             contentContainerStyle={styles.listContent}
+            windowSize={10}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            removeClippedSubviews={Platform.OS === 'android'}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }

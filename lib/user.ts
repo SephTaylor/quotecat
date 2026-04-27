@@ -21,9 +21,10 @@ export type UserState = {
 
 export const FREE_LIMITS = {
   quotes: 10,
-  pdfs: 10,        // Per month
-  spreadsheets: 10, // Per month
-  invoices: 10,     // Per month (with QuoteCat branding)
+  pdfs: 10,           // Per month
+  spreadsheets: 10,   // Per month
+  invoices: 10,       // Per month (with QuoteCat branding)
+  pricebookItems: 50, // Total items in pricebook
 } as const;
 
 const USER_STATE_KEY = "@quotecat/user_state";

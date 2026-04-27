@@ -134,21 +134,18 @@ export default function Dashboard() {
       const available = await isSyncAvailable();
       setSyncAvailable(available && (userState.tier === 'pro' || userState.tier === 'premium'));
 
-      // Load quotes with GC break
+      // Load quotes
       const data = await listQuotes();
       setQuotes(data);
-      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Load invoices with GC break (all users can see recent invoices)
+      // Load invoices (all users can see recent invoices)
       const invoiceData = await listInvoices();
       setInvoices(invoiceData);
-      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Load contracts with GC break
+      // Load contracts
       if (premiumAccess) {
         const contractData = await listContracts();
         setContracts(contractData);
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Load to-invoice stats

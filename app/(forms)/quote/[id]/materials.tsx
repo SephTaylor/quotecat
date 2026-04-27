@@ -42,9 +42,9 @@ export default function QuoteMaterials() {
   const [initialSelectionLoaded, setInitialSelectionLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Source toggle state
-  const [activeSource, setActiveSource] = useState<SourceType>("catalog");
-  const [hasPricebookAccess, setHasPricebookAccess] = useState(false);
+  // Source toggle state - pricebook is now default (catalog hidden)
+  const [activeSource, setActiveSource] = useState<SourceType>("pricebook");
+  const [hasPricebookAccess, setHasPricebookAccess] = useState(true); // All users now have pricebook
   const [hasAssembliesAccess, setHasAssembliesAccess] = useState(false);
 
   // Pricebook data
@@ -668,30 +668,13 @@ export default function QuoteMaterials() {
     setRefreshing(false);
   }, [refresh]);
 
-  // Source toggle component
+  // Source toggle component - Catalog tab hidden (xByte on hold)
   const SourceToggle = () => (
     <View style={themedStyles.sourceToggle}>
       <Pressable
         style={[
           themedStyles.sourceTab,
-          activeSource === "catalog" && themedStyles.sourceTabActive,
-        ]}
-        onPress={() => handleSourceChange("catalog")}
-      >
-        <Text
-          style={[
-            themedStyles.sourceTabText,
-            activeSource === "catalog" && themedStyles.sourceTabTextActive,
-          ]}
-        >
-          Catalog
-        </Text>
-      </Pressable>
-      <Pressable
-        style={[
-          themedStyles.sourceTab,
           activeSource === "pricebook" && themedStyles.sourceTabActive,
-          !hasPricebookAccess && themedStyles.sourceTabLocked,
         ]}
         onPress={() => handleSourceChange("pricebook")}
       >
@@ -703,9 +686,6 @@ export default function QuoteMaterials() {
         >
           Pricebook
         </Text>
-        {!hasPricebookAccess && (
-          <Ionicons name="lock-closed" size={12} color={theme.colors.muted} style={{ marginLeft: 4 }} />
-        )}
       </Pressable>
       <Pressable
         style={[
@@ -768,7 +748,8 @@ export default function QuoteMaterials() {
     </ScrollView>
   );
 
-  if (isCurrentSourceLoading && activeSource === "catalog") {
+  // Loading state for pricebook or assemblies
+  if (isCurrentSourceLoading) {
     return (
       <>
         <Stack.Screen
@@ -783,11 +764,6 @@ export default function QuoteMaterials() {
               color: theme.colors.text,
             },
             headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-            headerRight: () => (
-              <Pressable onPress={showStatusInfo} style={{ marginRight: 16, padding: 8 }}>
-                <Text style={{ fontSize: 15, color: theme.colors.text }}>{statusText}</Text>
-              </Pressable>
-            ),
           }}
         />
         <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -800,21 +776,9 @@ export default function QuoteMaterials() {
             onDec={dec}
             onSetQty={setQty}
             recentProductIds={[]}
-            onFilterPress={handleFilterPress}
-            activeFilters={activeFilters}
-            onRemoveFilter={handleRemoveFilter}
-            allProducts={productsWithPrices}
-            selectedSuppliers={selectedSuppliers}
-            selectedCategories={selectedCategories}
-            onSupplierToggle={toggleSupplier}
-            onCategoryToggle={toggleCategory}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={theme.colors.accent}
-              />
-            }
+            allProducts={[]}
+            selectedSuppliers={[]}
+            selectedCategories={[]}
           />
         </View>
       </>
@@ -836,11 +800,6 @@ export default function QuoteMaterials() {
             color: theme.colors.text,
           },
           headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          headerRight: () => (
-            <Pressable onPress={showStatusInfo} style={{ marginRight: 16, padding: 8 }}>
-              <Text style={{ fontSize: 15, color: theme.colors.text }}>{statusText}</Text>
-            </Pressable>
-          ),
         }}
       />
 
@@ -881,23 +840,6 @@ export default function QuoteMaterials() {
           </View>
         )}
 
-        {/* Sync Progress Banner */}
-        {syncing && syncProgress && syncProgress.total > 0 && (
-          <View style={themedStyles.syncProgressBanner}>
-            <Text style={themedStyles.syncProgressText}>
-              Syncing products... {syncProgress.loaded.toLocaleString()} / {syncProgress.total.toLocaleString()}
-            </Text>
-            <View style={themedStyles.syncProgressBarBg}>
-              <View
-                style={[
-                  themedStyles.syncProgressBarFill,
-                  { width: `${Math.round((syncProgress.loaded / syncProgress.total) * 100)}%` },
-                ]}
-              />
-            </View>
-          </View>
-        )}
-
         {/* Source Toggle */}
         <SourceToggle />
 
@@ -913,23 +855,9 @@ export default function QuoteMaterials() {
             onDec={dec}
             onSetQty={setQty}
             recentProductIds={[]}
-            onFilterPress={activeSource === "catalog" ? handleFilterPress : undefined}
-            activeFilters={activeSource === "catalog" ? activeFilters : []}
-            onRemoveFilter={activeSource === "catalog" ? handleRemoveFilter : undefined}
-            allProducts={activeSource === "catalog" ? productsWithPrices : []}
-            selectedSuppliers={activeSource === "catalog" ? selectedSuppliers : []}
-            selectedCategories={activeSource === "catalog" ? selectedCategories : []}
-            onSupplierToggle={activeSource === "catalog" ? toggleSupplier : undefined}
-            onCategoryToggle={activeSource === "catalog" ? toggleCategory : undefined}
-            refreshControl={
-              activeSource === "catalog" ? (
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  tintColor={theme.colors.accent}
-                />
-              ) : undefined
-            }
+            allProducts={[]}
+            selectedSuppliers={[]}
+            selectedCategories={[]}
           />
         )}
       </View>

@@ -453,17 +453,25 @@ export default function Settings() {
             theme={theme}
           >
             <View style={styles.card}>
-              <View style={styles.settingButton}>
-                <Text style={styles.settingButtonText}>Dark Mode</Text>
-                <Switch
-                  value={mode === "dark"}
-                  onValueChange={(value) =>
-                    setThemeMode(value ? "dark" : "light")
-                  }
-                  trackColor={{ false: "#D1D1D6", true: theme.colors.accent }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
+              {[
+                { id: "system" as const, label: "System" },
+                { id: "light" as const, label: "Light" },
+                { id: "dark" as const, label: "Dark" },
+              ].map((option, index, arr) => (
+                <Pressable
+                  key={option.id}
+                  style={[
+                    styles.settingButton,
+                    index === arr.length - 1 && styles.settingButtonLast,
+                  ]}
+                  onPress={() => setThemeMode(option.id)}
+                >
+                  <Text style={styles.settingButtonText}>{option.label}</Text>
+                  {mode === option.id && (
+                    <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+                  )}
+                </Pressable>
+              ))}
             </View>
           </CollapsibleSection>
 
@@ -666,7 +674,7 @@ export default function Settings() {
             </View>
           </CollapsibleSection>
 
-          {/* Pricing Location Section */}
+          {/* Pricing Location Section - Hidden while xByte is on hold
           <CollapsibleSection
             title="Pricing Location"
             isExpanded={expandedSections.pricing}
@@ -694,6 +702,7 @@ export default function Settings() {
               ))}
             </View>
           </CollapsibleSection>
+          */}
 
           {/* Privacy & Data Section */}
           <CollapsibleSection

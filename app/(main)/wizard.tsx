@@ -782,58 +782,24 @@ export default function WizardScreen() {
 
               <Text style={styles.greeting}>Hey, I&apos;m Drew!</Text>
               <Text style={styles.subtitle}>
-                {userTier === 'premium'
-                  ? "Would you like me to help you draft a quote?"
-                  : "How can I help you today?"}
+                I can help you learn how to use QuoteCat, answer questions, or submit feature requests.
               </Text>
 
-              {userTier === 'premium' ? (
-                // Premium users: single start button (full access)
-                <View style={styles.buttonRow}>
-                  <Pressable
-                    style={[styles.button, styles.primaryButton]}
-                    onPress={() => handleStart('quote')}
-                  >
-                    <Text style={styles.primaryButtonText}>Let&apos;s go</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.button, styles.secondaryButton]}
-                    onPress={handleMaybeLater}
-                  >
-                    <Text style={styles.secondaryButtonText}>Maybe later</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                // Free/Pro users: two options (support is free, quotes require Premium)
-                <View style={styles.introOptions}>
-                  <Pressable
-                    style={[styles.button, styles.introOptionButton]}
-                    onPress={() => handleStart('support')}
-                  >
-                    <Ionicons name="chatbubble-ellipses-outline" size={20} color="#f97316" style={styles.introOptionIcon} />
-                    <View>
-                      <Text style={styles.introOptionTitle}>Ask a Question</Text>
-                      <Text style={styles.introOptionSubtitle}>Free for everyone</Text>
-                    </View>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.button, styles.introOptionButton]}
-                    onPress={() => setScreenState('upgrade')}
-                  >
-                    <Ionicons name="construct-outline" size={20} color="#f97316" style={styles.introOptionIcon} />
-                    <View>
-                      <Text style={styles.introOptionTitle}>Build a Quote</Text>
-                      <Text style={styles.introOptionSubtitle}>Premium feature</Text>
-                    </View>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.button, styles.secondaryButton, { marginTop: 8 }]}
-                    onPress={handleMaybeLater}
-                  >
-                    <Text style={styles.secondaryButtonText}>Maybe later</Text>
-                  </Pressable>
-                </View>
-              )}
+              {/* All users: Support mode only (quote building disabled while catalog on hold) */}
+              <View style={styles.buttonRow}>
+                <Pressable
+                  style={[styles.button, styles.primaryButton]}
+                  onPress={() => handleStart('support')}
+                >
+                  <Text style={styles.primaryButtonText}>Ask a Question</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.button, styles.secondaryButton]}
+                  onPress={handleMaybeLater}
+                >
+                  <Text style={styles.secondaryButtonText}>Maybe later</Text>
+                </Pressable>
+              </View>
             </View>
           ) : (
             <KeyboardAvoidingView

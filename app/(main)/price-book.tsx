@@ -11,6 +11,7 @@ import {
   type PricebookItem,
 } from "@/lib/pricebook";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
+import { FREE_LIMITS } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useState, useCallback } from "react";
 import {
@@ -53,7 +54,8 @@ export default function PriceBookManager() {
 
   // Use effectiveTier from TechContext - techs inherit owner's tier
   const { effectiveTier, isTech } = useTechContext();
-  const isPremium = effectiveTier === "pro" || effectiveTier === "premium";
+  const isPaidTier = effectiveTier === "pro" || effectiveTier === "premium";
+  const pricebookLimit = isPaidTier ? Infinity : FREE_LIMITS.pricebookItems;
 
   const [items, setItems] = useState<PricebookItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -155,8 +157,8 @@ export default function PriceBookManager() {
   };
 
   const handleAddItem = () => {
-    if (!isPremium) {
-      // Hide upgrade option for techs - they inherit owner's tier
+    // Check if free user has hit the limit
+    if (!isPaidTier && items.length >= pricebookLimit) {
       const buttons = isTech
         ? [{ text: "OK", style: "cancel" as const }]
         : [
@@ -164,8 +166,8 @@ export default function PriceBookManager() {
             { text: "Upgrade", onPress: () => presentPaywallAndSync() }
           ];
       Alert.alert(
-        "Pro Feature",
-        "Price Book lets you create and manage your own custom products with your pricing.",
+        "Pricebook Limit Reached",
+        `Free accounts can save up to ${FREE_LIMITS.pricebookItems} items. Upgrade to Pro for unlimited items.`,
         buttons
       );
       return;
@@ -384,26 +386,52 @@ export default function PriceBookManager() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
-                Products ({filteredItems.length})
+                {isPaidTier
+                  ? `Products (${filteredItems.length})`
+                  : `Products (${items.length} of ${FREE_LIMITS.pricebookItems})`}
               </Text>
               <Pressable
-                style={styles.createButton}
+                style={[
+                  styles.createButton,
+                  !isPaidTier && items.length >= pricebookLimit && styles.createButtonDisabled,
+                ]}
                 onPress={handleAddItem}
               >
                 <Text style={styles.createButtonText}>+ New</Text>
               </Pressable>
             </View>
 
+            {/* Upgrade prompt when approaching limit */}
+            {!isPaidTier && items.length >= 40 && items.length < pricebookLimit && (
+              <Pressable
+                style={styles.limitWarning}
+                onPress={() => presentPaywallAndSync()}
+              >
+                <Text style={styles.limitWarningText}>
+                  {pricebookLimit - items.length} items remaining. Upgrade for unlimited →
+                </Text>
+              </Pressable>
+            )}
+
             {/* Item List */}
             {filteredItems.length === 0 ? (
-              <View style={styles.emptyStateSimple}>
-                <Text style={styles.emptyTextSimple}>
-                  {searchQuery
-                    ? `No products match "${searchQuery}"`
-                    : isPremium
-                    ? "No products yet. Tap + New to add your first product."
-                    : "Price Book is a Pro feature."}
-                </Text>
+              <View style={styles.emptyState}>
+                {searchQuery ? (
+                  <Text style={styles.emptyTextSimple}>
+                    No products match "{searchQuery}"
+                  </Text>
+                ) : (
+                  <>
+                    <Text style={styles.emptyTitle}>Build Your Pricing Library</Text>
+                    <Text style={styles.emptyDescription}>
+                      Save your commonly used materials with your prices.{"\n"}
+                      Accurate quotes, every time.
+                    </Text>
+                    <Pressable style={styles.emptyButton} onPress={handleAddItem}>
+                      <Text style={styles.emptyButtonText}>+ Add First Item</Text>
+                    </Pressable>
+                  </>
+                )}
               </View>
             ) : (
               <FlatList
@@ -690,9 +718,52 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: "700",
       color: "#000",
     },
+    createButtonDisabled: {
+      opacity: 0.5,
+    },
+    limitWarning: {
+      backgroundColor: theme.colors.accent + "20",
+      borderRadius: theme.radius.md,
+      padding: theme.spacing(1.5),
+      marginBottom: theme.spacing(2),
+    },
+    limitWarningText: {
+      fontSize: 13,
+      color: theme.colors.accent,
+      textAlign: "center",
+      fontWeight: "500",
+    },
+    emptyState: {
+      paddingVertical: theme.spacing(4),
+      alignItems: "center",
+    },
     emptyStateSimple: {
       paddingVertical: theme.spacing(3),
       alignItems: "center",
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      marginBottom: theme.spacing(1),
+    },
+    emptyDescription: {
+      fontSize: 14,
+      color: theme.colors.muted,
+      textAlign: "center",
+      lineHeight: 20,
+      marginBottom: theme.spacing(3),
+    },
+    emptyButton: {
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing(3),
+      paddingVertical: theme.spacing(1.5),
+      borderRadius: theme.radius.lg,
+    },
+    emptyButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#000",
     },
     emptyTextSimple: {
       fontSize: 14,

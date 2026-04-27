@@ -147,21 +147,24 @@ async function handlePurchase(
 
   console.log(`Setting user ${userId} to tier: ${tier} (entitlements: ${entitlementIds.join(", ")})`);
 
-  // Use upsert as safety net in case profile doesn't exist yet
-  const { error } = await supabase
+  // Update existing profile (user must be logged in to purchase)
+  const { data, error } = await supabase
     .from("profiles")
-    .upsert(
-      {
-        id: userId,
-        tier,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
+    .update({
+      tier,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId)
+    .select("id, email, tier");
 
   if (error) {
     console.error("Error updating profile:", error);
     throw error;
+  }
+
+  if (!data || data.length === 0) {
+    console.error(`No profile found for user ${userId}`);
+    throw new Error(`Profile not found: ${userId}`);
   }
 
   console.log(`Successfully updated user ${userId} to tier: ${tier}`);
@@ -176,21 +179,24 @@ async function handleExpiration(
 ) {
   console.log(`Subscription expired for user ${userId}, downgrading to free`);
 
-  // Use upsert as safety net in case profile doesn't exist yet
-  const { error } = await supabase
+  // Update existing profile
+  const { data, error } = await supabase
     .from("profiles")
-    .upsert(
-      {
-        id: userId,
-        tier: "free",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
+    .update({
+      tier: "free",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId)
+    .select("id, email, tier");
 
   if (error) {
     console.error("Error downgrading user:", error);
     throw error;
+  }
+
+  if (!data || data.length === 0) {
+    console.error(`No profile found for user ${userId}`);
+    throw new Error(`Profile not found: ${userId}`);
   }
 
   console.log(`Successfully downgraded user ${userId} to free tier`);

@@ -1,6 +1,7 @@
 // lib/pricebook.ts
-// Price book management for Premium users - USING SQLITE
+// Price book management - USING SQLITE
 // Custom products with user-defined pricing that sync with webapp
+// Free users: 50 items max, Pro/Premium: unlimited
 
 import type { PricebookItem } from "./types";
 import {
@@ -12,6 +13,7 @@ import {
   getPricebookItemCountDB,
   getPricebookCategoriesDB,
 } from "./database";
+import { getUserState, FREE_LIMITS } from "./user";
 
 // Re-export PricebookItem type for convenience
 export type { PricebookItem } from "./types";
@@ -178,4 +180,33 @@ export async function searchPricebookItems(query: string): Promise<PricebookItem
  */
 export function getPricebookItemCount(): number {
   return getPricebookItemCountDB(false);
+}
+
+/**
+ * Check if user can add more pricebook items
+ * Returns { canAdd: boolean, remaining: number, limit: number }
+ */
+export async function canAddPricebookItem(): Promise<{
+  canAdd: boolean;
+  remaining: number;
+  limit: number;
+  currentCount: number;
+}> {
+  const userState = await getUserState();
+  const isPaidTier = userState.tier === "pro" || userState.tier === "premium";
+
+  if (isPaidTier) {
+    return { canAdd: true, remaining: Infinity, limit: Infinity, currentCount: getPricebookItemCount() };
+  }
+
+  const currentCount = getPricebookItemCount();
+  const limit = FREE_LIMITS.pricebookItems;
+  const remaining = Math.max(0, limit - currentCount);
+
+  return {
+    canAdd: currentCount < limit,
+    remaining,
+    limit,
+    currentCount,
+  };
 }
