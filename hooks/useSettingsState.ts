@@ -204,43 +204,59 @@ export function useSettingsState() {
   }, []);
 
   const handleManageAccount = useCallback(async () => {
-    if (!userEmail) {
-      Alert.alert("Error", "Please sign in to manage your account.");
-      return;
-    }
-
     try {
-      const response = await fetch(
-        "https://eouikzjzsartaabvlbee.supabase.co/functions/v1/create-portal-session",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey:
-              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo",
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdWlremp6c2FydGFhYnZsYmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTA0NzEsImV4cCI6MjA3NTY4NjQ3MX0.xa7mZtOfLocL_QX2wrhpywsKbhu2hZ699O3U7KiVJzo",
-          },
-          body: JSON.stringify({ email: userEmail }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.error) {
-        if (data.error === "No subscription found for this account") {
-          Alert.alert(
-            "No Subscription",
-            "No active subscription found for this account."
-          );
-        } else {
-          Alert.alert("Error", data.error);
-        }
+      // User-JWT auth (replaces the old anon-key + email-in-body shape).
+      // Pattern matches `delete-account` later in this file.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        Alert.alert("Error", "Please sign in to manage your account.");
         return;
       }
 
-      if (data.url) {
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-portal-session`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // 404: user has no active subscription. Show friendly alert.
+      if (response.status === 404) {
+        Alert.alert(
+          "No Subscription",
+          "No active subscription found for this account."
+        );
+        return;
+      }
+
+      // Any other non-2xx: surface the server's error message if available.
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        Alert.alert(
+          "Error",
+          errBody.error ||
+            "Could not open account management. Please try again."
+        );
+        return;
+      }
+
+      const data = await response.json();
+      if (data?.url) {
+        // Same `Linking.openURL` for all three providers — server returns the
+        // appropriate URL (Stripe portal session, Apple subscriptions page,
+        // or Play Store subscriptions page).
         Linking.openURL(data.url);
+      } else {
+        Alert.alert(
+          "Error",
+          "Unexpected response from server. Please try again."
+        );
       }
     } catch (error) {
       console.error("Portal session error:", error);
@@ -249,7 +265,7 @@ export function useSettingsState() {
         "Could not open account management. Please try again."
       );
     }
-  }, [userEmail]);
+  }, []);
 
   const handleSignIn = useCallback(() => {
     router.push("/(auth)/sign-in" as any);

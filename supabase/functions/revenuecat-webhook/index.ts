@@ -1,22 +1,51 @@
-// supabase/functions/revenuecat-webhook/index.ts
-// Handles RevenueCat webhook events to sync subscription status with Supabase
+// supabase/functions/revenuecat-webhook/index.new.ts
+//
+// NEW VERSION — sibling file for diff before swap. After the diff is approved,
+// this file replaces `index.ts`.
+//
+// Handles RevenueCat webhook events for App Store and Play Store IAP. Writes
+// to the `subscriptions` table and syncs `profiles.tier` atomically via the
+// `upsert_subscription_event` Postgres function (see migration 025).
+//
+// SANDBOX vs PRODUCTION:
+//   RC sends `event.environment = "SANDBOX" | "PRODUCTION"`. We process BOTH
+//   the same way and write to the same database. Rationale: pre-launch
+//   verification depends on sandbox purchases reaching the database so we can
+//   validate end-to-end. The environment is logged on every event for
+//   visibility. If we ever need to filter sandbox out of production data,
+//   this is the place to add the gate.
+//
+// ENTITLEMENT_DRIFT:
+//   The shared `resolveTier` helper returns the entitlement-based tier
+//   (authoritative after the 2026-04-28 RC dashboard cleanup) plus drift
+//   metadata. This webhook logs `entitlement_drift` if the entitlement and
+//   the product_id disagree, but uses the entitlement value as the tier.
+//
+// IDEMPOTENCY:
+//   Handled inside the RPC. We pass `event.id` and `event.event_timestamp_ms`;
+//   the function skips duplicates and out-of-order events.
+//
+// REFERENCES:
+//   - docs/ENTITLEMENT_AUDIT.md — canonical product/entitlement map
+//   - docs/COMP_CODES.md — comp-code workflow (replaces manual VIP grants)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  resolveTier,
+  mapStoreToSource,
+  type Tier,
+  type SubscriptionSource,
+} from "../_shared/product_tier_map.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-
-// RevenueCat webhook authorization header (set in RevenueCat dashboard)
 const REVENUECAT_WEBHOOK_AUTH = Deno.env.get("REVENUECAT_WEBHOOK_AUTH") || "";
 
-// Map RevenueCat entitlement IDs to tiers
-const ENTITLEMENT_TO_TIER: Record<string, "pro" | "premium"> = {
-  "pro": "pro",
-  "premium": "premium",
-};
+// =============================================================================
+// Event payload type
+// =============================================================================
 
-// RevenueCat event types we care about
 type RevenueCatEventType =
   | "INITIAL_PURCHASE"
   | "RENEWAL"
@@ -25,179 +54,408 @@ type RevenueCatEventType =
   | "UNCANCELLATION"
   | "EXPIRATION"
   | "BILLING_ISSUE"
-  | "SUBSCRIBER_ALIAS";
+  | "SUBSCRIBER_ALIAS"
+  | "NON_RENEWING_PURCHASE";
 
 interface RevenueCatEvent {
+  api_version: string;
   event: {
+    // Identity
+    id: string;                       // unique per event — idempotency key
     type: RevenueCatEventType;
-    app_user_id: string; // This is the Supabase user ID we pass to RevenueCat
+    app_user_id: string;              // Supabase user.id (set via Purchases.logIn)
     original_app_user_id: string;
+    aliases?: string[];
+
+    // Transaction identity
+    transaction_id?: string;
+    original_transaction_id?: string; // stable across renewals — our external_id
+
+    // Product / entitlement
     product_id: string;
     entitlement_ids: string[];
     period_type: "NORMAL" | "TRIAL" | "INTRO";
+
+    // Timing
     purchased_at_ms: number;
     expiration_at_ms: number | null;
+    event_timestamp_ms: number;       // out-of-order key
+
+    // Source
     store: "APP_STORE" | "PLAY_STORE" | "STRIPE" | "PROMOTIONAL";
     environment: "SANDBOX" | "PRODUCTION";
-    is_family_share: boolean;
+
+    is_family_share?: boolean;
     subscriber_attributes?: Record<string, { value: string }>;
   };
-  api_version: string;
 }
 
+// =============================================================================
+// Server
+// =============================================================================
+
 serve(async (req) => {
-  // Verify authorization header
+  // Fail-closed auth check. The RC dashboard webhook config must include
+  // `Authorization: Bearer <REVENUECAT_WEBHOOK_AUTH>` on every delivery.
+  // - Secret not configured server-side → 500 (operator misconfiguration; we
+  //   never want to silently accept unauthenticated events)
+  // - Header missing or doesn't match → 401
+  if (!REVENUECAT_WEBHOOK_AUTH) {
+    console.error("rc_webhook_secret_not_configured");
+    return new Response("Webhook auth not configured", { status: 500 });
+  }
   const authHeader = req.headers.get("Authorization");
-  if (REVENUECAT_WEBHOOK_AUTH && authHeader !== `Bearer ${REVENUECAT_WEBHOOK_AUTH}`) {
-    console.error("Invalid authorization header");
+  if (authHeader !== `Bearer ${REVENUECAT_WEBHOOK_AUTH}`) {
+    console.error("rc_webhook_auth_failed", { provided: !!authHeader });
     return new Response("Unauthorized", { status: 401 });
   }
 
+  let payload: RevenueCatEvent;
   try {
-    const payload: RevenueCatEvent = await req.json();
-    const event = payload.event;
+    payload = (await req.json()) as RevenueCatEvent;
+  } catch (err) {
+    console.error("rc_webhook_bad_json", { error: String(err) });
+    return jsonResponse({ error: "Invalid JSON" }, 400);
+  }
 
-    console.log(`Received RevenueCat event: ${event.type} for user: ${event.app_user_id}`);
-    console.log(`Environment: ${event.environment}, Store: ${event.store}`);
+  // Defensive shape check. Without this, an empty/malformed body crashes
+  // the function at `event.id` with a generic Deno 500. Real RC events
+  // always have these fields; missing them indicates spoofing or test noise.
+  const event = payload?.event;
+  if (!event || typeof event !== "object" || !event.id || !event.type) {
+    console.error("rc_webhook_bad_payload", {
+      has_payload: !!payload,
+      has_event: !!event,
+      has_id: !!event?.id,
+      has_type: !!event?.type,
+    });
+    return jsonResponse({ error: "Invalid payload: missing event fields" }, 400);
+  }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  // Always log every event for traceability. Environment + store visible up front.
+  console.log("rc_webhook_received", {
+    event_id: event.id,
+    type: event.type,
+    app_user_id: event.app_user_id,
+    environment: event.environment,
+    store: event.store,
+    product_id: event.product_id,
+    entitlement_ids: event.entitlement_ids,
+  });
 
-    // Get the Supabase user ID (we set this when calling Purchases.logIn())
-    const userId = event.app_user_id;
+  // Reject anonymous IDs early. Per commit e452a59 ("require account creation
+  // before app access"), every purchase should be tied to a real Supabase user.
+  if (event.app_user_id?.startsWith("$RCAnonymousID:")) {
+    console.error("rc_webhook_anonymous_user", {
+      event_id: event.id,
+      type: event.type,
+      product_id: event.product_id,
+    });
+    return jsonResponse({ error: "Anonymous purchases not supported" }, 400);
+  }
 
-    // Reject anonymous IDs (start with $RCAnonymousID:)
-    // This should never happen since we require login before paywall
-    if (userId.startsWith("$RCAnonymousID:")) {
-      console.error("CRITICAL: Anonymous RevenueCat purchase - payment not linked to user!", {
-        userId,
-        eventType: event.type,
-        productId: event.product_id,
-      });
-      // Return 400 so RevenueCat knows this failed
-      return new Response(
-        JSON.stringify({ error: "Anonymous purchases not supported" }),
-        { headers: { "Content-Type": "application/json" }, status: 400 }
-      );
-    }
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  try {
     switch (event.type) {
       case "INITIAL_PURCHASE":
       case "RENEWAL":
       case "UNCANCELLATION":
-        await handlePurchase(supabase, userId, event.entitlement_ids);
-        break;
-
       case "PRODUCT_CHANGE":
-        // User upgraded or downgraded
-        await handlePurchase(supabase, userId, event.entitlement_ids);
+        await handleActiveEvent(supabase, event, "active");
         break;
 
       case "CANCELLATION":
-        // User cancelled but may still have access until expiration
-        console.log(`User ${userId} cancelled subscription, will expire at ${event.expiration_at_ms}`);
+        // User cancelled but still has access until expiration. Set canceled_at,
+        // keep status='active' so entitlements continue.
+        await handleActiveEvent(supabase, event, "active", true);
         break;
 
       case "EXPIRATION":
-        // Subscription expired - downgrade to free
-        await handleExpiration(supabase, userId);
+        await handleExpirationEvent(supabase, event);
         break;
 
       case "BILLING_ISSUE":
-        // Payment failed - could notify user or downgrade
-        console.log(`Billing issue for user ${userId}`);
+        // Apple/Google grace period. We don't currently differentiate access;
+        // tier persists until EXPIRATION fires. See FOLLOWUPS.md if we ever
+        // need explicit grace-period UX.
+        console.log("rc_webhook_billing_issue", {
+          event_id: event.id,
+          app_user_id: event.app_user_id,
+          expiration_at_ms: event.expiration_at_ms,
+        });
+        break;
+
+      case "SUBSCRIBER_ALIAS":
+        // RC merged two subscriber identities. Out of scope for this PR — we
+        // log so we can see it, but don't reconcile rows.
+        console.log("rc_webhook_subscriber_alias_ignored", {
+          event_id: event.id,
+          app_user_id: event.app_user_id,
+          original_app_user_id: event.original_app_user_id,
+          aliases: event.aliases,
+        });
+        break;
+
+      case "NON_RENEWING_PURCHASE":
+        // We don't sell non-renewing IAP products.
+        console.log("rc_webhook_non_renewing_ignored", {
+          event_id: event.id,
+          product_id: event.product_id,
+        });
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log("rc_webhook_unhandled_type", {
+          event_id: event.id,
+          type: event.type,
+        });
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { "Content-Type": "application/json" },
-      status: 200,
-    });
+    return jsonResponse({ received: true }, 200);
   } catch (err) {
-    console.error("Webhook error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 400 }
-    );
+    // Returning 5xx triggers RC to retry. Log structured for correlation.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("rc_webhook_processing_error", {
+      event_id: event.id,
+      type: event.type,
+      app_user_id: event.app_user_id,
+      error: message,
+    });
+    return jsonResponse({ error: message }, 500);
   }
 });
 
-/**
- * Handle purchase/renewal - update user tier based on entitlements
- */
-async function handlePurchase(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-  entitlementIds: string[]
-) {
-  // Determine the highest tier from entitlements
-  let tier: "free" | "pro" | "premium" = "free";
+// =============================================================================
+// Handlers
+// =============================================================================
 
-  for (const entitlementId of entitlementIds) {
-    const mappedTier = ENTITLEMENT_TO_TIER[entitlementId];
-    if (mappedTier === "premium") {
-      tier = "premium";
-      break; // Premium is highest, no need to check more
-    } else if (mappedTier === "pro" && tier !== "premium") {
-      tier = "pro";
+async function handleActiveEvent(
+  supabase: ReturnType<typeof createClient>,
+  event: RevenueCatEvent["event"],
+  status: "active",
+  isCancellation = false,
+) {
+  if (await isOrphanUser(supabase, event.app_user_id)) {
+    logOrphanEvent(event);
+    return; // ack with 200 (caller); the orphan log is the audit trail
+  }
+
+  const tier = resolveTierWithDriftLogging(event);
+  if (!tier) {
+    throw new Error(
+      `Unresolvable tier for product=${event.product_id}, ` +
+      `entitlements=${event.entitlement_ids.join(",")}`,
+    );
+  }
+
+  if (!event.original_transaction_id) {
+    throw new Error(
+      `Missing original_transaction_id on RC event id=${event.id} type=${event.type}`,
+    );
+  }
+  if (!event.expiration_at_ms) {
+    throw new Error(
+      `Missing expiration_at_ms on RC event id=${event.id} type=${event.type}`,
+    );
+  }
+
+  const source = mapStoreToSource(event.store); // throws on PROMOTIONAL
+
+  const result = await callUpsert(supabase, {
+    p_user_id:             event.app_user_id,
+    p_source:              source,
+    p_tier:                tier,
+    p_status:              status,
+    p_product_id:          event.product_id,
+    p_external_id:         event.original_transaction_id,
+    p_stripe_customer_id:  null,
+    p_started_at:          new Date(event.purchased_at_ms).toISOString(),
+    p_current_period_end:  new Date(event.expiration_at_ms).toISOString(),
+    p_canceled_at:         isCancellation
+                             ? new Date(event.event_timestamp_ms).toISOString()
+                             : null,
+    p_event_id:            event.id,
+    p_event_timestamp_ms:  event.event_timestamp_ms,
+  });
+
+  console.log("rc_webhook_processed", {
+    event_id: event.id,
+    type: event.type,
+    app_user_id: event.app_user_id,
+    action: result.action,
+    subscription_id: result.subscription_id,
+    new_profile_tier: result.profile_tier,
+  });
+}
+
+async function handleExpirationEvent(
+  supabase: ReturnType<typeof createClient>,
+  event: RevenueCatEvent["event"],
+) {
+  if (await isOrphanUser(supabase, event.app_user_id)) {
+    logOrphanEvent(event);
+    return;
+  }
+
+  // EXPIRATION events still come with a tier (the tier the subscription HAD).
+  // We need it because subscriptions.tier is NOT NULL — it's a historical record.
+  const tier = resolveTierWithDriftLogging(event);
+  if (!tier) {
+    throw new Error(
+      `EXPIRATION event with unresolvable tier: product=${event.product_id}`,
+    );
+  }
+  if (!event.original_transaction_id || !event.expiration_at_ms) {
+    throw new Error(
+      `Missing original_transaction_id or expiration_at_ms on EXPIRATION event id=${event.id}`,
+    );
+  }
+
+  const source = mapStoreToSource(event.store);
+
+  const result = await callUpsert(supabase, {
+    p_user_id:             event.app_user_id,
+    p_source:              source,
+    p_tier:                tier,
+    p_status:              "expired",
+    p_product_id:          event.product_id,
+    p_external_id:         event.original_transaction_id,
+    p_stripe_customer_id:  null,
+    p_started_at:          new Date(event.purchased_at_ms).toISOString(),
+    p_current_period_end:  new Date(event.expiration_at_ms).toISOString(),
+    p_canceled_at:         null,
+    p_event_id:            event.id,
+    p_event_timestamp_ms:  event.event_timestamp_ms,
+  });
+
+  console.log("rc_webhook_expiration_processed", {
+    event_id: event.id,
+    app_user_id: event.app_user_id,
+    action: result.action,
+    new_profile_tier: result.profile_tier,
+  });
+}
+
+// =============================================================================
+// Orphan-user grace handling
+// =============================================================================
+//
+// RC retains subscribers indefinitely; our auth.users may delete users (account
+// deletion, dev cleanup, migration churn). Real RC events still arrive for
+// app_user_ids that no longer exist in our database. The OLD webhook silently
+// no-op'd these (UPDATE WHERE id=missing affects 0 rows); the new code's
+// upsert RPC would FK-violate and 500, causing RC to retry forever.
+//
+// Behavior: if the app_user_id has no matching profiles row, we acknowledge
+// with 200 and emit a structured rc_webhook_orphan_user log. Logs are the
+// audit trail — see FOLLOWUPS.md re: alerting on this signal post-launch.
+
+async function isOrphanUser(
+  supabase: ReturnType<typeof createClient>,
+  app_user_id: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", app_user_id)
+    .maybeSingle();
+  if (error) {
+    // Lookup failure is NOT the same as orphan. Surface as processing error
+    // so RC retries. Returning false here would risk processing a row whose
+    // user we can't confirm exists.
+    throw new Error(`profiles lookup failed for ${app_user_id}: ${error.message}`);
+  }
+  return !data;
+}
+
+function logOrphanEvent(event: RevenueCatEvent["event"]): void {
+  console.warn("rc_webhook_orphan_user", {
+    event_id: event.id,
+    app_user_id: event.app_user_id,
+    original_app_user_id: event.original_app_user_id,
+    product_id: event.product_id,
+    type: event.type,
+    store: event.store,
+    environment: event.environment,
+  });
+}
+
+// =============================================================================
+// Tier resolution + drift logging
+// =============================================================================
+
+function resolveTierWithDriftLogging(event: RevenueCatEvent["event"]): Tier | null {
+  const { tier, drift } = resolveTier({
+    entitlement_ids: event.entitlement_ids,
+    product_id: event.product_id,
+  });
+
+  if (drift.hasDrift) {
+    const level = drift.reason === "mismatch" ? "error" : "warn";
+    const msg = {
+      event_id: event.id,
+      product_id: event.product_id,
+      entitlement_ids: event.entitlement_ids,
+      tier_from_entitlement: drift.entitlementTier,
+      tier_from_product: drift.productTier,
+      reason: drift.reason,
+      decision: tier,
+    };
+    if (level === "error") {
+      console.error("entitlement_drift", msg);
+    } else {
+      console.warn("entitlement_drift", msg);
     }
   }
 
-  console.log(`Setting user ${userId} to tier: ${tier} (entitlements: ${entitlementIds.join(", ")})`);
-
-  // Update existing profile (user must be logged in to purchase)
-  const { data, error } = await supabase
-    .from("profiles")
-    .update({
-      tier,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", userId)
-    .select("id, email, tier");
-
-  if (error) {
-    console.error("Error updating profile:", error);
-    throw error;
-  }
-
-  if (!data || data.length === 0) {
-    console.error(`No profile found for user ${userId}`);
-    throw new Error(`Profile not found: ${userId}`);
-  }
-
-  console.log(`Successfully updated user ${userId} to tier: ${tier}`);
+  return tier;
 }
 
-/**
- * Handle subscription expiration - downgrade to free tier
- */
-async function handleExpiration(
+// =============================================================================
+// RPC wrapper
+// =============================================================================
+
+interface UpsertParams {
+  p_user_id:            string;
+  p_source:             SubscriptionSource;
+  p_tier:               Tier;
+  p_status:             "active" | "canceled" | "expired";
+  p_product_id:         string;
+  p_external_id:        string;
+  p_stripe_customer_id: string | null;
+  p_started_at:         string;
+  p_current_period_end: string;
+  p_canceled_at:        string | null;
+  p_event_id:           string;
+  p_event_timestamp_ms: number;
+}
+
+interface UpsertResult {
+  action: "inserted" | "updated" | "skipped_duplicate" | "skipped_out_of_order";
+  subscription_id: string | null;
+  profile_tier: string | null;
+}
+
+async function callUpsert(
   supabase: ReturnType<typeof createClient>,
-  userId: string
-) {
-  console.log(`Subscription expired for user ${userId}, downgrading to free`);
-
-  // Update existing profile
-  const { data, error } = await supabase
-    .from("profiles")
-    .update({
-      tier: "free",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", userId)
-    .select("id, email, tier");
-
+  params: UpsertParams,
+): Promise<UpsertResult> {
+  const { data, error } = await supabase.rpc("upsert_subscription_event", params);
   if (error) {
-    console.error("Error downgrading user:", error);
-    throw error;
+    throw new Error(`upsert_subscription_event failed: ${error.message}`);
   }
+  const row = Array.isArray(data) ? data[0] : data;
+  return row as UpsertResult;
+}
 
-  if (!data || data.length === 0) {
-    console.error(`No profile found for user ${userId}`);
-    throw new Error(`Profile not found: ${userId}`);
-  }
+// =============================================================================
+// Helpers
+// =============================================================================
 
-  console.log(`Successfully downgraded user ${userId} to free tier`);
+function jsonResponse(body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
