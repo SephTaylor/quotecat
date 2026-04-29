@@ -48,10 +48,12 @@ export default function SignUpScreen() {
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   // Google Sign-In setup
-  // Note: You'll need to add your Google OAuth Client IDs here
+  // iOS uses the iOS OAuth client (validates by bundle ID).
+  // Android uses the Android OAuth client (validates by package name + SHA-1).
+  // Web client ID is included for Supabase ID-token verification.
   const [googleRequest, googleResponse, googlePromptAsync] = Google.useIdTokenAuthRequest({
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // Android uses web client for expo-auth-session
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
   });
 
