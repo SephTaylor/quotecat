@@ -20,6 +20,23 @@ import {
 } from "@/lib/database";
 import type { Product, Category } from "./seed";
 
+// =============================================================================
+// CATALOG_SYNC_ENABLED — feature flag for xByte product catalog sync
+// =============================================================================
+// xByte data is on hold (paused at source) for the launch window to save
+// monthly hosting costs while we have no users. With this flag set to false:
+//   - needsSync() always returns false  → no sign-in/sign-up download prompt
+//   - syncAllProducts() no-ops          → no background sync from useProducts
+//   - All catalog-dependent UI (materials picker catalog tab, wizard product
+//     recommendations, assembly product lookups) renders gracefully empty
+//     because those screens already have empty-list guards
+// To re-enable when xByte resumes, flip to true. Original behavior returns:
+//   - First-time users see the "Download Product Catalog (~100 MB)" prompt
+//   - Existing users with stale cache get silent background re-sync
+//   - Materials picker can show the catalog source again (also requires
+//     unhiding the catalog tab in materials.tsx SourceToggle)
+const CATALOG_SYNC_ENABLED = false;
+
 // Construction industry search synonyms
 // Maps common shorthand to canonical forms found in product names
 const CONSTRUCTION_SYNONYMS: Array<{ term: string; canonical: string }> = [
@@ -200,6 +217,8 @@ export async function getLastSyncTime(): Promise<Date | null> {
  * xByte updates weekly on Fridays at 8am, app syncs at 9am.
  */
 export async function needsSync(): Promise<boolean> {
+  if (!CATALOG_SYNC_ENABLED) return false; // xByte on hold — see flag comment at top of file
+
   const hasCache = await hasProductCache();
   if (!hasCache) return true;
 
@@ -218,6 +237,11 @@ export async function needsSync(): Promise<boolean> {
 export async function syncAllProducts(
   onProgress?: (loaded: number, total: number) => void
 ): Promise<boolean> {
+  if (!CATALOG_SYNC_ENABLED) {
+    console.log("[syncAllProducts] Skipped — CATALOG_SYNC_ENABLED is false (xByte on hold)");
+    return false;
+  }
+
   console.log("[syncAllProducts] Starting paginated sync...");
 
   try {
