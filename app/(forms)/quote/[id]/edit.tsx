@@ -1381,9 +1381,9 @@ export default function EditQuote() {
                         <SwipeableLaborEntry
                           key={entry.id}
                           entry={entry}
-                          onDelete={() => handleDeleteLaborEntry(entry.id)}
-                          onEdit={() => handleEditLaborEntry(entry)}
-                          onHoursChange={(hours) => handleLaborEntryHoursChange(entry.id, hours)}
+                          onDelete={handleDeleteLaborEntry}
+                          onEdit={handleEditLaborEntry}
+                          onHoursChange={handleLaborEntryHoursChange}
                           isLastItem={index === laborEntries.length - 1}
                           showRate={canViewLaborRates}
                         />

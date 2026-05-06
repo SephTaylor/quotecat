@@ -8,9 +8,9 @@ import { LaborEntry, computeLaborEntryTotal } from "@/lib/types";
 
 type SwipeableLaborEntryProps = {
   entry: LaborEntry;
-  onDelete: () => void;
-  onEdit: () => void;
-  onHoursChange?: (hours: number) => void;
+  onDelete: (id: string) => void;
+  onEdit: (entry: LaborEntry) => void;
+  onHoursChange?: (id: string, hours: number) => void;
   isLastItem: boolean;
   showRate?: boolean; // Whether to show hourly rate and cost (defaults to true)
 };
@@ -43,7 +43,7 @@ export const SwipeableLaborEntry = React.memo(
       setIsEditingHours(false);
       const parsed = parseFloat(editHoursValue);
       if (!isNaN(parsed) && parsed >= 0 && onHoursChange) {
-        onHoursChange(parsed);
+        onHoursChange(entry.id, parsed);
       }
       // If invalid/empty, just close without changing
     };
@@ -70,13 +70,13 @@ export const SwipeableLaborEntry = React.memo(
       const handleDelete = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         swipeableRef.current?.close();
-        onDelete();
+        onDelete(entry.id);
       };
 
       const handleEdit = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         swipeableRef.current?.close();
-        onEdit();
+        onEdit(entry);
       };
 
       return (
@@ -102,7 +102,7 @@ export const SwipeableLaborEntry = React.memo(
       >
         <Pressable
           style={[styles.itemRow, isLastItem && { borderBottomWidth: 0 }]}
-          onPress={onEdit}
+          onPress={() => onEdit(entry)}
         >
           <View style={styles.itemInfo}>
             <View style={styles.nameRow}>
