@@ -61,7 +61,13 @@ export default function FormScreen({
       <View style={styles.root}>
         {content}
         {bottomBar ? (
-          <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, theme.spacing(2)) }, bottomBarStyle]}>{bottomBar}</View>
+          // Add breathing room ABOVE the system gesture/nav inset rather than
+          // letting the inset be the padding itself. On phones with no system
+          // bottom area this still gives spacing(1); on phones with a gesture
+          // bar or 3-button nav, the bar sits insets.bottom + spacing(1)
+          // above the screen edge so buttons never feel clipped on bigger
+          // phones.
+          <View style={[styles.bottomBar, { paddingBottom: insets.bottom + theme.spacing(1) }, bottomBarStyle]}>{bottomBar}</View>
         ) : null}
       </View>
     </KeyboardAvoidingView>

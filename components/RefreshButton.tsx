@@ -13,7 +13,7 @@ import {
   Text,
   StyleSheet,
 } from "react-native";
-import { refreshProducts } from "@/modules/catalog/productService";
+import { refreshProducts, isCatalogSyncEnabled } from "@/modules/catalog/productService";
 import { syncQuotes } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
 import { syncClients } from "@/lib/clientsSync";
@@ -74,13 +74,18 @@ export function RefreshButton({ side = "right" }: RefreshButtonProps) {
     progressAnim.setValue(0);
 
     try {
-      // Refresh products with progress callback
-      setProgress({ loaded: 0, total: 100, phase: "Syncing products..." });
-      const productSuccess = await refreshProducts((loaded, total) => {
-        setProgress({ loaded, total, phase: "Syncing products..." });
-      });
+      // Catalog sync (gated — currently off while xByte is on hold).
+      // When CATALOG_SYNC_ENABLED is flipped back to true, this restores
+      // the original "Syncing products..." progress + error UX automatically.
+      let productSuccess = true;
+      if (isCatalogSyncEnabled()) {
+        setProgress({ loaded: 0, total: 100, phase: "Syncing products..." });
+        productSuccess = await refreshProducts((loaded, total) => {
+          setProgress({ loaded, total, phase: "Syncing products..." });
+        });
+      }
 
-      // Sync user data only for Pro/Premium users
+      // Sync user cloud data (quotes, invoices, clients) for Pro/Premium users
       const authenticated = await isAuthenticated();
       const userState = await getUserState();
       const hasSyncAccess =
@@ -105,6 +110,9 @@ export function RefreshButton({ side = "right" }: RefreshButtonProps) {
       // Brief pause to show "Done!"
       await new Promise((r) => setTimeout(r, 500));
 
+      // Only flag a partial refresh when catalog sync was actually attempted
+      // and failed. With xByte on hold (catalog gated off), productSuccess
+      // is forced to true above, so this never fires spuriously.
       if (!productSuccess) {
         Alert.alert("Partial Refresh", "Could not refresh products. Check your connection.");
       }

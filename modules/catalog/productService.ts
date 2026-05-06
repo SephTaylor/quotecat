@@ -37,6 +37,16 @@ import type { Product, Category } from "./seed";
 //     unhiding the catalog tab in materials.tsx SourceToggle)
 const CATALOG_SYNC_ENABLED = false;
 
+/**
+ * Public read-accessor for the catalog sync flag.
+ * Use this in UI code that needs to conditionally show/skip catalog-sync UX
+ * (e.g., the dashboard RefreshButton hides its "Syncing products..." phase
+ * and skips the "Could not refresh products" alert when sync is disabled).
+ */
+export function isCatalogSyncEnabled(): boolean {
+  return CATALOG_SYNC_ENABLED;
+}
+
 // Construction industry search synonyms
 // Maps common shorthand to canonical forms found in product names
 const CONSTRUCTION_SYNONYMS: Array<{ term: string; canonical: string }> = [

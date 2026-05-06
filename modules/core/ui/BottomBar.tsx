@@ -15,7 +15,13 @@ function BottomBar({ children }: BottomBarProps) {
     <View
       style={[
         styles.bar,
-        { paddingBottom: Math.max(insets.bottom, theme.spacing(1)) },
+        // Add breathing room ABOVE the system gesture/nav inset rather than
+        // letting the inset be the padding itself. On phones with no system
+        // bottom area (insets.bottom === 0) this still gives spacing(1); on
+        // phones with a gesture bar or 3-button nav, the bar sits
+        // insets.bottom + spacing(1) above the screen edge so buttons never
+        // feel clipped against the gesture indicator on bigger phones.
+        { paddingBottom: insets.bottom + theme.spacing(1) },
       ]}
     >
       <View style={styles.row}>{children}</View>
