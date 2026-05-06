@@ -192,6 +192,16 @@ GoTrue must have some preflight or post-step that fails for legacy rows, indepen
 
 Worth investigating once we have time: Supabase support ticket with the `error_id` from a future failure should clarify what GoTrue's choking on.
 
+### Smoother Google Sign-In: migrate from expo-auth-session to native SDK
+
+Today, after sign-out → tap "Sign in with Google" → user goes through the full account picker every time (because `expo-auth-session` opens a fresh in-app browser session with no memory of prior Google login). Once signed in, session persists across app launches; this only affects the sign-out → sign-back-in path.
+
+Pros use **`@react-native-google-signin/google-signin`** (native SDK, not web-based OAuth) which integrates with the OS-level Google account manager. Repeat sign-ins become "Continue as `<email>`" with one tap; `signInSilently()` is also available for truly background sign-in restore.
+
+**Migration cost:** ~half-day work — add config plugin, install native dependency, drop in `google-services.json` / `GoogleService-Info.plist`, swap `expo-auth-session/providers/google` calls for native SDK calls in `sign-in.tsx` and `sign-up.tsx`, fresh native build cycle. Apple Sign-In path stays the same.
+
+**Priority:** Polish, not blocking. Real users sign in once and stay signed in. Worth doing once the launch dust settles.
+
 ### Apple grace period (`in_grace_period` status)
 
 Apple gives users a 16-day grace period when an IAP renewal fails. Currently the new `subscription_status` enum is `active | canceled | expired` only. RC reports a separate `BILLING_ISSUE` event during grace period.
