@@ -860,7 +860,7 @@ curl -X POST "https://eouikzjzsartaabvlbee.supabase.co/functions/v1/sync-xbyte" 
 
 **`ingest-prices`** - Manual price ingestion endpoint
 
-**INGEST_API_KEY:** `a183195164bc49b1235db174638ecf37d8e560669ce0bbe08baab1aa6dd698d1`
+**INGEST_API_KEY:** stored in Supabase Edge Function secrets (`INGEST_API_KEY`). Never paste the value into this file or anywhere else in the repo. Rotate via `openssl rand -hex 32` + Supabase dashboard if exposed.
 
 ### xByte API Format
 
