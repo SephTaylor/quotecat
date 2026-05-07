@@ -208,6 +208,22 @@ Apple gives users a 16-day grace period when an IAP renewal fails. Currently the
 
 If users start losing access prematurely or keeping access too long during failed renewals, add an `in_grace_period` enum value and handle the `BILLING_ISSUE` event explicitly. `ALTER TYPE … ADD VALUE` is cheap.
 
+### Reconcile Supabase migration tracking table
+
+The `supabase_migrations.schema_migrations` table on remote is empty/sparse — most or all of the ~28 migrations in `supabase/migrations/` are applied to the live database but were never recorded in the tracking table (likely because they were applied via the SQL editor instead of `supabase db push`).
+
+Symptom: `npx supabase db push` tries to re-apply every migration, hits "relation already exists" errors, and aborts. Discovered 2026-05-07 while pushing `026_lockdown_products_rls.sql` (which we ended up applying via SQL editor instead).
+
+**Fix when there's time:** for each migration version in the directory, run `npx supabase migration repair --status applied <version>`. After all are marked applied, `db push` will work cleanly for future migrations.
+
+Not blocking — SQL editor is fine for one-offs in the meantime. Worth doing before any sizeable schema change so the tooling is ergonomic again.
+
+### Service role key rotation
+
+The `SUPABASE_SERVICE_ROLE_KEY` value was pasted into a Claude Code chat transcript on 2026-05-07 (when reading the cleanup-deleted cron config). The key is also already in the cron's HTTP request config and presumably in shell profile / build env. Not a meaningful new exposure given how widely it's already deployed, but worth scheduling a rotation alongside the other credential rotation work.
+
+When rotating: update `SUPABASE_SERVICE_ROLE_KEY` in Supabase Edge Function secrets, then update the `Authorization: Bearer ...` header on the cleanup-deleted cron job's `net.http_post` SQL definition with the new value.
+
 ---
 
 ## Done
