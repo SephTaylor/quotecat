@@ -16,6 +16,17 @@ Deno.serve(async (req) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  // Require service role key in Authorization header. This endpoint is destructive
+  // (hard-deletes rows) and must only be callable by the daily Supabase cron and
+  // by ops-with-the-key, never by an end user with the public anon key.
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || authHeader !== `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     // Create admin client (bypasses RLS)
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);

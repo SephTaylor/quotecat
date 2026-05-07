@@ -37,6 +37,7 @@ const USE_STATE_MACHINE = true;
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 // =============================================================================
@@ -1953,23 +1954,53 @@ serve(async (req) => {
   try {
     if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not configured');
     if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not configured');
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase not configured');
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase not configured');
+
+    // Require a valid user JWT and Premium tier. Auth was previously optional
+    // here, which left this endpoint open to anyone with the public anon key.
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers }
+      );
+    }
+
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session' }),
+        { status: 401, headers }
+      );
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const body: RequestBody = await req.json();
 
-    // Extract user ID from auth header (for pricebook lookup)
-    let userId: string | undefined;
-    const authHeader = req.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '');
-      // Use Supabase to verify and get user from token
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      if (!authError && user) {
-        userId = user.id;
-        console.log('[drew-agent] Authenticated user:', userId);
-      }
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('tier')
+      .eq('id', user.id)
+      .single();
+    if (profileError || !profile) {
+      return new Response(
+        JSON.stringify({ error: 'Profile not found' }),
+        { status: 403, headers }
+      );
     }
+    if (profile.tier !== 'premium') {
+      return new Response(
+        JSON.stringify({ error: 'Premium subscription required' }),
+        { status: 403, headers }
+      );
+    }
+
+    const userId = user.id;
+    console.log('[drew-agent] Authenticated user:', userId);
+
+    const body: RequestBody = await req.json();
 
     const userMessage = body.userMessage || '';
     const state: ConversationState = body.state || {

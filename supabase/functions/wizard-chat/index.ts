@@ -7,6 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 // =============================================================================
@@ -1210,9 +1211,50 @@ serve(async (req) => {
 
   try {
     if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not configured');
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase credentials not configured');
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Supabase credentials not configured');
+
+    // Require a valid user JWT and Premium tier to invoke this function.
+    // Without this gate the public anon key alone authorizes the call,
+    // letting any caller burn Anthropic tokens.
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers }
+      );
+    }
+
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session' }),
+        { status: 401, headers }
+      );
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('tier')
+      .eq('id', user.id)
+      .single();
+    if (profileError || !profile) {
+      return new Response(
+        JSON.stringify({ error: 'Profile not found' }),
+        { status: 403, headers }
+      );
+    }
+    if (profile.tier !== 'premium') {
+      return new Response(
+        JSON.stringify({ error: 'Premium subscription required' }),
+        { status: 403, headers }
+      );
+    }
+
     const body: RequestBody = await req.json();
 
     const state = body.state || createInitialState();
@@ -1240,11 +1282,7 @@ serve(async (req) => {
     console.error('[wizard-chat] Error:', error);
     console.error('[wizard-chat] Stack:', error.stack);
     return new Response(
-      JSON.stringify({
-        error: error.message,
-        stack: error.stack,
-        name: error.name
-      }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers }
     );
   }
