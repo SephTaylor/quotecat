@@ -2,6 +2,7 @@
 // Centralized error handling utilities
 
 import { Alert } from "react-native";
+import * as Sentry from "@sentry/react-native";
 
 /**
  * Standard error types for the app
@@ -82,8 +83,9 @@ export function logError(error: Error | AppError, context?: string): void {
     if (error instanceof AppError && error.originalError) {
       console.error("Original error:", error.originalError);
     }
+    return;
   }
-  // TODO: Send to error tracking service (Sentry, etc.) in production
+  Sentry.captureException(error, { extra: { context } });
 }
 
 /**

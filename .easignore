@@ -1,0 +1,9 @@
+# EAS Build ignore file
+# Excludes files from the source upload to EAS, even if they're tracked in git.
+# Note: Metro tree-shakes unreferenced files at runtime, so anything not
+# imported wouldn't ship in the JS bundle anyway. This list is about reducing
+# upload size and Metro scan surface, not runtime bundle composition.
+
+# Legacy code we keep around for reference but never want shipping
+_old/
+_old/**

@@ -1,4 +1,20 @@
 // app/_layout.tsx
+import * as Sentry from "@sentry/react-native";
+import * as Application from "expo-application";
+
+// Init must run BEFORE any other imports execute below so it captures
+// import-time errors. Crash reporting is silently disabled in dev to keep
+// dev-mode noise out of the production Sentry project.
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  enabled: !__DEV__,
+  environment: __DEV__ ? "development" : "production",
+  release: `${Application.applicationId}@${Application.nativeApplicationVersion}+${Application.nativeBuildVersion}`,
+  // 0.5 (50%) is intentionally generous for the first month while traffic
+  // is low. Dial back to 0.1 once daily volume picks up. Tracked in FOLLOWUPS.
+  tracesSampleRate: 0.5,
+});
+
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -62,7 +78,7 @@ const styles = StyleSheet.create({
   },
 });
 
-export default function RootLayout() {
+function RootLayout() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Starting up...");
   const [showSyncConsent, setShowSyncConsent] = useState(false);
@@ -182,3 +198,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);

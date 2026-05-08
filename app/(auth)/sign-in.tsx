@@ -457,20 +457,22 @@ export default function SignInScreen() {
                 />
               )}
 
-              <Pressable
-                style={[styles.googleButton, loading && styles.buttonDisabled]}
-                onPress={() => {
-                  console.log("🔵 Google button pressed, googleRequest ready:", !!googleRequest);
-                  googlePromptAsync().then(result => {
-                    console.log("🔵 googlePromptAsync result:", JSON.stringify(result, null, 2));
-                  }).catch(err => {
-                    console.error("🔴 googlePromptAsync error:", err);
-                  });
-                }}
-                disabled={loading || !googleRequest}
-              >
-                <Text style={styles.googleButtonText}>Continue with Google</Text>
-              </Pressable>
+              {Platform.OS !== "android" && (
+                <Pressable
+                  style={[styles.googleButton, loading && styles.buttonDisabled]}
+                  onPress={() => {
+                    console.log("🔵 Google button pressed, googleRequest ready:", !!googleRequest);
+                    googlePromptAsync().then(result => {
+                      console.log("🔵 googlePromptAsync result:", JSON.stringify(result, null, 2));
+                    }).catch(err => {
+                      console.error("🔴 googlePromptAsync error:", err);
+                    });
+                  }}
+                  disabled={loading || !googleRequest}
+                >
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </Pressable>
+              )}
 
               {/* Divider */}
               <View style={styles.divider}>

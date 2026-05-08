@@ -3,6 +3,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import * as Sentry from "@sentry/react-native";
 
 interface Props {
   children: ReactNode;
@@ -43,7 +44,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
     this.setState({ errorInfo });
 
-    // TODO: Send to error tracking service (Sentry, etc.) in production
+    if (!__DEV__) {
+      Sentry.captureException(error, {
+        contexts: { react: { componentStack: errorInfo.componentStack } },
+      });
+    }
   }
 
   handleRetry = (): void => {

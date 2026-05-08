@@ -31,7 +31,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#F97316"
         }
-      ]
+      ],
+      "@sentry/react-native/expo"
     ],
     "splash": {
       "image": "./assets/images/qc-splash-tsnt-2048-text.png",

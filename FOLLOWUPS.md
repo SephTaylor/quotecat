@@ -8,6 +8,23 @@ Update this file when work is completed (move to "Done" section) or when new fol
 
 ## Open
 
+### 🔴 Sentry source maps upload — HIGH PRIORITY, within first week post-launch
+
+**Priority:** Within first week post-launch. Not gating tonight's build.
+
+**Discovered:** 2026-05-07 while wiring Sentry for launch.
+
+**What's missing:** Sentry crash reporting is now wired (commit pending), but source maps aren't being uploaded during EAS builds. Every crash that lands in Sentry will reference minified JavaScript code instead of original source. Triaging real production bugs becomes 10× harder until this is fixed.
+
+**Fix:**
+1. Generate a Sentry auth token at https://sentry.io/settings/account/api/auth-tokens/ with `project:releases` and `org:read` scopes
+2. Add to EAS prod environment: `SENTRY_AUTH_TOKEN=<value>` (visibility: Sensitive, NOT Plain text)
+3. Look up the org slug and project slug in Sentry dashboard URLs
+4. Update `app.json` plugin config from bare `"@sentry/react-native/expo"` to `["@sentry/react-native/expo", { "url": "https://sentry.io/", "organization": "<org-slug>", "project": "<project-slug>" }]`
+5. Build new versions on iOS + Android — source maps upload automatically during the build
+
+Estimated time: ~15 minutes of work, then one build cycle for the upload to take effect.
+
 ### 🔴 Portal Stripe webhook handler is broken for marketing-site subscriptions
 
 **Priority:** Pre-HGTV / before any real marketing-site Stripe traffic. NOT blocking IAP launch.
