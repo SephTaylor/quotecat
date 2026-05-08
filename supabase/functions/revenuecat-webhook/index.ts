@@ -91,6 +91,35 @@ interface RevenueCatEvent {
 }
 
 // =============================================================================
+// Identity resolution
+// =============================================================================
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * When `event.app_user_id` is anonymous, RC includes the merged real identity
+ * in `original_app_user_id` and/or the `aliases[]` array. Find the first
+ * candidate that looks like a real Supabase user UUID and return it; otherwise
+ * return null and the caller acks-and-drops the event.
+ */
+function resolveAliasedUserId(event: RevenueCatEvent["event"]): string | null {
+  const candidates = [
+    event.original_app_user_id,
+    ...(event.aliases || []),
+  ];
+  for (const candidate of candidates) {
+    if (
+      candidate &&
+      !candidate.startsWith("$RCAnonymousID:") &&
+      UUID_REGEX.test(candidate)
+    ) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+// =============================================================================
 // Server
 // =============================================================================
 
@@ -143,15 +172,36 @@ serve(async (req) => {
     entitlement_ids: event.entitlement_ids,
   });
 
-  // Reject anonymous IDs early. Per commit e452a59 ("require account creation
-  // before app access"), every purchase should be tied to a real Supabase user.
+  // If RC fires an event under an anonymous ID, fall back to original_app_user_id
+  // and aliases to find the real Supabase user. This happens when a purchase
+  // completes before RC has been logged in to the real account — the receipt
+  // gets attributed to the anonymous user, and even after logIn aliases the two,
+  // some events continue firing under the anonymous ID. RC includes the merged
+  // identities on the event payload for exactly this case.
+  //
+  // Previous behavior was to reject anonymous events with 400, which dropped
+  // every event for the affected user on the floor. profiles.tier never updated.
   if (event.app_user_id?.startsWith("$RCAnonymousID:")) {
-    console.error("rc_webhook_anonymous_user", {
-      event_id: event.id,
-      type: event.type,
-      product_id: event.product_id,
-    });
-    return jsonResponse({ error: "Anonymous purchases not supported" }, 400);
+    const resolved = resolveAliasedUserId(event);
+    if (resolved) {
+      console.log("rc_webhook_resolved_from_alias", {
+        event_id: event.id,
+        anonymous_id: event.app_user_id,
+        resolved_user_id: resolved,
+      });
+      event.app_user_id = resolved;
+    } else {
+      // No real user in aliases. RC retrying won't help — there's no identity
+      // to attribute this event to. Log and 200 so RC stops retrying.
+      console.error("rc_webhook_unresolvable_anonymous_user", {
+        event_id: event.id,
+        type: event.type,
+        product_id: event.product_id,
+        original_app_user_id: event.original_app_user_id,
+        aliases: event.aliases,
+      });
+      return jsonResponse({ received: true, note: "anonymous-only event" }, 200);
+    }
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -187,9 +237,13 @@ serve(async (req) => {
         break;
 
       case "SUBSCRIBER_ALIAS":
-        // RC merged two subscriber identities. Out of scope for this PR — we
-        // log so we can see it, but don't reconcile rows.
-        console.log("rc_webhook_subscriber_alias_ignored", {
+        // RC merged two subscriber identities (typically anonymous → real after
+        // logIn). We don't need to reconcile any rows because purchase events
+        // for anonymous IDs are already routed to the real user via
+        // resolveAliasedUserId before we write to the subscriptions table — so
+        // there's nothing tied to the anonymous side to migrate. Logged for
+        // traceability.
+        console.log("rc_webhook_subscriber_alias_received", {
           event_id: event.id,
           app_user_id: event.app_user_id,
           original_app_user_id: event.original_app_user_id,

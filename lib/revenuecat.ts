@@ -42,12 +42,19 @@ async function ensureInitialized(): Promise<boolean> {
     }
 
     const apiKey = Platform.OS === 'ios' ? REVENUECAT_IOS_KEY : REVENUECAT_ANDROID_KEY;
-    await PurchasesModule.configure({ apiKey });
 
-    // Link to current user if logged in
+    // Pass appUserID up front so RC never creates an anonymous user. Without
+    // this, configure() creates an anonymous identity, then logIn() aliases it
+    // to the real user — but RC's webhook can still fire purchase events under
+    // the anonymous ID, which dropped tier updates on the floor before the
+    // server-side alias-resolution fix landed.
     const userId = await getCurrentUserId();
     if (userId) {
-      await PurchasesModule.logIn(userId);
+      await PurchasesModule.configure({ apiKey, appUserID: userId });
+    } else {
+      // Anonymous fallback — only if we somehow open the paywall without a
+      // signed-in user. The signed-out flow shouldn't reach this code path.
+      await PurchasesModule.configure({ apiKey });
     }
 
     isInitialized = true;
