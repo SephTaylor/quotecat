@@ -1,0 +1,18 @@
+# Per-function settings persisted across deploys.
+#
+# Edge functions default to verify_jwt = true, which makes Supabase's edge
+# layer reject any request whose Authorization header is not a valid Supabase
+# JWT BEFORE the function code runs. That's wrong for webhooks called by
+# third parties using their own auth schemes (custom shared secrets,
+# Stripe-Signature, etc.) — they 401 in front of our auth check and we never
+# see them.
+#
+# Functions listed below opt out of the edge JWT gate and rely on
+# auth checks within their own code (e.g. REVENUECAT_WEBHOOK_AUTH bearer
+# secret, Stripe signature verification).
+
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false

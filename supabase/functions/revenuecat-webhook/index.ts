@@ -55,6 +55,7 @@ type RevenueCatEventType =
   | "EXPIRATION"
   | "BILLING_ISSUE"
   | "SUBSCRIBER_ALIAS"
+  | "TRANSFER"
   | "NON_RENEWING_PURCHASE";
 
 interface RevenueCatEvent {
@@ -87,6 +88,12 @@ interface RevenueCatEvent {
 
     is_family_share?: boolean;
     subscriber_attributes?: Record<string, { value: string }>;
+
+    // TRANSFER-specific. RC sends these when reattributing a subscription
+    // across subscriber identities (e.g. anonymous-to-real after logIn,
+    // or device migration / sign-out re-login flows).
+    transferred_from?: string[];
+    transferred_to?: string[];
   };
 }
 
@@ -234,6 +241,10 @@ serve(async (req) => {
           app_user_id: event.app_user_id,
           expiration_at_ms: event.expiration_at_ms,
         });
+        break;
+
+      case "TRANSFER":
+        await handleTransferEvent(supabase, event);
         break;
 
       case "SUBSCRIBER_ALIAS":
@@ -388,6 +399,102 @@ async function handleExpirationEvent(
     app_user_id: event.app_user_id,
     action: result.action,
     new_profile_tier: result.profile_tier,
+  });
+}
+
+// =============================================================================
+// TRANSFER event handler
+// =============================================================================
+//
+// RC fires TRANSFER when a subscription gets reattributed across subscriber
+// identities — typically after an anonymous-to-real merge via logIn, or when
+// the same Apple receipt is observed under a different RC subscriber (e.g.
+// device migration, sign-out + sign-back-in, iCloud account quirks).
+//
+// We don't want subscriptions drifting onto anonymous IDs. So on TRANSFER:
+//   1. Scan transferred_from + transferred_to + aliases for any real Supabase
+//      user UUID (skipping $RCAnonymousID:* values).
+//   2. If we find one and it exists in profiles, claim any subscription rows
+//      currently keyed to any of the event's identity values for that user.
+//   3. Recompute profiles.tier via the same dual-write path so a stale tier
+//      gets fixed if a CANCELLATION/EXPIRATION had previously rolled it back.
+//
+// Returns 200 to RC either way — TRANSFER events should never block, only
+// reconcile. Missing real user or orphan profile → structured log + 200.
+async function handleTransferEvent(
+  supabase: ReturnType<typeof createClient>,
+  event: RevenueCatEvent["event"],
+) {
+  const allIds = [
+    ...(event.transferred_from || []),
+    ...(event.transferred_to || []),
+    ...(event.aliases || []),
+    event.app_user_id,
+    event.original_app_user_id,
+  ].filter(Boolean) as string[];
+
+  const realUser = allIds.find(
+    (id) => id && !id.startsWith("$RCAnonymousID:") && UUID_REGEX.test(id),
+  );
+
+  if (!realUser) {
+    console.error("rc_webhook_transfer_no_real_user", {
+      event_id: event.id,
+      transferred_from: event.transferred_from,
+      transferred_to: event.transferred_to,
+      aliases: event.aliases,
+    });
+    return; // ack with 200; nothing to reconcile
+  }
+
+  if (await isOrphanUser(supabase, realUser)) {
+    console.error("rc_webhook_transfer_orphan_user", {
+      event_id: event.id,
+      real_user_id: realUser,
+    });
+    return;
+  }
+
+  // Reclaim any subscription rows currently attributed to any identity in
+  // this event. If there are none, the next purchase/renewal event will
+  // create them under the right user via the existing anonymous-resolution
+  // path.
+  const { error: updateError, count } = await supabase
+    .from("subscriptions")
+    .update({ user_id: realUser })
+    .in("user_id", allIds);
+
+  if (updateError) {
+    console.error("rc_webhook_transfer_update_failed", {
+      event_id: event.id,
+      real_user_id: realUser,
+      error: updateError.message,
+    });
+    throw updateError;
+  }
+
+  // Recompute profiles.tier from current active subscriptions for the real
+  // user. We mirror what the RPC does in the dual-write path.
+  const { data: subs } = await supabase
+    .from("subscriptions")
+    .select("tier")
+    .eq("user_id", realUser)
+    .eq("status", "active");
+
+  let newTier: "free" | "pro" | "premium" = "free";
+  if (subs?.some((s) => s.tier === "premium")) newTier = "premium";
+  else if (subs?.some((s) => s.tier === "pro")) newTier = "pro";
+
+  await supabase
+    .from("profiles")
+    .update({ tier: newTier, updated_at: new Date().toISOString() })
+    .eq("id", realUser);
+
+  console.log("rc_webhook_transfer_processed", {
+    event_id: event.id,
+    real_user_id: realUser,
+    rows_reattributed: count ?? 0,
+    new_profile_tier: newTier,
   });
 }
 
