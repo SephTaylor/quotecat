@@ -456,21 +456,31 @@ async function handleTransferEvent(
   }
 
   // Reclaim any subscription rows currently attributed to any identity in
-  // this event. If there are none, the next purchase/renewal event will
-  // create them under the right user via the existing anonymous-resolution
-  // path.
-  const { error: updateError, count } = await supabase
-    .from("subscriptions")
-    .update({ user_id: realUser })
-    .in("user_id", allIds);
+  // this event. subscriptions.user_id is UUID-typed, so we can only pass
+  // real-user UUIDs into the IN clause — feeding $RCAnonymousID:* strings
+  // to Postgres triggers "invalid input syntax for type uuid" and crashes
+  // the function. If there are no matching rows, the next purchase/renewal
+  // event will create them under the right user via the existing
+  // anonymous-resolution path.
+  const uuidIds = allIds.filter(
+    (id) => !id.startsWith("$RCAnonymousID:") && UUID_REGEX.test(id),
+  );
+  let rowsReattributed = 0;
+  if (uuidIds.length > 0) {
+    const { error: updateError, count } = await supabase
+      .from("subscriptions")
+      .update({ user_id: realUser })
+      .in("user_id", uuidIds);
 
-  if (updateError) {
-    console.error("rc_webhook_transfer_update_failed", {
-      event_id: event.id,
-      real_user_id: realUser,
-      error: updateError.message,
-    });
-    throw updateError;
+    if (updateError) {
+      console.error("rc_webhook_transfer_update_failed", {
+        event_id: event.id,
+        real_user_id: realUser,
+        error: updateError.message,
+      });
+      throw updateError;
+    }
+    rowsReattributed = count ?? 0;
   }
 
   // Recompute profiles.tier from current active subscriptions for the real
@@ -493,7 +503,7 @@ async function handleTransferEvent(
   console.log("rc_webhook_transfer_processed", {
     event_id: event.id,
     real_user_id: realUser,
-    rows_reattributed: count ?? 0,
+    rows_reattributed: rowsReattributed,
     new_profile_tier: newTier,
   });
 }
