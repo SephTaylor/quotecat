@@ -410,12 +410,17 @@ export default function SignUpScreen() {
                 </Pressable>
               )}
 
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
+              {/* Divider — only shown when a social button sits above it. On
+                  Android both Apple (iOS-only) and Google (disabled pending
+                  native SDK migration) are hidden, so we'd otherwise have an
+                  orphan "or" floating above the email form. */}
+              {Platform.OS !== "android" && (
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+              )}
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Email</Text>
