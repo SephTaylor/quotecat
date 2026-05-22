@@ -977,7 +977,9 @@ Cloud Sync downloads 10 quotes
 
 ## 💡 Future Feature Ideas
 
-Features to consider for future releases (not blockers for launch):
+Features to consider for future releases (not blockers for launch).
+
+**Note (2026-05-22 strategic clarification):** Two items in this list — **Pricing Foundation Setup** and **AI Business Performance Coach** — are now considered **near-term planned**, not "future ideas." They're the visible demos of QuoteCat's actual moat (the financial-intelligence layer per the Vision section). Tagged inline below with `🎯 NEAR-TERM`.
 
 ### ⚡ Performance
 
@@ -994,7 +996,7 @@ Features to consider for future releases (not blockers for launch):
 - **Quick Custom Items (Free Tier)** - ✅ SHIPPED (Build #141, Feb 8, 2026) - Users can add custom line items directly on quote edit screen. Tap "+ Add custom item", type name and price, tap off to save. Items stored locally with autocomplete for reuse. Amber tinted background distinguishes custom items from catalog items.
 - **Materials Margin Indicator (Pro+)** - ✅ SHIPPED (Mar 2, 2026) - Shows materials margin alongside markup on quotes. User sets target in Business Settings, indicator shows green/yellow/red based on whether margin meets goal. Formula: margin% = markup% / (100 + markup%) × 100. Internal only - not shown on PDFs or client-facing exports. Key differentiator: competitors are just forms, QuoteCat helps send the *right* quote.
 - **Supplier Price Trend Alerts** - Use weekly X-Byte pricing data to alert contractors when supplier prices change significantly. "Your markup is still 20%, but Home Depot raised lumber prices 8% this week - your actual margin dropped from 16.7% to 12.3%." Could show on quote edit screen when using catalog items with price changes, or as a dashboard notification. Ties margin indicator to real-world pricing trends. Premium feature. (Discussed Mar 2, 2026)
-- **Pricing Foundation Setup (App + Portal)** - Guided setup that calculates their real numbers once, then applies everywhere. **Overhead Calculator:** Vehicle, tools, insurance, software, callbacks → annual overhead. **Labor Rate Calculator:** Desired salary + benefits + overhead + profit margin → real hourly rate. **Target Margin:** Set once, shown on every quote. Data syncs between app and portal. Could be onboarding flow for Pro users or accessible anytime in settings. "Before your first quote, let's make sure you're charging enough." This is the bridge between the Pricing Guide education and the quoting workflow. (Discussed Feb 26, 2026)
+- **🎯 NEAR-TERM — Pricing Foundation Setup (App + Portal)** - Guided setup that calculates their real numbers once, then applies everywhere. **Overhead Calculator:** Vehicle, tools, insurance, software, callbacks → annual overhead. **Labor Rate Calculator:** Desired salary + benefits + overhead + profit margin → real hourly rate. **Target Margin:** Set once, shown on every quote. Data syncs between app and portal. Could be onboarding flow for Pro users or accessible anytime in settings. "Before your first quote, let's make sure you're charging enough." This is the bridge between the Pricing Guide education and the quoting workflow. (Discussed Feb 26, 2026)
 - **Time & Materials Quoting** - Support T&M estimates alongside flat-rate quotes. Display hourly rate, estimated hours range, "not to exceed" cap, materials at actual + markup. Different workflow: estimate → approve → work + track time → invoice from actuals. Would need basic time tracking during job, then generate invoice from recorded hours. Good for uncertain scope, old construction, diagnostic work. Pro/Premium feature. (Discussed Feb 26, 2026)
 
 ### Internationalization
@@ -1025,7 +1027,7 @@ Features to consider for future releases (not blockers for launch):
 - **Referral Program** - Automated referral tracking. Client shares link, new customer signs up, original client gets credit/reward. Track referral sources. Jobber charges $29/mo. (Discussed Jan 17, 2026)
 
 ### Analytics (Premium)
-- **AI Business Performance Coach** - AI-powered analysis of business performance with actionable insights. **Scoring:** Overall score (0-100) plus category scores for Profitability, Cash Flow, Pricing, Win Rate, Efficiency. **Data sources:** Quotes, invoices, overhead settings, margins, payment timing, win rates. **Tone:** Supportive first ("Your win rate is 68% - solid for your industry"), then constructive ("Bumping markup 5% could add $X/year"), then actionable ("3 invoices 30+ days overdue - send reminders?"). Like having a business coach built in. Huge differentiator - competitors are forms, QuoteCat helps them succeed. Uses Claude for personalized analysis. Premium feature. (Discussed Mar 2, 2026)
+- **🎯 NEAR-TERM — AI Business Performance Coach** - AI-powered analysis of business performance with actionable insights. **Scoring:** Overall score (0-100) plus category scores for Profitability, Cash Flow, Pricing, Win Rate, Efficiency. **Data sources:** Quotes, invoices, overhead settings, margins, payment timing, win rates. **Tone:** Supportive first ("Your win rate is 68% - solid for your industry"), then constructive ("Bumping markup 5% could add $X/year"), then actionable ("3 invoices 30+ days overdue - send reminders?"). Like having a business coach built in. Huge differentiator - competitors are forms, QuoteCat helps them succeed. Uses Claude for personalized analysis. Premium feature. (Discussed Mar 2, 2026)
 - **Win Rate Dashboard** - Show win rate % on dashboard (approved vs declined quotes). **Smart tier group handling:** tier groups count as 1 opportunity regardless of how many options - if any option is approved = 1 win, if all declined = 1 loss. Standalone quotes count normally. Could show all-time and rolling 30/90-day windows. Simple but valuable insight. (Discussed Mar 11, 2026)
 
 ### Drew AI (Premium)
@@ -1044,16 +1046,23 @@ Features to consider for future releases (not blockers for launch):
 
 ## 🎬 Vision
 
-QuoteCat aims to be the **fastest, simplest construction quoting app** for contractors and builders:
+**Launch market:** Trades / contractors. That's who the product was built for, who pays today, and who the marketing speaks to.
 
+**Underlying thesis (clarified 2026-05-22):** QuoteCat's real differentiator isn't the speed of quoting or the comprehensiveness of supplier data — it's the **financial intelligence layer**. Margin awareness, true overhead-loaded labor rates, "are you actually making money on this?" feedback. Almost every competitor stops at "we generated a quote for you"; QuoteCat tells the user whether the quote is profitable and helps them fix it when it isn't.
+
+That thesis is industry-agnostic. Any business that sells time + expertise (lawyers, consultants, agencies, accountants, contractors) needs the same answer. This is why the planned Industry Mode + Spanish i18n work (see FOLLOWUPS) opens real expansion vectors without changing what the product fundamentally does.
+
+**For the trades launch market specifically:**
 - **Speed:** Create professional quotes in minutes, not hours
-- **Accuracy:** Real-time supplier pricing (Lowe's, HD, Menards)
 - **Offline-first:** Works without internet
 - **Mobile-optimized:** Built for on-site use
 - **Fair pricing:** No Apple tax, founder pricing rewards early believers
 - **Pro-focused:** Premium tier for serious contractors doing high volume
 
-**Long-term:** Build a sustainable, profitable business helping contractors run better businesses.
+**De-emphasized (was previously highlighted; see FOLLOWUPS for rationale):**
+- Real-time supplier pricing via xByte — strategically deferred. Useful but not the moat. Manual price entry + custom pricebook is sufficient for most contractors. May revisit if trades scale demands automated catalog sync.
+
+**Long-term:** Build a sustainable, profitable business helping any service provider — trades-first today, others soon — know their numbers and run better businesses.
 
 ---
 

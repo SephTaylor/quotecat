@@ -8,6 +8,26 @@ Update this file when work is completed (move to "Done" section) or when new fol
 
 ## Open
 
+### 🟡 Strategically deferred: xByte supplier-pricing catalog sync
+
+**Status:** Indefinitely deferred as of 2026-05-22. Not "TBD next quarter" — a deliberate strategic choice to not invest more here.
+
+**Why deferred:**
+The xByte integration was a "data comprehensiveness" play — the bet was that real Lowe's / Home Depot / Menards pricing would be a moat. Reality: it's a 4th-level convenience feature, not a reason people pay $29-79/month. The actual moat (clarified during the launch-prep work) is the **financial intelligence layer** — overhead-loaded labor rates, target margin enforcement, "are you actually making money on this?" feedback. That moat works without automated supplier sync. Manual price entry + custom pricebook is enough for most contractors.
+
+**What stays usable:**
+- The xByte feature flag (`CATALOG_SYNC_ENABLED = false` in `modules/catalog/productService.ts`) remains as the kill switch
+- The edge functions (`sync-xbyte`, `ingest-prices`) and the `INGEST_API_KEY` auth pattern remain in place — minor maintenance only
+- The catalog table + product schema stay (used by manual pricebook entries today)
+- Re-enabling later is still possible if trades scale demands automated sync
+
+**When to revisit:**
+- If we hit ~500 paying trades users who collectively express that manual price entry is their #1 pain point
+- Or if a partnership/aggregator deal makes the cost meaningfully lower
+- Or if a competitor differentiates on real-time pricing and starts taking trades market share specifically because of it
+
+Until any of those happen, this stays off. Effort previously earmarked for xByte goes to financial-intelligence features (Pricing Foundation Setup, AI Business Performance Coach) instead.
+
 ### 🟢 Planned: Industry Mode (Trades vs Services) + Spanish i18n — combined feature
 
 **Status:** Validated by real-world signal (2026-05-22). Committed to build. Sequencing: after xByte catalog re-enablement so the materials tab gating ships in the same pass. **Spanish i18n is part of this work**, not a separate effort — the string-sweep is identical, and doing them together avoids a second sweep later.
@@ -15,7 +35,9 @@ Update this file when work is completed (move to "Done" section) or when new fol
 **Why:**
 The app's data model is already industry-agnostic (quotes, line items, tier pricing, assemblies, clients, invoicing, e-sign, portal). What makes it "feel like" a construction app is surface-level — terminology, default seed catalog, and a handful of trades-specific tabs. A real signal landed when Joseph's lawyer expressed interest in using QuoteCat for legal-services estimates; he'd already conceptualized using assemblies as a "menu of standard service packages." The data model fits other markets cleanly; only the labels and visible surface need to shift.
 
-Professional services (legal, consulting, agencies, accountants) is also a less-crowded market than trades — potentially higher LTV per customer, fewer entrenched competitors.
+The deeper rationale (see CLAUDE.md Vision section, updated 2026-05-22): the product's actual moat is the **financial intelligence layer** — margin awareness, overhead-loaded labor rates, "are you actually making money on this?" feedback. That's industry-agnostic by design. Any service business that sells time + expertise needs the same answer. Trades was the launch market because that's where the founder had domain expertise, not because the underlying value prop is trades-specific.
+
+Professional services (legal, consulting, agencies, accountants) is also a less-crowded market than trades — potentially higher LTV per customer, fewer entrenched competitors. Industry mode is the engineering work; the financial intelligence the customer actually pays for is already there.
 
 **Scope (one feature, three layers):**
 
