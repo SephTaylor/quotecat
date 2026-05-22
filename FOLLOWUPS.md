@@ -8,6 +8,60 @@ Update this file when work is completed (move to "Done" section) or when new fol
 
 ## Open
 
+### 🟢 Planned: Industry Mode (Trades vs Services / Business)
+
+**Status:** Validated by real-world signal (2026-05-22). Committed to build. Sequencing: after xByte catalog re-enablement so the materials tab gating ships in the same pass.
+
+**Why:**
+The app's data model is already industry-agnostic (quotes, line items, tier pricing, assemblies, clients, invoicing, e-sign, portal). What makes it "feel like" a construction app is surface-level — terminology, default seed catalog, and a handful of trades-specific tabs. A real signal landed when Joseph's lawyer expressed interest in using QuoteCat for legal-services estimates; he'd already conceptualized using assemblies as a "menu of standard service packages." The data model fits other markets cleanly; only the labels and visible surface need to shift.
+
+Professional services (legal, consulting, agencies, accountants) is also a less-crowded market than trades — potentially higher LTV per customer, fewer entrenched competitors.
+
+**Scope (one feature, two layers):**
+
+1. **Terminology layer.** A central `lib/terminology.ts` module exporting an industry-keyed label map. Replace hardcoded strings throughout the app with `LABEL.x` references. Example mappings:
+   - `LABEL.job` — trades: "Job" / services: "Engagement" or "Matter"
+   - `LABEL.labor` — trades: "Labor" / services: "Billable Hours"
+   - `LABEL.assembly` — trades: "Assembly" / services: "Service Package"
+   - `LABEL.workers` — trades: "Workers" / services: "Associates" or "Team"
+   - `LABEL.materials` — trades: "Materials" / services: hidden (see layer 2)
+
+2. **Feature visibility layer.** Same `profiles.industry` setting drives both terminology and conditional rendering. Services users don't see trades-only tabs at all:
+   - **Trades-only (hidden for Services):** Materials catalog tab (xByte), tradecraft content / Drew when re-enabled (built on construction knowledge), job-site address fields, supplier preferences (Home Depot / Lowes / Menards), worker-license fields.
+   - **Universal (always shown, optionally relabeled):** quote creation, tier pricing, assemblies / service packages, clients, invoicing, e-sign, portal, cloud sync, PDF export.
+
+3. **Industry-specific seed data.** When a new user picks an industry at onboarding, seed their pricebook + sample assemblies with that vertical's defaults (trades: construction categories; services: consultation / document prep / representation / travel / etc.). Existing users default to trades; setting can be changed in Settings.
+
+**DB change:** add `profiles.industry` enum (`trades | services | other`).
+
+**App change:** one onboarding question — "What kind of business?" — three buttons. Persists immediately. All downstream UI reads from the setting.
+
+**Marketing copy:** intentionally NOT in scope for v1. Site stays trades-positioned. Re-position only after Services customers actually accumulate (target ~20 paying Services users before any positioning shift). One product, two surfaces — same pattern other vertical SaaS uses.
+
+**Validation step before code (1-week experiment):**
+Let Joseph's lawyer use the app as-is for a real client engagement. Capture concrete friction:
+- Which labels did he have to mentally translate?
+- Which seed categories did he wish were different?
+- Did anything in the flow break for non-construction work?
+- Did the PDF export look professional for legal use, or scream "construction"?
+
+Use that friction list to ground the v1 terminology choices instead of guessing what lawyers want.
+
+**Estimated effort:**
+- Terminology infrastructure: 2-3 hours
+- String sweep across the app: 4-6 hours (grep-and-replace, tedious but mechanical)
+- Industry-specific seed data: 1-2 hours per vertical
+- Feature-visibility gating + tab conditionals: 2-3 hours
+- Onboarding question: 30 minutes
+- DB migration + profiles column: 30 minutes
+- Testing on real device for both modes: a couple of hours
+- **Total: ~1.5 weeks of focused work**
+
+**Sequencing constraint:** ship this in the same release as xByte catalog re-enablement (currently behind `CATALOG_SYNC_ENABLED = false`). Reason: the materials tab hiding logic is the most prominent feature-visibility delta, and it doesn't really matter until the materials feature is actually on. Doing both at once means one release, one validation pass.
+
+**Bigger strategic question to revisit later:**
+If Services becomes a meaningful segment (>20% of paying users, or higher LTV/CAC than trades), decide whether to split QuoteCat into two product lines or keep unified. Premature now; defer that decision until there's data.
+
 ### 🔴 Sentry source maps upload — HIGH PRIORITY, within first week post-launch
 
 **Priority:** Within first week post-launch. Not gating tonight's build.
