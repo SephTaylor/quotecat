@@ -20,7 +20,7 @@ import type { Contract, InvoiceStatus } from "@/lib/types";
 import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { canAccessAssemblies, canAccessInvoices, canExportInvoice } from "@/lib/features";
-import { getUserState, incrementInvoiceCount } from "@/lib/user";
+import { getUserState, consumeUsage } from "@/lib/user";
 import { getCompanyLogo } from "@/lib/logo";
 import { isSyncAvailable } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
@@ -191,12 +191,14 @@ export function useInvoiceList() {
           logoBase64,
         };
 
-        await generateAndShareInvoicePDF(invoice, pdfOptions);
-
-        // Increment counter for free users after successful export
-        if (exportCheck.hasBranding) {
-          await incrementInvoiceCount();
+        // Atomic quota claim (server-enforced for signed-in free users).
+        const usage = await consumeUsage("invoice");
+        if (!usage.allowed) {
+          Alert.alert("Limit Reached", usage.reason || "Invoice export limit reached for this month.");
+          return;
         }
+
+        await generateAndShareInvoicePDF(invoice, pdfOptions);
       };
 
       // Show confirmation for free users with remaining count

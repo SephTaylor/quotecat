@@ -26,7 +26,7 @@ import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView,
 import { getLastSyncTime, isSyncAvailable, syncQuotes } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
 import { syncClients } from "@/lib/clientsSync";
-import { getUserState, incrementPdfCount } from "@/lib/user";
+import { getUserState, consumeUsage } from "@/lib/user";
 import { canExportPDF } from "@/lib/features";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { hasSyncCompletedSince, onSyncComplete } from "@/lib/syncState";
@@ -579,6 +579,13 @@ export default function Dashboard() {
       }
 
       const doExport = async () => {
+        // Atomic quota claim (server-enforced for signed-in users).
+        const usage = await consumeUsage("pdf");
+        if (!usage.allowed) {
+          Alert.alert("Limit Reached", usage.reason || "PDF export limit reached for this month.");
+          return;
+        }
+
         const prefs = await loadPreferences();
 
         let logo = null;
@@ -595,11 +602,6 @@ export default function Dashboard() {
           companyDetails: prefs.company,
           logoBase64: rawBase64,
         });
-
-        // Increment counter for free users (counts as 1 export for all tiers)
-        if (userState.tier === "free") {
-          await incrementPdfCount();
-        }
       };
 
       // Show confirmation for free users

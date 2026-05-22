@@ -9,7 +9,7 @@ import { calculateQuoteTotal } from "@/lib/calculations";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateAndSharePDF } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
-import { getUserState, incrementPdfCount } from "@/lib/user";
+import { getUserState, consumeUsage } from "@/lib/user";
 import { getCachedLogo } from "@/lib/logo";
 import { canExportPDF } from "@/lib/features";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
@@ -85,6 +85,13 @@ export const SwipeableQuoteItem = React.memo(
         try {
           setIsExporting(true);
 
+          // Atomic quota claim (server-enforced for signed-in free users).
+          const usage = await consumeUsage("pdf");
+          if (!usage.allowed) {
+            Alert.alert("Limit Reached", usage.reason || "PDF export limit reached for this month.");
+            return;
+          }
+
           // Load preferences and logo
           const prefs = await loadPreferences();
 
@@ -102,11 +109,6 @@ export const SwipeableQuoteItem = React.memo(
             companyDetails: prefs.company,
             logoBase64: rawBase64,
           });
-
-          // Increment counter for free users
-          if (userState.tier === "free") {
-            await incrementPdfCount();
-          }
         } catch (error) {
           Alert.alert(
             "Export Failed",

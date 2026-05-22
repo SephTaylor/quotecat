@@ -26,7 +26,7 @@ import { calculateQuoteTotals, calculateQuoteProfitability, getMarginColor, getM
 import type { OverheadSettings } from "@/lib/preferences";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTechContext } from "@/contexts/TechContext";
-import { getUserState, incrementPdfCount, incrementSpreadsheetCount } from "@/lib/user";
+import { getUserState, consumeUsage } from "@/lib/user";
 import { canExportPDF, canExportSpreadsheet, getQuotaRemaining } from "@/lib/features";
 import type { UserState } from "@/lib/user";
 import { generateAndSharePDF, generateAndShareMultiTierPDF } from "@/lib/pdf";
@@ -143,6 +143,17 @@ export default function QuoteReviewScreen() {
       try {
         setIsExporting(true);
 
+        // Atomic quota claim — server-enforced for signed-in users, local
+        // fallback for anonymous. Pro/Premium short-circuit immediately.
+        const usage = await consumeUsage("pdf");
+        if (!usage.allowed) {
+          Alert.alert("Limit Reached", usage.reason || "PDF export limit reached for this month.");
+          return;
+        }
+        if (userState.tier === "free") {
+          setUserState(await getUserState());
+        }
+
         // Generate PDF with or without branding based on tier
         // Strip data URL prefix if present - PDF template adds it back
         const rawBase64 = logo?.base64?.replace(/^data:image\/\w+;base64,/, '');
@@ -151,13 +162,6 @@ export default function QuoteReviewScreen() {
           companyDetails: companyDetails ?? undefined,
           logoBase64: rawBase64
         });
-
-        // Increment counter for free users
-        if (userState.tier === "free") {
-          await incrementPdfCount();
-          const updatedState = await getUserState();
-          setUserState(updatedState);
-        }
 
       } catch (error) {
         Alert.alert("Error", "Failed to generate PDF. Please try again.");
@@ -172,6 +176,16 @@ export default function QuoteReviewScreen() {
       try {
         setIsExporting(true);
 
+        // Atomic quota claim before generation (counts as 1 export for all tiers).
+        const usage = await consumeUsage("pdf");
+        if (!usage.allowed) {
+          Alert.alert("Limit Reached", usage.reason || "PDF export limit reached for this month.");
+          return;
+        }
+        if (userState.tier === "free") {
+          setUserState(await getUserState());
+        }
+
         // Get all linked quotes including this one
         const linkedQuotes = await getLinkedQuotes(quote.id);
 
@@ -181,13 +195,6 @@ export default function QuoteReviewScreen() {
           companyDetails: companyDetails ?? undefined,
           logoBase64: rawBase64
         });
-
-        // Increment counter for free users (counts as 1 export for all tiers)
-        if (userState.tier === "free") {
-          await incrementPdfCount();
-          const updatedState = await getUserState();
-          setUserState(updatedState);
-        }
 
       } catch (error) {
         Alert.alert("Error", "Failed to generate PDF. Please try again.");
@@ -323,16 +330,18 @@ export default function QuoteReviewScreen() {
       try {
         setIsExportingSpreadsheet(true);
 
+        // Atomic quota claim before generation.
+        const usage = await consumeUsage("csv");
+        if (!usage.allowed) {
+          Alert.alert("Limit Reached", usage.reason || "Spreadsheet export limit reached for this month.");
+          return;
+        }
+        if (userState.tier === "free") {
+          setUserState(await getUserState());
+        }
+
         // Generate CSV spreadsheet
         await generateAndShareSpreadsheet(quote);
-
-        // Increment counter for free users
-        if (userState.tier === "free") {
-          await incrementSpreadsheetCount();
-          // Update local state to reflect new count
-          const updatedState = await getUserState();
-          setUserState(updatedState);
-        }
 
       } catch (error) {
         Alert.alert("Error", "Failed to generate spreadsheet. Please try again.");

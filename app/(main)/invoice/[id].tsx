@@ -41,7 +41,7 @@ import { generateAndShareInvoicePDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences, type OverheadSettings } from "@/lib/preferences";
 import { getUserState } from "@/lib/user";
 import { canAccessAssemblies, canExportInvoice } from "@/lib/features";
-import { incrementInvoiceCount } from "@/lib/user";
+import { consumeUsage } from "@/lib/user";
 import { getCompanyLogo } from "@/lib/logo";
 import { FormScreen } from "@/modules/core/ui";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
@@ -224,12 +224,14 @@ export default function InvoiceDetailScreen() {
           paymentMethods: prefs.paymentMethods,
         };
 
-        await generateAndShareInvoicePDF(invoice, pdfOptions);
-
-        // Increment counter for free users after successful export
-        if (!isPro) {
-          await incrementInvoiceCount();
+        // Atomic quota claim (server-enforced for signed-in free users).
+        const usage = await consumeUsage("invoice");
+        if (!usage.allowed) {
+          Alert.alert("Limit Reached", usage.reason || "Invoice export limit reached for this month.");
+          return;
         }
+
+        await generateAndShareInvoicePDF(invoice, pdfOptions);
       };
 
       // Show confirmation for free users with remaining count

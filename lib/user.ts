@@ -172,6 +172,112 @@ export async function incrementInvoiceCount(): Promise<void> {
   });
 }
 
+// ============================================================================
+// Server-side usage enforcement (migration 028)
+// ============================================================================
+// Free-tier limits used to be enforced entirely in AsyncStorage, which let
+// users reset their counters by clearing app data — direct revenue leak.
+// consumeUsage() now routes signed-in users through the `consume_usage`
+// Postgres RPC, which is atomic and authoritative. Anonymous (not-signed-in)
+// app users still fall back to the local check, since they have no server
+// identity. Pro / Premium users short-circuit to allowed without an RPC call.
+
+export type UsageKind = "pdf" | "csv" | "invoice";
+
+export interface UsageResult {
+  allowed: boolean;
+  reason: string | null; // human-friendly message when allowed=false
+  used: number;
+  limit: number; // -1 = unlimited
+}
+
+const KIND_LABEL: Record<UsageKind, string> = {
+  pdf: "PDF exports",
+  csv: "spreadsheet exports",
+  invoice: "invoice exports",
+};
+
+function reasonText(kind: UsageKind, used: number, limit: number): string {
+  return `You've used all ${limit} free ${KIND_LABEL[kind]} this month. Resets on the 1st.`;
+}
+
+/**
+ * Check and consume a single usage slot atomically. Returns whether the
+ * caller is allowed to perform the action. If allowed, the counter has
+ * already been incremented (server-side for signed-in users, locally for
+ * anonymous). Do NOT call increment* afterwards.
+ */
+export async function consumeUsage(kind: UsageKind): Promise<UsageResult> {
+  // Pro / Premium: short-circuit. No need to hit the server; tier is mirrored
+  // locally and they always pass.
+  const state = await getUserState();
+  if (state.tier === "pro" || state.tier === "premium") {
+    return { allowed: true, reason: null, used: 0, limit: -1 };
+  }
+
+  // Lazy-import to avoid pulling supabase + authUtils into modules that
+  // don't otherwise need them. Also keeps unit-test surface small.
+  const { supabase } = await import("./supabase");
+  const { getCurrentUserId } = await import("./authUtils");
+
+  const userId = await getCurrentUserId();
+  if (userId) {
+    try {
+      const { data, error } = await supabase.rpc("consume_usage", { p_kind: kind });
+      if (!error && data && typeof data === "object") {
+        const result = data as { allowed: boolean; used: number; limit: number; reason: string | null };
+        // Mirror server count to local state so UI displays stay in sync
+        // without a second round trip.
+        await syncLocalCounter(kind, result.used);
+        return {
+          allowed: result.allowed,
+          reason: result.allowed ? null : reasonText(kind, result.used, result.limit),
+          used: result.used,
+          limit: result.limit,
+        };
+      }
+      console.warn("consume_usage RPC failed, falling back to local:", error);
+    } catch (e) {
+      console.warn("consume_usage RPC threw, falling back to local:", e);
+    }
+    // Fall through to local on RPC error — better to slightly over-grant a
+    // free slot than to block a paying-imminent user with a network blip.
+  }
+
+  // Anonymous user or RPC failure: enforce + increment locally.
+  return consumeLocally(kind, state);
+}
+
+async function consumeLocally(kind: UsageKind, state: UserState): Promise<UsageResult> {
+  const limit = kind === "pdf" ? FREE_LIMITS.pdfs
+              : kind === "csv" ? FREE_LIMITS.spreadsheets
+              : FREE_LIMITS.invoices;
+  const used = kind === "pdf" ? state.pdfsUsed
+             : kind === "csv" ? state.spreadsheetsUsed
+             : (state.invoicesUsed || 0);
+
+  if (used >= limit) {
+    return {
+      allowed: false,
+      reason: reasonText(kind, used, limit),
+      used,
+      limit,
+    };
+  }
+
+  await syncLocalCounter(kind, used + 1);
+  return { allowed: true, reason: null, used: used + 1, limit };
+}
+
+async function syncLocalCounter(kind: UsageKind, newCount: number): Promise<void> {
+  const state = await getUserState();
+  const update: Partial<UserState> = {};
+  if (kind === "pdf") update.pdfsUsed = newCount;
+  else if (kind === "csv") update.spreadsheetsUsed = newCount;
+  else if (kind === "invoice") update.invoicesUsed = newCount;
+  await saveUserState({ ...state, ...update });
+}
+
 /**
  * Activate Pro tier (called after successful login from website)
  */
