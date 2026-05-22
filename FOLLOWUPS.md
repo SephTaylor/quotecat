@@ -8,35 +8,45 @@ Update this file when work is completed (move to "Done" section) or when new fol
 
 ## Open
 
-### 🟢 Planned: Industry Mode (Trades vs Services / Business)
+### 🟢 Planned: Industry Mode (Trades vs Services) + Spanish i18n — combined feature
 
-**Status:** Validated by real-world signal (2026-05-22). Committed to build. Sequencing: after xByte catalog re-enablement so the materials tab gating ships in the same pass.
+**Status:** Validated by real-world signal (2026-05-22). Committed to build. Sequencing: after xByte catalog re-enablement so the materials tab gating ships in the same pass. **Spanish i18n is part of this work**, not a separate effort — the string-sweep is identical, and doing them together avoids a second sweep later.
 
 **Why:**
 The app's data model is already industry-agnostic (quotes, line items, tier pricing, assemblies, clients, invoicing, e-sign, portal). What makes it "feel like" a construction app is surface-level — terminology, default seed catalog, and a handful of trades-specific tabs. A real signal landed when Joseph's lawyer expressed interest in using QuoteCat for legal-services estimates; he'd already conceptualized using assemblies as a "menu of standard service packages." The data model fits other markets cleanly; only the labels and visible surface need to shift.
 
 Professional services (legal, consulting, agencies, accountants) is also a less-crowded market than trades — potentially higher LTV per customer, fewer entrenched competitors.
 
-**Scope (one feature, two layers):**
+**Scope (one feature, three layers):**
 
-1. **Terminology layer.** A central `lib/terminology.ts` module exporting an industry-keyed label map. Replace hardcoded strings throughout the app with `LABEL.x` references. Example mappings:
-   - `LABEL.job` — trades: "Job" / services: "Engagement" or "Matter"
-   - `LABEL.labor` — trades: "Labor" / services: "Billable Hours"
-   - `LABEL.assembly` — trades: "Assembly" / services: "Service Package"
-   - `LABEL.workers` — trades: "Workers" / services: "Associates" or "Team"
-   - `LABEL.materials` — trades: "Materials" / services: hidden (see layer 2)
+1. **Terminology + i18n layer.** Use a real i18n library (`react-i18next` + `expo-localization`). Each translation file structured as `{ trades: { ... }, services: { ... } }` so industry mode and locale share the same keyed lookup. Sweep every hardcoded string throughout the app once, replace with `t('key.path', { context: industry })`. Both English (en) and Spanish (es) translation tables ship at launch.
+
+   Example terminology mappings (English):
+   - `t('job')` — trades: "Job" / services: "Engagement" or "Matter"
+   - `t('labor')` — trades: "Labor" / services: "Billable Hours"
+   - `t('assembly')` — trades: "Assembly" / services: "Service Package"
+   - `t('workers')` — trades: "Workers" / services: "Associates" or "Team"
+   - `t('materials')` — trades: "Materials" / services: hidden (see layer 2)
+
+   Same keys exist in `es.json` with translations for each industry context.
 
 2. **Feature visibility layer.** Same `profiles.industry` setting drives both terminology and conditional rendering. Services users don't see trades-only tabs at all:
    - **Trades-only (hidden for Services):** Materials catalog tab (xByte), tradecraft content / Drew when re-enabled (built on construction knowledge), job-site address fields, supplier preferences (Home Depot / Lowes / Menards), worker-license fields.
    - **Universal (always shown, optionally relabeled):** quote creation, tier pricing, assemblies / service packages, clients, invoicing, e-sign, portal, cloud sync, PDF export.
 
-3. **Industry-specific seed data.** When a new user picks an industry at onboarding, seed their pricebook + sample assemblies with that vertical's defaults (trades: construction categories; services: consultation / document prep / representation / travel / etc.). Existing users default to trades; setting can be changed in Settings.
+3. **Industry-specific seed data.** When a new user picks an industry at onboarding, seed their pricebook + sample assemblies with that vertical's defaults (trades: construction categories; services: consultation / document prep / representation / travel / etc.). Existing users default to trades; setting can be changed in Settings. Seed labels also localized per active locale.
 
-**DB change:** add `profiles.industry` enum (`trades | services | other`).
+**DB change:** add `profiles.industry` enum (`trades | services | other`). Optional: also `profiles.locale` if user wants to override device default.
 
-**App change:** one onboarding question — "What kind of business?" — three buttons. Persists immediately. All downstream UI reads from the setting.
+**App change:** two pieces in onboarding — "What kind of business?" (industry, three buttons) and optional locale picker (defaults to device language via `expo-localization`). Both persist immediately. All downstream UI reads from the settings.
 
-**Marketing copy:** intentionally NOT in scope for v1. Site stays trades-positioned. Re-position only after Services customers actually accumulate (target ~20 paying Services users before any positioning shift). One product, two surfaces — same pattern other vertical SaaS uses.
+**Marketing copy:** intentionally NOT in scope for v1. Site stays trades-positioned and English-only. Re-position + translate site only after Services or Spanish-speaking customers actually accumulate (target ~20 paying users in each segment before any positioning shift). One product, multiple surfaces — same pattern other vertical SaaS uses.
+
+**Strategic value of the combined effort:**
+- Industry mode + Spanish unlocks US Hispanic legal/consulting/agency market (Services + es).
+- Trades + Spanish unlocks ~30% of US construction workforce currently underserved by English-only tools.
+- Trades + Spanish also unlocks Costa Rica trades market.
+- Each new locale added later is just translation work — no engineering.
 
 **Validation step before code (1-week experiment):**
 Let Joseph's lawyer use the app as-is for a real client engagement. Capture concrete friction:
@@ -47,15 +57,20 @@ Let Joseph's lawyer use the app as-is for a real client engagement. Capture conc
 
 Use that friction list to ground the v1 terminology choices instead of guessing what lawyers want.
 
-**Estimated effort:**
-- Terminology infrastructure: 2-3 hours
-- String sweep across the app: 4-6 hours (grep-and-replace, tedious but mechanical)
-- Industry-specific seed data: 1-2 hours per vertical
+**Estimated effort (combined industry mode + Spanish i18n):**
+- i18n library setup + config (`react-i18next`, `expo-localization`): 2-3 hours
+- String sweep across the app (replace hardcoded strings with `t()` calls): 5-7 hours
+- English translation tables, both industry contexts: 2-3 hours
+- Spanish translation tables, both industry contexts: 3-4 hours (initial pass; refine with native speaker review)
+- Industry-specific seed data per vertical × per locale: 2-3 hours per combination
 - Feature-visibility gating + tab conditionals: 2-3 hours
-- Onboarding question: 30 minutes
-- DB migration + profiles column: 30 minutes
-- Testing on real device for both modes: a couple of hours
-- **Total: ~1.5 weeks of focused work**
+- Onboarding question (industry + locale): 1 hour
+- DB migration + profiles columns: 30 minutes
+- Testing on real device for industry × locale combinations: 3-4 hours
+- Native-speaker Spanish review pass: 1-2 hours (outsource or friend-of-the-family)
+- **Total: ~2-2.5 weeks of focused work**
+
+For comparison: doing them sequentially would be ~1.5 weeks (industry) + ~1 week (i18n) = ~2.5 weeks, with the cost of touching every string twice. Combined saves ~0.5 week and avoids the rework.
 
 **Sequencing constraint:** ship this in the same release as xByte catalog re-enablement (currently behind `CATALOG_SYNC_ENABLED = false`). Reason: the materials tab hiding logic is the most prominent feature-visibility delta, and it doesn't really matter until the materials feature is actually on. Doing both at once means one release, one validation pass.
 
