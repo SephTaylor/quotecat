@@ -11,7 +11,7 @@
 
 ## What QuoteCat Does
 
-QuoteCat helps contractors create professional construction quotes from their phone in under 5 minutes. Contractors pick materials from a product catalog, add labor and markup, and send a shareable link to their client. Clients can accept or decline the quote directly from the link. The contractor gets notified in real-time when the client views, accepts, or declines.
+QuoteCat helps contractors create professional construction quotes from their phone in under 5 minutes. Contractors build quotes from a custom price book of their own products and reusable assemblies, add labor and markup, and send a shareable link to their client. Clients can accept or decline the quote directly from the link. The contractor gets notified in real-time when the client views, accepts, or declines.
 
 ## Zero Transaction Fees
 
@@ -27,22 +27,20 @@ For a contractor doing $300,000/year in jobs, this saves over $8,700/year compar
 - Real-time notifications (viewed, accepted, declined)
 - Good/Better/Best tiered pricing in one link
 - Professional PDF export with company branding
-- Product catalog with real pricing
 - Custom price book and reusable assemblies
 - Offline-first (works without internet, syncs later)
 - Cloud sync across devices
 - Invoice management
 - Client management
-- AI Quote Wizard (Premium) powered by Drew
 - Contracts and e-signatures (Premium)
 - Web portal with business analytics (Premium)
 - Team and worker management via SMS (Premium)
 
 ## Pricing
 
-- Free: $0/month - 25 quotes/month, 5 PDF exports, full product catalog
-- Pro: $29/month (founder pricing) - Unlimited quotes, shareable links, notifications, cloud sync, custom price book, company branding
-- Premium: $79/month (founder pricing) - Everything in Pro plus AI Quote Wizard, contracts, e-signatures, web portal, analytics, team management
+- Free: $0/month - Unlimited quotes (local), unlimited clients, 10 PDF exports/month, 10 invoice exports/month, 10 spreadsheet exports/month, custom price book, zero transaction fees
+- Pro: $29/month (founder pricing) - Unlimited exports, shareable links, notifications, cloud sync, reusable assemblies, no PDF watermark
+- Premium: $79/month (founder pricing) - Everything in Pro plus contracts, e-signatures, web portal, business analytics, team management
 
 All plans include zero transaction fees.
 
