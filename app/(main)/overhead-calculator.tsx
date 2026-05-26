@@ -1,9 +1,8 @@
 // app/(main)/overhead-calculator.tsx
-// Pro+ tool - Step-by-step overhead calculator wizard
+// Free tool - Step-by-step overhead calculator wizard
 // Matches portal wizard at /dashboard/profitability
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { useTechContext } from "@/contexts/TechContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { loadPreferences, updateOverheadSettings, type OverheadSettings } from "@/lib/preferences";
@@ -103,8 +102,6 @@ type WizardProgress = {
 export default function OverheadCalculator() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { effectiveTier } = useTechContext();
-  const isPro = effectiveTier === "pro" || effectiveTier === "premium";
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -215,20 +212,11 @@ export default function OverheadCalculator() {
     // Clear wizard progress
     await AsyncStorage.removeItem(PROGRESS_KEY);
 
-    if (isPro) {
-      Alert.alert(
-        "Overhead Saved",
-        `Your overhead rate is ${overheadPercent.toFixed(1)}%.\n\nThis will be used to calculate profit margins on your quotes.`,
-        [{ text: "Done", onPress: () => router.back() }]
-      );
-    } else {
-      // Free users - soft upsell
-      Alert.alert(
-        "Overhead Saved",
-        `Your overhead rate is ${overheadPercent.toFixed(1)}%.\n\nTo see this intelligence built into every quote with automatic margin calculations, upgrade to Pro. We've updated your profile and will be used when you're ready.`,
-        [{ text: "Done", onPress: () => router.back() }]
-      );
-    }
+    Alert.alert(
+      "Overhead Saved",
+      `Your overhead rate is ${overheadPercent.toFixed(1)}%.\n\nThis will be used to calculate profit margins on your quotes.`,
+      [{ text: "Done", onPress: () => router.back() }]
+    );
   };
 
   const handleReset = () => {
