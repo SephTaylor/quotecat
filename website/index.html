@@ -42,7 +42,7 @@
       "name": "QuoteCat",
       "operatingSystem": "iOS",
       "applicationCategory": "BusinessApplication",
-      "description": "The mobile quoting app for contractors with zero additional fees. Create professional quotes in 5 minutes, share as links, and keep 100% of every payment.",
+      "description": "Contractor financial intelligence platform: a mobile quoting app that shows real profit on every quote, plus free calculators, pricing guides, and a startup kit. Zero payment processing fees — clients pay you directly, you keep 100%.",
       "offers": [
         {
           "@type": "Offer",
@@ -489,6 +489,34 @@
         .cta-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(249, 115, 22, 0.4);
+        }
+
+        .cta-button-secondary {
+            display: inline-block;
+            padding: 18px 36px;
+            background: transparent;
+            color: #f97316;
+            text-decoration: none;
+            border: 2px solid rgba(249, 115, 22, 0.5);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .cta-button-secondary:hover {
+            border-color: #f97316;
+            background: rgba(249, 115, 22, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .hero-cta-row {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 8px;
         }
 
         /* Problem Section */
@@ -1663,20 +1691,21 @@
                     <div class="drew-hero hero-animate">
                         <img src="drew-avatar.png" alt="Drew - Your AI Assistant" class="drew-hero-img">
                         <div class="drew-speech-bubble">
-                            <span>Let me help you quote faster!</span>
+                            <span>Let me show you what you're really making.</span>
                         </div>
                     </div>
-                    <h1 class="hero-animate">Quote Faster. Win More Bids. <span class="highlight">Keep 100%.</span></h1>
+                    <h1 class="hero-animate">Stop guessing what you make on <span class="highlight">every job.</span></h1>
                     <p class="subtitle hero-animate hero-animate-delay">
-                        The mobile quoting app built for contractors. Create professional quotes in 5 minutes on-site, send a link to your client, and keep every dollar.<br><strong>No additional transaction fees, ever.</strong>
+                        QuoteCat shows your real profit on every quote — plus free calculators, pricing guides, and a startup kit to help you charge what you're worth. Send the quote, get paid directly, <strong>keep 100%</strong>.
                     </p>
                     <div class="value-props hero-animate hero-animate-delay">
-                        <span class="value-prop">Zero additional fees</span>
-                        <span class="value-prop">Quote in 5 minutes</span>
-                        <span class="value-prop">Send links, get notified</span>
+                        <span class="value-prop">Real margin on every quote</span>
+                        <span class="value-prop">Zero payment processing fees</span>
+                        <span class="value-prop">Free calculators + guides included</span>
                     </div>
-                    <div style="text-align: center; margin-top: 8px;">
-                        <a href="#pricing" class="cta-button hero-animate hero-animate-delay-2">Start Free Today</a>
+                    <div class="hero-cta-row hero-animate hero-animate-delay-2">
+                        <a href="#pricing" class="cta-button">Try the app free</a>
+                        <a href="/resources/labor-rate-calculator/" class="cta-button-secondary">Or calculate your real hourly rate →</a>
                     </div>
                 </div>
                 <div class="hero-phone-wrapper hero-animate hero-animate-delay">
@@ -1809,17 +1838,18 @@
                 <div class="tier-card fade-in-up stagger-1">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <div class="tier-name">Free</div>
-                    <div class="tier-description">Perfect for testing the waters</div>
+                    <div class="tier-description">Know your real profit on every quote</div>
                     <div class="tier-price">$0</div>
                     <div class="tier-price-period">Forever</div>
                     <ul class="tier-features">
+                        <li>Real margin on every quote</li>
+                        <li>Estimated profit per quote</li>
                         <li>Unlimited quotes (local)</li>
                         <li>Unlimited clients</li>
                         <li>10 quote PDFs/month</li>
                         <li>10 invoice PDFs/month</li>
-                        <li>Labor Rate Calculator</li>
                         <li>Zero additional fees</li>
-                        <li><a href="/resources/" style="color: inherit; text-decoration: underline;">Free tools & resources</a></li>
+                        <li><a href="/resources/" style="color: inherit; text-decoration: underline;">Free calculators &amp; pricing guides</a></li>
                     </ul>
                     <a href="#download" class="tier-button">Get Started Free</a>
                 </div>
@@ -1827,21 +1857,21 @@
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <span class="tier-badge">Most Popular</span>
                     <div class="tier-name">Pro</div>
-                    <div class="tier-description">You mean business. Know Your Worth.</div>
+                    <div class="tier-description">You mean business. Know your worth.</div>
                     <div class="tier-price">$29<span class="tier-price-small">/mo</span></div>
                     <div class="tier-price-period">Founder pricing - First 50 spots</div>
                     <ul class="tier-features">
-                        <li>Unlimited quotes & exports</li>
-                        <li>Profit margin tracking</li>
+                        <li>Everything in Free, plus:</li>
+                        <li>Dashboard profit summary</li>
                         <li>Overhead Calculator</li>
+                        <li>Unlimited quote &amp; invoice exports</li>
                         <li>Good / Better / Best tiers</li>
                         <li>Shareable quote links</li>
                         <li>Accept / decline notifications</li>
-                        <li>Custom price book</li>
-                        <li>Company branding</li>
-                        <li>Cloud sync & multi-device</li>
+                        <li>Custom price book &amp; assemblies</li>
+                        <li>Company branding (no watermark)</li>
+                        <li>Cloud sync &amp; multi-device</li>
                         <li>Free Pricing Guide ($29 value)</li>
-                        <li>Zero additional fees</li>
                     </ul>
                     <button onclick="handleGetPro()" class="tier-button">Get Pro Now</button>
                     <div class="tier-note">Regular price: $49/mo after 50 spots filled</div>
@@ -1853,8 +1883,8 @@
                     <div class="tier-price">$79<span class="tier-price-small">/mo</span></div>
                     <div class="tier-price-period">Founder pricing - First 25 spots</div>
                     <ul class="tier-features">
-                        <li>Everything in Pro</li>
-                        <li>Contracts & e-signatures</li>
+                        <li>Everything in Pro, plus:</li>
+                        <li>Contracts &amp; e-signatures</li>
                         <li>1 Field Tech license included</li>
                         <li>Unlimited worker seats</li>
                         <li>Team & worker management</li>

@@ -1,17 +1,22 @@
 # QuoteCat
 
-> QuoteCat is a mobile quoting app for construction contractors. It lets contractors create professional quotes in 5 minutes on the job site, share them as links, and get paid directly with zero transaction fees.
+> QuoteCat is a contractor financial intelligence platform. The mobile quoting app shows real profit on every quote, and a free resources hub (calculators, pricing guide, startup kit) helps contractors figure out what to charge before they bid. Clients pay contractors directly — zero payment processing fees.
 
 ## Key Facts
 
 - Category: Construction / Field Service Management Software
 - Platform: iOS, Android (coming soon)
 - Website: https://quotecat.ai
+- Resources hub: https://quotecat.ai/resources
 - Support: hello@quotecat.ai
 
 ## What QuoteCat Does
 
-QuoteCat helps contractors create professional construction quotes from their phone in under 5 minutes. Contractors build quotes from a custom price book of their own products and reusable assemblies, add labor and markup, and send a shareable link to their client. Clients can accept or decline the quote directly from the link. The contractor gets notified in real-time when the client views, accepts, or declines.
+QuoteCat is built around a thesis that competitors miss: most contractors don't know if they're actually making money on a job. QuoteCat closes that gap with two things working together.
+
+**The mobile app** lets contractors build a professional quote in under 5 minutes from a custom price book, add labor and markup, and send a shareable link. The app shows real-time profit margin and estimated profit on every quote — so the contractor knows whether the quote is profitable *before* it goes out. Clients can accept or decline directly from the link, and the contractor gets notified in real-time.
+
+**The resources hub** (free, no signup required for most tools) helps contractors figure out their numbers before they even open the app: a Labor Rate Calculator (what to charge per hour after real overhead), a Markup Calculator (markup vs margin), a Profit Margin Calculator (did the last job actually make money), a 90-Day Contractor Startup Kit, and the Contractor Pricing Guide ($29 standalone, included free with Pro and Premium).
 
 ## Zero Transaction Fees
 
