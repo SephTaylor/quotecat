@@ -278,7 +278,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], isDark: boole
       borderWidth: 1,
       borderColor: theme.colors.border,
       borderRadius: theme.radius.sm,
-      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+      // Use solid card background. The previous near-transparent values let
+      // the tinted custom-item row (#FFF8E7 / #3D3020) show through, which
+      // made the muted placeholder text and dark typed text nearly invisible.
+      backgroundColor: theme.colors.card,
     },
     priceRow: {
       flexDirection: "row",
@@ -298,7 +301,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], isDark: boole
       borderWidth: 1,
       borderColor: theme.colors.border,
       borderRadius: theme.radius.sm,
-      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+      // Solid card background — see nameInput note above for rationale.
+      backgroundColor: theme.colors.card,
     },
     eachText: {
       fontSize: 12,

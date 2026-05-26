@@ -1590,8 +1590,13 @@ export default function EditQuote() {
               </View>
             )}
 
-            {/* Materials Margin - Pro+ only, when markup > 0 */}
-            {isPro && calculations.markupAmount > 0 && (
+            {/* Materials Margin — shown to all tiers when there's a markup.
+                Ungated 2026-05-26 so free users get the "are you actually
+                making money" recognition moment that the marketing positions
+                as QuoteCat's core differentiator. Pro/Premium differentiation
+                stays in cloud sync, unlimited exports, custom assemblies,
+                contracts, team management, etc. */}
+            {calculations.markupAmount > 0 && (
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>Materials Margin</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -1669,8 +1674,12 @@ export default function EditQuote() {
               </Text>
             </View>
 
-            {/* Profitability Indicator - Pro+ only, when cost rates configured */}
-            {isPro && calculations.total > 0 && (() => {
+            {/* Profitability Indicator — shown to all tiers when total > 0.
+                Ungated 2026-05-26; see Materials Margin comment above. Free
+                users without configured cost rates see the prompt to set up
+                billable rate (links to Labor Rate Calculator), which is the
+                natural entry point to the financial-intelligence workflow. */}
+            {calculations.total > 0 && (() => {
               // Check if both rates are set for profitability calculation
               const hasLaborRate = defaultLaborRate > 0;
               const hasCostRate = defaultLaborCostRate > 0;

@@ -720,8 +720,12 @@ export default function QuoteReviewScreen() {
               </View>
             )}
 
-            {/* Materials Margin - Pro+ only, when markup > 0 */}
-            {(isPro || isPremium) && markupAmount > 0 && (
+            {/* Materials Margin — shown to all tiers when there's a markup.
+                Ungated 2026-05-26 (matches edit.tsx) so free users get the
+                financial-intelligence recognition moment on the review screen
+                too. Pro/Premium differentiation stays in cloud sync,
+                unlimited exports, custom assemblies, contracts, team, etc. */}
+            {markupAmount > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Materials Margin</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -802,8 +806,10 @@ export default function QuoteReviewScreen() {
           <ChangeOrderList quoteId={qid} theme={theme} limit={3} />
         )}
 
-        {/* Profitability Setup Prompt - State 1: Neither rate set */}
-        {(isPro || isPremium) && !profitability && defaultLaborRate === 0 && (
+        {/* Profitability Setup Prompt - State 1: Neither rate set.
+            Ungated 2026-05-26 (matches edit.tsx) so free users get the entry
+            point to configure their billable rate. */}
+        {!profitability && defaultLaborRate === 0 && (
           <Pressable
             style={styles.section}
             onPress={() => router.push('/(main)/labor-rate-calculator')}
@@ -817,8 +823,9 @@ export default function QuoteReviewScreen() {
           </Pressable>
         )}
 
-        {/* Profitability Setup Prompt - State 2: Billable set, cost rate missing */}
-        {(isPro || isPremium) && !profitability && defaultLaborRate > 0 && defaultLaborCostRate === 0 && (
+        {/* Profitability Setup Prompt - State 2: Billable set, cost rate missing.
+            Ungated 2026-05-26 — see State 1 comment. */}
+        {!profitability && defaultLaborRate > 0 && defaultLaborCostRate === 0 && (
           <Pressable
             style={styles.section}
             onPress={() => router.push('/(main)/business-settings')}
@@ -832,8 +839,10 @@ export default function QuoteReviewScreen() {
           </Pressable>
         )}
 
-        {/* Profitability Section - Pro/Premium with overhead configured */}
-        {(isPro || isPremium) && profitability && (
+        {/* Profitability Section — shown to all tiers when overhead + cost
+            rates are configured. Ungated 2026-05-26 to deliver the full
+            financial-intelligence recognition moment on the review screen. */}
+        {profitability && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Profitability</Text>
             <View style={styles.totalsCard}>
