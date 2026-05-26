@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Overhead Calculator - QuoteCat</title>
+    <meta name="description" content="Calculate your true business overhead as a contractor. Enter your monthly business expenses and labor revenue to find your overhead percentage — the number most contractors quietly absorb.">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://quotecat.ai/resources/overhead-calculator">
+    <meta property="og:title" content="Contractor Overhead Calculator - QuoteCat">
+    <meta property="og:description" content="Find out your true overhead percentage in 60 seconds. Most contractors don't know — and quietly absorb it.">
+    <link rel="canonical" href="https://quotecat.ai/resources/overhead-calculator">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --text: #ffffff;
+            --text-light: #9ca3af;
+            --text-muted: #6b7280;
+            --bg: #111111;
+            --card-bg: #1a1a1a;
+            --border: #2a2a2a;
+            --success: #22c55e;
+            --warning: #eab308;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+            min-height: 100vh;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+        .breadcrumb { padding: 16px 0; border-bottom: 1px solid var(--border); }
+        .breadcrumb a { color: var(--text-muted); text-decoration: none; font-size: 14px; }
+        .breadcrumb a:hover { color: var(--text-light); }
+        .breadcrumb span { color: var(--text-muted); font-size: 14px; margin: 0 8px; }
+        .breadcrumb-current { color: var(--text-light); font-size: 14px; }
+        .page-header { padding: 48px 0 32px; }
+        .page-header h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+        .page-header p { color: var(--text-light); font-size: 16px; }
+        .calculator {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+        .section-label {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--primary);
+            margin-bottom: 16px;
+            margin-top: 8px;
+        }
+        .section-label:first-child { margin-top: 0; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-light);
+        }
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .input-wrapper { position: relative; }
+        .input-wrapper .prefix {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .input-wrapper .suffix {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 14px 16px 14px 32px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 16px;
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        input[type="number"].no-prefix { padding-left: 16px; }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] { -moz-appearance: textfield; }
+        .input-hint { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+        .results {
+            background: rgba(249, 115, 22, 0.05);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 8px;
+            padding: 24px;
+            margin-top: 24px;
+        }
+        .result-main {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .result-main-label {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .result-main-value {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        .result-main-sub {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .result-row:last-child { border-bottom: none; }
+        .result-label { color: var(--text-light); font-size: 15px; }
+        .result-value { color: var(--text); font-size: 16px; font-weight: 600; }
+        .result-value.success { color: var(--success); }
+        .info-box {
+            background: rgba(34, 197, 94, 0.05);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+        .info-box-title {
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+        .info-box p { color: var(--text-light); font-size: 14px; line-height: 1.6; }
+        .cta-section {
+            text-align: center;
+            padding: 32px 0;
+        }
+        .cta-section h2 { font-size: 22px; margin-bottom: 12px; }
+        .cta-section p { color: var(--text-light); margin-bottom: 24px; }
+        .cta-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .cta-btn {
+            display: inline-block;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #000;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            transition: transform 0.15s;
+        }
+        .cta-btn:hover { transform: translateY(-2px); }
+        .cta-btn.secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+        }
+        .cta-btn.secondary:hover { border-color: var(--text-muted); color: var(--text); }
+        footer {
+            padding: 32px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        footer p { color: var(--text-muted); font-size: 14px; }
+        footer a { color: var(--text-muted); text-decoration: none; }
+        footer a:hover { color: var(--text-light); }
+        @media (max-width: 600px) {
+            .page-header h1 { font-size: 24px; }
+            .calculator { padding: 24px 16px; }
+            .input-row { grid-template-columns: 1fr; }
+            .result-main-value { font-size: 36px; }
+        }
+    </style>
+    {% include "header-styles.html" %}
+</head>
+<body>
+    {% include "header.html" %}
+    <div class="container">
+        <nav class="breadcrumb">
+            <a href="/resources">Resources</a>
+            <span>/</span>
+            <span class="breadcrumb-current">Overhead Calculator</span>
+        </nav>
+
+        <div class="page-header">
+            <h1>Overhead Calculator</h1>
+            <p>Find out your true business overhead percentage. Most contractors don't know — and quietly absorb it.</p>
+        </div>
+
+        <div class="calculator">
+            <div class="section-label">Monthly Business Expenses</div>
+
+            <div class="input-row">
+                <div class="input-group">
+                    <label>Vehicle Costs</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="vehicle" placeholder="800" value="800" min="0">
+                    </div>
+                    <p class="input-hint">Payment, gas, maintenance, insurance</p>
+                </div>
+                <div class="input-group">
+                    <label>Business Insurance</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="insurance" placeholder="300" value="300" min="0">
+                    </div>
+                    <p class="input-hint">Liability, workers comp, bonding</p>
+                </div>
+            </div>
+
+            <div class="input-row">
+                <div class="input-group">
+                    <label>Tools &amp; Equipment</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="tools" placeholder="200" value="200" min="0">
+                    </div>
+                    <p class="input-hint">Purchases, repairs, replacements (avg)</p>
+                </div>
+                <div class="input-group">
+                    <label>Software &amp; Subscriptions</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="software" placeholder="150" value="150" min="0">
+                    </div>
+                    <p class="input-hint">QuoteCat, accounting, etc.</p>
+                </div>
+            </div>
+
+            <div class="input-row">
+                <div class="input-group">
+                    <label>Office &amp; Storage</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="office" placeholder="400" value="400" min="0">
+                    </div>
+                    <p class="input-hint">Shop, storage, or home office portion</p>
+                </div>
+                <div class="input-group">
+                    <label>Marketing</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="marketing" placeholder="100" value="100" min="0">
+                    </div>
+                    <p class="input-hint">Ads, hosting, leads, business cards</p>
+                </div>
+            </div>
+
+            <div class="input-row">
+                <div class="input-group">
+                    <label>Other Overhead</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="other" placeholder="200" value="200" min="0">
+                    </div>
+                    <p class="input-hint">Callbacks, warranty work, misc</p>
+                </div>
+                <div class="input-group"></div>
+            </div>
+
+            <div class="section-label">Monthly Revenue</div>
+
+            <div class="input-group">
+                <label>Monthly Labor Revenue</label>
+                <div class="input-wrapper">
+                    <span class="prefix">$</span>
+                    <input type="number" id="labor-revenue" placeholder="8,000" value="8000" min="0">
+                </div>
+                <p class="input-hint">How much you typically bill in labor per month (not materials)</p>
+            </div>
+
+            <div class="results">
+                <div class="result-main">
+                    <div class="result-main-label">Your Overhead Rate Is</div>
+                    <div class="result-main-value" id="overhead-percent">22.9%</div>
+                    <div class="result-main-sub">of every labor dollar billed</div>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Total Monthly Overhead</span>
+                    <span class="result-value" id="monthly-overhead">$2,150</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Total Annual Overhead</span>
+                    <span class="result-value" id="annual-overhead">$25,800</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Annual Labor Revenue</span>
+                    <span class="result-value" id="annual-labor">$96,000</span>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <div class="info-box-title">What This Number Means</div>
+                <p>
+                    For every dollar you bill in labor, this percentage gets eaten by overhead before you take home anything.
+                    Most contractors who haven't run these numbers are shocked — overhead often runs 20–35% of labor revenue.<br><br>
+                    <strong>Use this in pricing:</strong> Your labor rate has to cover overhead AND your take-home AND profit margin.
+                    If you're not loading overhead into your rate, you're paying for vehicle, insurance, and tools out of your own pocket.
+                </p>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <h2>See your real margin on every quote</h2>
+            <p>QuoteCat builds your overhead into every quote automatically — so you always know if you're making money before you send it.</p>
+            <div class="cta-buttons">
+                <a href="/resources" class="cta-btn">View All Resources</a>
+                <a href="/" class="cta-btn secondary">Get QuoteCat App</a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p><a href="/">QuoteCat</a> &middot; <a href="/resources">Resources</a> &middot; <a href="/privacy">Privacy</a></p>
+        </div>
+    </footer>
+
+    <script>
+        const inputs = {
+            vehicle: document.getElementById('vehicle'),
+            insurance: document.getElementById('insurance'),
+            tools: document.getElementById('tools'),
+            software: document.getElementById('software'),
+            office: document.getElementById('office'),
+            marketing: document.getElementById('marketing'),
+            other: document.getElementById('other'),
+            laborRevenue: document.getElementById('labor-revenue'),
+        };
+
+        const overheadPercentEl = document.getElementById('overhead-percent');
+        const monthlyOverheadEl = document.getElementById('monthly-overhead');
+        const annualOverheadEl = document.getElementById('annual-overhead');
+        const annualLaborEl = document.getElementById('annual-labor');
+
+        function formatCurrency(amount) {
+            return '$' + Math.round(amount).toLocaleString('en-US');
+        }
+
+        function calculate() {
+            const expenseIds = ['vehicle', 'insurance', 'tools', 'software', 'office', 'marketing', 'other'];
+            const monthlyOverhead = expenseIds.reduce(
+                (sum, id) => sum + (parseFloat(inputs[id].value) || 0),
+                0
+            );
+            const annualOverhead = monthlyOverhead * 12;
+            const monthlyLabor = parseFloat(inputs.laborRevenue.value) || 0;
+            const annualLabor = monthlyLabor * 12;
+            const overheadPct = annualLabor > 0 ? (annualOverhead / annualLabor) * 100 : 0;
+
+            overheadPercentEl.textContent = overheadPct.toFixed(1) + '%';
+            monthlyOverheadEl.textContent = formatCurrency(monthlyOverhead);
+            annualOverheadEl.textContent = formatCurrency(annualOverhead);
+            annualLaborEl.textContent = formatCurrency(annualLabor);
+        }
+
+        Object.values(inputs).forEach(input => {
+            input.addEventListener('input', calculate);
+        });
+
+        calculate();
+    </script>
+</body>
+</html>
