@@ -158,6 +158,33 @@
             color: var(--text-light);
         }
         .cta-btn.secondary:hover { border-color: var(--text-muted); color: var(--text); }
+        .share-section {
+            background: rgba(249, 115, 22, 0.05);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+        .share-title { font-weight: 700; color: var(--primary); margin-bottom: 6px; font-size: 15px; }
+        .share-blurb { color: var(--text-light); font-size: 14px; margin-bottom: 12px; line-height: 1.5; }
+        .share-text {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 10px 12px; color: var(--text-light); font-size: 13px;
+            margin-bottom: 12px; font-style: italic; line-height: 1.5; word-break: break-word;
+        }
+        .share-buttons { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .share-btn {
+            padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 14px;
+            font-family: inherit; cursor: pointer; transition: all 0.15s;
+            border: 1px solid var(--border); background: var(--card-bg); color: var(--text);
+        }
+        .share-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .share-btn.primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #000; border-color: transparent;
+        }
+        .share-btn.primary:hover { color: #000; transform: translateY(-1px); }
+        .share-copied { display: inline-block; color: var(--success); font-size: 13px; font-weight: 600; }
         footer {
             padding: 32px 0;
             border-top: 1px solid var(--border);
@@ -236,6 +263,17 @@
                     <strong>Rule of thumb:</strong> If your total costs (materials + labor + overhead) are more than $3,750 on a $5,000 job, you're not making 25% margin, you're working for less.
                 </p>
             </div>
+
+            <div class="share-section">
+                <div class="share-title">Share your result</div>
+                <p class="share-blurb">Help another contractor figure out their numbers.</p>
+                <div class="share-text" id="share-text"></div>
+                <div class="share-buttons">
+                    <button class="share-btn primary" id="share-native" type="button">Share</button>
+                    <button class="share-btn" id="share-copy" type="button">Copy link</button>
+                    <span class="share-copied" id="share-copied" style="display:none;">Copied</span>
+                </div>
+            </div>
         </div>
 
         <div class="cta-section">
@@ -244,6 +282,9 @@
             <div class="cta-buttons">
                 <a href="/resources/markup-calculator" class="cta-btn">Markup Calculator</a>
                 <a href="/resources/labor-rate-calculator" class="cta-btn secondary">Labor Rate Calculator</a>
+            </div>
+            <div style="margin-top: 16px;">
+                <a href="/?utm_source=calculator&amp;utm_medium=cta&amp;utm_campaign=profit-margin" class="cta-btn">Get QuoteCat App</a>
             </div>
         </div>
     </div>
@@ -280,10 +321,45 @@
             profitEl.textContent = formatCurrency(profit);
             markupEl.textContent = markup.toFixed(1) + '%';
             costPerThousandEl.textContent = formatCurrency(costPerThousand);
+
+            shareTextEl.textContent = buildShareText();
+        }
+
+        const SHARE_URL = 'https://quotecat.ai/resources/profit-margin-calculator?utm_source=share&utm_medium=user&utm_campaign=calculator&utm_content=profit-margin';
+        const shareTextEl = document.getElementById('share-text');
+        const shareNativeBtn = document.getElementById('share-native');
+        const shareCopyBtn = document.getElementById('share-copy');
+        const shareCopiedEl = document.getElementById('share-copied');
+
+        function buildShareText() {
+            return `To hit my margin on this job, my total cost has to stay under ${maxCostEl.textContent}. Most contractors find out the hard way. Calculate yours: ${SHARE_URL}`;
         }
 
         [sellingPriceInput, targetMarginInput].forEach(input => {
             input.addEventListener('input', calculate);
+        });
+
+        if (!navigator.share) {
+            shareNativeBtn.style.display = 'none';
+        }
+
+        shareNativeBtn.addEventListener('click', async () => {
+            try {
+                await navigator.share({
+                    title: 'Contractor Profit Margin Calculator',
+                    text: buildShareText(),
+                });
+            } catch (e) { /* user cancelled */ }
+        });
+
+        shareCopyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(buildShareText());
+                shareCopiedEl.style.display = 'inline-block';
+                setTimeout(() => { shareCopiedEl.style.display = 'none'; }, 2000);
+            } catch (e) {
+                alert('Could not copy. Long-press the text above to copy manually.');
+            }
         });
 
         calculate();

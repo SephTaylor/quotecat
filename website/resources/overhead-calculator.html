@@ -200,6 +200,33 @@
             color: var(--text-light);
         }
         .cta-btn.secondary:hover { border-color: var(--text-muted); color: var(--text); }
+        .share-section {
+            background: rgba(249, 115, 22, 0.05);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+        .share-title { font-weight: 700; color: var(--primary); margin-bottom: 6px; font-size: 15px; }
+        .share-blurb { color: var(--text-light); font-size: 14px; margin-bottom: 12px; line-height: 1.5; }
+        .share-text {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 10px 12px; color: var(--text-light); font-size: 13px;
+            margin-bottom: 12px; font-style: italic; line-height: 1.5; word-break: break-word;
+        }
+        .share-buttons { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .share-btn {
+            padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 14px;
+            font-family: inherit; cursor: pointer; transition: all 0.15s;
+            border: 1px solid var(--border); background: var(--card-bg); color: var(--text);
+        }
+        .share-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .share-btn.primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #000; border-color: transparent;
+        }
+        .share-btn.primary:hover { color: #000; transform: translateY(-1px); }
+        .share-copied { display: inline-block; color: var(--success); font-size: 13px; font-weight: 600; }
         footer {
             padding: 32px 0;
             border-top: 1px solid var(--border);
@@ -343,6 +370,17 @@
                     If you're not loading overhead into your rate, you're paying for vehicle, insurance, and tools out of your own pocket.
                 </p>
             </div>
+
+            <div class="share-section">
+                <div class="share-title">Share your result</div>
+                <p class="share-blurb">Help another contractor figure out their numbers.</p>
+                <div class="share-text" id="share-text"></div>
+                <div class="share-buttons">
+                    <button class="share-btn primary" id="share-native" type="button">Share</button>
+                    <button class="share-btn" id="share-copy" type="button">Copy link</button>
+                    <span class="share-copied" id="share-copied" style="display:none;">Copied</span>
+                </div>
+            </div>
         </div>
 
         <div class="cta-section">
@@ -350,7 +388,7 @@
             <p>QuoteCat builds your overhead into every quote automatically — so you always know if you're making money before you send it.</p>
             <div class="cta-buttons">
                 <a href="/resources" class="cta-btn">View All Resources</a>
-                <a href="/" class="cta-btn secondary">Get QuoteCat App</a>
+                <a href="/?utm_source=calculator&amp;utm_medium=cta&amp;utm_campaign=overhead" class="cta-btn secondary">Get QuoteCat App</a>
             </div>
         </div>
     </div>
@@ -382,6 +420,16 @@
             return '$' + Math.round(amount).toLocaleString('en-US');
         }
 
+        const SHARE_URL = 'https://quotecat.ai/resources/overhead-calculator?utm_source=share&utm_medium=user&utm_campaign=calculator&utm_content=overhead';
+        const shareTextEl = document.getElementById('share-text');
+        const shareNativeBtn = document.getElementById('share-native');
+        const shareCopyBtn = document.getElementById('share-copy');
+        const shareCopiedEl = document.getElementById('share-copied');
+
+        function buildShareText() {
+            return `My overhead is ${overheadPercentEl.textContent} of every labor dollar billed. Most contractors don't know theirs. Calculate yours: ${SHARE_URL}`;
+        }
+
         function calculate() {
             const expenseIds = ['vehicle', 'insurance', 'tools', 'software', 'office', 'marketing', 'other'];
             const monthlyOverhead = expenseIds.reduce(
@@ -397,10 +445,35 @@
             monthlyOverheadEl.textContent = formatCurrency(monthlyOverhead);
             annualOverheadEl.textContent = formatCurrency(annualOverhead);
             annualLaborEl.textContent = formatCurrency(annualLabor);
+
+            shareTextEl.textContent = buildShareText();
         }
 
         Object.values(inputs).forEach(input => {
             input.addEventListener('input', calculate);
+        });
+
+        if (!navigator.share) {
+            shareNativeBtn.style.display = 'none';
+        }
+
+        shareNativeBtn.addEventListener('click', async () => {
+            try {
+                await navigator.share({
+                    title: 'Contractor Overhead Calculator',
+                    text: buildShareText(),
+                });
+            } catch (e) { /* user cancelled */ }
+        });
+
+        shareCopyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(buildShareText());
+                shareCopiedEl.style.display = 'inline-block';
+                setTimeout(() => { shareCopiedEl.style.display = 'none'; }, 2000);
+            } catch (e) {
+                alert('Could not copy. Long-press the text above to copy manually.');
+            }
         });
 
         calculate();
