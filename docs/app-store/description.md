@@ -1,74 +1,204 @@
-# QuoteCat - App Store Listing
+# QuoteCat - Store Listings (v1.2.5)
 
-## App Name
+Last updated: 2026-05-27. Updated for the financial-intelligence platform reframe shipped on the marketing site.
+
+These are the production copy blocks for App Store Connect and Google Play. Paste-ready when submitting v1.2.5 for review.
+
+---
+
+## App Store Connect
+
+### App Name
 QuoteCat - Professional Quotes
 
-## Subtitle (30 characters max)
-Quote in 5 minutes on-site
+### Subtitle (30 char max)
+Know your real profit per job
 
-## Promotional Text (170 characters, appears above description)
-Create professional construction quotes in minutes, right from the job site. Win more bids with faster turnaround and accurate pricing.
+### Promotional Text (170 char max — editable any time without re-review)
+See real-time profit margin and estimated profit on every quote — now free. Stop guessing what you make on every job.
 
-## Description (4000 characters max)
+### Keywords (100 char max, comma-separated, no spaces)
+contractor,quote,estimate,invoice,construction,profit,margin,markup,overhead,bid,plumber,electrician
 
-**Stop losing jobs to slow quotes. Quote faster, win more bids. Keep 100% of your money.**
+### Description (4000 char max)
 
-QuoteCat is the mobile quoting app built specifically for contractors. Create professional quotes in 5 minutes on the job site, send a link to your client, and get notified the moment they respond. No middleman. No transaction fees. You keep every dollar.
+**Stop guessing what you make on every job.**
 
-**Why Contractors Switch to QuoteCat:**
+QuoteCat is the contractor quoting app that shows your real profit on every quote — so you know if you're making money before you send it. Build a professional quote in 5 minutes on-site, send a shareable link to your client, and get paid directly with zero processing fees.
 
-Other apps take 2.9% of every payment. On a $10,000 job, that's $290 gone. QuoteCat lets your clients pay you directly via Zelle, Venmo, CashApp, or bank transfer. You keep 100%.
+Built for contractors, plumbers, electricians, HVAC technicians, framers, roofers, welders, and builders.
 
-**Key Features:**
+**Real Margin On Every Quote — Free**
+- Real-time profit margin indicator on every quote
+- Estimated profit shown before you send
+- Set your overhead once, QuoteCat builds it into your pricing
+- No upgrade required to see your numbers
 
-⚡ **5-Minute Quotes**
-Pick materials from the catalog, add labor and markup, done. Send a professional PDF or shareable link while you're still on-site.
+**Lightning-Fast Quoting**
+- Create professional quotes in minutes
+- Add materials, labor, and markup
+- Quick estimate mode for jobs you already know
+- Duplicate quotes for similar jobs
 
-🔗 **Share Quotes as Links**
-Send your client a link. They can accept or decline right from their phone. You get notified instantly when they view it, approve it, or decline it.
+**Assemblies (Pro)**
+- Pre-built assemblies for common tasks
+- Create custom assemblies for your specialty
+- Save product bundles for recurring jobs
+- Build quotes 10x faster with reusable templates
 
-📊 **Good / Better / Best Pricing**
-Present multiple pricing options in one link. Clients pick the tier that fits their budget. You close more deals.
+**Professional Exports**
+- PDF quotes with your company info
+- CSV export for record-keeping
+- Add your logo and remove the QuoteCat watermark with Pro
 
-💰 **Keep 100% of Payments**
-No processing fees. Clients see your Zelle, Venmo, or bank details right on the invoice and pay you directly.
+**Business Management**
+- Dashboard with quote value tracking
+- Status workflow: Draft to Sent to Approved to Completed
+- Search and filter by client, project, or status
 
-📋 **Contracts & E-Signatures (Premium)**
-Turn approved quotes into contracts. Send for e-signature. Get notified when they sign. All from your phone.
+**Invoices**
+- Convert quotes to invoices with one tap
+- Track paid, unpaid, and overdue
+- Professional invoices with your branding
 
-📱 **Works Offline**
-No internet at the job site? No problem. QuoteCat works offline and syncs when you're back online. No other app at this price does that.
+**Client Manager**
+- Save client contact info
+- View quote history by client
+- Quick access to repeat customers
 
-🔧 **Custom Price Book & Assemblies**
-Save your go-to materials with your pricing. Build reusable assemblies for common jobs. Quote a panel upgrade in 2 minutes.
+**Works Offline**
+- Create and edit quotes without internet
+- Perfect for job sites with poor connectivity
+- Cloud sync across devices with Pro
 
-📈 **Web Portal & Analytics (Premium)**
-Full business dashboard: revenue tracking, sales funnel, conversion rates, top clients. See your business at a glance.
+**Free Calculators and Guides**
+- Labor Rate Calculator
+- Overhead Calculator
+- Markup Calculator
+- Profit Margin Calculator
+- 90-Day Contractor Startup Kit
+- Contractor Pricing Guide ($29, free with Pro and Premium)
+- All available at quotecat.ai/resources
 
-👷 **Team Management (Premium)**
-Assign jobs to workers via text message. They get a link, no app download needed. Track progress, photos, and completion in real time.
+**Zero Payment Processing Fees**
+- Clients pay you directly through your preferred method (Zelle, Venmo, CashApp, bank transfer, check, etc.)
+- Keep 100% of every payment
+- A $300K/year contractor saves $8,700+/year vs apps that charge 2.9%
 
-**Perfect for:**
-- General contractors
-- Electricians, plumbers, HVAC
-- Remodeling contractors
-- Home improvement pros
-- Small construction businesses
+**Premium Features**
+- Digital contracts with e-signatures
+- Two-way client texting
+- Job scheduling and calendar
+- Web portal with business analytics
+- Team and worker management
+- QuickBooks sync
+- Priority support
 
-**Subscription Plans:**
+Built by contractors, for contractors. QuoteCat streamlines the part you hate — so you can get back to your real work.
 
-**FREE** - 25 quotes/month, 5 PDF exports, full product catalog
+Subscriptions auto-renew unless cancelled at least 24 hours before the end of the current period. Manage in your Apple ID settings.
 
-**PRO ($29/month)** - Unlimited quotes & exports, cloud sync, custom price book, reusable assemblies, shareable quote links with notifications, change orders, client management, company branding
+Privacy Policy: https://quotecat.ai/privacy
+Terms of Use: https://quotecat.ai/terms
 
-**PREMIUM ($79/month)** - Everything in Pro plus AI Quote Wizard, contracts & e-signatures, web portal with analytics, team & worker management, priority support
+### What's New in This Version (release notes)
+Stop guessing what you make on every job. Real-time profit margin and estimated profit are now free on every quote — see if you're making money before you send it. Also: better visibility on custom line items in the quote editor.
 
-Founder pricing locks in your rate forever.
+---
 
-**Support**
-Questions? Email us at hello@quotecat.ai
+## Google Play Console
 
-**Privacy**
-Your data is encrypted and secure. Read our privacy policy at quotecat.ai/privacy
+### Short description (80 char max)
+Know your real profit on every quote. Free margin tracking + zero fees.
 
-Download QuoteCat today and start winning more bids.
+### Full description (4000 char max — same body as App Store description above, except the closing line uses the Play subscription block)
+
+**Stop guessing what you make on every job.**
+
+QuoteCat is the contractor quoting app that shows your real profit on every quote — so you know if you're making money before you send it. Build a professional quote in 5 minutes on-site, send a shareable link to your client, and get paid directly with zero processing fees.
+
+Built for contractors, plumbers, electricians, HVAC technicians, framers, roofers, welders, and builders.
+
+**Real Margin On Every Quote — Free**
+- Real-time profit margin indicator on every quote
+- Estimated profit shown before you send
+- Set your overhead once, QuoteCat builds it into your pricing
+- No upgrade required to see your numbers
+
+**Lightning-Fast Quoting**
+- Create professional quotes in minutes
+- Add materials, labor, and markup
+- Quick estimate mode for jobs you already know
+- Duplicate quotes for similar jobs
+
+**Assemblies (Pro)**
+- Pre-built assemblies for common tasks
+- Create custom assemblies for your specialty
+- Save product bundles for recurring jobs
+- Build quotes 10x faster with reusable templates
+
+**Professional Exports**
+- PDF quotes with your company info
+- CSV export for record-keeping
+- Add your logo and remove the QuoteCat watermark with Pro
+
+**Business Management**
+- Dashboard with quote value tracking
+- Status workflow: Draft to Sent to Approved to Completed
+- Search and filter by client, project, or status
+
+**Invoices**
+- Convert quotes to invoices with one tap
+- Track paid, unpaid, and overdue
+- Professional invoices with your branding
+
+**Client Manager**
+- Save client contact info
+- View quote history by client
+- Quick access to repeat customers
+
+**Works Offline**
+- Create and edit quotes without internet
+- Perfect for job sites with poor connectivity
+- Cloud sync across devices with Pro
+
+**Free Calculators and Guides**
+- Labor Rate Calculator
+- Overhead Calculator
+- Markup Calculator
+- Profit Margin Calculator
+- 90-Day Contractor Startup Kit
+- Contractor Pricing Guide ($29, free with Pro and Premium)
+- All available at quotecat.ai/resources
+
+**Zero Payment Processing Fees**
+- Clients pay you directly through your preferred method (Zelle, Venmo, CashApp, bank transfer, check, etc.)
+- Keep 100% of every payment
+- A $300K/year contractor saves $8,700+/year vs apps that charge 2.9%
+
+**Premium Features**
+- Digital contracts with e-signatures
+- Two-way client texting
+- Job scheduling and calendar
+- Web portal with business analytics
+- Team and worker management
+- QuickBooks sync
+- Priority support
+
+Built by contractors, for contractors. QuoteCat streamlines the part you hate — so you can get back to your real work.
+
+**Subscription Information:**
+
+QuoteCat offers the following auto-renewable subscriptions:
+- QuoteCat Pro (Monthly)
+- QuoteCat Pro (Yearly)
+- QuoteCat Premium (Monthly)
+- QuoteCat Premium (Yearly)
+
+Payment will be charged to your Google Play account at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period at the cost listed above. You can manage and cancel your subscriptions through your Google Play account.
+
+Privacy Policy: https://quotecat.ai/privacy
+Terms of Use: https://quotecat.ai/terms
+
+### Release notes (500 char max for Play)
+Stop guessing what you make on every job. Real-time profit margin and estimated profit are now free on every quote. Plus better visibility on custom line items in the quote editor.
