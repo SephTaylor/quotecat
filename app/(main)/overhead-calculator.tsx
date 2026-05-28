@@ -408,6 +408,9 @@ export default function OverheadCalculator() {
             headerShown: true,
             headerBackVisible: false,
             headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
+            headerStyle: { backgroundColor: theme.colors.bg },
+            headerTintColor: theme.colors.accent,
+            headerTitleStyle: { color: theme.colors.text },
           }}
         />
         <GradientBackground>
@@ -432,6 +435,9 @@ export default function OverheadCalculator() {
               <Text style={{ color: theme.colors.muted, fontSize: 14 }}>Reset</Text>
             </Pressable>
           ),
+          headerStyle: { backgroundColor: theme.colors.bg },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: { color: theme.colors.text },
         }}
       />
       <GradientBackground>

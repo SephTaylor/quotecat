@@ -71,6 +71,10 @@ export default function ProTools() {
         router.push("/(main)/labor-rate-calculator" as any);
       } else if (featureName === "Overhead Calculator") {
         router.push("/(main)/overhead-calculator" as any);
+      } else if (featureName === "Markup Calculator") {
+        router.push("/(main)/markup-calculator" as any);
+      } else if (featureName === "Profit Margin Calculator") {
+        router.push("/(main)/profit-margin-calculator" as any);
       }
     } else {
       // Show RevenueCat paywall for non-subscribers
@@ -136,6 +140,26 @@ export default function ProTools() {
               description="Calculate your true overhead costs step by step"
               locked={false}
               onPress={() => handleFeatureTap("Overhead Calculator", false, true)}
+              theme={theme}
+              tier="free"
+            />
+
+            {/* Markup Calculator - Free for all */}
+            <ProFeatureCard
+              title="Markup Calculator"
+              description="See why 50% markup is not 50% margin"
+              locked={false}
+              onPress={() => handleFeatureTap("Markup Calculator", false, true)}
+              theme={theme}
+              tier="free"
+            />
+
+            {/* Profit Margin Calculator - Free for all */}
+            <ProFeatureCard
+              title="Profit Margin Calculator"
+              description="Find your max job cost from selling price and target margin"
+              locked={false}
+              onPress={() => handleFeatureTap("Profit Margin Calculator", false, true)}
               theme={theme}
               tier="free"
             />

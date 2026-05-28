@@ -144,6 +144,9 @@ export default function LaborRateCalculator() {
           headerShown: true,
           headerBackVisible: false,
           headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
+          headerStyle: { backgroundColor: theme.colors.bg },
+          headerTintColor: theme.colors.accent,
+          headerTitleStyle: { color: theme.colors.text },
         }}
       />
       <GradientBackground>
