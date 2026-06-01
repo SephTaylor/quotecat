@@ -58,6 +58,8 @@ export default function ProTools() {
         router.push("/(main)/price-book" as any);
       } else if (featureName === "Job Calculator") {
         router.push("/(main)/job-calculator" as any);
+      } else if (featureName === "Pricing Health Check") {
+        router.push("/(main)/pricing-health-check" as any);
       } else if (featureName === "Premium Portal") {
         // Premium users can access the web portal
         Alert.alert(
@@ -178,6 +180,16 @@ export default function ProTools() {
           {/* Pro Tools Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Pro Tools</Text>
+
+            {/* Pricing Health Check */}
+            <ProFeatureCard
+              title="Pricing Health Check"
+              description="Audit your recent quotes for underpricing"
+              locked={!isPro}
+              onPress={() => handleFeatureTap("Pricing Health Check")}
+              theme={theme}
+              tier="pro"
+            />
 
             {/* Assembly Manager */}
             <ProFeatureCard
