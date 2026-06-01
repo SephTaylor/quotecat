@@ -163,6 +163,16 @@ export default function ProTools() {
               theme={theme}
               tier="free"
             />
+
+            {/* Price Book - Free for all (local); Pro adds cloud sync */}
+            <ProFeatureCard
+              title="Price Book"
+              description="Create and manage your custom products and pricing"
+              locked={false}
+              onPress={() => handleFeatureTap("Price Book", false, true)}
+              theme={theme}
+              tier="free"
+            />
           </View>
 
           {/* Pro Tools Section */}
@@ -195,16 +205,6 @@ export default function ProTools() {
               description="Calculate materials from job dimensions"
               locked={!isPro}
               onPress={() => handleFeatureTap("Job Calculator")}
-              theme={theme}
-              tier="pro"
-            />
-
-            {/* Price Book - Pro feature */}
-            <ProFeatureCard
-              title="Price Book"
-              description="Create and manage your custom products and pricing"
-              locked={!isPro}
-              onPress={() => handleFeatureTap("Price Book")}
               theme={theme}
               tier="pro"
             />
