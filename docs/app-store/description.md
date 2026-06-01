@@ -1,8 +1,8 @@
-# QuoteCat - Store Listings (v1.2.5)
+# QuoteCat - Store Listings (v1.2.6)
 
-Last updated: 2026-05-27. Updated for the financial-intelligence platform reframe shipped on the marketing site.
+Last updated: 2026-06-01. Target: v1.2.6 production submission (after v1.2.5 clears Apple/Google review).
 
-These are the production copy blocks for App Store Connect and Google Play. Paste-ready when submitting v1.2.5 for review.
+These are the production copy blocks for App Store Connect and Google Play. Paste-ready when submitting v1.2.6 for review. v1.2.5's release notes are archived at the bottom of this file for reference.
 
 ---
 
@@ -39,6 +39,12 @@ Built for contractors, plumbers, electricians, HVAC technicians, framers, roofer
 - Add materials, labor, and markup
 - Quick estimate mode for jobs you already know
 - Duplicate quotes for similar jobs
+
+**Pricing Health Check (Pro)**
+- One-tap audit of your last 90 days of quotes
+- See which quotes were underpriced and roughly how much profit was left on the table
+- Same math as the live margin indicator — if a quote ran red on the editor, it shows up here
+- Tap any flagged quote to review it
 
 **Assemblies (Pro)**
 - Pre-built assemblies for common tasks
@@ -102,7 +108,7 @@ Privacy Policy: https://quotecat.ai/privacy
 Terms of Use: https://quotecat.ai/terms
 
 ### What's New in This Version (release notes)
-Stop guessing what you make on every job. Real-time profit margin and estimated profit are now free on every quote — see if you're making money before you send it. Also: better visibility on custom line items in the quote editor.
+Pricing Health Check is here for Pro. Tap once and we'll audit your last 90 days of quotes — showing which ones were underpriced and roughly how much profit was left on the table. Uses the same margin math as the live indicator on every quote, so the verdict matches what you saw when you sent it.
 
 ---
 
@@ -130,6 +136,12 @@ Built for contractors, plumbers, electricians, HVAC technicians, framers, roofer
 - Add materials, labor, and markup
 - Quick estimate mode for jobs you already know
 - Duplicate quotes for similar jobs
+
+**Pricing Health Check (Pro)**
+- One-tap audit of your last 90 days of quotes
+- See which quotes were underpriced and roughly how much profit was left on the table
+- Same math as the live margin indicator — if a quote ran red on the editor, it shows up here
+- Tap any flagged quote to review it
 
 **Assemblies (Pro)**
 - Pre-built assemblies for common tasks
@@ -201,4 +213,14 @@ Privacy Policy: https://quotecat.ai/privacy
 Terms of Use: https://quotecat.ai/terms
 
 ### Release notes (500 char max for Play)
+Pricing Health Check is now in Pro. One tap audits your last 90 days of quotes and flags ones that were underpriced — using the same math as the live margin indicator you see on every quote. See how much profit you left on the table and tap any flagged quote to review it.
+
+---
+
+## Archived release notes (for reference)
+
+### v1.2.5 (App Store)
+Stop guessing what you make on every job. Real-time profit margin and estimated profit are now free on every quote — see if you're making money before you send it. Also: better visibility on custom line items in the quote editor.
+
+### v1.2.5 (Google Play)
 Stop guessing what you make on every job. Real-time profit margin and estimated profit are now free on every quote. Plus better visibility on custom line items in the quote editor.
