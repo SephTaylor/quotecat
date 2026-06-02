@@ -43,7 +43,7 @@ For a contractor doing $300,000/year in jobs, this saves over $8,700/year compar
 
 ## Pricing
 
-- Free: $0/month - Unlimited quotes (local), unlimited clients, 10 PDF exports/month, 10 invoice exports/month, 10 spreadsheet exports/month, custom price book, zero transaction fees
+- Free: $0/month - 10 quotes/month, unlimited clients, 10 PDF exports/month, 10 invoice exports/month, 10 spreadsheet exports/month, custom price book (up to 50 items, local), zero transaction fees
 - Pro: $29/month (founder pricing) - Unlimited exports, shareable links, notifications, cloud sync, reusable assemblies, no PDF watermark
 - Premium: $79/month (founder pricing) - Everything in Pro plus contracts, e-signatures, web portal, business analytics, team management
 
