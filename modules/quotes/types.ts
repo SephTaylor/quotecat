@@ -11,11 +11,15 @@ export type {
 } from "@/lib/types";
 
 // Re-export validation functions
+// (calculateTotal removed June 2026 — it pointed at lib/validation's
+//  stranded duplicate of the math, which used different rules than
+//  lib/calculations.ts. The canonical calculateQuoteTotal lives at
+//  lib/calculations.ts:74 and is re-exported by modules/quotes/index.ts
+//  under the name `calculateTotal` for callers that want that name.)
 export {
   normalizeQuote,
   normalizeQuoteItem as normalizeItem,
   calculateMaterialSubtotal,
-  calculateTotal,
   validateQuote,
   validateQuoteName,
   validateQuoteHasItems,

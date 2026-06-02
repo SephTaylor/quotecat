@@ -169,48 +169,16 @@ export function calculateMaterialSubtotal(items: QuoteItem[]): number {
   }, 0);
 }
 
-/**
- * Calculate all quote totals with breakdown
- * This is the single source of truth for quote calculations
- */
-export function calculateQuoteTotals(quote: Quote): {
-  materialsFromItems: number;
-  materialEstimate: number;
-  labor: number;
-  overhead: number;
-  subtotal: number;
-  markupPercent: number;
-  markupAmount: number;
-  total: number;
-} {
-  const materialsFromItems = calculateMaterialSubtotal(quote.items);
-  const materialEstimate = quote.materialEstimate ?? 0;
-  const labor = quote.labor ?? 0;
-  const overhead = quote.overhead ?? 0;
-  const markupPercent = quote.markupPercent ?? 0;
-
-  const subtotal = materialsFromItems + materialEstimate + labor + overhead;
-  const markupAmount = (subtotal * markupPercent) / 100;
-  const total = subtotal + markupAmount;
-
-  return {
-    materialsFromItems,
-    materialEstimate,
-    labor,
-    overhead,
-    subtotal,
-    markupPercent,
-    markupAmount,
-    total,
-  };
-}
-
-/**
- * Calculate total (simplified wrapper for backward compatibility)
- */
-export function calculateTotal(quote: Quote): number {
-  return calculateQuoteTotals(quote).total;
-}
+// NOTE: calculateQuoteTotals and calculateTotal previously lived here as a
+// stranded duplicate of lib/calculations.ts's versions, with different math
+// (no tax handling, markup applied to labor + estimate + a non-existent
+// "overhead" field). The December 2025 consolidation moved the canonical
+// implementation to lib/calculations.ts. Both functions had zero callers
+// project-wide (verified by exhaustive grep including dynamic imports, star
+// imports, re-export facades, and edge functions) and were removed in
+// June 2026 to eliminate the future-bug risk where a developer (or
+// auto-import) could grab the wrong version and silently produce wrong
+// totals. The canonical functions live at lib/calculations.ts:25 and 74.
 
 /**
  * Validate quote name is not empty
