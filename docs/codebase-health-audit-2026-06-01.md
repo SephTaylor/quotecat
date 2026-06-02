@@ -167,15 +167,15 @@ Most of the codebase is fine. Five specific items worth fixing:
 
 ## Recommended remediation plan (prioritized)
 
-### Tier 1 — Do soon (low effort, high impact, ~half day total)
+### Tier 1 — Do soon (low effort, high impact)
 
-| Item | Est. effort |
+| Item | Status |
 |---|---|
-| Fix `calculateQuoteTotals` duplication — pick one canonical, migrate callers, delete the other | 2 hrs |
-| Delete `_old/` directory | 5 min |
-| Move `pg`, `supabase`, `xlsx` to devDependencies | 10 min |
-| Add `@types/uuid` to devDependencies | 5 min |
-| Update CLAUDE.md drift items (Drew status, xByte status, "all local" claim, etc.) | 1 hr |
+| Fix `calculateQuoteTotals` duplication | ✅ shipped in `fed5c8a` (2026-06-02). Five-step verification chain documented in commit message: TS compile, importer trace, canonical-version-caller trace, math smoke test (17/17 assertions), lint. Surface area was bigger than the audit said — included a stranded re-export in `modules/quotes/types.ts:18` that the deeper sweep caught. |
+| Delete `_old/` directory | ✅ shipped in `6e57200` (2026-06-02). 36 files, 3,132 lines removed. Already excluded from TS compile (`include` list) and EAS builds (`.easignore`); zero references from live code. Pre-Oct-2025 archaeology preserved in git via commit `8ccac91^`. |
+| ~~Move `pg`, `supabase`, `xlsx` to devDependencies~~ | ⚠️ **Audit was wrong** — these three are *already* in `devDependencies` at commit `7251d6b` and earlier. Verified by reading `package.json` directly. The audit agent's claim that they were in `dependencies` was a misread. No action needed. |
+| Add `@types/uuid` to devDependencies | 🔄 **Pending — needs care.** First attempt on 2026-06-02 (rolled back) ran `npm install uuid @types/uuid` which silently jumped uuid from v7.0.3 (transitive from Expo → @expo/config-plugins → xcode → uuid) to v14.0.0 — a 7-major-version jump. Rolled back to commit `6e57200` state. When this is picked up, decide explicitly between (A) just `@types/uuid` as devDep (relies on Expo's chain to keep providing uuid transitively), or (B) `uuid@^7.0.3` as a direct dep + `@types/uuid` as devDep (explicit ownership, protects against transitive drop). Don't let `npm install` auto-pick the latest. |
+| Update CLAUDE.md drift items | 🔄 Pending. 8 specific claims need updating: "all data local" misleading for Pro/Premium, Drew tier gating ambiguity, "1Build" should be xByte, "30k+ products" never verified, xByte "deferred" but ~80% built, "real-time pricing" is actually weekly, mobile product sync code doesn't exist, supplier API architecture aspirational vs real. See lines starting "Stale CLAUDE.md sections" in the Duplication / Dead Code / Stale Docs section above for specifics. |
 
 ### Tier 2 — Schedule for v1.2.7 or v1.3.0 cycle (~half to full day)
 
@@ -183,7 +183,7 @@ Most of the codebase is fine. Five specific items worth fixing:
 |---|---|
 | Get TypeScript back to 0 errors | 4-6 hrs |
 | Decide `expo-dev-client` location | 30 min (mostly a decision, not work) |
-| Add `@types/uuid` (already in Tier 1; gets you to zero TS errors faster) | — |
+| Add `@types/uuid` (already in Tier 1) | — |
 | Fix the 5 performance smells | 2-3 hrs |
 
 ### Tier 3 — Refactors worth a dedicated cycle (~2-3 working days total)
