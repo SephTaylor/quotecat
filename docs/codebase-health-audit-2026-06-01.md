@@ -6,6 +6,23 @@
 
 **Bottom line:** **Health rating MEDIUM.** Fine to ship from today. Will become painful at roughly 2x the current code volume (~30K lines) if a few specific items aren't addressed. The most urgent finding is a single piece of duplicate business logic that's a real bug-spawner. Everything else is technical debt that can be scheduled.
 
+## Scope of this audit (refreshed 2026-06-02)
+
+**What was audited:** the QuoteCat mobile app codebase at `/Users/sephtaylor/Projects/quotecat` only. That's `app/`, `lib/`, `modules/`, `components/`, `scripts/`, `supabase/functions/`, and `website/`.
+
+**What was NOT audited but is part of the shipping product:** the QuoteCat portal at `/Users/sephtaylor/Projects/quotecat-portal` — a separate Next.js project that hosts the Premium-tier web experience (contractor dashboard, client-facing quote/contract/payment pages, worker job-assignment portal, analytics, QuickBooks sync, two-way SMS via Twilio, scheduling, profitability setup). Premium tier specifically markets portal access, so audit findings that ask "is feature X really shipped?" need to check both projects, not just mobile.
+
+**Concrete example of the blindspot:** during a follow-up verification on 2026-06-02 (sourcing a marketing brief), three Premium-tier features were initially flagged as "not in code" — two-way client texting, job scheduling & calendar, QuickBooks sync. All three are real and shipped, just on the portal side: `src/components/SMSSettings.tsx` + `src/app/api/messages/route.ts` (Twilio SMS with provisioning, business hours, after-hours auto-reply), `src/app/dashboard/jobs` + `src/app/worker/[token]` (worker-side job view with phone auth), and `src/app/api/quickbooks/route.ts` + `src/app/api/quickbooks/sync/all/route.ts` (QuickBooks integration). The audit didn't flag these as missing because the agents weren't asked about them — but the precedent is real: when re-running audits, give the agents both projects or run separate sweeps per project.
+
+**What this means for the findings below:**
+
+- **Architecture / file-size findings** are mobile-only. Portal may have its own offenders, unmeasured.
+- **Sync / database / hook-pattern findings** are mobile-only. Portal uses Next.js + Supabase server-side helpers — entirely different architecture, different risks.
+- **TypeScript / dependency findings** are mobile-only. Portal has its own `package.json`, `tsconfig.json`, and TS error inventory — all unmeasured here.
+- **CLAUDE.md drift findings** mostly hold up — they're about backend/feature-status (Drew tier gating, xByte status, "30K+ products", supplier API state) rather than mobile-vs-portal feature presence. But future drift work on CLAUDE.md should check both projects when verifying a claim.
+
+**Follow-up:** add a "Portal codebase health audit" item to the remediation plan (now in Tier 3).
+
 ---
 
 ## TL;DR — The five things that matter most
@@ -195,6 +212,7 @@ Most of the codebase is fine. Five specific items worth fixing:
 | Extract `useDashboardState` hook | 2 hrs |
 | Unify calculation source of truth (one canonical `lib/calculations.ts`) | 2-3 hrs |
 | Build `lib/syncManager.ts` orchestrator (replaces ad-hoc cooldown duplication) | 3 hrs |
+| **Audit the portal codebase** (`/Users/sephtaylor/Projects/quotecat-portal`) with the same three-dimensional sweep — architecture/bloat, duplication/dead code/stale docs, TypeScript/deps/perf. Premium features live there and the original audit didn't look. | 1 day |
 
 ### Tier 4 — Longer-term hygiene
 
