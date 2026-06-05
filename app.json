@@ -2,14 +2,11 @@
   "expo": {
     "name": "QuoteCat",
     "slug": "quotecat",
-
     "version": "1.2.6",
-
     "runtimeVersion": "1.2.6",
     "updates": {
       "url": "https://u.expo.dev/dc5517f1-c28a-4507-804b-406cee16ff3c"
     },
-
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "quotecat",
@@ -40,7 +37,7 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "ai.quotecat.app",
-      "buildNumber": "210",
+      "buildNumber": "211",
       "icon": "./assets/images/icon.png",
       "supportsTablet": true,
       "usesAppleSignIn": true,
@@ -88,7 +85,10 @@
               "pathPrefix": "/auth"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -97,7 +97,10 @@
               "scheme": "com.googleusercontent.apps.1046717490623-6ilrgd7ucbvepnabncajjp6t785e5huk"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
