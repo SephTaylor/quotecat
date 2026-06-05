@@ -334,6 +334,66 @@ When rotating: update `SUPABASE_SERVICE_ROLE_KEY` in Supabase Edge Function secr
 
 ---
 
+### 🟡 Portal: "Buy more seats" CTA only routes to 5-pack
+
+**Spotted:** 2026-06-05 by user inspecting `portal.quotecat.ai/dashboard/team`.
+
+**The bug:** The "buy more seats" / "buy more techs" CTA in the Premium contractor's team management area routes only to the 5-pack purchase flow. The single-pack option exists in the underlying Stripe / billing setup but the button doesn't expose it as a choice.
+
+**Why it matters:** A Premium contractor who needs to add **one** tech sees only the 5-pack price and may bounce rather than over-buy. Conversion friction on a real intent signal.
+
+**Fix:** Add the single-pack option to the seat-purchase selector in `quotecat-portal/src/app/dashboard/team/` (likely the worker-invite or tech-invite flow). Should route to the Stripe single-seat checkout endpoint that already exists per the portal API audit (`/api/stripe/seats/checkout`).
+
+**Effort:** Small — likely a single component change + a price/route map update. ~30 min if the single-pack price ID is already in env.
+
+---
+
+### 🟢 UX clarity: surface "Office staff" as a preset Tech configuration
+
+**Surfaced:** 2026-06-05 during marketing-site discussion. Initially logged as a "new role to build," then corrected after reading `quotecat-portal/src/app/dashboard/team/TechList.tsx:581-591`.
+
+**The actual state:** The granular permission flags **already exist** for the Tech role and can produce an office-staff configuration today. Available flags: `can_create_quotes`, `can_edit_own_quotes`, `can_edit_all_quotes`, `can_view_pricing`, `can_manage_clients`, `can_view_invoices`, `can_record_payments`, `can_send_to_portal`, `can_assign_workers`, `can_view_labor_rates`. Unchecking the three quote-creation flags + checking the financial/admin flags = an office-staff user.
+
+**What's missing isn't functionality — it's discoverability:**
+- No preset role labeled "Office" or "Back-office" that auto-checks the right permission profile (today owners have to manually toggle 10 checkboxes to build it)
+- The Tech-role UI explainer at `TechList.tsx:81` says *"Tech accounts let your team members log into the QuoteCat mobile app to create quotes"* — frames every Tech as a mobile app user, which buries the office use case
+- Marketing materials don't mention this is possible
+
+**Recommended scope when picked up:**
+1. Add a third role preset alongside Tech / Admin called "Office" that pre-checks a sensible permission profile (no quote creation, yes financial/admin access)
+2. Update the role-picker UI explainer text to mention all three use cases (estimator / office staff / admin)
+3. Optionally: surface a runtime check on mobile sign-in that detects "user has only office-style permissions" and shows a helpful "you don't have mobile app permissions — use portal.quotecat.ai instead" message
+4. Marketing: add an explicit Office use case to the Premium tier story (currently a hidden capability)
+
+**Effort:** ~2 hours UX/copy + label work. No schema or auth changes needed.
+
+**Not scoped tonight per user.** Log here for next cleanup pass.
+
+---
+
+### 🟡 Portal: site performance feels subjectively slow
+
+**Spotted:** 2026-06-05 by user navigating `portal.quotecat.ai`.
+
+**The signal:** User reported the portal feels slow during normal navigation. No specific page or interaction called out — broad subjective impression.
+
+**Candidates worth profiling when investigating:**
+
+- Next.js bundle size + tree-shaking (run `next build` and inspect `.next/analyze/` output)
+- Server-component vs client-component boundaries — pages currently marked `"use client"` that could be split
+- Supabase query waterfalls on `/dashboard` — could be N+1 patterns or sequential awaits that should be `Promise.all`
+- Image optimization — confirm `next/image` is used everywhere and the `images.domains` config covers Cloudinary
+- Font loading strategy — `next/font` vs external `<link>` with FOUT/FOIT impact
+- `CalendarView.tsx` (~457 LOC) doing heavy client-side computation on each render — memoize date calculations and job grouping if not already
+- Realtime / interval polling that may be firing more than needed
+- Vercel/Netlify edge function cold starts on API routes
+
+**Recommended first pass:** Run Lighthouse against `/dashboard` in incognito, capture LCP/TBT/CLS, then iterate on the worst-scoring metric.
+
+**Effort:** 2-4 hour audit pass + iterative fixes based on findings.
+
+---
+
 ## Done
 
 (none yet)

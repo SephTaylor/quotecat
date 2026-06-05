@@ -290,17 +290,17 @@ Navigating between groups (e.g., `(forms)` → `(main)`) requires explicit back 
 - No assemblies, no cloud sync, no portal links
 
 **Pro Tier - Founder Pricing:**
-- Price: $29/mo or $290/yr (first 500 customers, locked forever)
-- Regular price: $99/mo or $990/yr
+- Price: $29/mo (first 50 customers, locked forever)
+- Regular price: $49/mo
 - Features: Everything in Free + unlimited exports (no branding), custom assemblies, cloud sync, multi-device, portal links, company branding on PDFs
 
 **Premium Tier - Founder Pricing:**
-- Price: $79/mo or $790/yr (first 100 customers, locked forever)
-- Regular price: $199/mo or $1,990/yr
+- Price: $79/mo (first 25 customers, locked forever)
+- Regular price: $109/mo
 - Features: Everything in Pro + contracts, Drew AI quote building, web portal access, priority support
 
 **Price Increase Triggers:**
-- Primary: Hit customer cap (100 Pro = $49, 500 Pro = $99)
+- Primary: Hit founder cap (50 Pro customers → $49/mo, 25 Premium customers → $109/mo)
 - Secondary: 90 days from TestFlight launch
 - Backup: High conversion rate (>20%) for 30 days
 
@@ -773,7 +773,8 @@ These changes need to be added back incrementally, testing each batch:
 - Supabase is backup + sync, not replacement
 
 ### Pricing Strategy
-- Founder pricing ($29/$79) for first 100/500 customers
+- Founder pricing: $29/mo Pro (first 50 customers), $79/mo Premium (first 25 customers)
+- Regular pricing after cap: $49/mo Pro, $109/mo Premium
 - Price locked forever for early adopters
 - Raise prices at customer milestones, not time-based
 - Grandfathering creates loyalty and urgency
