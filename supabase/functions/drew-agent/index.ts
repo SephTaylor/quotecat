@@ -513,7 +513,7 @@ async function lookupMaterials(
   userId?: string,
   categoryFilter?: string | null
 ): Promise<Array<{ id: string; name: string; price: number; unit: string; retailer?: string; source: 'pricebook' | 'catalog' }>> {
-  console.log(`[drew-agent] Looking up materials:`, searchTerms, userId ? '(with pricebook)' : '(catalog only)', categoryFilter ? `(category: ${categoryFilter})` : '');
+  console.log(`[drew-agent] Looking up materials:`, searchTerms, userId ? '(pricebook only — catalog disabled)' : '(no userId — no lookup possible)', categoryFilter ? `(category: ${categoryFilter})` : '');
 
   const results: Array<{ id: string; name: string; price: number; unit: string; retailer?: string; source: 'pricebook' | 'catalog' }> = [];
 
@@ -544,28 +544,39 @@ async function lookupMaterials(
       }
     }
 
-    // 2. Search catalog (with optional category filter to avoid cross-trade results)
-    const { data, error } = await supabase.rpc('search_products', {
-      search_query: term,
-      result_limit: 3,
-      category_filter: categoryFilter || null,
-    });
-
-    if (!error && data) {
-      for (const product of data) {
-        // Avoid duplicates (check both pricebook and catalog results)
-        if (!results.find(r => r.id === product.id)) {
-          results.push({
-            id: product.id,
-            name: product.name,
-            price: product.unit_price,
-            unit: product.unit || 'ea',
-            retailer: product.retailer || undefined,
-            source: 'catalog',
-          });
-        }
-      }
-    }
+    // 2. Supplier catalog lookup is currently DISABLED.
+    //
+    // Drew used to also search the xByte-fed supplier catalog (products
+    // table via the search_products RPC) as a secondary lookup. xByte is
+    // paused, so the catalog has no actively-populated production data;
+    // hitting it would return zero useful results or stale data and dilute
+    // the contractor's pricebook-driven experience. Disabling keeps Drew
+    // honest: only suggests items from the user's own pricebook.
+    //
+    // To re-enable when xByte is reconnected, simply un-comment the block
+    // below. No other code changes needed — the rest of the pipeline
+    // already handles dual-source results with `source: 'catalog'` tags.
+    //
+    // const { data, error } = await supabase.rpc('search_products', {
+    //   search_query: term,
+    //   result_limit: 3,
+    //   category_filter: categoryFilter || null,
+    // });
+    //
+    // if (!error && data) {
+    //   for (const product of data) {
+    //     if (!results.find(r => r.id === product.id)) {
+    //       results.push({
+    //         id: product.id,
+    //         name: product.name,
+    //         price: product.unit_price,
+    //         unit: product.unit || 'ea',
+    //         retailer: product.retailer || undefined,
+    //         source: 'catalog',
+    //       });
+    //     }
+    //   }
+    // }
   }
 
   console.log(`[drew-agent] Found ${results.length} materials (${results.filter(r => r.source === 'pricebook').length} from pricebook)`);
