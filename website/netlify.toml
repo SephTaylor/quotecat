@@ -5,6 +5,24 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# ─── PostHog reverse proxy ──────────────────────────────────────────
+# Routes analytics traffic through quotecat.ai so ad blockers (uBlock
+# Origin etc.) can't drop ~10-25% of events by blocking *.posthog.com.
+# The /ingest/static/* rule MUST come first because it's more specific
+# than /ingest/* — Netlify processes redirects top-to-bottom and stops
+# at the first match.
+[[redirects]]
+  from = "/ingest/static/*"
+  to = "https://us-assets.i.posthog.com/static/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/ingest/*"
+  to = "https://us.i.posthog.com/:splat"
+  status = 200
+  force = true
+
 # Redirect rules for clean URLs
 [[redirects]]
   from = "/resources/markup-calculator"
