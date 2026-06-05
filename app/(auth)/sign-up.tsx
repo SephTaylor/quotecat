@@ -22,6 +22,7 @@ import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { needsSync, syncAllProducts, hasProductCache } from "@/modules/catalog/productService";
 import { setUserEmail } from "@/lib/user";
+import { identifyUser } from "@/lib/app-analytics";
 import { ensureProfileExists } from "@/lib/authUtils";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as Google from "expo-auth-session/providers/google";
@@ -124,8 +125,9 @@ export default function SignUpScreen() {
   }, []);
 
   // Shared post-sign-in flow (sync products, navigate to dashboard)
-  const handlePostSignIn = async (userEmail: string) => {
+  const handlePostSignIn = async (userEmail: string, userId?: string) => {
     await setUserEmail(userEmail);
+    if (userId) identifyUser(userId, { email: userEmail || undefined, tier: "free" });
 
     // Sync product catalog for new user
     const hasCache = await hasProductCache();
@@ -192,7 +194,7 @@ export default function SignUpScreen() {
 
       if (data.user) {
         await ensureProfileExists(data.user);
-        await handlePostSignIn(data.user.email || "");
+        await handlePostSignIn(data.user.email || "", data.user.id);
       }
     } catch (error: any) {
       if (error.code === "ERR_REQUEST_CANCELED") {
@@ -228,7 +230,7 @@ export default function SignUpScreen() {
         console.log("🔵 User authenticated:", data.user.id, data.user.email);
         await ensureProfileExists(data.user);
         console.log("🔵 Profile ensured, calling handlePostSignIn...");
-        await handlePostSignIn(data.user.email || "");
+        await handlePostSignIn(data.user.email || "", data.user.id);
       } else {
         console.log("🔵 No user in response data");
       }
@@ -296,6 +298,7 @@ export default function SignUpScreen() {
           // User is signed in immediately (email confirmation disabled)
           // Save email to user state so Delete Account works
           await setUserEmail(email.trim());
+          identifyUser(data.user.id, { email: email.trim(), tier: "free" });
           Alert.alert("Success", "Account created successfully!");
 
           // Sync product catalog for new user

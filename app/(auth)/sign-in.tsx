@@ -21,6 +21,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier, setUserEmail } from "@/lib/user";
+import { identifyUser } from "@/lib/app-analytics";
 import { needsSync, syncAllProducts, hasProductCache } from "@/modules/catalog/productService";
 import { ensureProfileExists } from "@/lib/authUtils";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -153,6 +154,11 @@ export default function SignInScreen() {
     } else {
       await setUserEmail(user.email || "");
     }
+
+    identifyUser(user.id, {
+      email: profile?.email || user.email || undefined,
+      tier: profile?.tier || "free",
+    });
 
     // Prompt for product catalog sync if needed
     const hasCache = await hasProductCache();
@@ -312,6 +318,11 @@ export default function SignInScreen() {
 
           Alert.alert("Success", "Signed in successfully");
         }
+
+        identifyUser(data.user.id, {
+          email: profile?.email || data.user.email || email.trim() || undefined,
+          tier: profile?.tier || "free",
+        });
 
         // Ensure product catalog is available (sync if needed)
         const hasCache = await hasProductCache();

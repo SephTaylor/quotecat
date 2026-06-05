@@ -41,6 +41,7 @@ import { uploadQuote } from "@/lib/quotesSync";
 import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 import type { TeamMember } from "@/lib/types";
 import { ChangeOrderList } from "@/modules/changeOrders/ui";
+import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 
 export default function QuoteReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -67,6 +68,10 @@ export default function QuoteReviewScreen() {
   const [defaultLaborRate, setDefaultLaborRate] = useState(0);
   const [defaultLaborCostRate, setDefaultLaborCostRate] = useState(0);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    if (qid) trackEvent(AnalyticsEvents.REVIEW_OPENED, { quoteId: qid });
+  }, [qid]);
 
   useEffect(() => {
     (async () => {

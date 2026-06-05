@@ -2,6 +2,7 @@
 // User state and tier management
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { resetAnalyticsUser } from "@/lib/app-analytics";
 
 export type UserTier = "free" | "pro" | "premium";
 
@@ -358,6 +359,7 @@ export async function signOutUser(): Promise<void> {
     proActivatedAt: undefined,
     proExpiresAt: undefined,
   });
+  resetAnalyticsUser();
 }
 
 /**

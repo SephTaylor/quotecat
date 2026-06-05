@@ -2,6 +2,7 @@
 // Analytics tracking using PostHog
 
 import PostHog from 'posthog-react-native';
+import * as Sentry from '@sentry/react-native';
 
 // Global PostHog instance
 let posthogInstance: PostHog | null = null;
@@ -67,5 +68,43 @@ export function trackEvent(
     }
   } catch (error) {
     console.error('Failed to track event:', eventName, error);
+  }
+}
+
+/**
+ * Tie subsequent PostHog + Sentry events to a specific user. Call after
+ * successful sign-in/sign-up so anonymous device events get stitched to
+ * the real account.
+ */
+export function identifyUser(
+  userId: string,
+  properties?: { email?: string; tier?: string }
+): void {
+  try {
+    if (posthogInstance) {
+      posthogInstance.identify(userId, properties);
+    }
+    Sentry.setUser({
+      id: userId,
+      ...(properties?.email ? { email: properties.email } : {}),
+      ...(properties?.tier ? { tier: properties.tier } : {}),
+    });
+  } catch (error) {
+    console.error('Failed to identify user:', error);
+  }
+}
+
+/**
+ * Clear user identity. Call on sign-out so the next account's events
+ * don't get attributed to the previous user.
+ */
+export function resetAnalyticsUser(): void {
+  try {
+    if (posthogInstance) {
+      posthogInstance.reset();
+    }
+    Sentry.setUser(null);
+  } catch (error) {
+    console.error('Failed to reset analytics user:', error);
   }
 }
