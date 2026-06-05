@@ -31,13 +31,13 @@ estimate,profit,margin,invoice,electrician,plumber,HVAC,contractor,billing,quote
 
 ### Description (4000 char max)
 
-QuoteCat — Stop Guessing What You Make on Every Job
+Stop guessing what you make on every job.
 
-The mobile app + web portal that shows your real profit on every quote, so you know if you're making money before you send it.
+QuoteCat shows your real profit on every quote, so you know if you're making money before you send it. Mobile app + web portal.
 
 Other apps take 2-3% of every payment. We take zero. Your money stays yours.
 
-No complex setup. Open the app. Build your quote. See your real margin in real time. Send it.
+Open the app. Build your quote. See your real margin in real time. Send it.
 
 ---
 
@@ -207,69 +207,49 @@ Assemblies (Pro)
 - Browse Community Assemblies from other pros
 - Build quotes 10x faster with reusable templates
 
-Lightning-Fast Quoting
-- Create professional quotes in minutes
-- Add materials, labor, and markup
-- Quick estimate mode for jobs you already know
-- Duplicate quotes for similar jobs
-
 Professional Exports
 - PDF quotes with your company info
 - CSV export for record-keeping
-- Add your logo and remove the QuoteCat watermark with Pro
+- Logo on PDFs + no QuoteCat watermark with Pro
 
-Business Management
-- Dashboard with quote value tracking
-- Status workflow: Draft → Sent → Approved → Completed
-- Search and filter by client, project, or status
-
-Invoices
-- Convert quotes to invoices with one tap
+Quote → Invoice → Paid
+- Convert approved quotes to invoices in one tap
 - Track paid, unpaid, and overdue
-- Professional invoices with your branding
-
-Client Manager
-- Save client contact info
-- View quote history by client
-- Quick access to repeat customers
+- Status workflow on the dashboard: Draft → Sent → Approved → Completed
+- Save clients, view quote history per client
 
 Works Offline
-- Create and edit quotes without internet
-- Perfect for job sites with poor connectivity
+- Quote, calculate, and export PDFs without internet
 - Cloud sync across devices with Pro
 
-Free Calculators and Guides
-- Labor Rate Calculator
-- Overhead Calculator
-- Markup Calculator
-- Profit Margin Calculator
+Free Calculators and Guides at quotecat.ai/resources
+- Labor Rate, Overhead, Markup, and Profit Margin calculators (also in the app)
 - 90-Day Contractor Startup Kit
 - Contractor Pricing Guide ($29, free with Pro and Premium)
-- All available at quotecat.ai/resources
 
 Zero Payment Processing Fees
 - Clients pay you directly through your preferred method (Zelle, Venmo, CashApp, bank transfer, check, etc.)
 - Keep 100% of every payment
 - A $300K/year contractor saves $8,700+/year vs apps that charge 2.9%
 
-Premium — the full QuoteCat platform (mobile app + web portal at portal.quotecat.ai)
+Premium — the full QuoteCat platform (mobile + web portal at portal.quotecat.ai)
 
-In the mobile app:
-- Drew AI — talk through the job, Drew references your pricebook to build the quote
+In the app:
+- Drew AI — talk through the job, Drew uses your pricebook to build the quote
 - Digital contracts with e-signatures
-- Team Members — add your crew, track labor costs per worker
+- Team Members + labor cost tracking per worker
 - 1 Field Tech license + unlimited worker seats
 
-On the web portal:
-- Full business dashboard for quotes, invoices, contracts, clients, pricebook, team, and jobs
-- Two-way client texting with your own business phone number
+On the portal:
+- Full business dashboard (quotes, invoices, contracts, clients, pricebook, team, jobs)
+- Two-way client texting with your own business number
 - Job scheduling and worker assignment
 - Analytics dashboard
 - QuickBooks sync
-- Email and SMS reminders for overdue invoices
-- Profitability setup that feeds your mobile app's margin math
+- SMS + email reminders for overdue invoices
+- Profitability setup that feeds the app's margin math
 
-Built by contractors, for contractors. QuoteCat streamlines the part you hate — so you can get back to your real work.
+Built by contractors, for contractors.
 
 Subscription Information:
 
