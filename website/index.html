@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuoteCat - Professional Construction Quotes in Minutes</title>
-    <meta name="description" content="The quoting app for contractors with zero additional fees. Create professional quotes in 5 minutes, send a link to your client, and keep 100% of every payment.">
+    <meta name="description" content="Financial-intelligence quoting app for contractors. Quote on-site in 5 minutes, see your real margin on every line, send a clickable link to your client. No QuoteCat fees on the payments you collect.">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="shortcut icon" type="image/png" href="/favicon-32x32.png">
@@ -13,12 +13,12 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://quotecat.ai/">
     <meta property="og:title" content="QuoteCat - Professional Construction Quotes in Minutes">
-    <meta property="og:description" content="The quoting app for contractors with zero additional fees. Create professional quotes in 5 minutes, send a link to your client, and keep 100% of every payment.">
+    <meta property="og:description" content="Financial-intelligence quoting app for contractors. Quote on-site in 5 minutes, see your real margin on every line, send a clickable link to your client. No QuoteCat fees on the payments you collect.">
     <meta property="og:image" content="https://quotecat.ai/drew-avatar.png">
     <!-- Twitter -->
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="QuoteCat - Professional Construction Quotes in Minutes">
-    <meta name="twitter:description" content="Zero additional fees. Create professional quotes in 5 minutes and keep 100% of every payment.">
+    <meta name="twitter:description" content="Real margin on every quote. Quote on-site in 5 minutes. No QuoteCat fees on the payments you collect.">
     <meta name="twitter:image" content="https://quotecat.ai/drew-avatar.png">
     <!-- Canonical URL -->
     <link rel="canonical" href="https://quotecat.ai/">
@@ -31,7 +31,7 @@
       "url": "https://quotecat.ai",
       "logo": "https://quotecat.ai/logo.png",
       "email": "hello@quotecat.ai",
-      "description": "Mobile quoting app for construction contractors with zero additional fees.",
+      "description": "Financial-intelligence platform for construction contractors. Real margin on every quote, no QuoteCat fees on payments collected.",
       "sameAs": []
     }
     </script>
@@ -42,7 +42,7 @@
       "name": "QuoteCat",
       "operatingSystem": "iOS",
       "applicationCategory": "BusinessApplication",
-      "description": "Contractor financial intelligence platform: a mobile quoting app that shows real profit on every quote, plus free calculators, pricing guides, and a startup kit. Zero payment processing fees — clients pay you directly, you keep 100%.",
+      "description": "Contractor financial intelligence platform: a mobile quoting app that shows real profit on every quote, plus free calculators, pricing guides, and a startup kit. No QuoteCat fees on the payments you collect.",
       "offers": [
         {
           "@type": "Offer",
@@ -97,7 +97,7 @@
           "name": "Does QuoteCat charge additional fees?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. QuoteCat charges zero additional fees on every plan, including the free tier. Your clients pay you directly through your preferred payment method. You keep 100% of every payment. Other apps charge 2.9% or more on every payment processed."
+            "text": "No. QuoteCat doesn't take a cut of your payments and doesn't add a markup on card processing. Clients can pay by Zelle, Venmo, cash, or check (fully free), or by card via Stripe at standard rates (~2.9% + 30¢) with zero from us on top."
           }
         },
         {
@@ -121,7 +121,7 @@
           "name": "How is QuoteCat different from other quoting apps?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "QuoteCat charges zero additional fees while other apps charge 2.9% on every payment. A contractor doing $300K/year saves over $8,700/year with QuoteCat. QuoteCat also costs significantly less, works offline, and lets clients accept or decline quotes directly from a shareable link with real-time notifications."
+            "text": "QuoteCat charges a flat monthly rate with no per-user fees, while competitors charge per seat: FieldPulse runs ~$100/user/month, Jobber ~$50/user/month. A 5-person crew on QuoteCat Premium is $79/month flat versus $500+/month elsewhere. QuoteCat also works offline, shows real margin on every quote line, and lets clients accept or decline quotes from a shareable link with real-time notifications."
           }
         },
         {
@@ -812,6 +812,74 @@
             font-weight: bold;
             margin-right: 12px;
             font-size: 18px;
+        }
+
+        /* Info tooltip — used on tier-feature bullets that need a longer explanation */
+        .info-tip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            margin-left: 6px;
+            border-radius: 50%;
+            background: rgba(249, 115, 22, 0.2);
+            color: #f97316;
+            font-size: 11px;
+            font-weight: 700;
+            font-family: Georgia, serif;
+            font-style: italic;
+            cursor: help;
+            vertical-align: middle;
+            position: relative;
+            user-select: none;
+            outline: none;
+            transition: background 0.15s ease;
+        }
+
+        .info-tip:hover,
+        .info-tip:focus,
+        .info-tip:focus-within {
+            background: rgba(249, 115, 22, 0.45);
+        }
+
+        .info-tip-content {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 260px;
+            padding: 12px 14px;
+            background: #0a0a0a;
+            border: 1px solid rgba(249, 115, 22, 0.5);
+            border-radius: 8px;
+            color: #f5f5f5;
+            font-size: 13px;
+            font-weight: 400;
+            font-style: normal;
+            font-family: inherit;
+            line-height: 1.55;
+            text-align: left;
+            z-index: 100;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .info-tip-content::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: rgba(249, 115, 22, 0.5);
+        }
+
+        .info-tip:hover .info-tip-content,
+        .info-tip:focus .info-tip-content,
+        .info-tip:focus-within .info-tip-content {
+            display: block;
         }
 
         .tier-price {
@@ -1705,11 +1773,11 @@
                     </div>
                     <h1 class="hero-animate">Stop guessing what you make on <span class="highlight">every job.</span></h1>
                     <p class="subtitle hero-animate hero-animate-delay">
-                        QuoteCat shows your real profit on every quote — plus free calculators, pricing guides, and a startup kit to help you charge what you're worth. Send the quote, get paid directly, <strong>keep 100%</strong>.
+                        QuoteCat shows your real profit on every quote — plus free calculators, pricing guides, and a startup kit to help you charge what you're worth. Send the quote, get paid directly — <strong>no QuoteCat fees, ever</strong>.
                     </p>
                     <div class="value-props hero-animate hero-animate-delay">
                         <span class="value-prop">Real margin on every quote</span>
-                        <span class="value-prop">Zero payment processing fees</span>
+                        <span class="value-prop">No QuoteCat fees, ever</span>
                         <span class="value-prop">Free calculators + guides included</span>
                     </div>
                     <div class="hero-cta-row hero-animate hero-animate-delay-2">
@@ -1738,37 +1806,27 @@
                     Going home, booting up the laptop, spending hours in spreadsheets — by then, your client already hired someone faster.
                 </p>
                 <p class="problem-text fade-in">
-                    <strong style="color: #f97316;">Payment fees cost you thousands.</strong><br>
-                    Other apps take 2.9% of every payment. On a $10,000 job, that's $290 gone. Do $300K/year? You're giving away $8,700.
+                    <strong style="color: #f97316;">Quoting blind costs you margin.</strong><br>
+                    Most contractors don't know their real hourly rate or true overhead — so they price by feel, win the job, and find out months later they barely broke even.
                 </p>
                 <p class="problem-text fade-in">
-                    QuoteCat fixes both. Quote on-site in 5 minutes. Clients pay you directly — no middleman, no processing fees. <strong style="color: #ffffff;">You keep 100%.</strong>
+                    QuoteCat fixes both. Quote on-site in 5 minutes with your real margin on every line. <strong style="color: #ffffff;">No QuoteCat fees, ever.</strong> Get paid by Zelle, Venmo, cash, or check and keep every dollar — or take cards at standard Stripe rates (~2.9% + 30¢) with zero markup from us.
                 </p>
             </div>
         </div>
     </section>
 
-    <!-- Math Section -->
-    <section style="padding: 50px 0;">
+    <!-- Founder Hotline Block -->
+    <section style="padding: 60px 0;">
         <div class="container">
-            <div style="max-width: 800px; margin: 0 auto; text-align: center;">
-                <h2 class="section-title fade-in" style="margin-bottom: 32px;">Your Subscription Pays for Itself</h2>
-                <div style="display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-bottom: 32px;">
-                    <div class="fade-in stagger-1" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(249,115,22,0.3); border-radius: 16px; padding: 28px 32px; flex: 1; min-width: 220px; max-width: 320px;">
-                        <p style="font-size: 14px; color: #9ca3af; margin-bottom: 8px; font-weight: 600;">Other Apps</p>
-                        <p style="font-size: 36px; font-weight: 800; color: #ef4444; margin-bottom: 4px;">-$435</p>
-                        <p style="font-size: 14px; color: #9ca3af;">/month in processing fees</p>
-                        <p style="font-size: 12px; color: #6b7280; margin-top: 4px;">on $15K/month volume</p>
-                    </div>
-                    <div class="fade-in stagger-2" style="background: rgba(249,115,22,0.1); border: 2px solid rgba(249,115,22,0.5); border-radius: 16px; padding: 28px 32px; flex: 1; min-width: 220px; max-width: 320px;">
-                        <p style="font-size: 14px; color: #9ca3af; margin-bottom: 8px; font-weight: 600;">QuoteCat Pro</p>
-                        <p style="font-size: 36px; font-weight: 800; color: #22c55e; margin-bottom: 4px;">$29</p>
-                        <p style="font-size: 14px; color: #9ca3af;">/month flat. No fees.</p>
-                        <p style="font-size: 12px; color: #6b7280; margin-top: 4px;">you save $400+/month</p>
-                    </div>
-                </div>
-                <p class="fade-in" style="font-size: 18px; color: #d1d5db; max-width: 600px; margin: 0 auto; line-height: 1.6;">
-                    Most apps cost you money. QuoteCat <strong style="color: #f97316;">saves</strong> you money. Simple as that.
+            <div style="max-width: 720px; margin: 0 auto; text-align: center; background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.3); border-radius: 16px; padding: 36px 32px;">
+                <h2 class="fade-in" style="font-size: 28px; font-weight: 800; color: #ffffff; margin-bottom: 12px;">Got a question? Text the founder.</h2>
+                <p class="fade-in" style="font-size: 22px; font-weight: 700; color: #f97316; margin-bottom: 8px; letter-spacing: 0.5px;">
+                    <a href="sms:+18447950278" style="color: #f97316; text-decoration: none;">(844) 795-0278</a>
+                </p>
+                <p class="fade-in" style="font-size: 14px; color: #9ca3af; margin-bottom: 16px;">Mon–Fri  ·  9–5 ET</p>
+                <p class="fade-in" style="font-size: 15px; color: #d1d5db; line-height: 1.6; max-width: 480px; margin: 0 auto;">
+                    Every QuoteCat user — Free, Pro, or Premium — gets a real person at the other end of that number. No tickets, no bots.
                 </p>
             </div>
         </div>
@@ -1842,18 +1900,19 @@
     <section class="tiers" id="pricing">
         <div class="container">
             <h2 class="section-title fade-in">Start Free, Upgrade When You're Ready</h2>
-            <p class="section-subtitle fade-in">Every plan includes zero additional fees. Your clients pay you directly — you keep 100%.</p>
+            <p class="section-subtitle fade-in">Every plan: no QuoteCat fees on the payments you collect. Cards run at standard Stripe rates; Zelle, Venmo, cash, and check are fully free.</p>
             <div class="tiers-grid">
                 <div class="tier-card fade-in-up stagger-1">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <div class="tier-name">Free</div>
-                    <div class="tier-description">Know your real profit on every quote</div>
+                    <div class="tier-description">Quote real jobs and get paid. No card required.</div>
                     <div class="tier-price">$0</div>
                     <div class="tier-price-period">Forever</div>
                     <ul class="tier-features">
                         <li>Real margin on every quote</li>
                         <li>Estimated profit per quote</li>
                         <li>Custom pricebook (local)</li>
+                        <li>Good / Better / Best bundles</li>
                         <li>10 quotes/month</li>
                         <li>Unlimited clients</li>
                         <li>10 quote PDFs/month</li>
@@ -1865,9 +1924,9 @@
                 </div>
                 <div class="tier-card featured fade-in-up stagger-2">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
-                    <span class="tier-badge">Most Popular</span>
+                    <span class="tier-badge">Best for Solos</span>
                     <div class="tier-name">Pro</div>
-                    <div class="tier-description">You mean business. Know your worth.</div>
+                    <div class="tier-description">Stop leaving money on the table.</div>
                     <div class="tier-price">$29<span class="tier-price-small">/mo</span></div>
                     <div class="tier-price-period">Founder pricing - First 50 spots</div>
                     <ul class="tier-features">
@@ -1875,9 +1934,9 @@
                         <li>Pricing Health Check — audit underpriced quotes</li>
                         <li>Dashboard profit summary</li>
                         <li>Unlimited quote &amp; invoice exports</li>
-                        <li>Good / Better / Best tiers</li>
                         <li>Shareable quote links</li>
                         <li>Accept / decline notifications</li>
+                        <li>Payment reminders (text + email)</li>
                         <li>Custom assemblies &amp; cloud-synced pricebook</li>
                         <li>Logo on PDFs &amp; no watermark</li>
                         <li>Cloud sync &amp; multi-device</li>
@@ -1888,20 +1947,21 @@
                 </div>
                 <div class="tier-card fade-in-up stagger-3">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
+                    <span class="tier-badge">Best for Crews</span>
                     <div class="tier-name">Premium</div>
-                    <div class="tier-description">Complete business toolkit</div>
+                    <div class="tier-description">Run the whole crew. One flat fee.</div>
                     <div class="tier-price">$79<span class="tier-price-small">/mo</span></div>
                     <div class="tier-price-period">Founder pricing - First 25 spots</div>
                     <ul class="tier-features">
                         <li>Everything in Pro, plus:</li>
                         <li>Contracts &amp; e-signatures</li>
-                        <li>1 Field Tech license included</li>
-                        <li>Unlimited worker seats</li>
+                        <li>1 tech seat included <span class="info-tip" tabindex="0" role="button" aria-label="What's a tech seat?">i<span class="info-tip-content"><strong style="color:#f97316;">Tech seat</strong> = a second person who logs into QuoteCat to build quotes for you (estimator role). You can set permission limits so they only see what you want — quotes only, no pricing, no labor rates, etc.</span></span></li>
+                        <li>Unlimited field workers <span class="info-tip" tabindex="0" role="button" aria-label="What's a worker?">i<span class="info-tip-content"><strong style="color:#f97316;">Workers</strong> = your field crew. They get jobs via text-message magic links — no app login needed. They can submit status updates, photos, and arrival/departure timestamps.</span></span></li>
                         <li>Team & worker management</li>
                         <li>Labor cost tracking</li>
                         <li>Two-way client texting</li>
                         <li>SMS & email reminders</li>
-                        <li>Job scheduling & calendar</li>
+                        <li>Job scheduling</li>
                         <li>Web portal with analytics</li>
                         <li>Client portal</li>
                         <li>QuickBooks sync</li>
@@ -1911,6 +1971,14 @@
                     <div class="tier-note">Regular price: $109/mo after 25 spots filled</div>
                 </div>
             </div>
+
+            <!-- Flat-rate closing band -->
+            <div class="fade-in" style="max-width: 880px; margin: 56px auto 0; padding: 32px 28px; background: rgba(255,255,255,0.04); border: 1px solid rgba(249,115,22,0.25); border-radius: 16px; text-align: center;">
+                <h3 style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 10px;">Add your crew. <span style="color: #f97316;">The price doesn't move.</span></h3>
+                <p style="font-size: 15px; color: #d1d5db; line-height: 1.6; max-width: 620px; margin: 0 auto;">
+                    Flat fee, unlimited workers in the field. The big field-service platforms charge per user, every single month — we don't.
+                </p>
+            </div>
         </div>
     </section>
 
@@ -1918,8 +1986,8 @@
     <section class="cta-section" id="download">
         <div class="container">
             <div class="cta-box fade-in">
-                <h2>Stop Paying Fees. Start Keeping 100%.</h2>
-                <p>Download QuoteCat free. Create professional quotes in minutes. Keep every dollar you earn.</p>
+                <h2>Stop Guessing. Start Knowing.</h2>
+                <p>Download QuoteCat free. Create professional quotes in 5 minutes. See your real margin on every quote you send.</p>
 
                 <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 32px;">
                     <a href="https://apps.apple.com/us/app/quotecat/id6754611668" target="_blank" class="store-badge" title="Download on the App Store">
@@ -2228,68 +2296,9 @@
         </div>
     </div>
 
-    <!-- Premium Notify Modal -->
-    <div id="premiumNotifyModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">Get Notified: Premium Launch</div>
-                <div class="modal-subtitle">Be the first to access Premium features</div>
-            </div>
-            <form name="premium-notify" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="premium-notify-success.html">
-                <input type="hidden" name="form-name" value="premium-notify">
-                <p style="display: none;">
-                    <label>Don't fill this out: <input name="bot-field"></label>
-                </p>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label class="form-label" for="premiumEmailInput">Email Address</label>
-                        <input type="email" id="premiumEmailInput" name="email" class="form-input" placeholder="you@example.com" required>
-                    </div>
-                    <div style="padding: 16px; background: rgba(255, 140, 0, 0.1); border-radius: 8px; margin-top: 16px;">
-                        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1f2937;">
-                            <strong style="color: #FF8C00;">Complete Business Toolkit:</strong><br>
-                            • Quote Wizard (AI-assisted)<br>
-                            • Contract generation & e-signature<br>
-                            • Payment collection<br>
-                            • Job profit tracking<br>
-                            • Advanced analytics<br>
-                            • Team collaboration<br>
-                            • Priority phone support<br>
-                            <br>
-                            <strong>Founder pricing: $79/mo</strong> (First 100 spots only)
-                        </p>
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="modal-button modal-button-secondary" onclick="closePremiumNotifyModal()">Cancel</button>
-                    <button type="submit" class="modal-button modal-button-primary">Notify Me</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <script>
-        // Premium Notify Modal Functions
-        function openPremiumNotifyModal() {
-            const modal = document.getElementById('premiumNotifyModal');
-            modal.classList.add('active');
-            document.getElementById('premiumEmailInput').value = '';
-        }
-
-        function closePremiumNotifyModal() {
-            const modal = document.getElementById('premiumNotifyModal');
-            modal.classList.remove('active');
-        }
-
-        // Close modal when clicking outside
+        // Fetch spots remaining on page load
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('premiumNotifyModal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closePremiumNotifyModal();
-                }
-            });
-
-            // Fetch and display spots remaining
             fetchSpotsRemaining();
         });
 
