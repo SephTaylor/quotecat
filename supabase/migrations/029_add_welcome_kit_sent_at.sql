@@ -1,14 +1,18 @@
--- Migration: Add welcome_kit_sent_at to profiles
+-- ============================================================================
+-- CONTEXT (notes only — Postgres ignores comment lines, safe to skip past)
+-- ============================================================================
+-- Adds welcome_kit_sent_at column to profiles for the send-startup-kit edge
+-- function. Idempotency guard so the welcome email fires once per user.
 --
--- Adds an idempotency timestamp for the send-startup-kit edge function.
--- When the function sends the 90-Day Contractor Startup Kit welcome email,
--- it writes the current timestamp here. Subsequent invocations for the same
--- user check this column and skip the send.
---
--- The trigger that invokes the function lives outside this migration — it's
--- configured via Supabase Database Webhooks in the dashboard (Database →
--- Webhooks). See supabase/functions/send-startup-kit/index.ts header for the
--- full deploy procedure.
+-- The TRIGGER that invokes the edge function is NOT in this migration — it's
+-- configured via Supabase Dashboard → Database → Webhooks. See the function
+-- header at supabase/functions/send-startup-kit/index.ts for the full deploy
+-- procedure (env vars, webhook config, smoke test).
+
+
+-- ============================================================================
+-- MIGRATION SQL — copy from the line below this banner through end of file
+-- ============================================================================
 
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS welcome_kit_sent_at TIMESTAMPTZ;
