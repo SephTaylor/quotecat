@@ -1,5 +1,11 @@
 # FOLLOWUPS
 
+> **⚠️ For the scannable "what's left" index, see [`BACKLOG.md`](./BACKLOG.md) at the repo root.** That file consolidates everything across FOLLOWUPS, CLAUDE.md, the codebase audit, plan docs, and conversation context into one navigable list.
+>
+> **This file** keeps the detailed design context for items that need depth (Stripe webhook fix, Industry Mode + i18n, Sentry source maps procedure, etc.). BACKLOG.md links here when an item needs the full backstory.
+
+---
+
 Tracked follow-ups deliberately deferred from the subscription/Manage Account refactor PR. Each one is small enough to do later, but big enough to deserve being tracked rather than living in chat history.
 
 Update this file when work is completed (move to "Done" section) or when new follow-ups are identified.
