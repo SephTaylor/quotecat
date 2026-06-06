@@ -348,26 +348,19 @@ When rotating: update `SUPABASE_SERVICE_ROLE_KEY` in Supabase Edge Function secr
 
 ---
 
-### 🟢 UX clarity: surface "Office staff" as a preset Tech configuration
+### 📋 SCOPED — Office Staff role (portal-only team members, unlimited/free)
 
-**Surfaced:** 2026-06-05 during marketing-site discussion. Initially logged as a "new role to build," then corrected after reading `quotecat-portal/src/app/dashboard/team/TechList.tsx:581-591`.
+**Spec written 2026-06-05, build planned 2026-06-06.** Full design lives at `quotecat-portal/docs/office-role-plan.md` (committed to the portal repo).
 
-**The actual state:** The granular permission flags **already exist** for the Tech role and can produce an office-staff configuration today. Available flags: `can_create_quotes`, `can_edit_own_quotes`, `can_edit_all_quotes`, `can_view_pricing`, `can_manage_clients`, `can_view_invoices`, `can_record_payments`, `can_send_to_portal`, `can_assign_workers`, `can_view_labor_rates`. Unchecking the three quote-creation flags + checking the financial/admin flags = an office-staff user.
+**One-line summary:** A third team-member role alongside Workers and Techs. Portal access only (no app), unlimited seats at no extra cost on Premium. The wedge for turning the portal into a full back-office business suite.
 
-**What's missing isn't functionality — it's discoverability:**
-- No preset role labeled "Office" or "Back-office" that auto-checks the right permission profile (today owners have to manually toggle 10 checkboxes to build it)
-- The Tech-role UI explainer at `TechList.tsx:81` says *"Tech accounts let your team members log into the QuoteCat mobile app to create quotes"* — frames every Tech as a mobile app user, which buries the office use case
-- Marketing materials don't mention this is possible
+**Strategic framing (from owner):**
 
-**Recommended scope when picked up:**
-1. Add a third role preset alongside Tech / Admin called "Office" that pre-checks a sensible permission profile (no quote creation, yes financial/admin access)
-2. Update the role-picker UI explainer text to mention all three use cases (estimator / office staff / admin)
-3. Optionally: surface a runtime check on mobile sign-in that detects "user has only office-style permissions" and shows a helpful "you don't have mobile app permissions — use portal.quotecat.ai instead" message
-4. Marketing: add an explicit Office use case to the Premium tier story (currently a hidden capability)
+> "Field workers go in the field — they're free and unlimited. Office staff go in the office — they're free and unlimited too. The only thing we charge extra for is people who use the app to build quotes (techs)."
 
-**Effort:** ~2 hours UX/copy + label work. No schema or auth changes needed.
+**Effort:** ~6h. See spec for migration, file list, default permissions profile, test matrix, mobile-side sign-in check, and post-ship marketing updates.
 
-**Not scoped tonight per user.** Log here for next cleanup pass.
+**Coordination note:** Spec includes one small mobile change — blocking sign-in for `role: 'office'` users with a "use portal" message. That violates the tonight-scope "no mobile changes" rule but is appropriate for the feature build day. Get explicit go-ahead before touching mobile.
 
 ---
 
