@@ -193,6 +193,12 @@ Real Margin On Every Quote — Free
 • Set your overhead once, QuoteCat builds it into your pricing
 • No upgrade required to see your numbers
 
+Pricing Health Check (Pro)
+• One-tap audit of your last 90 days of quotes
+• See which quotes were underpriced and how much profit was left on the table
+• Same math as the live margin indicator — if a quote ran red on the editor, it shows up here
+• Tap any flagged quote to review it
+
 Lightning-Fast Quoting
 • Create professional quotes in minutes
 • Add materials, labor, and markup
@@ -202,6 +208,7 @@ Lightning-Fast Quoting
 Assemblies (Pro+)
 • Pre-built assemblies for common tasks
 • Create custom assemblies for your specialty
+• Browse Community Assemblies from other pros
 • Save product bundles for recurring jobs
 • Build quotes 10x faster with reusable templates
 
@@ -246,6 +253,7 @@ No QuoteCat Fees, Ever
 • Other apps charge per user every month — we charge a flat rate
 
 Premium Features
+• Drew AI — talk through the job, Drew references your pricebook to build the quote
 • Includes 1 field tech license at no additional cost
 • Digital contracts with e-signatures
 • Two-way client texting
@@ -273,15 +281,15 @@ Terms of Use: https://quotecat.ai/terms
 ### Release notes (500 char max for Play)
 Pricing Health Check (Pro): one-tap audit of your last 90 days that flags underpriced quotes and shows estimated profit on the table. Same math as the live margin indicator. Drew (Premium) now builds quotes from your pricebook only — your prices, no surprises.
 
-### v1.2.6 additions to consider before submitting
+### v1.2.6 additions — folded in 2026-06-06
 
-The live Google Play description has not yet been updated for v1.2.6's headline features. When you do this Google submission pass, consider folding in:
+Three additions to the Google Play description for v1.2.6:
 
-- **Pricing Health Check (Pro)** section (4 bullets) — mirror the section in the Apple description above
-- **Drew AI (Premium)** mention under Premium Features — "Drew AI — Premium contractors talk through the job, Drew references your pricebook to build the quote"
-- **Community Assemblies** — currently the Assemblies section doesn't mention browsing community templates. Could add a 5th bullet: "Browse Community Assemblies from other pros"
+- **Pricing Health Check (Pro) section** inserted after "Real Margin On Every Quote — Free" (4 bullets mirroring the Apple description)
+- **Drew AI bullet** added as the first bullet under Premium Features (headline distinctive feature, leads the section)
+- **Community Assemblies bullet** added to the Assemblies (Pro+) section as the 3rd bullet
 
-Adding these brings character count from current ~3349 toward 3500-3600, still well under the 4000 limit.
+Approximate character count after additions: ~3750 of 4000 (was 3349). Still well under the 4000 limit.
 
 ---
 
