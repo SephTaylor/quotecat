@@ -1,6 +1,6 @@
 # QuoteCat - Store Listings (v1.2.6)
 
-Last updated: 2026-06-05. Target: v1.2.6 production submission (v1.2.5 cleared Apple/Google review on 2026-06-02 and is live).
+Last updated: 2026-06-06. Target: v1.2.6 production submission (v1.2.5 cleared Apple/Google review on 2026-06-02 and is live).
 
 These are the production copy blocks for App Store Connect and Google Play. Paste-ready when submitting v1.2.6 for review. v1.2.5's release notes are archived at the bottom of this file for reference.
 
@@ -10,6 +10,7 @@ These are the production copy blocks for App Store Connect and Google Play. Past
 - All "supplier catalog with real local pricing" claims removed across all surfaces
 - "Workers who clock in/out via web" claim removed (not actually shipping; verified)
 - Free-tier 10 quotes/month correctly stated everywhere (was inaccurately implied as unlimited)
+- **2026-06-06 truth-up:** all "zero payment processing fees / keep 100% / save $8,700/year" claims removed to match the website rewrite. Card payments via Stripe still incur Stripe's standard processor rate — QuoteCat takes zero on top of that, but the contractor doesn't literally keep 100% on cards. Zelle/Venmo/cash/check ARE fully free. Honest framing used throughout. Also softened "Job scheduling and worker assignment" to "Job scheduling" — the visual calendar is v1.3.0.
 
 **Reminder for the deploy day:** edge functions don't ride in the EAS binary. When you click "Submit for Review" in App Store Connect for v1.2.6, also run `npx supabase functions deploy drew-agent` so the "Drew references your pricebook only" claim in the release notes is actually true the moment review starts.
 
@@ -35,7 +36,7 @@ Stop guessing what you make on every job.
 
 QuoteCat shows your real profit on every quote, so you know if you're making money before you send it. Mobile app + web portal.
 
-Other apps take 2-3% of every payment. We take zero. Your money stays yours.
+No QuoteCat fees, ever. Other apps charge per user every month — we don't.
 
 Open the app. Build your quote. See your real margin in real time. Send it.
 
@@ -57,7 +58,7 @@ FREE TIER
 - Custom pricebook (saved on your device, up to 50 items)
 - 10 quote PDFs, 10 invoice PDFs, 10 CSV exports each month
 - Labor Rate, Overhead, Markup, and Profit Margin calculators in the app
-- Zero payment processing fees — clients pay you direct (Zelle, Venmo, CashApp, bank, check). You keep 100%.
+- No QuoteCat fees on payments. Zelle, Venmo, CashApp, bank, check are 100% free. Cards run at standard Stripe rates with zero markup from us.
 
 ---
 
@@ -92,7 +93,7 @@ In the mobile app:
 On the web portal:
 - Full business dashboard — quotes, invoices, contracts, clients, pricebook, team, jobs in one desktop place
 - Two-way client texting with your own business phone number (business hours + after-hours auto-reply)
-- Job scheduling and worker assignment — workers get a phone-authenticated link to see their assigned jobs
+- Job scheduling — assign workers to jobs, they get a phone-authenticated link to see their work
 - Analytics dashboard
 - QuickBooks sync
 - Email and SMS reminders for overdue invoices
@@ -170,94 +171,99 @@ Terms of Use: https://quotecat.ai/terms
 
 ## Google Play Console
 
+**Note:** This section was reconciled against the live Google Play Console listing on 2026-06-06 and reflects what's actually deployed (which had drifted from what was in this doc previously). Truth-up edits applied — see the file header for context. Two typos fixed in the same pass: "Inclues" → "Includes", "QuoteCat Feed" → corrected by deleting (false claim removed).
+
+### App name (30 char max)
+QuoteCat
+
 ### Short description (80 char max)
-Know your real profit on every quote. Free margin tracking + zero fees.
+Precise quotes, zero BS.
 
 ### Full description (4000 char max)
 
 Stop guessing what you make on every job.
 
-QuoteCat is the contractor quoting app + web portal that shows your real profit on every quote — so you know if you're making money before you send it. Build a professional quote in 5 minutes on-site, send a shareable link to your client, and get paid directly with zero processing fees.
+QuoteCat is the contractor quoting app that shows your real profit on every quote — so you know if you're making money before you send it. Build a professional quote in 5 minutes on-site, send a shareable link to your client, and get paid directly. No QuoteCat fees, ever.
 
 Built for contractors, plumbers, electricians, HVAC technicians, framers, roofers, welders, and builders.
 
 Real Margin On Every Quote — Free
-- Real-time profit margin indicator on every quote
-- Estimated profit shown before you send
-- Set your overhead once, QuoteCat builds it into your pricing
-- No upgrade required to see your numbers
+• Real-time profit margin indicator on every quote
+• Estimated profit shown before you send
+• Set your overhead once, QuoteCat builds it into your pricing
+• No upgrade required to see your numbers
 
-Free Tier
-- 10 quotes per month
-- Unlimited clients
-- Custom pricebook (saved on your device, up to 50 items)
-- 10 quote PDFs, 10 invoice PDFs, 10 CSV exports each month
-- Labor Rate, Overhead, Markup, and Profit Margin calculators
-- Zero payment processing fees
+Lightning-Fast Quoting
+• Create professional quotes in minutes
+• Add materials, labor, and markup
+• Quick estimate mode for jobs you already know using assemblies
+• Duplicate quotes for similar jobs
 
-Pricing Health Check (Pro)
-- One-tap audit of your last 90 days of quotes
-- See which quotes were underpriced and how much profit was left on the table
-- Same math as the live margin indicator — if a quote ran red on the editor, it shows up here
-- Tap any flagged quote to review it
-
-Assemblies (Pro)
-- Pre-built assemblies for common tasks
-- Create custom assemblies for your specialty
-- Browse Community Assemblies from other pros
-- Build quotes 10x faster with reusable templates
+Assemblies (Pro+)
+• Pre-built assemblies for common tasks
+• Create custom assemblies for your specialty
+• Save product bundles for recurring jobs
+• Build quotes 10x faster with reusable templates
 
 Professional Exports
-- PDF quotes with your company info
-- CSV export for record-keeping
-- Logo on PDFs + no QuoteCat watermark with Pro
+• PDF quotes with your company info
+• CSV export for record-keeping
+• Add your logo and remove the QuoteCat watermark with Pro
 
-Quote → Invoice → Paid
-- Convert approved quotes to invoices in one tap
-- Track paid, unpaid, and overdue
-- Status workflow on the dashboard: Draft → Sent → Approved → Completed
-- Save clients, view quote history per client
+Business Management
+• Dashboard with quote value tracking
+• Status workflow: Draft → Sent → Approved → Completed
+• Search and filter by client, project, or status
+
+Invoices
+• Convert quotes to invoices with one tap
+• Track paid, unpaid, and overdue
+• Professional invoices with your branding
+
+Client Manager
+• Save client contact info
+• View quote history by client
+• Quick access to repeat customers
 
 Works Offline
-- Quote, calculate, and export PDFs without internet
-- Cloud sync across devices with Pro
+• Create and edit quotes without internet
+• Perfect for job sites with poor connectivity
+• Cloud sync across devices with Pro and Premium
 
-Free Calculators and Guides at quotecat.ai/resources
-- Labor Rate, Overhead, Markup, and Profit Margin calculators (also in the app)
-- 90-Day Contractor Startup Kit
-- Contractor Pricing Guide ($29, free with Pro and Premium)
+Free Calculators and Guides
+• Labor Rate Calculator
+• Overhead Calculator
+• Markup Calculator
+• Profit Margin Calculator
+• 90-Day Contractor Startup Kit
+• Contractor Pricing Guide ($29, free with Pro and Premium)
+• All available at quotecat.ai/resources
 
-Zero Payment Processing Fees
-- Clients pay you directly through your preferred method (Zelle, Venmo, CashApp, bank transfer, check, etc.)
-- Keep 100% of every payment
-- A $300K/year contractor saves $8,700+/year vs apps that charge 2.9%
+No QuoteCat Fees, Ever
+• We don't take a cut of your payments and we don't add a markup on card processing
+• Zelle, Venmo, CashApp, bank transfer, check — 100% free
+• Cards run at standard Stripe rates (~2.9% + 30¢) with zero markup from us
+• Other apps charge per user every month — we charge a flat rate
 
-Premium — the full QuoteCat platform (mobile + web portal at portal.quotecat.ai)
+Premium Features
+• Includes 1 field tech license at no additional cost
+• Digital contracts with e-signatures
+• Two-way client texting
+• Job scheduling
+• Web portal with business analytics
+• Team and worker management
+• QuickBooks sync
+• Priority support
 
-In the app:
-- Drew AI — talk through the job, Drew uses your pricebook to build the quote
-- Digital contracts with e-signatures
-- Team Members + labor cost tracking per worker
-- 1 Field Tech license + unlimited worker seats
-
-On the portal:
-- Full business dashboard (quotes, invoices, contracts, clients, pricebook, team, jobs)
-- Two-way client texting with your own business number
-- Job scheduling and worker assignment
-- Analytics dashboard
-- QuickBooks sync
-- SMS + email reminders for overdue invoices
-- Profitability setup that feeds the app's margin math
-
-Built by contractors, for contractors.
+Built for contractors by developers who care. QuoteCat streamlines the part you hate — so you can get back to your real work.
 
 Subscription Information:
 
 QuoteCat offers the following auto-renewable subscriptions:
-- QuoteCat Pro (Monthly)
-- QuoteCat Pro (Yearly)
-- QuoteCat Premium (Monthly)
-- QuoteCat Premium (Yearly)
+• QuoteCat Pro (Monthly)
+• QuoteCat Pro (Yearly)
+• QuoteCat Premium (Monthly)
+• QuoteCat Premium (Yearly)
 
 Payment will be charged to your Google Play account at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period at the cost listed above. You can manage and cancel your subscriptions through your Google Play account.
 
@@ -266,6 +272,16 @@ Terms of Use: https://quotecat.ai/terms
 
 ### Release notes (500 char max for Play)
 Pricing Health Check (Pro): one-tap audit of your last 90 days that flags underpriced quotes and shows estimated profit on the table. Same math as the live margin indicator. Drew (Premium) now builds quotes from your pricebook only — your prices, no surprises.
+
+### v1.2.6 additions to consider before submitting
+
+The live Google Play description has not yet been updated for v1.2.6's headline features. When you do this Google submission pass, consider folding in:
+
+- **Pricing Health Check (Pro)** section (4 bullets) — mirror the section in the Apple description above
+- **Drew AI (Premium)** mention under Premium Features — "Drew AI — Premium contractors talk through the job, Drew references your pricebook to build the quote"
+- **Community Assemblies** — currently the Assemblies section doesn't mention browsing community templates. Could add a 5th bullet: "Browse Community Assemblies from other pros"
+
+Adding these brings character count from current ~3349 toward 3500-3600, still well under the 4000 limit.
 
 ---
 
