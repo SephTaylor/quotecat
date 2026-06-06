@@ -45,6 +45,7 @@ Full plan: `docs/v1.2.7-plan.md`.
 - **Strava-style shareable Pricing Health Check card** — `react-native-view-shot`, share button on health-check screen. ~4-5h. (`docs/v1.2.7-plan.md`)
 - **Stripe Connect collection for all tiers** — ungate Stripe Connect from portal-Premium-only to mobile-all-tiers. Share-as-Link stays Pro+ (deliberate friction-removal upgrade hook). PDF-with-QR-code for Free. ~7-9h. (`docs/v1.2.7-plan.md`)
 - **Analytics identity instrumentation** — ✅ shipped tonight (`024f21d`). Just waits for next build to take effect for users.
+- **Duplicate-email signup UX fix** — when a user tries email/password sign-up with an email that already has an account, Supabase silently returns success without sending a confirmation email (anti-enumeration security behavior). Our `sign-up.tsx:268-358` then misleadingly shows "Check your email" but no email comes. Fix: check `data.user.identities.length === 0` right after `signUp()` returns — that's Supabase's signal that the email is already registered. Show "Email already registered — try signing in" prompt with a "Sign In" button instead. Apply to both the Google OAuth path (~line 195) and email/password path (~line 268). ~15 min. Ships with next mobile build alongside the analytics identity wiring already merged.
 
 ---
 
