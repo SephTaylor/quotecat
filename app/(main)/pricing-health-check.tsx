@@ -7,17 +7,19 @@ import { useTechContext } from "@/contexts/TechContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { Stack, useRouter, useFocusEffect } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { captureRef } from "react-native-view-shot";
 
 import { listQuotes } from "@/lib/quotes";
 import { getLocalTeamMembers } from "@/lib/teamMembersSync";
@@ -29,6 +31,7 @@ import {
   type HealthCheckResult,
   type FlaggedQuote,
 } from "@/lib/pricingHealth";
+import { HealthCheckShareCard } from "@/components/HealthCheckShareCard";
 
 const LOST_PROFIT_EXPLAINER =
   "Margin shortfall — the profit gap between your target margin and what this quote delivered, at the price you actually sold. Not what you'd make if you repriced.";
@@ -43,6 +46,8 @@ export default function PricingHealthCheck() {
   const [result, setResult] = useState<HealthCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessChecked, setAccessChecked] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const shareCardRef = useRef<View>(null);
 
   // Gate at mount. If Free, show paywall; if not purchased, back out.
   useFocusEffect(
@@ -99,6 +104,30 @@ export default function PricingHealthCheck() {
     Alert.alert("How this is calculated", LOST_PROFIT_EXPLAINER, [{ text: "Got it" }]);
   };
 
+  const handleShare = async () => {
+    if (!result || sharing) return;
+    setSharing(true);
+    try {
+      // Capture the off-screen share card as a PNG. View-shot writes to the
+      // app's cache directory and returns a file:// URI we can hand to the
+      // system share sheet.
+      const uri = await captureRef(shareCardRef, {
+        format: "png",
+        quality: 1,
+        result: "tmpfile",
+      });
+      await Share.share({
+        url: uri,
+        message: `My pricing health check — ${result.flagged.length} quote${result.flagged.length === 1 ? "" : "s"} flagged in the last ${result.windowDays} days. Calculated by QuoteCat.`,
+      });
+    } catch (err) {
+      console.error("Share card capture failed:", err);
+      Alert.alert("Couldn't share", "Try again in a moment.");
+    } finally {
+      setSharing(false);
+    }
+  };
+
   if (!accessChecked) {
     return (
       <>
@@ -148,9 +177,34 @@ export default function PricingHealthCheck() {
               styles={styles}
               onTapQuote={(q) => router.push(`/quote/${q.quote.id}/edit` as any)}
               onTapLostProfitInfo={showLostProfitExplainer}
+              onShare={handleShare}
+              sharing={sharing}
             />
           )}
         </ScrollView>
+
+        {/* Off-screen share card — rendered for view-shot capture only. The
+            negative top + zero opacity ensures it never paints on screen
+            but is still in the view hierarchy so captureRef can read it. */}
+        {result && result.flagged.length > 0 && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: -10000,
+              left: 0,
+              opacity: 0,
+            }}
+          >
+            <HealthCheckShareCard
+              ref={shareCardRef}
+              flaggedCount={result.flagged.length}
+              totalEstimatedLostProfit={result.totalEstimatedLostProfit}
+              windowDays={result.windowDays}
+              targetMargin={result.targetMargin}
+            />
+          </View>
+        )}
       </GradientBackground>
     </>
   );
@@ -162,12 +216,16 @@ function ResultsView({
   styles,
   onTapQuote,
   onTapLostProfitInfo,
+  onShare,
+  sharing,
 }: {
   result: HealthCheckResult;
   theme: ReturnType<typeof useTheme>["theme"];
   styles: ReturnType<typeof createStyles>;
   onTapQuote: (q: FlaggedQuote) => void;
   onTapLostProfitInfo: () => void;
+  onShare: () => void;
+  sharing: boolean;
 }) {
   const totalSent = result.totalAnalyzed + result.totalSkipped;
 
@@ -268,6 +326,21 @@ function ResultsView({
           {result.totalAnalyzed} quote{result.totalAnalyzed === 1 ? "" : "s"} analyzed,
           target margin {result.targetMargin}%.
         </Text>
+
+        <Pressable
+          style={styles.shareButton}
+          onPress={onShare}
+          disabled={sharing}
+        >
+          {sharing ? (
+            <ActivityIndicator color={theme.colors.accent} />
+          ) : (
+            <>
+              <Ionicons name="share-outline" size={18} color={theme.colors.accent} />
+              <Text style={styles.shareButtonText}>Share these results</Text>
+            </>
+          )}
+        </Pressable>
       </View>
 
       {result.totalSkipped > 0 && (
@@ -438,6 +511,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     heroSubtitle: {
       fontSize: 13,
       color: theme.colors.muted,
+    },
+    shareButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.colors.accent,
+      backgroundColor: "transparent",
+    },
+    shareButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.accent,
     },
     headerTitle: {
       fontSize: 22,
