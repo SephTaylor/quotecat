@@ -2,7 +2,7 @@
 
 **Canonical "what's left" index across the QuoteCat ecosystem.** One scannable list. For full design context on any item, drill into the linked source file.
 
-**Last updated:** 2026-06-09
+**Last updated:** 2026-06-09 (v1.2.7 shipped to ASC + Play Internal)
 **Sources merged:** `FOLLOWUPS.md`, `CLAUDE.md`, `docs/codebase-health-audit-2026-06-01.md`, `quotecat-portal/docs/office-role-plan.md`, this session's conversation, code-level TODOs.
 
 ---
@@ -250,7 +250,15 @@ Most of these are deprecation aliases kept for back-compat — clean them up dur
 
 ## ✅ Recently shipped (kept for context, can be archived)
 
-Tonight (2026-06-05):
+2026-06-09 — v1.2.7 Mike-response sprint:
+
+- All 8 v1.2.7 items shipped — commit `b65165d` (feature work) + `53273a0` (v1.2.8 lock + EAS build-number bumps)
+- iOS build 212 submitted to App Store Connect (TestFlight processing)
+- Android versionCode 59 submitted to Google Play Internal track (manual promotion to Production pending)
+- v1.2.7 scope: "Create Tier" → "Add Option" sweep, auto-Sent prompt after PDF export, payment methods on quote PDFs, auto-approve prompt on Quote→Contract (fixes silent createContractFromQuote null), tappable payment URL scheme codepath (expo-print verified to strip hrefs — falls back to plain text), status chip "Tap a status to update" hint, export menu locks for tier upsell, duplicate-email signup detection
+- Key strategic decision locked: Free contractors NEVER share URLs/links/QR/web pages with customer. Web layer is exclusively Pro+. v1.2.8 reframed: card payments become Pro+ feature, not all-tier ungating
+
+2026-06-05:
 
 - Marketing site truth-up (false claims removed, Founder Hotline block added) — commit `19b4524`
 - Analytics identity instrumentation (PostHog + Sentry tied to Supabase user) — commit `024f21d`
