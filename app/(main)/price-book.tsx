@@ -8,8 +8,10 @@ import {
   deletePricebookItem,
   createPricebookItemId,
   getPricebookCategories,
+  getPricebookItemBySkuExact,
   type PricebookItem,
 } from "@/lib/pricebook";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { FREE_LIMITS } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -70,8 +72,10 @@ export default function PriceBookManager() {
   const [unitType, setUnitType] = useState("each");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  const [sku, setSku] = useState("");
   const [showUnitPicker, setShowUnitPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -133,6 +137,7 @@ export default function PriceBookManager() {
     setUnitType("each");
     setCategory("");
     setDescription("");
+    setSku("");
     setEditingItem(null);
   };
 
@@ -176,6 +181,35 @@ export default function PriceBookManager() {
     setShowModal(true);
   };
 
+  const handleScanResult = async (scannedSku: string) => {
+    setShowScanner(false);
+
+    // Look up exact-SKU match in local pricebook
+    const existing = await getPricebookItemBySkuExact(scannedSku);
+    if (existing) {
+      // Found — open edit modal pre-populated
+      handleEditItem(existing);
+    } else {
+      // No match — open create modal with SKU pre-filled
+      if (!isPaidTier && items.length >= pricebookLimit) {
+        Alert.alert(
+          "Pricebook Limit Reached",
+          `Free accounts can save up to ${FREE_LIMITS.pricebookItems} items. Upgrade to Pro for unlimited items.`,
+          isTech
+            ? [{ text: "OK", style: "cancel" }]
+            : [
+                { text: "OK", style: "cancel" },
+                { text: "Upgrade", onPress: () => presentPaywallAndSync() },
+              ]
+        );
+        return;
+      }
+      resetForm();
+      setSku(scannedSku);
+      setShowModal(true);
+    }
+  };
+
   const handleEditItem = (item: PricebookItem) => {
     setEditingItem(item);
     setName(item.name);
@@ -183,6 +217,7 @@ export default function PriceBookManager() {
     setUnitType(item.unitType || "each");
     setCategory(item.category || "");
     setDescription(item.description || "");
+    setSku(item.sku || "");
     setShowModal(true);
   };
 
@@ -207,8 +242,9 @@ export default function PriceBookManager() {
         unitType: unitType || "each",
         category: category.trim() || undefined,
         description: description.trim() || undefined,
+        sku: sku.trim() || undefined,
         isActive: true,
-        source: "custom",
+        source: editingItem?.source || "custom",
         createdAt: editingItem?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -292,23 +328,42 @@ export default function PriceBookManager() {
           headerBackTitle: "Back",
           headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerRight: () => (
-            <Pressable
-              onPress={() => {
-                if (!isPaidTier) {
-                  presentPaywallAndSync();
-                  return;
-                }
-                router.push("/(main)/pricebook-import");
-              }}
-              hitSlop={10}
-              style={{ paddingHorizontal: 12 }}
-            >
-              <Ionicons
-                name="cloud-upload-outline"
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Pressable
+                onPress={() => {
+                  if (!isPaidTier) {
+                    presentPaywallAndSync();
+                    return;
+                  }
+                  setShowScanner(true);
+                }}
+                hitSlop={10}
+                style={{ paddingHorizontal: 8 }}
+              >
+                <Ionicons
+                  name="barcode-outline"
+                  size={24}
+                  color={theme.colors.accent}
+                />
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (!isPaidTier) {
+                    presentPaywallAndSync();
+                    return;
+                  }
+                  router.push("/(main)/pricebook-import");
+                }}
+                hitSlop={10}
+                style={{ paddingHorizontal: 8 }}
+              >
+                <Ionicons
+                  name="cloud-upload-outline"
+                  size={22}
+                  color={theme.colors.accent}
+                />
+              </Pressable>
+            </View>
           ),
           headerStyle: {
             backgroundColor: theme.colors.bg,
@@ -539,6 +594,20 @@ export default function PriceBookManager() {
                   </Pressable>
                 </View>
 
+                {/* SKU */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>SKU</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={sku}
+                    onChangeText={setSku}
+                    placeholder="Optional — barcode, supplier item number, etc."
+                    placeholderTextColor={theme.colors.muted}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                  />
+                </View>
+
                 {/* Category */}
                 <View style={styles.formGroup}>
                   <Text style={styles.formLabel}>Category</Text>
@@ -633,6 +702,12 @@ export default function PriceBookManager() {
           </View>
         </Pressable>
       </Modal>
+
+      <BarcodeScannerModal
+        visible={showScanner}
+        onScan={handleScanResult}
+        onClose={() => setShowScanner(false)}
+      />
     </GestureHandlerRootView>
   );
 }

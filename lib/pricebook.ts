@@ -168,11 +168,25 @@ export async function deletePricebookItem(id: string): Promise<void> {
 }
 
 /**
- * Search pricebook items by name, description, or SKU
+ * Search pricebook items by name, description, or SKU (substring LIKE).
+ * Wrong for barcodes — scanning "123" would match "SKU-1234-XYZ". Use
+ * getPricebookItemBySkuExact for barcode scans where exact equality is required.
  */
 export async function searchPricebookItems(query: string): Promise<PricebookItem[]> {
   if (!query.trim()) return getPricebookItems();
   return listPricebookItemsDB({ search: query, limit: 100 });
+}
+
+/**
+ * Look up a pricebook item by exact SKU match. Used by the barcode scanner —
+ * a scanned UPC/EAN/Code-128 needs exact equality, not substring matching.
+ * Returns null if no item with that exact SKU exists.
+ */
+export async function getPricebookItemBySkuExact(sku: string): Promise<PricebookItem | null> {
+  const trimmed = sku.trim();
+  if (!trimmed) return null;
+  const allItems = await getPricebookItems();
+  return allItems.find((item) => item.sku?.trim() === trimmed) ?? null;
 }
 
 /**
