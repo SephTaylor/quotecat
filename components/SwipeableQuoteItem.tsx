@@ -227,7 +227,7 @@ export const SwipeableQuoteItem = React.memo(
           </TouchableOpacity>
           {onCreateTier && (
             <TouchableOpacity style={styles.tierButton} onPress={handleCreateTier}>
-              <Text style={styles.actionText}>Create Tier</Text>
+              <Text style={styles.actionText}>Add Option</Text>
             </TouchableOpacity>
           )}
         </Animated.View>

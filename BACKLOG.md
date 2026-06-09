@@ -2,8 +2,8 @@
 
 **Canonical "what's left" index across the QuoteCat ecosystem.** One scannable list. For full design context on any item, drill into the linked source file.
 
-**Last updated:** 2026-06-05
-**Sources merged:** `FOLLOWUPS.md`, `CLAUDE.md`, `docs/codebase-health-audit-2026-06-01.md`, `docs/v1.2.7-plan.md`, `quotecat-portal/docs/office-role-plan.md`, this session's conversation, code-level TODOs.
+**Last updated:** 2026-06-09
+**Sources merged:** `FOLLOWUPS.md`, `CLAUDE.md`, `docs/codebase-health-audit-2026-06-01.md`, `quotecat-portal/docs/office-role-plan.md`, this session's conversation, code-level TODOs.
 
 ---
 
@@ -37,15 +37,46 @@ Items where I think the work might already be done but couldn't auto-verify. **P
 
 ---
 
-## 🟡 v1.2.7 scope (already committed in plan)
+## 🟡 v1.2.7 — Mike-response sprint (~5-7h, JS-only)
 
-Full plan: `docs/v1.2.7-plan.md`.
+**Approved scope after Kellie peer review (2026-06-09):** original v1.2.7 was a 15-item mega-bundle that reproduced the v1.2.6 antipattern, collided Stripe with the founder-video messaging moment, and underweighted two-codebase deployment skew. Split into deliberate releases. v1.2.7 is now the pure Mike-response sprint. Full implementation plan: `~/.claude/plans/declarative-sparking-oasis.md`.
 
-- **Barcode pricebook scanner** — `expo-camera` install, scanner modal, integration with pricebook modal. ~7-8h. (`docs/v1.2.7-plan.md`)
-- **Strava-style shareable Pricing Health Check card** — `react-native-view-shot`, share button on health-check screen. ~4-5h. (`docs/v1.2.7-plan.md`)
-- **Stripe Connect collection for all tiers** — ungate Stripe Connect from portal-Premium-only to mobile-all-tiers. Share-as-Link stays Pro+ (deliberate friction-removal upgrade hook). PDF-with-QR-code for Free. ~7-9h. (`docs/v1.2.7-plan.md`)
-- **Analytics identity instrumentation** — ✅ shipped tonight (`024f21d`). Just waits for next build to take effect for users.
-- **Duplicate-email signup UX fix** — when a user tries email/password sign-up with an email that already has an account, Supabase silently returns success without sending a confirmation email (anti-enumeration security behavior). Our `sign-up.tsx:268-358` then misleadingly shows "Check your email" but no email comes. Fix: check `data.user.identities.length === 0` right after `signUp()` returns — that's Supabase's signal that the email is already registered. Show "Email already registered — try signing in" prompt with a "Sign In" button instead. Apply to both the Google OAuth path (~line 195) and email/password path (~line 268). ~15 min. Ships with next mobile build alongside the analytics identity wiring already merged.
+### Pre-work
+- ✅ **Prod DB `quotes.status` CHECK constraint** — verified 2026-06-09. Live constraint allows `'draft', 'sent', 'approved', 'declined', 'completed', 'archived'` — matches `lib/types.ts` exactly. No drift. v1.3.0 Request Changes migration just needs `ALTER TABLE quotes DROP CONSTRAINT + ADD CONSTRAINT` with `'needs_revision'` appended. (Bonus: currency constraint allows `USD, CAD, EUR, CRC` — Costa Rica colón already in there.)
+- **10-min `expo-print` href survival spike** — generate PDF with anchor tag, open in iOS Files / sim, tap. Cash App / PayPal use HTTPS URLs (open Safari if href survives); Venmo uses `venmo://` (needs device with Venmo). If hrefs survive → tappable claim is true. If stripped → drop the tappable-links line from release notes (anchors degrade to plain text — zero regression). Still outstanding.
+
+### Mike's feedback items
+- **Rename "Create Tier" → "Add Option"** — display strings only at `edit.tsx:1948,2071,2072,2073,2074`, `quotes.tsx:1036,1037,1038,1039`, `dashboard.tsx:988,989,990,991`, `SwipeableQuoteItem.tsx:230`. ZERO code/var/column renames. Bundle mechanics untouched. ~30 min.
+- **Auto-prompt "Mark as Sent?" on quote PDF export** — `review.tsx` after `handleExportPDF:129` resolves, if status === "draft", prompt to flip to Sent. ~1h.
+- **Payment methods on quote PDFs** — extract `lib/pdf.ts:560-589` payment-methods block into shared helper; wire to `generateQuoteHTML:25`; delete stale comment at line 549. ~1h.
+- **Tappable payment links in PDFs** — Venmo / Cash App / PayPal anchor tags with URI schemes. Zelle / check / wire / other stay text-only. Conditional on href spike result. ~30 min - 3h.
+- **Clearer in-quote status control signposting** — `edit.tsx:1068-1087` chips are already Pressable; subtle border + chevron + "Status" label. ~30-45 min.
+
+### Bug fix from Mike triage
+- **Auto-approve prompt on Quote → Contract path** — `review.tsx:445` `handleCreateContract`, before calling `createContractFromQuote`, check status. If not Approved/Completed, show *"Mark as Approved and continue?"* alert. Fixes silent-null at `lib/contracts.ts:53`. ~1h.
+
+### Adjacent tinies (JS, low-risk, ride with the sprint)
+- **Export menu locks** — `review.tsx:501-614` show all options with 🔒 prefix on tier-gated entries; tap → paywall. Same on Android Alert variant 564-612. ~45 min.
+- **Duplicate-email signup UX fix** — check `data.user.identities.length === 0` after `signUp()` in `sign-up.tsx:268` (email/password) and `:214` (Google OAuth — corrected from prior :195). Show "Email already registered" with Sign In button. ~15 min.
+
+---
+
+## 🟡 v1.2.8 — Card payments (~7-9h, deliberate messaging post-founder-video)
+
+**Why deferred from v1.2.7:** Stripe charges contractors 2.9%+30¢ even at-cost; ships card payments days after the founder video's "keep every dollar / I don't touch your money" punch — optics whiplash. Defer until video moment lands, then frame deliberately: *"you asked for cards, here it is through your own Stripe account, and I still make nothing — Stripe charges their standard rate, not me."*
+
+- **Stripe Connect collection for all tiers** — Ungate Stripe Connect onboarding from Premium-portal-only to mobile-all-tiers. New `lib/stripeConnect.ts` wrapper using `expo-web-browser` `WebBrowser.openAuthSessionAsync`. New screen inside existing Business Settings → Payment Collection section (lines 277-297) as a sibling tile to existing Payment Methods (rename to "Other Payment Methods" for clarity). Free contractor invoice PDFs get QR + short URL to `/pay/[id]`. Portal API route (`/api/stripe/connect/route.ts`) has no internal tier check — accept `source=mobile` param in POST body to adjust `return_url` to a mobile-friendly close-session page. Apple compliance OK (contractor's merchant account, not IAP). Share-as-Link stays Pro+ (Free→Pro upgrade hook). Update `docs/QUOTECAT_FEATURES.md` + `CLAUDE.md` + `website/index.html` bullets after ship. ~7-9h.
+  - **CONSTRAINT (verified 2026-06-09):** the Free-tier QR routes ONLY to the Stripe card checkout. Do NOT extend it to a multi-method tappable payment-methods page — that would collapse Pro's friction-removal upgrade hook (Pro's Share-as-Link is "every payment method is a real tappable anchor"; Free is "payment methods are plain text on the PDF, type them yourself"). Verified: `expo-print` strips `<a href>` through HTML→PDF render, so the PDF tappable-methods path is structurally unavailable anyway. Portal `/pay/[id]` Stripe checkout = OK for Free. Portal `/pay/[id]` rendering Venmo/Cash App/PayPal as tappable anchors for Free = NO, that's a Pro feature. Keep the differentiator clean.
+
+---
+
+## 🟡 v1.2.9 — "Build your pricebook your way" (~16-19h, shared native rebuild)
+
+**Why grouped:** all three require native rebuilds (`expo-camera`, `expo-document-picker`, `react-native-view-shot`). Share one build cycle. Coherent theme: scanner = one item at a time at the store; CSV/XLSX import = bulk from supplier extract; share card = turn audit results into reach.
+
+- **Barcode pricebook scanner (Pro)** — `expo-camera` install. Scanner modal with reticle + 2s debounce. Header-right icon on `app/(main)/price-book.tsx`. Free→paywall gate. Add `getPricebookItemBySkuExact(sku)` to `lib/pricebook.ts` (existing substring LIKE is wrong for barcodes). Broaden `NSCameraUsageDescription` at `app.json:60` (verified — not 62). Barcode types: `upc_a, upc_e, ean13, ean8, code128, code39`. Match → existing edit modal pre-populated; no match → create modal with `sku` pre-filled. Verify: 5 consecutive scans on real device Release build, 4-of-5 in ~3s, iOS + Android Samsung Galaxy. ~7-8h.
+- **CSV/XLSX pricebook import (Pro)** — `expo-document-picker` install. Move `xlsx` from devDeps to deps. New `app/(main)/pricebook-import.tsx`: file pick → parse → column-mapping UI (name, unitPrice required; sku, unitType, category, description optional) → preview → submit. Mobile uses existing `savePricebookItemsBatch`. Portal UI: new `dashboard/pricebook/import/page.tsx` — backend `POST /api/pricebook/import` route ALREADY exists (validates name + price, normalizes unit_type, 1000-item cap, row-level errors). Mobile ~3-4h + Portal ~1-2h. Pro+ gating. Pairs with future Kendall partnership for negotiated-pricing imports.
+- **Strava-style shareable Pricing Health Check card (Pro)** — `react-native-view-shot` for HTML-to-image. New `components/HealthCheckShareCard.tsx`: anonymous (no client names), shows flagged count + lost profit + window + QuoteCat branding. Share button on `pricing-health-check.tsx` after hero card at line 271. Data fields from `analyzeQuoteHealth()`. Verify on iOS + Android, iMessage + WhatsApp + native share sheet. ~4-5h.
 
 ---
 
@@ -84,6 +115,8 @@ Tonight shipped: dashboard page Promise.all, dashboard layout cache+parallel+sli
 
 - **Industry Mode (Trades vs Services) + Spanish i18n combined feature** — adds `profiles.industry` enum + `react-i18next` + locale picker. Ships in same release as xByte re-enablement. ~2-2.5 weeks. (`FOLLOWUPS.md:31-100`)
 - **v1.3.0 scheduling — mobile personal calendar + portal team dispatch** — Pro mobile gets agenda view; Premium portal gets drag-drop dispatch calendar with realtime. Portal `CalendarView.tsx` already exists; mobile is greenfield (~13-16h). Closes biggest competitive gap per `docs/COMPETITOR-ANALYSIS.md`.
+- **Request Changes (full threaded version) — v1.3.0** — earlier "lite" version was deferred during the v1.2.7 re-scope; instead of shipping lite + full separately, ship the proper threaded version directly in v1.3.0. Proper conversation log: threaded back-and-forth on each quote/contract, contractor replies inline, full timeline with timestamps, history preserved across revisions. Schema: `needs_revision` in quote + contract status enums; `quote_revisions` / `contract_revisions` tables for history; `client_notes` no longer needed as standalone column. Push notification on each new client message. Critical to coordinate portal-mobile deploy (feature flag on portal until mobile builds approved). Two-codebase coordination — accept full QA cost. ~14-18h.
+- **Standalone contract creation + read-only lock on signed contracts — v1.3.0** — "Start a New Contract" entry in Contracts tab opens the quote form in contract-creation mode (`?mode=contract-creation` route param); save atomically creates the underlying quote + contract pair. Architectural rule: every contract has an underlying quote, always. Quote stays visible in Quotes tab with a "Contract" chip on row. Read-only lock when contract has signatures attached (signed contract edit would invalidate signature). Removes the dead-end at `app/(main)/(tabs)/contracts.tsx:165-167` ("You need an approved quote first"). ~3-4h.
 - **Pricing Foundation Setup (App + Portal)** — guided onboarding combining Overhead Calculator + Labor Rate Calculator + target margin into one flow. Synced between mobile and portal. (`CLAUDE.md`, in "Future Feature Ideas" → marked 🎯 NEAR-TERM)
 - **AI Business Performance Coach** — premium scoring + personalized advice via Claude. (`CLAUDE.md`, in "Future Feature Ideas" → marked 🎯 NEAR-TERM)
 - **Two-way SMS texting** — Premium-only via Twilio. **Already shipped on portal**; mobile-side equivalent (if any) TBD. (`FOLLOWUPS.md` Office Staff entry confirms portal has it)

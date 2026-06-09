@@ -16,14 +16,140 @@ export type PDFOptions = {
   includeBranding: boolean; // true for free tier, false for pro
   companyDetails?: CompanyDetails;
   logoBase64?: string; // Base64 encoded logo image
-  paymentMethods?: PaymentMethods; // Payment options to display on invoices
+  paymentMethods?: PaymentMethods; // Payment options to display on quotes/invoices
 };
+
+/**
+ * Build a tappable deep-link URL for Venmo / Cash App / PayPal. Returns null for
+ * payment methods without a public URI scheme (Zelle / check / wire / other).
+ * Strips common decorative prefixes (@username, $cashtag) when building the URL
+ * but the original value is still shown to the user as the visible label.
+ *
+ * Whether the tap actually opens the app depends on expo-print preserving the
+ * <a href> through the HTML→PDF render. Worst case the anchor degrades to plain
+ * text in the PDF — same as today's behavior, no regression.
+ */
+function buildPaymentLink(
+  key: string,
+  rawValue: string,
+  amount?: number,
+  note?: string
+): string | null {
+  const handle = rawValue.replace(/^[@$]/, "").trim();
+  if (!handle) return null;
+  const amt = amount && amount > 0 ? amount.toFixed(2) : null;
+
+  switch (key) {
+    case "venmo": {
+      const parts = [
+        "txn=pay",
+        `recipients=${encodeURIComponent(handle)}`,
+        amt ? `amount=${amt}` : "",
+        note ? `note=${encodeURIComponent(note)}` : "",
+      ].filter(Boolean);
+      return `venmo://paycharge?${parts.join("&")}`;
+    }
+    case "cashApp":
+      return amt ? `https://cash.app/$${handle}/${amt}` : `https://cash.app/$${handle}`;
+    case "paypal":
+      return amt ? `https://paypal.me/${handle}/${amt}` : `https://paypal.me/${handle}`;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Render the Payment Options HTML section for a quote or invoice PDF. Available
+ * to all tiers — `paymentMethods` are configured on Free as well as Pro/Premium,
+ * and Apple compliance applies only to in-app digital goods (us charging users),
+ * not contractors collecting from their clients via Venmo/Cash App/etc.
+ *
+ * Venmo / Cash App / PayPal render as anchor tags with deep-link URIs (tappable
+ * if the PDF viewer preserves hrefs). Other methods render as plain text.
+ */
+function renderPaymentMethodsHTML(
+  paymentMethods: PaymentMethods | undefined,
+  opts: {
+    documentType: "quote" | "invoice";
+    documentNumber?: string;
+    amount?: number; // Invoice total to pre-fill in deep links; omit on quotes
+  }
+): string {
+  if (!paymentMethods) return "";
+
+  const labels: Record<string, { label: string; icon: string }> = {
+    zelle:   { label: "Zelle",    icon: "💵" },
+    venmo:   { label: "Venmo",    icon: "📱" },
+    cashApp: { label: "Cash App", icon: "💲" },
+    paypal:  { label: "PayPal",   icon: "🅿️" },
+    check:   { label: "Check",    icon: "📝" },
+    wire:    { label: "Wire/ACH", icon: "🏦" },
+    other:   { label: "Other",    icon: "📋" },
+  };
+
+  const note = opts.documentType === "invoice" && opts.documentNumber
+    ? `Invoice ${opts.documentNumber}`
+    : undefined;
+
+  const enabled = Object.entries(paymentMethods)
+    .filter(([_, method]) => method.enabled && method.value)
+    .map(([key, method]) => ({
+      key,
+      ...labels[key],
+      value: method.value,
+      linkUrl: buildPaymentLink(
+        key,
+        method.value,
+        opts.documentType === "invoice" ? opts.amount : undefined,
+        note
+      ),
+    }));
+
+  if (enabled.length === 0) return "";
+
+  const instruction = opts.documentType === "invoice"
+    ? `Please include invoice number <strong>${opts.documentNumber}</strong> with your payment.`
+    : `Payment options for when you're ready to accept this quote.`;
+
+  // NOTE: expo-print strips <a href> through HTML→PDF render (verified
+  // 2026-06-09 on iOS sim — Cash App https URL didn't open Safari on tap).
+  // buildPaymentLink() output therefore renders as plain text in the PDF; the
+  // tappable claim is currently false. Code stays for forward compatibility
+  // (if a future Print release preserves hrefs, taps light up for free).
+  return `
+    <div class="section" style="margin-top: 24px;">
+      <div class="section-title">Payment Options</div>
+      <div style="background: #f9f9f9; border-radius: 6px; padding: 16px;">
+        <div style="margin-bottom: 12px; font-size: 13px; color: #666;">
+          ${instruction}
+        </div>
+        <div style="display: grid; gap: 12px;">
+          ${enabled.map(method => {
+            const displayValue = method.linkUrl
+              ? `<a href="${method.linkUrl}" style="color: inherit; text-decoration: none;">${method.value}</a>`
+              : method.value;
+            return `
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <span style="font-size: 18px;">${method.icon}</span>
+                <div>
+                  <div style="font-weight: 600; color: #333; font-size: 14px;">${method.label}</div>
+                  <div style="color: #555; font-size: 13px; white-space: pre-line;">${displayValue}</div>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 /**
  * Generate HTML for the quote PDF
  */
 function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
-  const { includeBranding, companyDetails, logoBase64 } = options;
+  const { includeBranding, companyDetails, logoBase64, paymentMethods } = options;
+  const paymentMethodsSection = renderPaymentMethodsHTML(paymentMethods, { documentType: "quote" });
 
   console.log("=== PDF DEBUG ===");
   console.log("Quote ID:", quote.id);
@@ -333,6 +459,8 @@ ${quote.changeHistory}
         </div>
       ` : ''}
 
+      ${paymentMethodsSection}
+
       ${brandingFooter}
       </div>
     </body>
@@ -546,48 +674,11 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
     </div>
   ` : '';
 
-  // Payment methods section - only for Premium users with configured methods
-  const paymentMethodsLabels: Record<string, { label: string; icon: string }> = {
-    zelle: { label: 'Zelle', icon: '💵' },
-    venmo: { label: 'Venmo', icon: '📱' },
-    cashApp: { label: 'Cash App', icon: '💲' },
-    paypal: { label: 'PayPal', icon: '🅿️' },
-    check: { label: 'Check', icon: '📝' },
-    wire: { label: 'Wire/ACH', icon: '🏦' },
-    other: { label: 'Other', icon: '📋' },
-  };
-
-  const enabledPaymentMethods = paymentMethods
-    ? Object.entries(paymentMethods)
-        .filter(([_, method]) => method.enabled && method.value)
-        .map(([key, method]) => ({
-          key,
-          ...paymentMethodsLabels[key],
-          value: method.value,
-        }))
-    : [];
-
-  const paymentMethodsSection = enabledPaymentMethods.length > 0 ? `
-    <div class="section" style="margin-top: 24px;">
-      <div class="section-title" style="color: #22C55E;">Payment Options</div>
-      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 16px;">
-        <div style="margin-bottom: 8px; font-size: 13px; color: #166534;">
-          Please include invoice number <strong>${invoice.invoiceNumber}</strong> with your payment.
-        </div>
-        <div style="display: grid; gap: 12px;">
-          ${enabledPaymentMethods.map(method => `
-            <div style="display: flex; align-items: flex-start; gap: 10px;">
-              <span style="font-size: 18px;">${method.icon}</span>
-              <div>
-                <div style="font-weight: 600; color: #166534; font-size: 14px;">${method.label}</div>
-                <div style="color: #333; font-size: 13px; white-space: pre-line;">${method.value}</div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-  ` : '';
+  const paymentMethodsSection = renderPaymentMethodsHTML(paymentMethods, {
+    documentType: "invoice",
+    documentNumber: invoice.invoiceNumber,
+    amount: grandTotal,
+  });
 
   return `
     <!DOCTYPE html>

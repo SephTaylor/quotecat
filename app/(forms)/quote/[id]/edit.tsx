@@ -1065,6 +1065,7 @@ export default function EditQuote() {
         }
       >
         <Text style={styles.label}>Status</Text>
+        <Text style={[styles.helper, { marginBottom: 6 }]}>Tap a status to update</Text>
         <View style={styles.statusChips}>
           {(Object.keys(QuoteStatusMeta) as QuoteStatus[]).map((s) => {
             const statusColor = QuoteStatusMeta[s].color;
@@ -1945,7 +1946,7 @@ export default function EditQuote() {
                   color={!isQuoteSaved ? theme.colors.muted : theme.colors.text}
                 />
                 <Text style={[styles.menuItemText, !isQuoteSaved && styles.menuItemTextDisabled]}>
-                  Create Tier
+                  Add Option
                 </Text>
               </Pressable>
 
@@ -2068,10 +2069,10 @@ export default function EditQuote() {
       {/* Create Tier Modal */}
       <TextInputModal
         visible={showTierModal}
-        title="Create Tier"
-        message='Enter a name for this tier option (e.g., "Better", "Best", "With Generator")'
-        placeholder="Tier name"
-        submitLabel="Create"
+        title="Add Option"
+        message='Enter a name for this option (e.g., "Better", "Best", "With Generator")'
+        placeholder="Option name"
+        submitLabel="Add"
         onSubmit={handleTierSubmit}
         onCancel={() => setShowTierModal(false)}
       />

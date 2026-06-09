@@ -1033,10 +1033,10 @@ export default function QuotesList() {
       {/* Create Tier Modal */}
       <TextInputModal
         visible={showTierModal}
-        title="Create Tier"
-        message='Enter a name for this tier option (e.g., "Better", "Best", "With Generator")'
-        placeholder="Tier name"
-        submitLabel="Create"
+        title="Add Option"
+        message='Enter a name for this option (e.g., "Better", "Best", "With Generator")'
+        placeholder="Option name"
+        submitLabel="Add"
         onSubmit={handleTierSubmit}
         onCancel={() => {
           setShowTierModal(false);

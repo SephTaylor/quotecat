@@ -2,8 +2,8 @@
   "expo": {
     "name": "QuoteCat",
     "slug": "quotecat",
-    "version": "1.2.6",
-    "runtimeVersion": "1.2.6",
+    "version": "1.2.7",
+    "runtimeVersion": "1.2.7",
     "updates": {
       "url": "https://u.expo.dev/dc5517f1-c28a-4507-804b-406cee16ff3c"
     },

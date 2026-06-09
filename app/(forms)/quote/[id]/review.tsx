@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getQuoteById } from "@/lib/quotes";
+import { getQuoteById, updateQuote } from "@/lib/quotes";
 import type { Quote } from "@/lib/quotes";
 import { calculateQuoteTotals, calculateQuoteProfitability, getMarginColor, getMarginIcon } from "@/lib/calculations";
 import type { OverheadSettings } from "@/lib/preferences";
@@ -33,7 +33,7 @@ import { generateAndSharePDF, generateAndShareMultiTierPDF } from "@/lib/pdf";
 import { getLinkedQuotes } from "@/lib/quotes";
 import { generateAndShareSpreadsheet } from "@/lib/spreadsheet";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
-import { loadPreferences, type CompanyDetails } from "@/lib/preferences";
+import { loadPreferences, type CompanyDetails, type PaymentMethods } from "@/lib/preferences";
 import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { createInvoiceFromQuote } from "@/lib/invoices";
 import { createContractFromQuote } from "@/lib/contracts";
@@ -54,6 +54,7 @@ export default function QuoteReviewScreen() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [userState, setUserState] = useState<UserState | null>(null);
   const [companyDetails, setCompanyDetails] = useState<CompanyDetails | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
   const [logo, setLogo] = useState<CompanyLogo | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingSpreadsheet, setIsExportingSpreadsheet] = useState(false);
@@ -85,6 +86,7 @@ export default function QuoteReviewScreen() {
         setQuote(q ?? null);
         setUserState(user);
         setCompanyDetails(prefs.company);
+        setPaymentMethods(prefs.paymentMethods);
         setTargetMaterialsMarginPercent(prefs.pricing?.targetMaterialsMarginPercent || 0);
         setOverheadSettings(prefs.overhead);
         setDefaultLaborRate(prefs.pricing?.defaultLaborRate || 0);
@@ -143,6 +145,27 @@ export default function QuoteReviewScreen() {
       return;
     }
 
+    // After a successful PDF export, offer to flip a Draft quote to Sent.
+    // Sharing as a Link auto-flips status; PDF export historically did not, so
+    // quotes silently stayed in Draft after being handed to the client.
+    const promptMarkAsSent = () => {
+      if (!quote || quote.status !== "draft") return;
+      Alert.alert(
+        "Mark this quote as Sent?",
+        "Update its status now that the PDF has been exported?",
+        [
+          { text: "Not Now", style: "cancel" },
+          {
+            text: "Yes, mark as Sent",
+            onPress: async () => {
+              const updated = await updateQuote(quote.id, { status: "sent" });
+              if (updated) setQuote(updated);
+            },
+          },
+        ]
+      );
+    };
+
     // Export single quote PDF
     const exportSinglePDF = async () => {
       try {
@@ -165,8 +188,11 @@ export default function QuoteReviewScreen() {
         await generateAndSharePDF(quote, {
           includeBranding: userState.tier === "free",
           companyDetails: companyDetails ?? undefined,
-          logoBase64: rawBase64
+          logoBase64: rawBase64,
+          paymentMethods: paymentMethods ?? undefined,
         });
+
+        promptMarkAsSent();
 
       } catch (error) {
         Alert.alert("Error", "Failed to generate PDF. Please try again.");
@@ -198,8 +224,11 @@ export default function QuoteReviewScreen() {
         await generateAndShareMultiTierPDF(linkedQuotes, {
           includeBranding: userState.tier === "free",
           companyDetails: companyDetails ?? undefined,
-          logoBase64: rawBase64
+          logoBase64: rawBase64,
+          paymentMethods: paymentMethods ?? undefined,
         });
+
+        promptMarkAsSent();
 
       } catch (error) {
         Alert.alert("Error", "Failed to generate PDF. Please try again.");
@@ -445,9 +474,36 @@ export default function QuoteReviewScreen() {
   const handleCreateContract = async () => {
     if (!quote) return;
 
+    // Contracts can only be created from Approved/Completed quotes — lib/contracts.ts
+    // returns null silently otherwise, which surfaces as a baffling "Failed to create
+    // contract" error. Catch that path here and offer a one-tap status flip.
+    let workingQuote: Quote = quote;
+    if (quote.status !== "approved" && quote.status !== "completed") {
+      const userApproved = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          "Mark this quote as Approved?",
+          "Contracts are created from approved quotes. Mark this quote as Approved and continue?",
+          [
+            { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+            { text: "Mark Approved & Continue", onPress: () => resolve(true) },
+          ]
+        );
+      });
+
+      if (!userApproved) return;
+
+      const updated = await updateQuote(quote.id, { status: "approved" });
+      if (!updated) {
+        Alert.alert("Error", "Could not update quote status. Please try again.");
+        return;
+      }
+      workingQuote = updated;
+      setQuote(updated);
+    }
+
     try {
       setIsCreatingContract(true);
-      const contract = await createContractFromQuote(quote);
+      const contract = await createContractFromQuote(workingQuote);
       if (contract) {
         Alert.alert(
           "Contract Created",
@@ -499,109 +555,49 @@ export default function QuoteReviewScreen() {
   };
 
   const showExportMenu = () => {
-    // Build options based on user tier
-    const options = [
-      "Export as PDF",
-      "Export as CSV",
+    // Show every option to every tier with 🔒 prefix on tier-gated ones; tapping
+    // a locked option fires the paywall. Converts the export menu from a hidden
+    // list into a visible upgrade hook.
+    const upgrade = () => { presentPaywallAndSync(); };
+    // ActionSheetIOS / Android Alert can't render icons, so use Apple's
+    // convention for tier-gated options: the tier name as a parenthesized
+    // suffix. No emoji — keeps the menu native-feeling and on-brand.
+    const lockLabel = (label: string, tier: "Pro" | "Premium") => `${label} (${tier})`;
+
+    const menuItems: { label: string; action: () => void }[] = [
+      { label: "Export as PDF", action: handleExportPDF },
+      { label: "Export as CSV", action: handleExportSpreadsheet },
+      isPro || isPremium
+        ? { label: "Share as Link", action: handleShareLink }
+        : { label: lockLabel("Share as Link", "Pro"), action: upgrade },
+      isPro || isPremium
+        ? { label: "Create Full Invoice", action: () => showDueDatePicker(100) }
+        : { label: lockLabel("Create Full Invoice", "Pro"), action: upgrade },
+      isPro || isPremium
+        ? { label: "Create Down Payment Invoice", action: handleDepositInvoice }
+        : { label: lockLabel("Create Down Payment Invoice", "Pro"), action: upgrade },
+      isPremium
+        ? { label: "Create Contract", action: handleCreateContract }
+        : { label: lockLabel("Create Contract", "Premium"), action: upgrade },
     ];
 
-    // Add share link for Pro/Premium users (quote must be synced to cloud)
-    if (isPro || isPremium) {
-      options.push("Share as Link");
-    }
-
-    // Add invoice options for Pro/Premium users
-    if (isPro || isPremium) {
-      options.push("Create Full Invoice");
-      options.push("Create Down Payment Invoice");
-    }
-
-    // Add contract option for Premium users
-    if (isPremium) {
-      options.push("Create Contract");
-    }
-
-    options.push("Cancel");
-
-    const cancelIndex = options.length - 1;
-
-    const handleSelection = (buttonIndex: number) => {
-      const selectedOption = options[buttonIndex];
-      switch (selectedOption) {
-        case "Export as PDF":
-          handleExportPDF();
-          break;
-        case "Export as CSV":
-          handleExportSpreadsheet();
-          break;
-        case "Share as Link":
-          handleShareLink();
-          break;
-        case "Create Full Invoice":
-          showDueDatePicker(100);
-          break;
-        case "Create Down Payment Invoice":
-          handleDepositInvoice();
-          break;
-        case "Create Contract":
-          handleCreateContract();
-          break;
-        // Cancel - do nothing
-      }
-    };
-
     if (Platform.OS === "ios") {
+      const options = [...menuItems.map(m => m.label), "Cancel"];
+      const cancelIndex = options.length - 1;
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options,
           cancelButtonIndex: cancelIndex,
           title: "Export Options",
         },
-        handleSelection
+        (buttonIndex) => {
+          if (buttonIndex === cancelIndex) return;
+          menuItems[buttonIndex]?.action();
+        }
       );
     } else {
-      // Android - use Alert with buttons (limited to 3 for best UX, show as nested menus)
-      const androidButtons: { text: string; onPress?: () => void; style?: "cancel" | "default" | "destructive" }[] = [
-        { text: "Export as PDF", onPress: () => handleExportPDF() },
-        { text: "Export as CSV", onPress: () => handleExportSpreadsheet() },
-      ];
-
-      // Add share link for Pro/Premium users
-      if (isPro || isPremium) {
-        androidButtons.push({
-          text: "Share as Link",
-          onPress: () => handleShareLink(),
-        });
-      }
-
-      // Add invoice option for Pro/Premium users
-      if (isPro || isPremium) {
-        androidButtons.push({
-          text: "Create Invoice...",
-          onPress: () => {
-            // Show invoice submenu
-            Alert.alert(
-              "Create Invoice",
-              "Select invoice type",
-              [
-                { text: "Full Invoice", onPress: () => showDueDatePicker(100) },
-                { text: "Down Payment Invoice", onPress: () => handleDepositInvoice() },
-                { text: "Cancel", style: "cancel" },
-              ],
-              { cancelable: true }
-            );
-          }
-        });
-      }
-
-      // Add contract option for Premium users
-      if (isPremium) {
-        androidButtons.push({
-          text: "Create Contract",
-          onPress: () => handleCreateContract(),
-        });
-      }
-
+      const androidButtons: { text: string; onPress?: () => void; style?: "cancel" | "default" | "destructive" }[] =
+        menuItems.map(m => ({ text: m.label, onPress: () => m.action() }));
       androidButtons.push({ text: "Cancel", style: "cancel" });
 
       Alert.alert(

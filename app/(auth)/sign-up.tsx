@@ -275,6 +275,21 @@ export default function SignUpScreen() {
 
       if (error) throw error;
 
+      // Supabase signals "email already registered" via an empty identities array
+      // (anti-enumeration: signUp returns success without sending a confirmation email).
+      // Without this check, the UI falsely shows "Check your email" and no email arrives.
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        Alert.alert(
+          "Email Already Registered",
+          "That email is already in use. Want to sign in instead?",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Sign In", onPress: () => router.replace("/(auth)/sign-in") },
+          ]
+        );
+        return;
+      }
+
       if (data.user) {
         // Create profile for new user so entitlements sync correctly
         try {
