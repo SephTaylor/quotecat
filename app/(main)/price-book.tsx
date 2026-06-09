@@ -291,6 +291,25 @@ export default function PriceBookManager() {
           headerTitleAlign: "center",
           headerBackTitle: "Back",
           headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
+          headerRight: () => (
+            <Pressable
+              onPress={() => {
+                if (!isPaidTier) {
+                  presentPaywallAndSync();
+                  return;
+                }
+                router.push("/(main)/pricebook-import");
+              }}
+              hitSlop={10}
+              style={{ paddingHorizontal: 12 }}
+            >
+              <Ionicons
+                name="cloud-upload-outline"
+                size={22}
+                color={theme.colors.accent}
+              />
+            </Pressable>
+          ),
           headerStyle: {
             backgroundColor: theme.colors.bg,
           },

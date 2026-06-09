@@ -61,7 +61,9 @@ Items where I think the work might already be done but couldn't auto-verify. **P
 
 ---
 
-## 🟡 v1.2.8 — Card payments (Pro+ feature) (~9-12h, ships exactly 2 weeks post-founder-video)
+## 🟡 v1.2.9 — Card payments (Pro+ feature) (~9-12h, ships exactly 2 weeks post-founder-video)
+
+> **Renumbered 2026-06-09:** was v1.2.8; user chose to pull pricebook power-up forward as the next release. Card payments now sit behind it in the queue. Founder-video timing discipline still holds — v1.2.9 ships 2 weeks after the video drops, not based on v1.2.8 timing.
 
 **Why deferred from v1.2.7:** Stripe charges contractors ~2.9%+30¢ (Stripe's fee, not ours). Ships card payments too close to the founder video's "keep every dollar" punch and the optics get muddied — even though the claim stays accurate, the audience hasn't had time to absorb it. Defer 2 weeks past the video drop (fixed delay, not a "measure when the moment lands" vibe — that's ungameable). Use the gap to prepare the deliberate framing instead of trying to time the social signal.
 
@@ -103,7 +105,9 @@ Items where I think the work might already be done but couldn't auto-verify. **P
 
 ---
 
-## 🟡 v1.2.9 — "Build your pricebook your way" (~16-19h, shared native rebuild)
+## 🟡 v1.2.8 — "Build your pricebook your way" (~16-19h, shared native rebuild)
+
+> **Pulled forward 2026-06-09:** was v1.2.9; user opted for fast push past v1.2.8 card payments (which needs the founder-video timing window). Pricebook power-up is the next release. Coherent three-feature theme + one native rebuild covers all three.
 
 **Why grouped:** all three require native rebuilds (`expo-camera`, `expo-document-picker`, `react-native-view-shot`). Share one build cycle. Coherent theme: scanner = one item at a time at the store; CSV/XLSX import = bulk from supplier extract; share card = turn audit results into reach.
 
