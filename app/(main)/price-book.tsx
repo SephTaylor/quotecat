@@ -11,7 +11,10 @@ import {
   getPricebookItemBySkuExact,
   type PricebookItem,
 } from "@/lib/pricebook";
-import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+// BarcodeScannerModal is dynamically loaded — pulls in expo-camera, which
+// does native init on import. Deferring to first scan-open keeps Pricebook
+// screen mount fast.
+type BarcodeScannerModalType = typeof import("@/components/BarcodeScannerModal").default;
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { FREE_LIMITS } from "@/lib/user";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -76,6 +79,7 @@ export default function PriceBookManager() {
   const [showUnitPicker, setShowUnitPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [ScannerComponent, setScannerComponent] = useState<BarcodeScannerModalType | null>(null);
 
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -330,10 +334,16 @@ export default function PriceBookManager() {
           headerRight: () => (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Pressable
-                onPress={() => {
+                onPress={async () => {
                   if (!isPaidTier) {
                     presentPaywallAndSync();
                     return;
+                  }
+                  // Lazy-load the scanner module on first open — defers expo-camera
+                  // native init from screen-mount time until actual use.
+                  if (!ScannerComponent) {
+                    const mod = await import("@/components/BarcodeScannerModal");
+                    setScannerComponent(() => mod.default);
                   }
                   setShowScanner(true);
                 }}
@@ -703,11 +713,13 @@ export default function PriceBookManager() {
         </Pressable>
       </Modal>
 
-      <BarcodeScannerModal
-        visible={showScanner}
-        onScan={handleScanResult}
-        onClose={() => setShowScanner(false)}
-      />
+      {ScannerComponent && (
+        <ScannerComponent
+          visible={showScanner}
+          onScan={handleScanResult}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </GestureHandlerRootView>
   );
 }

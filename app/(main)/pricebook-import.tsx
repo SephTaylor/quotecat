@@ -16,8 +16,9 @@ import {
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import * as XLSX from "xlsx";
 import { Stack, useRouter } from "expo-router";
+// xlsx is ~600KB+ and is only needed for .xls/.xlsx files. CSV path doesn't
+// touch it. Loaded dynamically inside handlePickFile when the extension matches.
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/contexts/ThemeContext";
@@ -129,7 +130,7 @@ function parseCSV(text: string): ParseResult {
   return { headers, rows: dataRows };
 }
 
-function parseXLSX(base64: string): ParseResult {
+function parseXLSX(XLSX: typeof import("xlsx"), base64: string): ParseResult {
   const workbook = XLSX.read(base64, { type: "base64" });
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
   if (!firstSheet) return { headers: [], rows: [] };
@@ -227,10 +228,12 @@ export default function PricebookImportScreen() {
 
       let parsed: ParseResult;
       if (isXLSX) {
+        // Dynamic import — xlsx is ~600KB+ and CSV imports don't need it.
+        const XLSX = await import("xlsx");
         const base64 = await FileSystem.readAsStringAsync(file.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
-        parsed = parseXLSX(base64);
+        parsed = parseXLSX(XLSX, base64);
       } else {
         const text = await FileSystem.readAsStringAsync(file.uri, {
           encoding: FileSystem.EncodingType.UTF8,
