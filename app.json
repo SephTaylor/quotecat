@@ -37,7 +37,7 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "ai.quotecat.app",
-      "buildNumber": "211",
+      "buildNumber": "212",
       "icon": "./assets/images/icon.png",
       "supportsTablet": true,
       "usesAppleSignIn": true,
@@ -64,7 +64,7 @@
     },
     "android": {
       "package": "ai.quotecat.app",
-      "versionCode": 58,
+      "versionCode": 59,
       "icon": "./assets/images/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
