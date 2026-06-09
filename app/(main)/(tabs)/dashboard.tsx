@@ -5,6 +5,7 @@ import { listQuotes, type Quote } from "@/lib/quotes";
 import { QuoteStatusMeta, InvoiceStatusMeta, ContractStatusMeta, type Invoice, type Contract, type TeamMember } from "@/lib/types";
 import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 import { calculateQuoteTotal, calculateInvoiceTotal, calculateInvoiceProfitability, getMarginColor } from "@/lib/calculations";
+import { analyzeQuoteHealth } from "@/lib/pricingHealth";
 import { loadPreferences, updateDashboardPreferences, type DashboardPreferences, type OverheadSettings } from "@/lib/preferences";
 import { deleteQuote, saveQuote, duplicateQuote, createTierFromQuote, getLinkedQuotes } from "@/lib/quotes";
 import { listInvoices, getToInvoiceStats, deleteInvoice } from "@/lib/invoices";
@@ -69,6 +70,7 @@ export default function Dashboard() {
     showRecentInvoices: true,
     showRecentContracts: true,
     showMargin: true,
+    showHealthCheck: true,
     recentQuotesCount: 5,
   });
   const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
@@ -442,6 +444,19 @@ export default function Dashboard() {
       invoiceCount: validCount,
     };
   }, [isPro, canCalculateMargins, overheadSettings, invoices, defaultLaborRate, defaultLaborCostRate, teamMembers]);
+
+  // Pricing Health Check summary for the dashboard widget. Computed locally
+  // from already-loaded quotes — no extra network or storage hit.
+  const healthCheckSummary = React.useMemo(() => {
+    if (!isPro) return null;
+    if (quotes.length === 0) return null;
+    return analyzeQuoteHealth(
+      quotes,
+      { defaultLaborRate, defaultLaborCostRate } as any,
+      overheadSettings,
+      teamMembers,
+    );
+  }, [isPro, quotes, overheadSettings, defaultLaborRate, defaultLaborCostRate, teamMembers]);
 
   const performDelete = useCallback(async (quote: Quote) => {
     // Store deleted quote for undo
@@ -856,6 +871,45 @@ export default function Dashboard() {
                   </Text>
                 </View>
               )}
+            </View>
+          )}
+
+          {/* Pricing Health Check Card (Pro+ only) */}
+          {isPro && preferences.showHealthCheck && healthCheckSummary && (
+            <View style={styles.marginSection}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.valueSectionTitle}>Pricing Health Check</Text>
+                <DismissButton onPress={() => handleDismissSection('showHealthCheck')} theme={theme} />
+              </View>
+              <Pressable
+                style={styles.marginCard}
+                onPress={() => router.push('/(main)/pricing-health-check' as any)}
+              >
+                {healthCheckSummary.flagged.length === 0 ? (
+                  <View style={styles.marginMainRow}>
+                    <View style={[styles.marginIndicator, { backgroundColor: '#22C55E' }]} />
+                    <Text style={styles.marginValue}>All clear</Text>
+                    <Text style={styles.marginLabel}>
+                      last {healthCheckSummary.windowDays} days
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.marginMainRow}>
+                      <View style={[styles.marginIndicator, { backgroundColor: '#EF4444' }]} />
+                      <Text style={styles.marginValue}>{healthCheckSummary.flagged.length}</Text>
+                      <Text style={styles.marginLabel}>
+                        underpriced quote{healthCheckSummary.flagged.length === 1 ? '' : 's'}
+                      </Text>
+                    </View>
+                    <View style={styles.marginDetailsRow}>
+                      <Text style={styles.marginDetailText}>
+                        ~${healthCheckSummary.totalEstimatedLostProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} estimated profit on the table · last {healthCheckSummary.windowDays} days
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </Pressable>
             </View>
           )}
 

@@ -560,6 +560,16 @@ export default function Settings() {
                   handleUpdatePreference({ showMargin: value })
                 }
                 theme={theme}
+                locked={!isPro}
+                onLockedPress={() => presentPaywallAndSync()}
+              />
+              <SettingRow
+                label="Pricing Health Check"
+                value={preferences.dashboard.showHealthCheck}
+                onToggle={(value) =>
+                  handleUpdatePreference({ showHealthCheck: value })
+                }
+                theme={theme}
                 isLast
                 locked={!isPro}
                 onLockedPress={() => presentPaywallAndSync()}

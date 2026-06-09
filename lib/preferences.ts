@@ -12,6 +12,7 @@ export type DashboardPreferences = {
   showRecentInvoices: boolean;
   showRecentContracts: boolean;
   showMargin: boolean; // Pro+ only - show avg margin card
+  showHealthCheck: boolean; // Pro+ only - show pricing health check summary
   recentQuotesCount: 3 | 5 | 10 | "all";
 };
 
@@ -135,6 +136,7 @@ export function getDefaultPreferences(): UserPreferences {
       showRecentInvoices: true,
       showRecentContracts: true,
       showMargin: true, // Pro+ only - defaults to on
+      showHealthCheck: true, // Pro+ only - defaults to on
       recentQuotesCount: 5,
     },
     privacy: {
