@@ -272,7 +272,7 @@ Gating: the `/dashboard/*` layout enforces `profile.tier === 'premium'` (`dashbo
 | **Two-way SMS via Twilio** — provision dedicated number, send to clients + workers, receive via webhook, voice handling | `/api/twilio/*` |
 | **QuickBooks Online sync** — OAuth, push invoices, auto-create QB customers, single-invoice or bulk sync | `/api/quickbooks/*` |
 | **Team management** — workers (with magic-link assignment) + techs (secondary user accounts with permission flags) | `/dashboard/team` + `/api/team-members`, `/api/job-assignments`, `/api/team/techs/*` |
-| **Stripe Connect** — accept client payments directly, dashboard link to Express account | `/api/stripe/connect` |
+| **Stripe Connect** — accept client payments directly via card. Onboarding setup from mobile (Pro+, v1.2.9) or portal desktop. Gated on `stripe_charges_enabled` from the Stripe webhook so abandoned onboarding doesn't ship a broken button to clients. | `/api/stripe/connect`, mobile `payment-collection.tsx` |
 | **Invoice SMS reminders** | `/api/invoices/[id]/send-reminder` |
 | **Job notifications to client/worker** | `/api/jobs/[id]/notify-client`, `/api/job-assignments/notify` |
 
@@ -299,7 +299,7 @@ When a Pro or Premium contractor sends a quote or invoice to a client, the clien
 |---|---|---|
 | `/q/[id]` | Quote view. If quote is part of a tier group, shows Good/Better/Best comparison view. | Pro+ contractor (mobile "Share as Link") |
 | `/c/[id]` | Contract view + signature pad. Marks contract viewed on load. Client signs electronically. | Premium contractor (contracts are Premium-only) |
-| `/pay/[id]` | Invoice payment. If the contractor has Stripe Connect (Premium): Stripe checkout. Otherwise: shows configured alternative methods (Zelle, Venmo, Cash App, PayPal, check, wire). | Pro+ contractor (mobile "Share as Link") |
+| `/pay/[id]` | Invoice payment. If the contractor has Stripe Connect enabled with charges_enabled=true (Pro+ as of v1.2.9, Premium prior): card payment via Stripe Checkout. Otherwise: shows configured alternative methods (Zelle, Venmo, Cash App, PayPal, check, wire) — Venmo / Cash App / PayPal render as tappable deep-links. Customer sees the remaining balance (total minus any cash/check partials the contractor already recorded). | Pro+ contractor (mobile "Share as Link") |
 | `/pay/[id]/success` | Payment confirmation | — |
 
 ### Client magic-link login at `/client/*` — Pro+
@@ -382,7 +382,7 @@ Worker assignment is part of the Premium-only Team Management feature, so worker
 ### Payments
 
 - Subscription billing (contractor pays QuoteCat): Stripe via the marketing site at `quotecat.ai`. No in-app pricing on mobile to avoid Apple's 30% commission.
-- Client → contractor invoice payments (contractor gets paid by client): Stripe Connect on the portal — Premium contractors only.
+- Client → contractor invoice payments (contractor gets paid by client): Stripe Connect — Pro+ contractors as of v1.2.9 (was Premium-only prior). Pro contractors set up via mobile (Business Settings → Card Payments); Premium contractors set up via mobile or portal desktop. QuoteCat never takes a cut; Stripe charges its standard processor fee directly.
 - Alternative payment methods (Zelle, Venmo, Cash App, PayPal, check, wire) can be configured per-contractor and surface on the public `/pay/[id]` page.
 
 ### Analytics + crash reporting

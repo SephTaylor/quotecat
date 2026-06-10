@@ -2,8 +2,8 @@
   "expo": {
     "name": "QuoteCat",
     "slug": "quotecat",
-    "version": "1.2.8",
-    "runtimeVersion": "1.2.8",
+    "version": "1.2.9",
+    "runtimeVersion": "1.2.9",
     "updates": {
       "url": "https://u.expo.dev/dc5517f1-c28a-4507-804b-406cee16ff3c"
     },
@@ -45,7 +45,7 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "ai.quotecat.app",
-      "buildNumber": "212",
+      "buildNumber": "214",
       "icon": "./assets/images/icon.png",
       "supportsTablet": true,
       "usesAppleSignIn": true,
@@ -72,7 +72,7 @@
     },
     "android": {
       "package": "ai.quotecat.app",
-      "versionCode": 59,
+      "versionCode": 61,
       "icon": "./assets/images/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",

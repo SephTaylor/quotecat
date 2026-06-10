@@ -290,6 +290,32 @@ export default function BusinessSettings() {
                 {canEdit && <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />}
               </View>
             </Pressable>
+            {/* v1.2.9: Card Payments tile. Free taps the row → paywall; Pro+
+                routes to the Stripe Connect onboarding screen. Visible to
+                all tiers so it's discoverable as a Pro upsell. */}
+            <View style={styles.divider} />
+            <Pressable
+              style={styles.row}
+              onPress={() => {
+                if (isTech) return;
+                if (hasProAccess) {
+                  router.push("/(main)/payment-collection" as never);
+                } else {
+                  handleLearnMore();
+                }
+              }}
+              disabled={isTech}
+            >
+              <Text style={styles.rowLabel}>
+                Card Payments{hasProAccess ? "" : " (Pro)"}
+              </Text>
+              <View style={styles.rowRight}>
+                <Text style={styles.rowValue} numberOfLines={1}>
+                  {isTech ? "View only" : "Accept cards via Stripe"}
+                </Text>
+                {!isTech && <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />}
+              </View>
+            </Pressable>
           </View>
           <Text style={styles.sectionHint}>
             Payment info will appear on your invoices

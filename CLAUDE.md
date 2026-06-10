@@ -4,6 +4,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Planning discipline rules (locked 2026-06-10 after three rounds of the same pattern)
+
+These are infrastructure, not session-level intentions. Read them before every plan-mode entry, before every BACKLOG edit, before proposing scope changes to any locked release.
+
+### Rule 1: Scope-creep tripwire
+Before proposing any "pairs well with" additions to a locked release:
+- The locked scope already pairs with itself.
+- Net-new feature categories get their own release, not passenger slots in someone else's.
+- Trigger phrase to flag for your own self-check: *"the story sells harder with more in it"* — that's marketing logic misapplied to release scoping. The story can MENTION what's coming; the release should SHIP what's done.
+
+### Rule 2: Fossil-prevention consistency sweep
+After any plan-file or BACKLOG edit that changes a load-bearing decision (gate condition, scope, estimate, tier, ordering):
+- Do a top-to-bottom consistency sweep before declaring done.
+- Reconcile every statement of the changed thing — scope rows, implementation steps, verification matrix, files-modified section, estimate totals — against the canonical decision.
+- Fossils-as-they-accumulate is worse than verbosity — an executor anchored on a stale paragraph will implement the old version.
+
+### Rule 3: Early-product caution about zero usage
+Sparse production-data points are not evidence of feature deadness:
+- "Zero current users on surface X" means the user base hasn't grown into that surface yet, not that it's dead code.
+- Office staff, owners using desktop, future tier expansions, and downgrades from higher tiers all create future-state users of surfaces that look empty today.
+- Don't infer deprecation candidates from current data without considering structural future cohorts.
+
+### Reviewer naming (locked 2026-06-10)
+- **Claude Code** = this terminal/CLI planning agent (self-references as "I" / "me")
+- **Web Claude** = the peer reviewer running at claude.ai/web that Seph pastes feedback from
+- Forbidden: "CC" abbreviation (ambiguous), "Kellie" (mythologized, no source), any other persona name
+
+See memory files: `reference_reviewer_naming.md`, `reference_dn_tester.md` (also disambiguates DN-tester from Drew-mascot).
+
+---
+
 ## QuoteCat Ecosystem
 
 QuoteCat is a construction quoting platform with three main components:
@@ -292,7 +323,7 @@ Navigating between groups (e.g., `(forms)` → `(main)`) requires explicit back 
 **Pro Tier - Founder Pricing:**
 - Price: $29/mo (first 50 customers, locked forever)
 - Regular price: $49/mo
-- Features: Everything in Free + unlimited exports (no branding), custom assemblies, cloud sync, multi-device, portal links, company branding on PDFs
+- Features: Everything in Free + unlimited exports (no branding), custom assemblies, cloud sync, multi-device, portal links, company branding on PDFs, **card payment acceptance via Stripe Connect** (v1.2.9+, mobile in-app onboarding; QuoteCat takes no cut, Stripe charges its standard processor fee)
 
 **Premium Tier - Founder Pricing:**
 - Price: $79/mo (first 25 customers, locked forever)
