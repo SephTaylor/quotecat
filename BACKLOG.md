@@ -2,7 +2,7 @@
 
 **Canonical "what's left" index across the QuoteCat ecosystem.** One scannable list. For full design context on any item, drill into the linked source file.
 
-**Last updated:** 2026-06-09 (v1.2.7 shipped to ASC + Play Internal)
+**Last updated:** 2026-06-09 (v1.2.8 shipped to ASC + Play Internal; v1.2.7 fully live on both stores)
 **Sources merged:** `FOLLOWUPS.md`, `CLAUDE.md`, `docs/codebase-health-audit-2026-06-01.md`, `quotecat-portal/docs/office-role-plan.md`, this session's conversation, code-level TODOs.
 
 ---
@@ -283,7 +283,18 @@ Most of these are deprecation aliases kept for back-compat — clean them up dur
 
 ## ✅ Recently shipped (kept for context, can be archived)
 
-2026-06-09 — v1.2.7 Mike-response sprint:
+2026-06-09 (late) — v1.2.8 "Build your pricebook your way":
+
+- CSV/XLSX pricebook import (mobile + portal) — commit `99ee695` (mobile) + `070e8e5` (portal)
+- Barcode pricebook scanner with exact-SKU lookup + SKU as first-class form field — commit `cf9b76d`
+- Strava-style shareable Pricing Health Check card (anonymous, 600×600 PNG via react-native-view-shot) — commit `8b20528`
+- Dashboard widget for Pricing Health Check (Pro+, default-on, dismissable) — commit `a6bdf72`
+- Perf: lazy-loaded expo-camera (BarcodeScannerModal) + xlsx (only loads for XLSX files) — commit `8b20528`
+- iOS build 213 submitted to App Store Connect (TestFlight processing)
+- Android versionCode 60 submitted to Google Play Internal track (manual promotion pending)
+- All four features verified in iOS sim; barcode scanner specifically still needs real-device 4-of-5 UPC decode verification before public release
+
+2026-06-09 (earlier) — v1.2.7 Mike-response sprint, both stores fully live:
 
 - All 8 v1.2.7 items shipped — commit `b65165d` (feature work) + `53273a0` (v1.2.8 lock + EAS build-number bumps)
 - iOS build 212 submitted to App Store Connect (TestFlight processing)
