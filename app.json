@@ -72,7 +72,7 @@
     },
     "android": {
       "package": "ai.quotecat.app",
-      "versionCode": 61,
+      "versionCode": 62,
       "icon": "./assets/images/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",

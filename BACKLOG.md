@@ -22,6 +22,9 @@ Items where I think the work might already be done but couldn't auto-verify. **P
 ## 🟠 Tomorrow
 
 - **Office Staff role build** — third team-member role, portal-only, unlimited free seats on Premium. ~6h. Spec at `quotecat-portal/docs/office-role-plan.md`. Includes one coordinated mobile sign-in block (the only mobile change needed).
+- **🚨 Netlify Node 22 cutover (by 2026-06-16)** — `quotecat-portal/netlify.toml` pins `NODE_VERSION = "20"`. Netlify is forcing system Node 22 on June 16, after which `@netlify/plugin-nextjs` won't run on the old version. Fix: bump to `"22"` and push. ~2 min. Surfaced during v1.2.9 deploy 2026-06-12.
+- **Revert verbose Stripe error message before live launch** — `quotecat-portal/src/app/api/stripe/connect/route.ts` currently returns the raw Stripe SDK error message in 500 responses (commit `0fab2f7`, 2026-06-12). Added to diagnose the v1.2.9 sim sandbox auth flow. Fine in test mode; in live mode leaks internal detail to client-facing UI. Revert to the generic "Failed to create Stripe account" response before flipping `card_payments_enabled=true`. ~2 min.
+- **Netlify plugin-nextjs bump** — `@netlify/plugin-nextjs@5.15.3` is outdated; latest is `5.15.11`. Patch versions, non-breaking. Bump in `package.json`, redeploy. ~5 min. Pair with the Node 22 cutover above.
 
 ---
 

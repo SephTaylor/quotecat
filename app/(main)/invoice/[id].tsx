@@ -449,19 +449,29 @@ Thank you!`;
     }
   }, [invoice, isPro, isPremium, smsPhone, loadInvoice]);
 
-  const handleSendInvoiceLink = useCallback(() => {
-    if (!invoice) return;
+  const handleSendInvoiceLink = useCallback(async () => {
+    if (!invoice) {
+      console.warn("[SendInvoiceLink] no invoice loaded");
+      return;
+    }
 
     setShowMenu(false);
 
-    // Use Share API to send invoice link
     const portalUrl = "https://portal.quotecat.ai";
     const invoiceLink = `${portalUrl}/pay/${invoice.id}`;
 
-    Share.share({
-      message: `View your invoice: ${invoiceLink}`,
-      url: invoiceLink,
-    });
+    try {
+      // Intentionally omit url: — iOS Simulator throws
+      // "Cannot issue sandbox extension for URL" when both message and url
+      // are provided, silently failing the share sheet. The URL is already
+      // embedded in the message text.
+      await Share.share({
+        message: `View your invoice: ${invoiceLink}`,
+      });
+    } catch (err) {
+      console.error("[SendInvoiceLink] error:", err);
+      Alert.alert("Could not open share sheet", (err as Error).message);
+    }
   }, [invoice]);
 
   const handleCopyLink = useCallback(async () => {
