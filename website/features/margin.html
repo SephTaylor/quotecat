@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The quoting app that shows real profit margin — QuoteCat</title>
+    <meta name="description" content="QuoteCat is the only quoting app for contractors that shows real profit margin on every line, before you send the quote. Built on overhead-loaded labor rates, not back-of-napkin estimates.">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://quotecat.ai/features/margin">
+    <meta property="og:title" content="Real profit margin on every quote line — QuoteCat">
+    <meta property="og:description" content="The only quoting app that tells you whether a quote is actually profitable, before you send it.">
+    <meta property="og:image" content="https://quotecat.ai/logo.png">
+    <link rel="canonical" href="https://quotecat.ai/features/margin">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "QuoteCat",
+      "url": "https://quotecat.ai/features/margin",
+      "description": "QuoteCat shows real profit margin on every line of every quote, built on overhead-loaded labor rates that account for the costs other quoting apps ignore. Contractors see whether a quote is actually profitable before they send it.",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Quoting and Invoicing",
+      "operatingSystem": "iOS, Android",
+      "downloadUrl": "https://apps.apple.com/us/app/quotecat/id6754611668",
+      "installUrl": "https://play.google.com/store/apps/details?id=ai.quotecat.app",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "publisher": {
+        "@type": "Organization",
+        "name": "QuoteCat",
+        "url": "https://quotecat.ai",
+        "logo": "https://quotecat.ai/logo.png"
+      },
+      "audience": {
+        "@type": "Audience",
+        "audienceType": "Contractors, Tradespeople, Small business owners"
+      },
+      "featureList": [
+        "Real profit margin shown on every quote line",
+        "Target margin alert when a line falls below your goal",
+        "Estimated total profit per quote",
+        "Overhead-loaded labor rate, set once and applied everywhere",
+        "Pricing Health Check audit of recent quotes",
+        "Free on iOS and Android"
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What does 'real profit margin' mean in QuoteCat?",
+          "acceptedAnswer": {"@type": "Answer", "text": "It means the margin calculated from your actual cost — including overhead-loaded labor — not the markup you applied. A 50% markup line shows as 33% margin, because that's what's really left after paying for the cost. Every line shows the real number, not the misleading one."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why don't other quoting apps show this?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Most quoting apps are designed to help you produce a professional document fast. They don't ask whether the quote is profitable — that's a question contractors traditionally answered at year-end with an accountant. QuoteCat moves that question forward to before the quote goes out, because by year-end it's too late to do anything about it."}
+        },
+        {
+          "@type": "Question",
+          "name": "How does QuoteCat know my overhead?",
+          "acceptedAnswer": {"@type": "Answer", "text": "You set it once. Either by entering your overhead percentage directly, or by using the free Overhead Calculator and Labor Rate Calculator to build it up from your real numbers. The app then applies that overhead-loaded rate to every labor line, automatically."}
+        },
+        {
+          "@type": "Question",
+          "name": "Can I see margin on quotes I've already sent?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes. The Pricing Health Check feature audits your recent quotes and flags the ones that came in below your target margin — with the estimated profit you left on the table. It runs on the dashboard so you see the result without going looking for it."}
+        },
+        {
+          "@type": "Question",
+          "name": "Is the margin feature available on the Free tier?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes. Real margin per line shows on Free, Pro, and Premium. The Pricing Health Check audit feature is Pro+ because it requires the cloud sync that Pro adds. Everything that helps you price a quote correctly works on Free."}
+        }
+      ]
+    }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --green: #22c55e;
+            --green-bg: rgba(34, 197, 94, 0.1);
+        }
+        html, body { height: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.5;
+            color: #fff;
+            background: linear-gradient(180deg, #0f0f0f 0%, #1a1a1a 100%);
+            min-height: 100vh;
+        }
+        .container { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+        /* Hero */
+        .hero { padding: 80px 0 56px; text-align: center; }
+        .eyebrow {
+            display: inline-block;
+            background: rgba(249, 115, 22, 0.12);
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 52px;
+            line-height: 1.05;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            margin-bottom: 20px;
+        }
+        h1 .accent {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-sub {
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.72);
+            margin-bottom: 36px;
+            max-width: 580px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .badges {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+            color: #000;
+            padding: 14px 22px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 15px;
+            text-decoration: none;
+            transition: transform 0.15s ease;
+        }
+        .badge:hover { transform: translateY(-2px); }
+        .hero-finecheck { font-size: 13px; color: rgba(255, 255, 255, 0.45); }
+
+        /* Sections */
+        section.block { padding: 56px 0; }
+        section.block.alt { background: rgba(0, 0, 0, 0.18); }
+        h2 {
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+        }
+        .lede {
+            font-size: 17px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 24px;
+            max-width: 620px;
+        }
+        .prose p {
+            color: rgba(255, 255, 255, 0.78);
+            margin-bottom: 14px;
+            font-size: 16px;
+            line-height: 1.7;
+        }
+        .prose strong { color: #fff; }
+
+        /* How it works */
+        .steps { display: grid; gap: 16px; margin-top: 24px; }
+        .step {
+            display: grid;
+            grid-template-columns: 44px 1fr;
+            gap: 16px;
+            align-items: start;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+        .step-num {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .step-body { line-height: 1.55; }
+        .step-body strong { color: #fff; font-weight: 600; }
+        .step-body p { color: rgba(255, 255, 255, 0.7); font-size: 15px; }
+
+        /* FAQ */
+        .faq { display: grid; gap: 12px; }
+        .faq-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+        .faq-q { font-weight: 600; margin-bottom: 6px; color: #fff; }
+        .faq-a { color: rgba(255, 255, 255, 0.72); font-size: 15px; line-height: 1.6; }
+
+        /* CTA */
+        .cta { padding: 64px 0 96px; text-align: center; }
+        .cta h2 { margin-bottom: 16px; }
+        .cta-sub { color: rgba(255, 255, 255, 0.65); margin-bottom: 28px; }
+        .cta-fine { font-size: 13px; color: rgba(255, 255, 255, 0.4); margin-top: 16px; }
+        .cta-fine a { color: rgba(255, 255, 255, 0.6); text-decoration: underline; }
+
+        @media (max-width: 600px) {
+            .hero { padding: 56px 0 36px; }
+            h1 { font-size: 38px; letter-spacing: -1px; }
+            h2 { font-size: 24px; }
+            .hero-sub { font-size: 17px; }
+            section.block { padding: 40px 0; }
+            .badge { padding: 12px 18px; font-size: 14px; }
+        }
+    </style>
+    {% include "header-styles.html" %}
+    {% include "analytics.html" %}
+</head>
+<body>
+    {% include "header.html" %}
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <span class="eyebrow">The Differentiator</span>
+                <h1>The only quoting app that tells you whether you're <span class="accent">actually making money.</span></h1>
+                <p class="hero-sub">Real profit margin on every quote line. Before you send it. So you know whether the bid is worth winning.</p>
+                <div class="badges">
+                    <a href="https://apps.apple.com/us/app/quotecat/id6754611668" target="_blank" class="badge" data-resource="features_margin_app_store">
+                        <svg width="20" height="22" viewBox="0 0 22 26" fill="currentColor"><path d="M17.523 13.823c-.024-2.715 2.213-4.022 2.317-4.082-1.267-1.851-3.235-2.101-3.93-2.131-1.652-.173-3.255.988-4.099.988-.86 0-2.155-.972-3.553-.945-1.798.028-3.481 1.07-4.404 2.692-1.904 3.299-.484 8.142 1.34 10.802.913 1.305 1.979 2.762 3.374 2.71 1.366-.057 1.876-.872 3.524-.872 1.632 0 2.111.872 3.535.838 1.466-.024 2.388-1.31 3.27-2.627 1.054-1.495 1.478-2.967 1.495-3.043-.034-.012-2.85-1.086-2.879-4.33zm-2.69-7.957c.735-.919 1.238-2.169 1.097-3.437-1.063.047-2.394.735-3.157 1.634-.677.792-1.282 2.09-1.126 3.31 1.193.089 2.418-.601 3.187-1.507z"/></svg>
+                        App Store
+                    </a>
+                    <a href="https://play.google.com/store/apps/details?id=ai.quotecat.app" target="_blank" class="badge" data-resource="features_margin_play_store">
+                        <svg width="20" height="22" viewBox="0 0 24 27" fill="currentColor"><path d="M1.21 1.43A2.07 2.07 0 0 0 .47 3.05v20.9a2.07 2.07 0 0 0 .74 1.62L12.1 14.65v-.2zm12.96 13.6 3.84-3.85-9.06-5.13a1.45 1.45 0 0 0-.67-.21l5.89 9.19zm-5.89 9.19a1.45 1.45 0 0 0 .67-.21l9.06-5.13-3.84-3.85-5.89 9.19zm10.66-9.93 3.05-1.74a1.41 1.41 0 0 0 0-2.5l-3.05-1.74-4.06 4.06z"/></svg>
+                        Google Play
+                    </a>
+                </div>
+                <p class="hero-finecheck">Free on iOS and Android. Margin shows on every plan.</p>
+            </div>
+        </section>
+
+        <section class="block alt">
+            <div class="container">
+                <h2>The problem with every other quoting app</h2>
+                <p class="lede">They're designed to make the quote look professional. They don't ask whether the quote is profitable.</p>
+                <div class="prose">
+                    <p>Most contractors find out a job didn't make money the same way — they finish it, look at the books, and realize the materials cost more than they bid, the labor took longer than they estimated, or the overhead they forgot to load into the labor rate ate the profit.</p>
+                    <p>By then it's too late. The quote already went out. The customer signed. The job got built. The losing math was set in motion the moment you typed the price and hit send.</p>
+                    <p>The fix isn't a better accounting report at year-end. The fix is showing the real margin number <strong>at the moment the quote is being built</strong> — so the contractor can adjust the line, the labor, or the bid before it leaves their phone.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="block">
+            <div class="container">
+                <h2>What QuoteCat shows you</h2>
+                <p class="lede">Three things, every time you build a quote.</p>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <strong>Real margin per line</strong>
+                            <p>Every line item shows the actual margin — not the markup. A 50% markup line shows as 33% margin, because that's what's left after cost. The number you see is the number you keep.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <strong>Target margin alert</strong>
+                            <p>Set your target margin once. Lines that fall below it get flagged. So a $400 line that should clear 25% margin but only clears 14% gets called out — before the quote leaves.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <strong>Estimated profit per quote</strong>
+                            <p>Total quote, total cost, estimated profit. Real overhead-loaded labor rate baked in. So you know whether the bid is worth winning before you send it — not three months after you finish it.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="block alt">
+            <div class="container">
+                <h2>Built on real overhead-loaded labor rates</h2>
+                <div class="prose">
+                    <p>Margin numbers only matter if the cost numbers are honest. So QuoteCat builds its margin math on top of overhead-loaded labor rates, not back-of-napkin estimates.</p>
+                    <p>You set your labor rate once — either by entering it directly or by using the free <a href="/resources/labor-rate-calculator" style="color: var(--primary);">Labor Rate Calculator</a> and <a href="/resources/overhead-calculator" style="color: var(--primary);">Overhead Calculator</a> to build it up from your real numbers. The app applies that overhead-loaded rate to every labor line, automatically. No double-counting overhead. No forgetting to add it.</p>
+                    <p>The Pro tier also runs a <strong>Pricing Health Check</strong> on the dashboard — it audits your recent quotes, flags the ones that came in below your target margin, and tells you the estimated profit you left on the table. So the financial-intelligence layer isn't just at the moment-of-quote — it's a continuous loop.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="block">
+            <div class="container">
+                <h2>Common questions</h2>
+                <div class="faq">
+                    <div class="faq-item">
+                        <div class="faq-q">What does "real profit margin" mean here?</div>
+                        <div class="faq-a">The margin calculated from your actual cost — including overhead-loaded labor — not the markup you applied. A 50% markup line shows as 33% margin, because that's what's actually left after paying for the cost. Every line shows the honest number.</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-q">Why don't other quoting apps do this?</div>
+                        <div class="faq-a">Most quoting apps are document-production tools — designed to help you produce a professional-looking quote fast. They don't ask whether the quote is profitable; that question traditionally got answered at year-end by an accountant. QuoteCat moves the question forward to before the quote goes out.</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-q">How does QuoteCat know my overhead?</div>
+                        <div class="faq-a">You set it once. Either type your overhead percentage directly, or use the free calculators to build it up from real expenses. The app applies the overhead-loaded rate to every labor line automatically.</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-q">Is the margin feature available on the Free tier?</div>
+                        <div class="faq-a">Yes. Real margin per line shows on Free, Pro, and Premium. The Pricing Health Check audit (which scans your past quotes for underpriced bids) is Pro+ because it relies on the cloud sync that Pro adds.</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-q">Will my customers see the margin numbers?</div>
+                        <div class="faq-a">No. Margin is internal-only. Your customers see a clean quote PDF or shareable link with no internal pricing breakdown. The margin numbers exist only inside the app, for the contractor to use while building the bid.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta">
+            <div class="container">
+                <h2>Try it free.</h2>
+                <p class="cta-sub">No trial. No credit card. No expiration.</p>
+                <div class="badges">
+                    <a href="https://apps.apple.com/us/app/quotecat/id6754611668" target="_blank" class="badge" data-resource="features_margin_app_store_bottom">
+                        <svg width="20" height="22" viewBox="0 0 22 26" fill="currentColor"><path d="M17.523 13.823c-.024-2.715 2.213-4.022 2.317-4.082-1.267-1.851-3.235-2.101-3.93-2.131-1.652-.173-3.255.988-4.099.988-.86 0-2.155-.972-3.553-.945-1.798.028-3.481 1.07-4.404 2.692-1.904 3.299-.484 8.142 1.34 10.802.913 1.305 1.979 2.762 3.374 2.71 1.366-.057 1.876-.872 3.524-.872 1.632 0 2.111.872 3.535.838 1.466-.024 2.388-1.31 3.27-2.627 1.054-1.495 1.478-2.967 1.495-3.043-.034-.012-2.85-1.086-2.879-4.33zm-2.69-7.957c.735-.919 1.238-2.169 1.097-3.437-1.063.047-2.394.735-3.157 1.634-.677.792-1.282 2.09-1.126 3.31 1.193.089 2.418-.601 3.187-1.507z"/></svg>
+                        App Store
+                    </a>
+                    <a href="https://play.google.com/store/apps/details?id=ai.quotecat.app" target="_blank" class="badge" data-resource="features_margin_play_store_bottom">
+                        <svg width="20" height="22" viewBox="0 0 24 27" fill="currentColor"><path d="M1.21 1.43A2.07 2.07 0 0 0 .47 3.05v20.9a2.07 2.07 0 0 0 .74 1.62L12.1 14.65v-.2zm12.96 13.6 3.84-3.85-9.06-5.13a1.45 1.45 0 0 0-.67-.21l5.89 9.19zm-5.89 9.19a1.45 1.45 0 0 0 .67-.21l9.06-5.13-3.84-3.85-5.89 9.19zm10.66-9.93 3.05-1.74a1.41 1.41 0 0 0 0-2.5l-3.05-1.74-4.06 4.06z"/></svg>
+                        Google Play
+                    </a>
+                </div>
+                <p class="cta-fine">See exactly what you get on the <a href="/free">free tier page</a>.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const backdrop = document.getElementById('menuBackdrop');
+            menu.classList.toggle('open');
+            backdrop.classList.toggle('show');
+        }
+    </script>
+</body>
+</html>
