@@ -68,6 +68,56 @@ async function ensureInitialized(): Promise<boolean> {
 }
 
 /**
+ * Ensure RevenueCat's internal user identity matches the current
+ * Supabase-authenticated user.
+ *
+ * Why this exists: configure({ appUserID }) only sets the user once per
+ * app install. If a user signs out and a different user signs in on the
+ * same install, RC's stored identity does NOT update on its own. Without
+ * this sync, the next IAP/restore on the device fires a webhook under
+ * the previous user's app_user_id — crediting the wrong account.
+ *
+ * Idempotent and cheap: we read the current RC app user id and only call
+ * logIn() when it actually differs from the current Supabase user.
+ *
+ * Called before every paywall, restore, and tier-sensitive operation so
+ * RC's identity is current at the moment a transaction begins. Discovered
+ * 2026-06-22 during the v1.2.10 IAP verification when a TestFlight test
+ * routed nonyabiznix's purchase to jobhato's RC customer record because
+ * RC had been configured with jobhato's id earlier in the session and
+ * never re-aliased after the sign-out / sign-in switch.
+ */
+async function syncCurrentUserToRevenueCat(): Promise<void> {
+  if (!isInitialized || !PurchasesModule) return;
+
+  try {
+    const supabaseUserId = await getCurrentUserId();
+    if (!supabaseUserId) {
+      // No signed-in Supabase user; leave RC in whatever state it's in.
+      // (logOutRevenueCat is the explicit path for clearing identity.)
+      return;
+    }
+
+    const rcUserId = await PurchasesModule.getAppUserID();
+    if (rcUserId === supabaseUserId) {
+      // Already in sync — nothing to do.
+      return;
+    }
+
+    console.log(
+      `🔄 RevenueCat user mismatch — rc=${rcUserId} supabase=${supabaseUserId} — re-aliasing via logIn`,
+    );
+    await PurchasesModule.logIn(supabaseUserId);
+    console.log(`✅ RevenueCat user re-aliased to ${supabaseUserId}`);
+  } catch (e) {
+    // Don't throw — if we can't sync, the worst case is reverting to the
+    // previous identity bug for that one operation. Better to attempt the
+    // purchase than block it.
+    console.warn('RevenueCat user sync failed:', e);
+  }
+}
+
+/**
  * Refresh user tier from Supabase after purchase
  * Webhook updates profiles.tier, this syncs it to local state
  */
@@ -116,6 +166,11 @@ export async function presentPaywallAndSync(source?: string): Promise<boolean> {
     return false;
   }
 
+  // Make sure RC's identity matches the currently-signed-in Supabase user
+  // before any IAP / restore can fire. See syncCurrentUserToRevenueCat
+  // for the bug this protects against.
+  await syncCurrentUserToRevenueCat();
+
   trackEvent(AnalyticsEvents.PAYWALL_SHOWN, { source: source ?? 'unknown' });
 
   try {
@@ -163,6 +218,11 @@ export async function presentPaywallAndSync(source?: string): Promise<boolean> {
 export async function restorePurchases(): Promise<boolean> {
   const ready = await ensureInitialized();
   if (!ready) return false;
+
+  // Same identity check as the paywall path — a restore should always
+  // credit the currently-signed-in Supabase user, not whoever RC's stored
+  // identity happens to be from a previous session.
+  await syncCurrentUserToRevenueCat();
 
   try {
     await PurchasesModule.restorePurchases();
