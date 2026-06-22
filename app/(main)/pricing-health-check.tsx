@@ -62,7 +62,7 @@ export default function PricingHealthCheck() {
         }
 
         try {
-          const purchased = await presentPaywallAndSync();
+          const purchased = await presentPaywallAndSync("pricing_health_check");
           if (cancelled) return;
           if (purchased) {
             setAccessChecked(true);

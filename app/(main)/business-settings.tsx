@@ -107,9 +107,9 @@ export default function BusinessSettings() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   // Hide paywall for techs - they inherit owner's tier
-  const handleLearnMore = () => {
+  const handleLearnMore = (source?: string) => {
     if (!isTech) {
-      presentPaywallAndSync();
+      presentPaywallAndSync(source ?? "business_settings");
     }
   };
 
@@ -301,7 +301,7 @@ export default function BusinessSettings() {
                 if (hasProAccess) {
                   router.push("/(main)/payment-collection" as never);
                 } else {
-                  handleLearnMore();
+                  handleLearnMore("card_payments_tile");
                 }
               }}
               disabled={isTech}

@@ -21,7 +21,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { activateProTier, activatePremiumTier, setUserEmail } from "@/lib/user";
-import { identifyUser } from "@/lib/app-analytics";
+import { identifyUser, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import { needsSync, syncAllProducts, hasProductCache } from "@/modules/catalog/productService";
 import { ensureProfileExists } from "@/lib/authUtils";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -132,9 +132,16 @@ export default function SignInScreen() {
   }, []);
 
   // Shared post-OAuth sign-in flow
-  const handleOAuthPostSignIn = async (user: { id: string; email?: string | null }) => {
-    // Ensure profile exists (creates one if OAuth user is new)
-    await ensureProfileExists(user);
+  const handleOAuthPostSignIn = async (user: { id: string; email?: string | null }, provider: string) => {
+    // Ensure profile exists (creates one if OAuth user is new). A brand new
+    // user clicking "Sign in with Google/Apple" before "Sign up" still gets
+    // their first profile created here — signup_completed fires once for
+    // that genuine first-time signup. ensureProfileExists returns true when
+    // it inserted a fresh row.
+    const isNewSignup = await ensureProfileExists(user);
+    if (isNewSignup) {
+      trackEvent(AnalyticsEvents.SIGNUP_COMPLETED, { provider, tier: "free" });
+    }
 
     // Fetch user's tier
     const { data: profile } = await supabase
@@ -224,7 +231,7 @@ export default function SignInScreen() {
       if (error) throw error;
 
       if (data.user) {
-        await handleOAuthPostSignIn(data.user);
+        await handleOAuthPostSignIn(data.user, "apple");
       }
     } catch (error: any) {
       if (error.code === "ERR_REQUEST_CANCELED") {
@@ -258,7 +265,7 @@ export default function SignInScreen() {
 
       if (data.user) {
         console.log("🔵 User authenticated:", data.user.id, data.user.email);
-        await handleOAuthPostSignIn(data.user);
+        await handleOAuthPostSignIn(data.user, "google");
       } else {
         console.log("🔵 No user in response data");
       }

@@ -29,10 +29,15 @@ export async function getCurrentUserId(): Promise<string | null> {
 }
 
 /**
- * Ensure a profile exists for the given user (creates one if missing)
- * Used after OAuth sign-in since profiles aren't created automatically
+ * Ensure a profile exists for the given user (creates one if missing).
+ * Used after OAuth sign-in since profiles aren't created automatically.
+ *
+ * Returns true if a NEW profile was inserted (i.e. this is a first-time
+ * signup), false if an existing profile was found (returning user). The
+ * boolean lets analytics callers fire signup_completed only on the genuine
+ * first-account creation, not on every OAuth sign-in.
  */
-export async function ensureProfileExists(user: { id: string; email?: string | null }): Promise<void> {
+export async function ensureProfileExists(user: { id: string; email?: string | null }): Promise<boolean> {
   const { data: profile } = await supabase
     .from("profiles")
     .select("id")
@@ -47,5 +52,7 @@ export async function ensureProfileExists(user: { id: string; email?: string | n
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
+    return true;
   }
+  return false;
 }

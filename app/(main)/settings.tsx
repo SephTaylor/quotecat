@@ -155,7 +155,7 @@ export default function Settings() {
                     {!isTech && !isPro && (
                       <Pressable
                         style={styles.upgradeButton}
-                        onPress={() => presentPaywallAndSync()}
+                        onPress={() => presentPaywallAndSync("settings")}
                       >
                         <Text style={styles.upgradeButtonText}>Upgrade</Text>
                       </Pressable>
@@ -369,7 +369,7 @@ export default function Settings() {
                   {!expandedSections.cloudSync && (
                     <Pressable
                       style={styles.upgradeButtonSmall}
-                      onPress={() => presentPaywallAndSync()}
+                      onPress={() => presentPaywallAndSync("settings")}
                     >
                       <Text style={styles.upgradeButtonSmallText}>Upgrade</Text>
                     </Pressable>
@@ -391,7 +391,7 @@ export default function Settings() {
                     </Text>
                     <Pressable
                       style={styles.lockedFeatureButton}
-                      onPress={() => presentPaywallAndSync()}
+                      onPress={() => presentPaywallAndSync("settings")}
                     >
                       <Text style={styles.lockedFeatureButtonText}>Upgrade to Pro</Text>
                     </Pressable>
@@ -551,7 +551,7 @@ export default function Settings() {
                 theme={theme}
                 locked={!isPremium}
                 premium
-                onLockedPress={() => presentPaywallAndSync()}
+                onLockedPress={() => presentPaywallAndSync("settings")}
               />
               <SettingRow
                 label="Margin"
@@ -561,7 +561,7 @@ export default function Settings() {
                 }
                 theme={theme}
                 locked={!isPro}
-                onLockedPress={() => presentPaywallAndSync()}
+                onLockedPress={() => presentPaywallAndSync("settings")}
               />
               <SettingRow
                 label="Pricing Health Check"
@@ -572,7 +572,7 @@ export default function Settings() {
                 theme={theme}
                 isLast
                 locked={!isPro}
-                onLockedPress={() => presentPaywallAndSync()}
+                onLockedPress={() => presentPaywallAndSync("settings")}
               />
 
               {/* Recent Quotes Count */}

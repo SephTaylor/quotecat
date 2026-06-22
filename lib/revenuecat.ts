@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import { getCurrentUserId } from './authUtils';
 import { supabase } from './supabase';
 import { setUserTier, UserTier } from './user';
+import { trackEvent, AnalyticsEvents } from './app-analytics';
 
 // Track initialization state
 let isInitialized = false;
@@ -102,14 +103,20 @@ async function refreshTierFromSupabase(): Promise<void> {
  * Returns false if RC unavailable (simulator) or user cancelled
  *
  * After purchase, refreshes tier from Supabase (webhook updates profiles.tier)
+ *
+ * @param source label for analytics so we can see which surface drives
+ *   the most paywall traffic (e.g. "card_payments_tile",
+ *   "export_lock", "business_settings_smsmessaging"). Optional.
  */
-export async function presentPaywallAndSync(): Promise<boolean> {
+export async function presentPaywallAndSync(source?: string): Promise<boolean> {
   const ready = await ensureInitialized();
   if (!ready) {
     // On simulator or if RC fails, can't show paywall
     // Caller should show "upgrade via website" message
     return false;
   }
+
+  trackEvent(AnalyticsEvents.PAYWALL_SHOWN, { source: source ?? 'unknown' });
 
   try {
     const RevenueCatUI = require('react-native-purchases-ui').default;
@@ -119,16 +126,32 @@ export async function presentPaywallAndSync(): Promise<boolean> {
     if (result === 'PURCHASED' || result === 'RESTORED') {
       // Sync tier from Supabase (webhook should have updated it)
       await refreshTierFromSupabase();
+      trackEvent(AnalyticsEvents.PAYWALL_PURCHASED, {
+        source: source ?? 'unknown',
+        outcome: result.toLowerCase(),
+      });
       return true;
     }
+    trackEvent(AnalyticsEvents.PAYWALL_DISMISSED, {
+      source: source ?? 'unknown',
+      reason: 'closed_without_purchase',
+    });
     return false;
   } catch (e: any) {
     // User cancellation is not an error - handle it quietly
     if (e?.userCancelled || e?.code === 'PURCHASE_CANCELLED' || e?.message?.includes('cancel')) {
       console.log('User cancelled purchase');
+      trackEvent(AnalyticsEvents.PAYWALL_DISMISSED, {
+        source: source ?? 'unknown',
+        reason: 'user_cancelled',
+      });
       return false;
     }
     console.error('Paywall error:', e);
+    trackEvent(AnalyticsEvents.PAYWALL_DISMISSED, {
+      source: source ?? 'unknown',
+      reason: 'error',
+    });
     return false;
   }
 }

@@ -371,7 +371,7 @@ export default function QuotesList() {
           reason,
           [
             { text: "OK", style: "cancel" },
-            { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+            { text: "Upgrade", onPress: () => presentPaywallAndSync("quotes_tab") }
           ]
         );
         return;

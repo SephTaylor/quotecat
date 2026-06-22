@@ -172,7 +172,7 @@ export default function PriceBookManager() {
         ? [{ text: "OK", style: "cancel" as const }]
         : [
             { text: "OK", style: "cancel" as const },
-            { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+            { text: "Upgrade", onPress: () => presentPaywallAndSync("pricebook") }
           ];
       Alert.alert(
         "Pricebook Limit Reached",
@@ -203,7 +203,7 @@ export default function PriceBookManager() {
             ? [{ text: "OK", style: "cancel" }]
             : [
                 { text: "OK", style: "cancel" },
-                { text: "Upgrade", onPress: () => presentPaywallAndSync() },
+                { text: "Upgrade", onPress: () => presentPaywallAndSync("pricebook") },
               ]
         );
         return;
@@ -336,7 +336,7 @@ export default function PriceBookManager() {
               <Pressable
                 onPress={async () => {
                   if (!isPaidTier) {
-                    presentPaywallAndSync();
+                    presentPaywallAndSync("pricebook");
                     return;
                   }
                   // Lazy-load the scanner module on first open — defers expo-camera
@@ -359,7 +359,7 @@ export default function PriceBookManager() {
               <Pressable
                 onPress={() => {
                   if (!isPaidTier) {
-                    presentPaywallAndSync();
+                    presentPaywallAndSync("pricebook");
                     return;
                   }
                   router.push("/(main)/pricebook-import");
@@ -489,7 +489,7 @@ export default function PriceBookManager() {
             {!isPaidTier && items.length >= 40 && items.length < pricebookLimit && (
               <Pressable
                 style={styles.limitWarning}
-                onPress={() => presentPaywallAndSync()}
+                onPress={() => presentPaywallAndSync("pricebook")}
               >
                 <Text style={styles.limitWarningText}>
                   {pricebookLimit - items.length} items remaining. Upgrade for unlimited →

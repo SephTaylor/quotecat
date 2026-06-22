@@ -139,7 +139,7 @@ export default function QuoteReviewScreen() {
         reason,
         [
           { text: "OK", style: "cancel" },
-          { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+          { text: "Upgrade", onPress: () => presentPaywallAndSync("quote_review") }
         ]
       );
       return;
@@ -354,7 +354,7 @@ export default function QuoteReviewScreen() {
         reason,
         [
           { text: "OK", style: "cancel" },
-          { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+          { text: "Upgrade", onPress: () => presentPaywallAndSync("quote_review") }
         ]
       );
       return;
@@ -558,7 +558,7 @@ export default function QuoteReviewScreen() {
     // Show every option to every tier with 🔒 prefix on tier-gated ones; tapping
     // a locked option fires the paywall. Converts the export menu from a hidden
     // list into a visible upgrade hook.
-    const upgrade = () => { presentPaywallAndSync(); };
+    const upgrade = () => { presentPaywallAndSync("quote_review"); };
     // ActionSheetIOS / Android Alert can't render icons, so use Apple's
     // convention for tier-gated options: the tier name as a parenthesized
     // suffix. No emoji — keeps the menu native-feeling and on-brand.

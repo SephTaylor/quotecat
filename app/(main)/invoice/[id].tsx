@@ -197,7 +197,7 @@ export default function InvoiceDetailScreen() {
           ? [{ text: "OK", style: "cancel" as const }]
           : [
               { text: "OK", style: "cancel" as const },
-              { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+              { text: "Upgrade", onPress: () => presentPaywallAndSync("invoice") }
             ];
         Alert.alert("Limit Reached", reason, buttons);
         return;
@@ -2031,7 +2031,7 @@ Thank you!`;
                   onPress={() => {
                     if (!isPro) {
                       setShowMenu(false);
-                      presentPaywallAndSync();
+                      presentPaywallAndSync("invoice");
                       return;
                     }
                     handleSendInvoiceLink();
@@ -2063,7 +2063,7 @@ Thank you!`;
                   onPress={() => {
                     if (!isPro) {
                       setShowMenu(false);
-                      presentPaywallAndSync();
+                      presentPaywallAndSync("invoice");
                       return;
                     }
                     handleCopyLink();

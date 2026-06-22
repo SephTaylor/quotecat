@@ -587,7 +587,7 @@ export default function Dashboard() {
           reason,
           [
             { text: "OK", style: "cancel" },
-            { text: "Upgrade", onPress: () => presentPaywallAndSync() }
+            { text: "Upgrade", onPress: () => presentPaywallAndSync("dashboard") }
           ]
         );
         return;

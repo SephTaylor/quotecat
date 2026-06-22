@@ -236,7 +236,7 @@ export default function ContractsScreen() {
           {!isTech && (
             <Pressable
               style={styles.upgradeButton}
-              onPress={() => presentPaywallAndSync()}
+              onPress={() => presentPaywallAndSync("contracts")}
             >
               <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
             </Pressable>

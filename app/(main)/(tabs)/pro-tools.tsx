@@ -81,7 +81,7 @@ export default function ProTools() {
     } else {
       // Show RevenueCat paywall for non-subscribers
       try {
-        const purchased = await presentPaywallAndSync();
+        const purchased = await presentPaywallAndSync("pro_tools");
         if (purchased) {
           // Refresh subscription status
           load();
@@ -263,7 +263,7 @@ export default function ProTools() {
                 style={styles.upgradeButton}
                 onPress={async () => {
                   try {
-                    const purchased = await presentPaywallAndSync();
+                    const purchased = await presentPaywallAndSync("pro_tools");
                     if (purchased) {
                       load();
                     }

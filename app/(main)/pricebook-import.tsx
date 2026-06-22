@@ -196,7 +196,7 @@ export default function PricebookImportScreen() {
   // Free → paywall fire and bounce
   useEffect(() => {
     if (!isPaidTier) {
-      presentPaywallAndSync();
+      presentPaywallAndSync("pricebook_import");
       router.back();
     }
   }, [isPaidTier, router]);

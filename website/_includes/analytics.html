@@ -13,5 +13,25 @@
     person_profiles: 'identified_only',  // Don't create a profile for every anonymous visitor (saves quota)
     persistence: 'memory',               // No cookies → no consent banner required in most jurisdictions
   });
+
+  // Event delegation: any element with [data-resource] fires
+  // resource_clicked with the resource name. Add data-resource="foo" to
+  // any CTA you want to attribute (calculators, pricing guide, startup
+  // kit, future comparison pages). Single listener on document — no need
+  // to touch each link individually.
+  document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest && e.target.closest('[data-resource]');
+    if (!el) return;
+    try {
+      posthog.capture('resource_clicked', {
+        name: el.getAttribute('data-resource'),
+        href: el.getAttribute('href') || null,
+        page: window.location.pathname,
+      });
+    } catch (err) {
+      // Never break navigation on analytics failure
+      console && console.warn && console.warn('resource_clicked capture failed', err);
+    }
+  });
 </script>
 {% endif %}

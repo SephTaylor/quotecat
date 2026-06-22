@@ -195,7 +195,7 @@ export default function AssembliesScreen() {
             {!isTech && (
               <Pressable
                 style={styles.upgradeButton}
-                onPress={() => presentPaywallAndSync()}
+                onPress={() => presentPaywallAndSync("assemblies")}
               >
                 <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
               </Pressable>

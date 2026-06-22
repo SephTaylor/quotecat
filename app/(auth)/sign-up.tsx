@@ -22,7 +22,7 @@ import { GradientBackground } from "@/components/GradientBackground";
 import { supabase } from "@/lib/supabase";
 import { needsSync, syncAllProducts, hasProductCache } from "@/modules/catalog/productService";
 import { setUserEmail } from "@/lib/user";
-import { identifyUser } from "@/lib/app-analytics";
+import { identifyUser, trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 import { ensureProfileExists } from "@/lib/authUtils";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as Google from "expo-auth-session/providers/google";
@@ -193,7 +193,10 @@ export default function SignUpScreen() {
       if (error) throw error;
 
       if (data.user) {
-        await ensureProfileExists(data.user);
+        const isNewSignup = await ensureProfileExists(data.user);
+        if (isNewSignup) {
+          trackEvent(AnalyticsEvents.SIGNUP_COMPLETED, { provider: "apple", tier: "free" });
+        }
         await handlePostSignIn(data.user.email || "", data.user.id);
       }
     } catch (error: any) {
@@ -228,7 +231,10 @@ export default function SignUpScreen() {
 
       if (data.user) {
         console.log("🔵 User authenticated:", data.user.id, data.user.email);
-        await ensureProfileExists(data.user);
+        const isNewSignup = await ensureProfileExists(data.user);
+        if (isNewSignup) {
+          trackEvent(AnalyticsEvents.SIGNUP_COMPLETED, { provider: "google", tier: "free" });
+        }
         console.log("🔵 Profile ensured, calling handlePostSignIn...");
         await handlePostSignIn(data.user.email || "", data.user.id);
       } else {
@@ -314,6 +320,7 @@ export default function SignUpScreen() {
           // Save email to user state so Delete Account works
           await setUserEmail(email.trim());
           identifyUser(data.user.id, { email: email.trim(), tier: "free" });
+          trackEvent(AnalyticsEvents.SIGNUP_COMPLETED, { provider: "email", tier: "free" });
           Alert.alert("Success", "Account created successfully!");
 
           // Sync product catalog for new user

@@ -38,6 +38,10 @@ export const AnalyticsEvents = {
   // App lifecycle
   APP_OPENED: 'app_opened',
 
+  // Account lifecycle — these are the conversion-funnel events the
+  // marketing push depends on. Without them we can't read the funnel.
+  SIGNUP_COMPLETED: 'signup_completed',
+
   // Quote operations
   QUOTE_CREATED: 'quote_created',
   QUOTE_UPDATED: 'quote_updated',
@@ -50,6 +54,13 @@ export const AnalyticsEvents = {
   PDF_SHARED: 'pdf_shared',
   CSV_GENERATED: 'csv_generated',
   CSV_SHARED: 'csv_shared',
+
+  // Monetization / paywall — stitches the Free → paywall → purchased
+  // funnel inside PostHog (RevenueCat tracks its own version internally
+  // but it isn't joined to our other product events).
+  PAYWALL_SHOWN: 'paywall_shown',
+  PAYWALL_PURCHASED: 'paywall_purchased',
+  PAYWALL_DISMISSED: 'paywall_dismissed',
 
   // Errors
   ERROR_OCCURRED: 'error_occurred',
