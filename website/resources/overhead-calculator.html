@@ -38,6 +38,49 @@
       }
     }
     </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to calculate contractor overhead",
+      "description": "How to figure out a contractor's true overhead percentage from monthly business expenses and labor revenue — the number most contractors quietly absorb by underpricing.",
+      "totalTime": "PT3M",
+      "tool": [{"@type": "HowToTool", "name": "QuoteCat Overhead Calculator", "url": "https://quotecat.ai/resources/overhead-calculator"}],
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "List your monthly business expenses", "text": "Vehicle (truck payment, fuel, maintenance, insurance), tools, business insurance, phone, software, accounting, marketing, office space if any. Anything you'd still pay if you didn't work for a month."},
+        {"@type": "HowToStep", "position": 2, "name": "Total your monthly labor revenue", "text": "What you bill in an average month from your own labor — not materials passed through. The portion of revenue that's actually your time."},
+        {"@type": "HowToStep", "position": 3, "name": "Read your overhead percentage", "text": "The calculator divides overhead by labor revenue and shows the percentage. This is the amount you need to add on top of your bare labor rate just to break even on overhead."}
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What counts as overhead for a contractor?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Any cost of being in business that isn't tied to a specific job. Vehicle and fuel, tools, business insurance, software, phone, accounting fees, marketing, office space, and any continuing-education or licensing fees. Materials and labor for specific jobs are not overhead — they're cost of goods sold."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why does overhead percentage matter?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because if you charge a labor rate that doesn't include it, you're absorbing it personally — and the more you work, the more you absorb. A solo contractor with 30% overhead who charges a bare-bones $50/hour is actually netting $35/hour after overhead, not $50."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I include overhead in my labor rate?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Build it in. If your bare labor rate (what you want to earn) is $50/hour and your overhead is 30%, your billed labor rate should be roughly $65/hour. Don't list it as a separate line on the quote — that invites customers to negotiate it back out. Quote a clean overhead-loaded rate."}
+        },
+        {
+          "@type": "Question",
+          "name": "What's a typical overhead percentage for solo contractors?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Most run 20-40%. Newer contractors often calculate 15% and find out it's actually 30% when they include the costs they forgot (insurance, software, vehicle depreciation). Bigger operations with office staff and shop space can run 50%+ — the percentage doesn't make them less profitable, it just means their pricing needs to account for it."}
+        }
+      ]
+    }
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -418,6 +461,19 @@
             </div>
         </div>
     </div>
+
+    <section style="max-width: 720px; margin: 0 auto; padding: 48px 24px 24px; line-height: 1.65;">
+        <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 16px;">The overhead nobody adds back</h2>
+        <p style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">Overhead is the cost of being in business before you do any work. Truck payment, fuel, tools, business insurance, software, phone, accounting, marketing — whatever you'd still pay if you took a month off. For a solo contractor, it usually adds up to more than expected. 20% is optimistic. 30% is common. 40%+ isn't unusual once you include vehicle depreciation and the things you forgot.</p>
+        <p style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">The problem is that most contractors set their hourly rate by looking at what others charge, not by building up from their own overhead. So they quietly absorb it. If your "bare" hourly rate is $50 and your overhead is 30%, you're really earning $35/hour — the difference is the overhead you didn't price for.</p>
+        <h3 style="font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 12px;">How to use this calculator</h3>
+        <ol style="color: rgba(255,255,255,0.75); padding-left: 20px; margin-bottom: 16px;">
+            <li><strong>Monthly business expenses</strong> — total your real overhead. Include everything you'd pay during a month with zero jobs.</li>
+            <li><strong>Monthly labor revenue</strong> — the portion of revenue that's your time, not materials marked up.</li>
+            <li><strong>Overhead %</strong> — the calculator divides expenses by labor revenue. This is the percentage you need to add to your labor rate just to break even on overhead.</li>
+        </ol>
+        <p style="color: rgba(255,255,255,0.6); font-size: 14px; margin-top: 24px;">Need to turn that overhead percentage into a real hourly rate? Use the <a href="/resources/labor-rate-calculator" style="color: var(--primary);">Labor Rate Calculator</a> next. Want the whole pricing method? <a href="/resources/pricing-guide" style="color: var(--primary);">Contractor Pricing Guide</a> ($29, free with Pro/Premium).</p>
+    </section>
 
     <footer>
         <div class="container">

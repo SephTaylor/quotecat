@@ -38,6 +38,55 @@
       }
     }
     </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to calculate your contractor labor rate",
+      "description": "A four-step method for figuring out what to charge per hour as a contractor, accounting for overhead and real billable hours instead of just dividing salary by 2080.",
+      "totalTime": "PT2M",
+      "tool": [{"@type": "HowToTool", "name": "QuoteCat Labor Rate Calculator", "url": "https://quotecat.ai/resources/labor-rate-calculator"}],
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Enter your desired annual income", "text": "Type what you actually want to take home in a year. Not your gross revenue — the income you want from the business."},
+        {"@type": "HowToStep", "position": 2, "name": "Enter your annual overhead costs", "text": "Add up vehicle, tools, insurance, software, phone, accounting, marketing, and any other business expense not tied to a specific job. This is the cost of being in business before you do any work."},
+        {"@type": "HowToStep", "position": 3, "name": "Enter your billable hours per week", "text": "The real number — not 40. Most contractors bill 25-32 hours per week after admin, sales calls, drive time, and bidding work nobody hires. Be honest."},
+        {"@type": "HowToStep", "position": 4, "name": "Enter weeks worked per year", "text": "After vacation, sick days, holidays, and slow weeks. 46-50 is typical for a full-time contractor."}
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What's the difference between hourly rate and labor rate?",
+          "acceptedAnswer": {"@type": "Answer", "text": "An hourly rate is what you charge per hour of work. A labor rate is the contractor-speak version that already accounts for overhead and target profit. If you charge $50/hour but your overhead-loaded labor rate should be $85/hour, you're underpricing by $35 every billable hour."}
+        },
+        {
+          "@type": "Question",
+          "name": "How many billable hours does a contractor really have per year?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Not 2080. After admin, sales calls, drive time, bidding work nobody hires, vacation, slow weeks, and weather days, most full-time solo contractors bill 1,200-1,500 hours per year. Use the real number — that's what makes the calculator honest."}
+        },
+        {
+          "@type": "Question",
+          "name": "Should overhead be included in my hourly rate or charged separately?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Include it in the rate. Charging it separately as a line item works in theory but tends to invite negotiation pressure that strips it back out. Build it into the labor rate quietly and quote a clean hourly number."}
+        },
+        {
+          "@type": "Question",
+          "name": "What's a reasonable target income for a solo contractor?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Depends entirely on trade, market, and lifestyle. The calculator doesn't tell you what number to pick — that's your call. It tells you what hourly rate matches the income you say you want, given the overhead and billable hours you actually have."}
+        },
+        {
+          "@type": "Question",
+          "name": "My real labor rate came out higher than what I'm charging. Why?",
+          "acceptedAnswer": {"@type": "Answer", "text": "That's the most common result, and the whole point of doing the math. Most contractors underprice because they back into their rate from market rumors instead of building it up from real numbers. The honest answer is usually 'I've been quietly subsidizing my customers.'"}
+        }
+      ]
+    }
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -365,6 +414,20 @@
             </div>
         </div>
     </div>
+
+    <section style="max-width: 720px; margin: 0 auto; padding: 48px 24px 24px; line-height: 1.65;">
+        <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 16px;">What is a contractor's "real" labor rate?</h2>
+        <p style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">Most contractors set their hourly rate by asking around — "what's everyone else charging?" — and then quietly underbid that by $5 to win more work. The result is a rate that doesn't actually pay the bills, because it never accounted for the overhead that exists whether you're on a job or not.</p>
+        <p style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">A real labor rate is built up from the income you want plus the overhead you have, divided by the hours you can actually bill. Not 2080. Not 40 hours a week. The honest number — usually 1,200 to 1,500 hours per year for a solo contractor — after subtracting admin, drive time, sales calls, bidding work that doesn't convert, weather days, and slow weeks. When you do the math from the ground up, the rate that comes out is almost always higher than what you've been charging.</p>
+        <h3 style="font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 12px;">How to use this calculator</h3>
+        <ol style="color: rgba(255,255,255,0.75); padding-left: 20px; margin-bottom: 16px;">
+            <li><strong>Desired annual income</strong> — what you want to take home, not gross revenue.</li>
+            <li><strong>Annual overhead</strong> — vehicle, tools, insurance, software, phone, accounting, marketing. Anything you'd still pay if you took a month off.</li>
+            <li><strong>Billable hours per week</strong> — the real number after admin, sales, drive time. Be honest.</li>
+            <li><strong>Weeks per year</strong> — after vacation, holidays, and slow weeks.</li>
+        </ol>
+        <p style="color: rgba(255,255,255,0.6); font-size: 14px; margin-top: 24px;">Want the full method including markup vs margin and the Good/Better/Best bundling strategy? See <a href="/resources/pricing-guide" style="color: var(--primary);">the Contractor Pricing Guide</a> ($29, free with Pro/Premium).</p>
+    </section>
 
     <footer>
         <div class="container">

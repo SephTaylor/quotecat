@@ -38,6 +38,49 @@
       }
     }
     </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to calculate a contractor profit margin target",
+      "description": "How to figure out how much you can afford to spend on a job's cost when you have a target selling price and a target profit margin — the math behind bidding for margin instead of bidding for volume.",
+      "totalTime": "PT1M",
+      "tool": [{"@type": "HowToTool", "name": "QuoteCat Profit Margin Calculator", "url": "https://quotecat.ai/resources/profit-margin-calculator"}],
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Enter your selling price", "text": "What you'd quote the customer — the all-in number on the invoice."},
+        {"@type": "HowToStep", "position": 2, "name": "Enter your target profit margin", "text": "The percentage of the selling price you want to keep. 20-30% is typical for contractors who track this; many run lower without realizing."},
+        {"@type": "HowToStep", "position": 3, "name": "Read your allowed cost", "text": "The calculator tells you the maximum you can spend on materials plus labor to hit your margin target. If your real cost comes in higher, the job won't hit the margin — and you'll know before you bid."}
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What's a good profit margin for contractor work?",
+          "acceptedAnswer": {"@type": "Answer", "text": "It depends on trade and overhead, but most contractors should be targeting 20-35% net margin. Anything under 15% usually means you're absorbing overhead you didn't price for. Specialty trades with high overhead and risk often justify 40%+."}
+        },
+        {
+          "@type": "Question",
+          "name": "What's the difference between profit margin and markup?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Margin is profit as a percentage of selling price (what you keep, divided by what they pay). Markup is profit as a percentage of cost (what you keep, divided by what you spent). A 50% markup gives you a 33% margin. They are not the same number. The Markup Calculator covers this distinction."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I bid for a target margin instead of a target volume?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Start with the margin you need (the cost of being in business + the income you want), price every job to hit that margin, and accept that some jobs will be lost. You'll bid fewer jobs, win fewer of them, and make more money. Contractors who quote for volume typically run thin margins; contractors who quote for margin typically run fewer jobs at healthier margins."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why does my actual margin come out lower than my target?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Usually because labor takes longer than the estimate, materials cost more than the bid (markup wasn't enough to absorb price increases), or change orders weren't priced for margin. The fix is tighter labor estimating and pricing change orders at the same margin as the original job, not at cost."}
+        }
+      ]
+    }
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -314,6 +357,19 @@
             </div>
         </div>
     </div>
+
+    <section style="max-width: 720px; margin: 0 auto; padding: 48px 24px 24px; line-height: 1.65;">
+        <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 16px;">Bid for the margin, not the volume</h2>
+        <p style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">Most contractors bid for jobs the way you'd guess: "what's everyone else charging, minus a little to win?" The result is a portfolio of work that pays the bills only if the volume stays high. The contractor who walks away from low-margin work and only bids jobs that clear a real target margin tends to do less work, win fewer bids, and make more money than the one who chases everything.</p>
+        <p style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">This calculator runs the math in the opposite direction from a normal estimate. Instead of starting from cost and adding markup, you start from the selling price you'd actually quote (or that the customer's budget allows), pick the margin you need, and read out the maximum cost you can afford to spend on the job. If your real cost comes in higher, the bid doesn't make sense.</p>
+        <h3 style="font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 12px;">How to use this calculator</h3>
+        <ol style="color: rgba(255,255,255,0.75); padding-left: 20px; margin-bottom: 16px;">
+            <li><strong>Selling price</strong> — what you'd quote the customer.</li>
+            <li><strong>Target margin</strong> — the percentage of selling price you want to keep.</li>
+            <li><strong>Allowed cost</strong> — the maximum you can spend on materials + labor and still hit the margin.</li>
+        </ol>
+        <p style="color: rgba(255,255,255,0.6); font-size: 14px; margin-top: 24px;">If you don't know your overhead-loaded labor rate yet, start with the <a href="/resources/labor-rate-calculator" style="color: var(--primary);">Labor Rate Calculator</a> — most contractors realize they're underpricing once they build the rate up from real numbers.</p>
+    </section>
 
     <footer>
         <div class="container">

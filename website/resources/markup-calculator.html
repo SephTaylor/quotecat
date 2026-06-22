@@ -38,6 +38,49 @@
       }
     }
     </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to calculate a contractor markup",
+      "description": "How to apply a markup percentage to a job cost and see both the selling price and the resulting profit margin — including the markup vs margin distinction most contractors quietly get wrong.",
+      "totalTime": "PT1M",
+      "tool": [{"@type": "HowToTool", "name": "QuoteCat Markup Calculator", "url": "https://quotecat.ai/resources/markup-calculator"}],
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Enter your total job cost", "text": "Add up materials plus labor. The number you'd actually spend to complete the job."},
+        {"@type": "HowToStep", "position": 2, "name": "Pick your markup percentage", "text": "A typical small contractor uses 25-50% depending on trade and overhead. The calculator lets you slide between them."},
+        {"@type": "HowToStep", "position": 3, "name": "Read the selling price + margin", "text": "Selling price is what you quote the customer. Margin is what you actually keep — it's lower than the markup percentage, and that's where most contractors get confused."}
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What's the difference between markup and margin?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Markup is added on top of cost. Margin is what's left after cost. A 50% markup on $100 of cost gives you $150 selling price — but the margin is 33%, not 50%, because the $50 profit is divided by the $150 selling price, not the $100 cost. Get this wrong and you'll quietly lose 5-15% per job."}
+        },
+        {
+          "@type": "Question",
+          "name": "Why do contractors confuse markup and margin?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Because the words sound interchangeable and most pricing conversations don't define which one is being discussed. 'I make 30% on every job' could mean 30% markup (= 23% margin) or 30% margin (= 43% markup). The dollars are very different. The calculator shows both so there's no ambiguity."}
+        },
+        {
+          "@type": "Question",
+          "name": "What's a typical markup percentage for contractors?",
+          "acceptedAnswer": {"@type": "Answer", "text": "It varies by trade and overhead structure. Solo handymen and small contractors typically run 25-40%. Specialty trades with higher overhead (HVAC, electrical service) often run 50-100%. Roofing and remodeling commonly use 30-50%. There is no universal right answer — it depends on what your real overhead requires."}
+        },
+        {
+          "@type": "Question",
+          "name": "How do I convert a markup to a margin?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Margin = markup / (1 + markup). So 50% markup is 50 / 150 = 33% margin. 100% markup is 100 / 200 = 50% margin. The calculator does this automatically, but the formula is worth memorizing."}
+        }
+      ]
+    }
+    </script>
     <style>
         * {
             margin: 0;
@@ -556,6 +599,21 @@
             </div>
         </div>
     </div>
+
+    <section style="max-width: 720px; margin: 0 auto; padding: 48px 24px 24px; line-height: 1.65;">
+        <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 16px;">Markup vs margin — the quiet 7% that disappears</h2>
+        <p style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">If you charge a 50% markup on a $1,000 job, you sell it for $1,500 — but your margin is only 33%, not 50%. That gap is where most contractors quietly lose money. Pricing conversations rarely specify which number is meant, so a contractor thinking "50% on every job" might really be running 33%, and not noticing until the year-end numbers don't add up.</p>
+        <p style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">The calculator shows both at once. Put in a cost, pick a markup, see the selling price and the actual margin. It's the same arithmetic every estimator does, but laid out so the gap between markup and margin is impossible to miss.</p>
+        <h3 style="font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 12px;">How to use this calculator</h3>
+        <ol style="color: rgba(255,255,255,0.75); padding-left: 20px; margin-bottom: 16px;">
+            <li><strong>Total cost</strong> — materials plus labor on the job.</li>
+            <li><strong>Markup</strong> — pick a percentage or type a custom one.</li>
+            <li><strong>Read selling price + margin</strong> — both update in real time.</li>
+        </ol>
+        <h3 style="font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 12px;">Quick conversion (memorize this)</h3>
+        <p style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">Margin = markup ÷ (1 + markup). So 50% markup is 33% margin. 100% markup is 50% margin. 25% markup is 20% margin. The bigger the markup, the bigger the gap.</p>
+        <p style="color: rgba(255,255,255,0.6); font-size: 14px; margin-top: 24px;">Want a full pricing method including target margin and Good/Better/Best bundling? See <a href="/resources/pricing-guide" style="color: var(--primary);">the Contractor Pricing Guide</a> ($29, free with Pro/Premium).</p>
+    </section>
 
     <footer>
         <div class="container">
