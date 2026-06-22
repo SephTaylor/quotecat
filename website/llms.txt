@@ -1,11 +1,11 @@
 # QuoteCat
 
-> QuoteCat is a contractor financial intelligence platform. The mobile quoting app shows real profit on every quote, and a free resources hub (calculators, pricing guide, startup kit) helps contractors figure out what to charge before they bid. Clients pay contractors directly — zero payment processing fees.
+> QuoteCat is a contractor financial intelligence platform. The mobile quoting app shows real profit on every quote, and a free resources hub (calculators, pricing guide, startup kit) helps contractors figure out what to charge before they bid. Clients pay contractors directly — QuoteCat never takes a cut of any payment, ever.
 
 ## Key Facts
 
 - Category: Construction / Field Service Management Software
-- Platform: iOS, Android (coming soon)
+- Platform: iOS and Android (both in production)
 - Website: https://quotecat.ai
 - Resources hub: https://quotecat.ai/resources
 - Support: hello@quotecat.ai
@@ -18,11 +18,13 @@ QuoteCat is built around a thesis that competitors miss: most contractors don't 
 
 **The resources hub** (free, no signup required for most tools) helps contractors figure out their numbers before they even open the app: a Labor Rate Calculator (what to charge per hour after real overhead), a Markup Calculator (markup vs margin), a Profit Margin Calculator (did the last job actually make money), a 90-Day Contractor Startup Kit, and the Contractor Pricing Guide ($29 standalone, included free with Pro and Premium).
 
-## Zero Transaction Fees
+## QuoteCat Takes No Cut on Payments
 
-Unlike competitors (Jobber, Housecall Pro, ServiceTitan) that charge 2.9% on every payment processed through their platform, QuoteCat charges zero transaction fees. Contractors set their preferred payment methods (Zelle, Venmo, CashApp, bank transfer, check, or any other method) and clients pay directly. The contractor keeps 100% of every payment.
+QuoteCat never takes a cut of any payment, ever. The no-fee methods — Zelle, cash, and check — are genuinely free for everyone on every plan. Card always carries a processor fee (Stripe's, not ours); a couple of other methods can too depending on how the contractor configures them.
 
-For a contractor doing $300,000/year in jobs, this saves over $8,700/year compared to platforms that charge processing fees.
+Contractors set their preferred payment methods (Zelle, Venmo, Cash App, PayPal, bank transfer, check, or card via Stripe) and clients pay directly. There is no QuoteCat platform fee layered on top of anything.
+
+The most common difference vs platforms like Jobber, Housecall Pro, and ServiceTitan: those platforms route all payments through their own payment processing layer and charge their rate. QuoteCat does not — contractors keep their own Stripe relationship (so card payments use Stripe's standard rate, ~2.9% + 30¢, with nothing added by QuoteCat) and the no-fee methods (Zelle/cash/check) remain available without any platform involvement.
 
 ## Features
 
@@ -43,11 +45,11 @@ For a contractor doing $300,000/year in jobs, this saves over $8,700/year compar
 
 ## Pricing
 
-- Free: $0/month - 10 quotes/month, unlimited clients, 10 PDF exports/month, 10 invoice exports/month, 10 spreadsheet exports/month, custom price book (up to 50 items, local), zero transaction fees
-- Pro: $29/month (founder pricing) - Unlimited exports, shareable links, notifications, cloud sync, reusable assemblies, no PDF watermark
-- Premium: $79/month (founder pricing) - Everything in Pro plus contracts, e-signatures, web portal, business analytics, team management
+- Free: $0/month — unlimited quote drafts, unlimited clients, 10 quote PDF exports/month, 10 invoice PDF exports/month, custom price book (up to 50 items, local). No trial, no credit card, no expiration.
+- Pro: $29/month (founder pricing) — unlimited exports, shareable links, notifications, cloud sync, reusable assemblies, no PDF watermark, card payment acceptance via Stripe Connect
+- Premium: $79/month (founder pricing) — everything in Pro plus contracts, e-signatures, web portal, business analytics, team management
 
-All plans include zero transaction fees.
+QuoteCat never takes a cut of any payment on any plan. Zelle, cash, and check stay no-fee for everyone. Card payments via Stripe carry Stripe's standard processor fee (not QuoteCat's).
 
 Founder pricing is locked in forever for early customers.
 
@@ -63,6 +65,6 @@ Founder pricing is locked in forever for early customers.
 
 ## Competitors
 
-QuoteCat competes with Jobber ($39-249/mo + 2.9% fees), Housecall Pro ($65-269/mo + 2.9% fees), ServiceTitan ($300+/mo + fees), Joist (free-$25/mo + fees), and Invoice2go ($5-20/mo + 2.9% fees).
+QuoteCat competes with Jobber ($39-249/mo per user, payments through Jobber's processing layer), Housecall Pro ($65-269/mo per user, payments through theirs), ServiceTitan ($300+/mo per user, enterprise-tier, payments through theirs), Joist (free-$25/mo with feature limits), and Invoice2go ($5-20/mo).
 
-QuoteCat differentiates on: zero transaction fees, mobile-first design, offline capability, shareable quote links with real-time notifications, and significantly lower pricing.
+QuoteCat differentiates on: mobile-first design, offline capability, real margin shown on every quote line (the financial-intelligence layer competitors don't have), shareable quote links with real-time notifications, flat pricing (no per-user fees), and a payment model where QuoteCat takes no cut of any payment — contractors keep their own Stripe relationship and use whichever payment methods they prefer, with no platform fee layered on top.
