@@ -12,6 +12,15 @@ module.exports = function(eleventyConfig) {
   eleventyConfig.addPassthroughCopy("*.pdf");
   eleventyConfig.addPassthroughCopy("*.css");
   eleventyConfig.addPassthroughCopy("*.js");
+  // Discovery files (robots.txt, llms.txt, sitemap.xml). Without these
+  // passthrough rules Eleventy never copies the files into _site/, which
+  // means Netlify serves 404 for /robots.txt /sitemap.xml /llms.txt even
+  // though the source files exist in the repo. Discovered 2026-06-23
+  // when crawler-side audits reported missing discovery files we thought
+  // were live for weeks. AI crawlers depend on llms.txt and sitemap.xml
+  // for discoverability — this is high-leverage.
+  eleventyConfig.addPassthroughCopy("*.txt");
+  eleventyConfig.addPassthroughCopy("*.xml");
   eleventyConfig.addPassthroughCopy("assets");
   eleventyConfig.addPassthroughCopy("images");
   eleventyConfig.addPassthroughCopy("downloads");
