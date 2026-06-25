@@ -5,8 +5,9 @@
 import { Platform } from 'react-native';
 import { getCurrentUserId } from './authUtils';
 import { supabase } from './supabase';
-import { setUserTier, UserTier } from './user';
+import { setUserTier, getUserState, UserTier } from './user';
 import { trackEvent, AnalyticsEvents } from './app-analytics';
+import { getTechContext } from './team';
 
 // Track initialization state
 let isInitialized = false;
@@ -22,6 +23,27 @@ export const ENTITLEMENTS = {
   PRO: 'pro',
   PREMIUM: 'premium',
 } as const;
+
+/**
+ * Resolve the user's tier from a RevenueCat customerInfo object.
+ *
+ * Uses RC's LOCAL entitlement state — updated synchronously by the SDK
+ * when an IAP completes on this device. Authoritative for "did I just buy
+ * something here." No webhook race; no Supabase round-trip.
+ *
+ * Cross-device sync still happens via Supabase (the revenuecat-webhook edge
+ * function mirrors entitlements to profiles.tier server-side), but that's
+ * eventually consistent. For immediate post-PURCHASED UI updates, this
+ * local read is the source of truth.
+ *
+ * Premium > Pro > Free in the precedence check (Premium implies Pro).
+ */
+function resolveTierFromCustomerInfo(customerInfo: { entitlements?: { active?: Record<string, unknown> } } | null | undefined): UserTier {
+  const active = customerInfo?.entitlements?.active ?? {};
+  if (active[ENTITLEMENTS.PREMIUM]) return 'premium';
+  if (active[ENTITLEMENTS.PRO]) return 'pro';
+  return 'free';
+}
 
 /**
  * Lazy-initialize RevenueCat
@@ -139,8 +161,32 @@ async function refreshTierFromSupabase(): Promise<void> {
       .single();
 
     if (profile?.tier) {
-      console.log(`✅ Refreshed tier from Supabase: ${profile.tier}`);
-      await setUserTier(profile.tier as UserTier);
+      const supabaseTier = profile.tier as UserTier;
+
+      // Never downgrade based on a stale Supabase read. The RC webhook chain
+      // (RevenueCat → revenuecat-webhook edge function → upsert_subscription_event
+      // RPC → profiles.tier mirror) commonly takes 3-10s in production. If the
+      // post-IAP background sync runs before the webhook lands, this read
+      // returns 'free' while local state already correctly shows 'pro' or
+      // 'premium' from the RC local-entitlement read in presentPaywallAndSync.
+      // Letting that overwrite would cause a visible tier flicker:
+      // free → pro (RC) → free (this) → pro (next webhook-driven refresh).
+      // Background sync only ratchets up; downgrades come from auth changes
+      // (sign-out, deactivateProTier) on the explicit code paths.
+      const localState = await getUserState();
+      const localIsHigher =
+        (localState.tier === 'premium' && supabaseTier !== 'premium') ||
+        (localState.tier === 'pro' && supabaseTier === 'free');
+
+      if (localIsHigher) {
+        console.log(
+          `[paywall] background Supabase sync skipped: local=${localState.tier} > supabase=${supabaseTier} (likely webhook still in flight)`,
+        );
+        return;
+      }
+
+      console.log(`✅ Refreshed tier from Supabase: ${supabaseTier}`);
+      await setUserTier(supabaseTier);
     }
   } catch (e) {
     console.error('Failed to refresh tier:', e);
@@ -171,6 +217,28 @@ export async function presentPaywallAndSync(source?: string): Promise<boolean> {
   // for the bug this protects against.
   await syncCurrentUserToRevenueCat();
 
+  // Architectural rule (locked 2026-06-25): techs should never see paywalls.
+  // They get app access through their owner's subscription and never
+  // complete an IAP themselves. If a tap handler upstream missed the isTech
+  // check, catch it here — a tech paying for an IAP gets nothing because
+  // their effectiveTier comes from their owner's tier, not their own.
+  // Single source of truth for tech-paywall-prevention.
+  try {
+    const userIdForTechCheck = await getCurrentUserId();
+    if (userIdForTechCheck) {
+      const techCtx = await getTechContext(userIdForTechCheck);
+      if (techCtx.isTech) {
+        console.log('[paywall] tech detected — no-op (techs cannot subscribe)');
+        return false;
+      }
+    }
+  } catch (e) {
+    // If the tech check itself fails, fall through and let the paywall show.
+    // Better to allow a possible-tech to see a paywall (they can cancel)
+    // than to block all paywalls due to a transient error.
+    console.warn('[paywall] tech check failed, continuing:', e);
+  }
+
   trackEvent(AnalyticsEvents.PAYWALL_SHOWN, { source: source ?? 'unknown' });
 
   try {
@@ -179,8 +247,33 @@ export async function presentPaywallAndSync(source?: string): Promise<boolean> {
 
     // PURCHASED or RESTORED means successful
     if (result === 'PURCHASED' || result === 'RESTORED') {
-      // Sync tier from Supabase (webhook should have updated it)
-      await refreshTierFromSupabase();
+      // IMMEDIATE truth: read RC's local entitlement state. The SDK has
+      // already updated this synchronously when the IAP completed on
+      // device — no webhook race, no Supabase round-trip. setUserTier
+      // also emits markTierChanged() which causes TechContext to refresh
+      // its React state, so all useTechContext() consumers re-render
+      // with the new tier within one render cycle.
+      try {
+        const customerInfo = await PurchasesModule.getCustomerInfo();
+        const tier = resolveTierFromCustomerInfo(customerInfo);
+        if (tier !== 'free') {
+          await setUserTier(tier);
+        } else {
+          console.warn('[paywall] PURCHASED but RC entitlements empty — falling back to Supabase');
+        }
+      } catch (e) {
+        // Don't block — fall through to the Supabase background sync.
+        // If RC local read fails, the user still gets the tier flip
+        // eventually via the webhook → Supabase path.
+        console.warn('[paywall] RC customerInfo read failed:', e);
+      }
+
+      // EVENTUALLY-CONSISTENT cross-device sync: keep the Supabase mirror
+      // call as belt-and-suspenders. Fire-and-forget — don't block UI on it.
+      refreshTierFromSupabase().catch((e) => {
+        console.warn('[paywall] background Supabase sync failed:', e);
+      });
+
       trackEvent(AnalyticsEvents.PAYWALL_PURCHASED, {
         source: source ?? 'unknown',
         outcome: result.toLowerCase(),
@@ -227,8 +320,24 @@ export async function restorePurchases(): Promise<boolean> {
   try {
     await PurchasesModule.restorePurchases();
     console.log('✅ Purchases restored');
-    // Sync tier from Supabase after restore
-    await refreshTierFromSupabase();
+
+    // IMMEDIATE truth: restored entitlements appear in customerInfo just
+    // like a fresh PURCHASED outcome. Same code path as presentPaywallAndSync.
+    try {
+      const customerInfo = await PurchasesModule.getCustomerInfo();
+      const tier = resolveTierFromCustomerInfo(customerInfo);
+      if (tier !== 'free') {
+        await setUserTier(tier);
+      }
+    } catch (e) {
+      console.warn('[restore] RC customerInfo read failed:', e);
+    }
+
+    // Background Supabase sync as fallback / cross-device consistency.
+    refreshTierFromSupabase().catch((e) => {
+      console.warn('[restore] background Supabase sync failed:', e);
+    });
+
     return true;
   } catch (e) {
     console.error('Restore purchases failed:', e);

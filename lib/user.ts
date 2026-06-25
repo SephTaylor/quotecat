@@ -3,6 +3,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { resetAnalyticsUser } from "@/lib/app-analytics";
+import { markTierChanged } from "@/lib/tierState";
 
 export type UserTier = "free" | "pro" | "premium";
 
@@ -290,6 +291,7 @@ export async function activateProTier(email: string): Promise<void> {
     email,
     proActivatedAt: new Date().toISOString(),
   });
+  markTierChanged("pro");
 }
 
 /**
@@ -303,6 +305,7 @@ export async function activatePremiumTier(email: string): Promise<void> {
     email,
     proActivatedAt: new Date().toISOString(),
   });
+  markTierChanged("premium");
 }
 
 /**
@@ -327,6 +330,7 @@ export async function deactivateProTier(): Promise<void> {
     proActivatedAt: undefined,
     proExpiresAt: undefined,
   });
+  markTierChanged("free");
 }
 
 /**
@@ -345,6 +349,7 @@ export async function setUserTier(tier: UserTier): Promise<void> {
     tier,
     proActivatedAt: tier !== "free" ? (state.proActivatedAt || new Date().toISOString()) : undefined,
   });
+  markTierChanged(tier);
 }
 
 /**
@@ -359,6 +364,7 @@ export async function signOutUser(): Promise<void> {
     proActivatedAt: undefined,
     proExpiresAt: undefined,
   });
+  markTierChanged("free");
   resetAnalyticsUser();
 }
 

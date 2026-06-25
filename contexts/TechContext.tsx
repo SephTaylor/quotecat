@@ -8,6 +8,7 @@ import { getCurrentUserId } from '@/lib/authUtils';
 import { signOut } from '@/lib/auth';
 import { getUserState } from '@/lib/user';
 import { onSyncComplete } from '@/lib/syncState';
+import { onTierChange } from '@/lib/tierState';
 import { supabase } from '@/lib/supabase';
 
 type UserTier = 'free' | 'pro' | 'premium';
@@ -47,7 +48,13 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
   const [techContext, setTechContext] = useState<TechContextType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [userTier, setUserTier] = useState<UserTier>('free');
+  // Named setLocalUserTier (not setUserTier) to avoid shadowing the
+  // setUserTier function imported from @/lib/user. The shadow was harmless
+  // today because no code inside this file calls the lib function, but it
+  // was a real footgun: any future code adding a call to `setUserTier(...)`
+  // here would silently hit this React setter and skip the AsyncStorage
+  // write + markTierChanged() emit.
+  const [userTier, setLocalUserTier] = useState<UserTier>('free');
 
   // Track if we've already shown the removal alert (prevent duplicate alerts)
   const hasShownRemovalAlert = useRef(false);
@@ -60,7 +67,7 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
 
       // Load user's own tier
       const userState = await getUserState();
-      setUserTier(userState.tier);
+      setLocalUserTier(userState.tier);
 
       if (userId) {
         const context = await getTechContext(userId);
@@ -134,6 +141,19 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, [refreshTechContext]);
 
+  // Refresh when tier changes (e.g. IAP purchase, restore, manual upgrade,
+  // sign-out). This is what closes the loop on the IAP UX bug — without
+  // this subscription, AsyncStorage tier would update but React state
+  // here stays stale and components keep showing pre-purchase gates until
+  // sign-out + sign-in.
+  useEffect(() => {
+    const unsubscribe = onTierChange((newTier) => {
+      console.log(`🔄 Tier changed to ${newTier}, refreshing tech context...`);
+      refreshTechContext();
+    });
+    return unsubscribe;
+  }, [refreshTechContext]);
+
   // Refresh when auth state changes (user logs in/out)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -146,7 +166,7 @@ export function TechContextProvider({ children }: { children: ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
         console.log('🔐 Auth state changed to SIGNED_OUT, clearing tech context...');
         clearTechContext();
-        setUserTier('free');
+        setLocalUserTier('free');
       }
     });
     return () => subscription.unsubscribe();
