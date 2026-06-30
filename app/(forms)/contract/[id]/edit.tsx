@@ -493,7 +493,7 @@ export default function EditContract() {
                   <Text style={styles.signatureDate}>
                     {new Date(contract.signatures.find(s => s.signerType === "contractor")!.signedAt).toLocaleDateString()}
                   </Text>
-                  {contract.status === "draft" && (
+                  {contract.status === "draft" ? (
                     <Pressable
                       style={styles.clearSignatureButton}
                       onPress={() => handleClearSignature(
@@ -504,16 +504,24 @@ export default function EditContract() {
                       <Ionicons name="close-circle-outline" size={16} color={theme.colors.muted} />
                       <Text style={styles.clearSignatureText}>Clear Signature</Text>
                     </Pressable>
+                  ) : (
+                    <Text style={styles.signatureLockedHint}>
+                      Status must be Draft to change signatures. Tap the status above to revert.
+                    </Text>
                   )}
                 </View>
               ) : (
                 <View style={styles.signaturePending}>
                   <Ionicons name="create-outline" size={24} color={theme.colors.muted} />
                   <Text style={styles.signaturePendingText}>Not signed yet</Text>
-                  {contract.status === "draft" && (
+                  {contract.status === "draft" ? (
                     <Pressable style={styles.signButton} onPress={handleSignContract}>
                       <Text style={styles.signButtonText}>Sign Now</Text>
                     </Pressable>
+                  ) : (
+                    <Text style={styles.signatureLockedHint}>
+                      Status must be Draft to sign. Tap the status above to revert.
+                    </Text>
                   )}
                 </View>
               )}
@@ -863,6 +871,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     clearSignatureText: {
       fontSize: 13,
       color: theme.colors.muted,
+    },
+    signatureLockedHint: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      fontStyle: "italic",
+      marginTop: theme.spacing(1),
+      textAlign: "center",
+      paddingHorizontal: theme.spacing(2),
     },
     signatureDivider: {
       height: 1,

@@ -124,9 +124,18 @@ export default function Dashboard() {
       setTeamMembers(members);
 
       // Check if onboarding should show (first launch)
+      // Gate on actual data completeness as well — a user signing in on a new device
+      // (or any user whose preferences arrived via cloud sync) has populated company/
+      // overhead/pricing blocks but no completedAt flag. Without this check, the wizard
+      // launches, the user accepts defaults, and the real settings get clobbered with empties.
       const hasCompleted = !!prefs.onboarding?.completedAt;
       const hasSkipped = !!prefs.onboarding?.skippedAt;
-      if (!hasCompleted && !hasSkipped) {
+      const hasMeaningfulData = !!(
+        prefs.company?.companyName ||
+        prefs.overhead?.annualOverhead ||
+        prefs.pricing?.defaultLaborRate
+      );
+      if (!hasCompleted && !hasSkipped && !hasMeaningfulData) {
         setShowOnboarding(true);
       }
 

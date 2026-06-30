@@ -57,6 +57,15 @@ export default function LaborRateCalculator() {
   const filterNumber = (value: string) =>
     value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
 
+  // Format a raw number string with thousands separators for display.
+  // Keeps any trailing "." or partial decimal intact so typing 1234.5 → "1,234.5".
+  const withCommas = (value: string) => {
+    if (!value) return "";
+    const [whole, ...rest] = value.split(".");
+    const formatted = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return rest.length ? `${formatted}.${rest.join(".")}` : formatted;
+  };
+
   // Parse values
   const salary = parseFloat(desiredSalary) || 0;
   const health = parseFloat(healthInsurance) || 0;
@@ -173,7 +182,7 @@ export default function LaborRateCalculator() {
                   <Text style={styles.inputPrefix}>$</Text>
                   <TextInput
                     style={styles.input}
-                    value={desiredSalary}
+                    value={withCommas(desiredSalary)}
                     onChangeText={(v) => setDesiredSalary(filterNumber(v))}
                     placeholder="100,000"
                     placeholderTextColor={theme.colors.muted}
@@ -189,7 +198,7 @@ export default function LaborRateCalculator() {
                   <Text style={styles.inputPrefix}>$</Text>
                   <TextInput
                     style={styles.input}
-                    value={healthInsurance}
+                    value={withCommas(healthInsurance)}
                     onChangeText={(v) => setHealthInsurance(filterNumber(v))}
                     placeholder="12,000"
                     placeholderTextColor={theme.colors.muted}
@@ -221,7 +230,7 @@ export default function LaborRateCalculator() {
                   <Text style={styles.inputPrefix}>$</Text>
                   <TextInput
                     style={styles.input}
-                    value={annualOverhead}
+                    value={withCommas(annualOverhead)}
                     onChangeText={(v) => setAnnualOverhead(filterNumber(v))}
                     placeholder="60,000"
                     placeholderTextColor={theme.colors.muted}

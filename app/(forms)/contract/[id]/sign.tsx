@@ -241,7 +241,7 @@ export default function SignContract() {
                   display: none;
                 }
                 body, html {
-                  background-color: ${theme.colors.bg};
+                  background-color: #ffffff;
                   margin: 0;
                   padding: 0;
                   width: 100%;
@@ -250,8 +250,8 @@ export default function SignContract() {
                   touch-action: none;
                 }
               `}
-              backgroundColor={theme.colors.bg}
-              penColor={theme.colors.text}
+              backgroundColor="#ffffff"
+              penColor="#1a1a1a"
               webviewContainerStyle={{ flex: 1 }}
               autoClear={false}
             />
@@ -396,7 +396,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       color: theme.colors.muted,
     },
     signatureBox: {
-      backgroundColor: theme.colors.bg,
+      backgroundColor: "#ffffff",
       borderRadius: theme.radius.lg,
       borderWidth: 2,
       borderColor: theme.colors.border,

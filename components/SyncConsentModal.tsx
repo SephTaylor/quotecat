@@ -168,7 +168,7 @@ function createStyles(theme: any) {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.bg,
       paddingHorizontal: 16,
       paddingVertical: 10,
       borderRadius: 10,
@@ -213,7 +213,7 @@ function createStyles(theme: any) {
       fontWeight: "600",
     },
     secondaryButton: {
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.bg,
       borderWidth: 1,
       borderColor: theme.colors.border,
     },

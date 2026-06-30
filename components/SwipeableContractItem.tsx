@@ -89,7 +89,7 @@ export const SwipeableContractItem = React.memo(
                 <View style={styles.signatureStatus}>
                   <Text style={[
                     styles.signatureText,
-                    { color: contractorSigned ? theme.colors.success : theme.colors.textMuted }
+                    { color: contractorSigned ? "#22c55e" : theme.colors.muted }
                   ]}>
                     {contractorSigned ? '✓ You signed' : 'Not signed'}
                   </Text>
@@ -183,7 +183,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingHorizontal: theme.spacing(1),
       paddingVertical: 2,
       borderRadius: 4,
-      backgroundColor: theme.colors.background,
     },
     signatureText: {
       fontSize: 11,
