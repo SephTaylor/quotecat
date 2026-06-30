@@ -2,7 +2,7 @@
 // Contractor signature capture screen
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { getContractById, addContractorSignature } from "@/lib/contracts";
+import { getContractById, addContractorSignature, markContractSent, getContractShareLink } from "@/lib/contracts";
 import { getUserState } from "@/lib/user";
 import type { Contract } from "@/lib/types";
 import {
@@ -14,6 +14,7 @@ import React, { useRef, useState } from "react";
 import {
   Alert,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -103,20 +104,57 @@ export default function SignContract() {
       );
 
       if (result) {
-        // Don't update status to "signed" here - that happens when CLIENT signs
-        // The contract remains in "sent" or "viewed" status so client can still sign
-        // Portal API checks for contractor signature before allowing client to sign
+        // Status note: the "signed" status reflects BOTH parties — that
+        // transition happens when the client signs in the portal. The
+        // contractor's signature on a Draft is what gates Send: previously
+        // a user could send unsigned and the portal would refuse the
+        // customer's signature, looking like a broken link. Now we prompt
+        // to Send right after signing if we're still in Draft.
+        const isDraft = contract.status === "draft";
 
-        Alert.alert(
-          "Signature Saved",
-          "Your signature has been added to the contract.",
-          [
-            {
-              text: "OK",
-              onPress: () => router.back(),
-            },
-          ]
-        );
+        if (isDraft) {
+          Alert.alert(
+            "Signature Saved",
+            "Ready to send the contract to your client now?",
+            [
+              {
+                text: "Not yet",
+                style: "cancel",
+                onPress: () => router.back(),
+              },
+              {
+                text: "Send",
+                onPress: async () => {
+                  try {
+                    const updated = await markContractSent(id);
+                    if (updated) {
+                      const shareLink = getContractShareLink(id);
+                      await Share.share({
+                        message: `Please review and sign the contract for ${contract.projectName || "your project"}:\n\n${shareLink}`,
+                        title: `Contract: ${contract.contractNumber}`,
+                      });
+                    }
+                  } catch {
+                    Alert.alert("Error", "Failed to send contract.");
+                  } finally {
+                    router.back();
+                  }
+                },
+              },
+            ]
+          );
+        } else {
+          Alert.alert(
+            "Signature Saved",
+            "Your signature has been added to the contract.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.back(),
+              },
+            ]
+          );
+        }
       } else {
         Alert.alert("Error", "Failed to save signature. Please try again.");
       }

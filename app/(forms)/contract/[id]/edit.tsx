@@ -13,10 +13,8 @@ import {
 } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  ActionSheetIOS,
   Alert,
   Image,
-  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -101,6 +99,18 @@ export default function EditContract() {
       return;
     }
 
+    // Guard: contractor must sign before sending. Without this, the portal
+    // refuses the customer's signature ("Waiting for contractor signature")
+    // and the link looks broken to the client — Mike Kane hit this trap.
+    const hasContractorSig = contract.signatures?.some(s => s.signerType === "contractor");
+    if (!hasContractorSig) {
+      Alert.alert(
+        "Sign First",
+        "Please sign the contract before sending it. Your customer can't sign a contract you haven't agreed to."
+      );
+      return;
+    }
+
     Alert.alert(
       "Send Contract",
       `This will mark the contract as sent and share a link with ${clientName || "the client"}.\n\nThe client will be able to view and sign the contract.`,
@@ -141,6 +151,21 @@ export default function EditContract() {
         },
       ]
     );
+  };
+
+  // Re-share the existing link without changing status. Used when a contract
+  // is already Sent/Viewed — contractor wants to nudge or resend.
+  const handleShareLink = async () => {
+    if (!id || !contract) return;
+    try {
+      const shareLink = getContractShareLink(id);
+      await Share.share({
+        message: `Please review and sign the contract for ${projectName || "your project"}:\n\n${shareLink}`,
+        title: `Contract: ${contract.contractNumber}`,
+      });
+    } catch {
+      Alert.alert("Error", "Failed to open share sheet.");
+    }
   };
 
   const handleSignContract = () => {
@@ -196,68 +221,45 @@ export default function EditContract() {
     );
   };
 
-  const handleChangeStatus = () => {
+  // Single rollback path. Clears BOTH signatures (a signed contract reverted
+  // to Draft has to start the signing flow over) and resets status to draft.
+  // No partial states — keeps the state machine linear and predictable.
+  const handleRevertToDraft = () => {
     if (!id || !contract) return;
+    if (contract.status === "draft") return;
 
-    const statuses: Array<{ key: Contract["status"]; label: string }> = [
-      { key: "draft", label: "Draft" },
-      { key: "sent", label: "Sent" },
-      { key: "signed", label: "Signed" },
-      { key: "completed", label: "Completed" },
-    ];
+    const sigCount = contract.signatures?.length ?? 0;
+    const sigNote =
+      sigCount > 0
+        ? `\n\nThis will clear ${sigCount === 1 ? "the signature" : "both signatures"} so the contract can be edited and re-signed.`
+        : "";
 
-    const options = statuses.map(s => s.label);
-    options.push("Cancel");
-
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
+    Alert.alert(
+      "Revert to Draft?",
+      `Move this contract back to Draft for editing.${sigNote}`,
+      [
+        { text: "Cancel", style: "cancel" },
         {
-          title: "Change Status",
-          message: "Select a new status for this contract",
-          options,
-          cancelButtonIndex: options.length - 1,
-        },
-        async (buttonIndex) => {
-          if (buttonIndex < statuses.length) {
-            const newStatus = statuses[buttonIndex].key;
-            if (newStatus !== contract.status) {
-              try {
-                const updated = await updateContract(id, { status: newStatus });
-                if (updated) {
-                  setContract(updated);
-                }
-              } catch {
-                Alert.alert("Error", "Failed to update status.");
+          text: "Revert",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (contract.signatures && contract.signatures.length > 0) {
+                await Promise.all(
+                  contract.signatures.map(s => deleteSignature(s.id))
+                );
               }
+              const updated = await updateContract(id, { status: "draft" });
+              if (updated) {
+                await load();
+              }
+            } catch {
+              Alert.alert("Error", "Failed to revert to draft.");
             }
-          }
-        }
-      );
-    } else {
-      // Android fallback
-      Alert.alert(
-        "Change Status",
-        "Select a new status",
-        [
-          ...statuses.map(s => ({
-            text: s.label + (s.key === contract.status ? " ✓" : ""),
-            onPress: async () => {
-              if (s.key !== contract.status) {
-                try {
-                  const updated = await updateContract(id, { status: s.key });
-                  if (updated) {
-                    setContract(updated);
-                  }
-                } catch {
-                  Alert.alert("Error", "Failed to update status.");
-                }
-              }
-            },
-          })),
-          { text: "Cancel", style: "cancel" },
-        ]
-      );
-    }
+          },
+        },
+      ]
+    );
   };
 
   const formatPhoneNumber = (value: string): string => {
@@ -315,6 +317,12 @@ export default function EditContract() {
   }
 
   const statusMeta = ContractStatusMeta[contract.status];
+  const hasContractorSig = !!contract.signatures?.some(s => s.signerType === "contractor");
+  const isOut = contract.status === "sent" || contract.status === "viewed";
+  // Anomaly: the contract was sent before the contractor signed. The portal
+  // refuses the customer's signature in this state, so the link looks broken.
+  // This banner names the problem and offers the one-tap recovery.
+  const showUnsignedSentBanner = isOut && !hasContractorSig;
 
   return (
     <>
@@ -330,18 +338,32 @@ export default function EditContract() {
         }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Status Badge - Tappable to change status */}
+        {/* Status Badge — read-only. Forward motion happens via the morph
+            button below; the only way backward is Revert to Draft. */}
         <View style={styles.statusRow}>
-          <Pressable
+          <View
             style={[styles.statusBadge, { backgroundColor: statusMeta.color + "20" }]}
-            onPress={handleChangeStatus}
           >
             <View style={[styles.statusDot, { backgroundColor: statusMeta.color }]} />
             <Text style={[styles.statusText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
-            <Ionicons name="chevron-down" size={14} color={statusMeta.color} style={{ marginLeft: 4 }} />
-          </Pressable>
+          </View>
           <Text style={styles.totalText}>${contract.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
         </View>
+
+        {showUnsignedSentBanner && (
+          <View style={styles.anomalyBanner}>
+            <Ionicons name="warning-outline" size={20} color="#B45309" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.anomalyTitle}>Customer can&apos;t sign this yet</Text>
+              <Text style={styles.anomalyBody}>
+                You sent this contract before signing it. The portal won&apos;t let your client sign a contract you haven&apos;t agreed to. Revert to Draft, sign, then re-send.
+              </Text>
+              <Pressable style={styles.anomalyAction} onPress={handleRevertToDraft}>
+                <Text style={styles.anomalyActionText}>Revert to Draft</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* Client Section */}
         <View style={styles.section}>
@@ -506,7 +528,7 @@ export default function EditContract() {
                     </Pressable>
                   ) : (
                     <Text style={styles.signatureLockedHint}>
-                      Status must be Draft to change signatures. Tap the status above to revert.
+                      To change this signature, use Revert to Draft below.
                     </Text>
                   )}
                 </View>
@@ -520,7 +542,7 @@ export default function EditContract() {
                     </Pressable>
                   ) : (
                     <Text style={styles.signatureLockedHint}>
-                      Status must be Draft to sign. Tap the status above to revert.
+                      To sign, use Revert to Draft below.
                     </Text>
                   )}
                 </View>
@@ -559,52 +581,105 @@ export default function EditContract() {
         </View>
       </ScrollView>
 
-      {/* Bottom Action Bar */}
+      {/* Bottom Action Bar — single morph button. Label and handler are
+          derived from status + signature presence. Forward motion only.
+          Backward motion is the "Revert to Draft" link below (non-Draft only). */}
       <View style={styles.bottomBar}>
-        {contract.status === "draft" && (
-          <>
-            <Pressable
-              style={[styles.buttonSecondary, styles.buttonFlex]}
-              onPress={handleSignContract}
-            >
-              <Ionicons name="create-outline" size={20} color={theme.colors.text} />
-              <Text style={styles.buttonSecondaryText}>Sign</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.buttonPrimary, styles.buttonFlex2]}
-              onPress={handleSendContract}
-            >
-              <Ionicons name="send-outline" size={20} color="#000" />
-              <Text style={styles.buttonPrimaryText}>Send to Client</Text>
-            </Pressable>
-          </>
-        )}
-        {contract.status === "sent" && (
-          <View style={styles.sentInfo}>
-            <Ionicons name="time-outline" size={20} color={theme.colors.muted} />
-            <Text style={styles.sentText}>
-              Sent {contract.sentAt ? new Date(contract.sentAt).toLocaleDateString() : ""}
-            </Text>
-          </View>
-        )}
-        {contract.status === "signed" && (
-          <Pressable
-            style={[styles.buttonPrimary, { flex: 1 }]}
-            onPress={handleMarkComplete}
-          >
-            <Ionicons name="checkmark-done-outline" size={20} color="#000" />
-            <Text style={styles.buttonPrimaryText}>Mark Complete</Text>
+        <MorphActionButton
+          status={contract.status}
+          hasContractorSig={hasContractorSig}
+          styles={styles}
+          themeColor={theme.colors.text}
+          onSign={handleSignContract}
+          onSend={handleSendContract}
+          onShare={handleShareLink}
+          onComplete={handleMarkComplete}
+        />
+        {contract.status !== "draft" && contract.status !== "completed" && (
+          <Pressable style={styles.revertLink} onPress={handleRevertToDraft}>
+            <Ionicons name="arrow-undo-outline" size={14} color={theme.colors.muted} />
+            <Text style={styles.revertLinkText}>Revert to Draft</Text>
           </Pressable>
-        )}
-        {contract.status === "completed" && (
-          <View style={styles.completedInfo}>
-            <Ionicons name="checkmark-done-circle" size={20} color="#5856D6" />
-            <Text style={styles.completedText}>Work Completed - Ready to Invoice</Text>
-          </View>
         )}
       </View>
     </>
   );
+}
+
+type MorphProps = {
+  status: Contract["status"];
+  hasContractorSig: boolean;
+  styles: ReturnType<typeof createStyles>;
+  themeColor: string;
+  onSign: () => void;
+  onSend: () => void;
+  onShare: () => void;
+  onComplete: () => void;
+};
+
+function MorphActionButton({
+  status,
+  hasContractorSig,
+  styles,
+  themeColor,
+  onSign,
+  onSend,
+  onShare,
+  onComplete,
+}: MorphProps) {
+  // Draft: nothing signed → Sign. Contractor signed → Send.
+  if (status === "draft") {
+    if (!hasContractorSig) {
+      return (
+        <Pressable style={[styles.buttonPrimary, { flex: 1 }]} onPress={onSign}>
+          <Ionicons name="create-outline" size={20} color="#000" />
+          <Text style={styles.buttonPrimaryText}>Sign</Text>
+        </Pressable>
+      );
+    }
+    return (
+      <Pressable style={[styles.buttonPrimary, { flex: 1 }]} onPress={onSend}>
+        <Ionicons name="send-outline" size={20} color="#000" />
+        <Text style={styles.buttonPrimaryText}>Send to Client</Text>
+      </Pressable>
+    );
+  }
+
+  // Sent or Viewed: contract is with the client. Show Share (re-send link).
+  // If contractor somehow doesn't have a signature, the anomaly banner above
+  // is the primary CTA — keep the button neutral (Share) so they can re-send
+  // after recovering.
+  if (status === "sent" || status === "viewed") {
+    return (
+      <Pressable style={[styles.buttonSecondary, { flex: 1 }]} onPress={onShare}>
+        <Ionicons name="share-outline" size={20} color={themeColor} />
+        <Text style={styles.buttonSecondaryText}>Share Link</Text>
+      </Pressable>
+    );
+  }
+
+  // Signed: client has signed, ready to mark complete when work is done.
+  if (status === "signed") {
+    return (
+      <Pressable style={[styles.buttonPrimary, { flex: 1 }]} onPress={onComplete}>
+        <Ionicons name="checkmark-done-outline" size={20} color="#000" />
+        <Text style={styles.buttonPrimaryText}>Mark Complete</Text>
+      </Pressable>
+    );
+  }
+
+  // Completed / declined / expired — terminal states, no forward action.
+  // Show an informational tag matching previous behavior for completed.
+  if (status === "completed") {
+    return (
+      <View style={styles.completedInfo}>
+        <Ionicons name="checkmark-done-circle" size={20} color="#5856D6" />
+        <Text style={styles.completedText}>Work Completed — Ready to Invoice</Text>
+      </View>
+    );
+  }
+
+  return null;
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bottom: number }) {
@@ -744,13 +819,59 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       color: theme.colors.text,
     },
     bottomBar: {
-      flexDirection: "row",
       padding: theme.spacing(2),
       paddingBottom: Math.max(theme.spacing(2), insets.bottom),
       backgroundColor: theme.colors.bg,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
-      gap: theme.spacing(2),
+      gap: theme.spacing(1),
+    },
+    revertLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      paddingVertical: theme.spacing(0.75),
+    },
+    revertLinkText: {
+      fontSize: 13,
+      color: theme.colors.muted,
+      textDecorationLine: "underline",
+    },
+    anomalyBanner: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing(1.5),
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(3),
+      backgroundColor: "#FEF3C7",
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: "#FCD34D",
+    },
+    anomalyTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: "#92400E",
+      marginBottom: 4,
+    },
+    anomalyBody: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: "#78350F",
+    },
+    anomalyAction: {
+      marginTop: theme.spacing(1),
+      alignSelf: "flex-start",
+      backgroundColor: "#B45309",
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1),
+      borderRadius: theme.radius.md,
+    },
+    anomalyActionText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#FFFFFF",
     },
     buttonFlex: {
       flex: 1,

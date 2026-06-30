@@ -36,6 +36,7 @@ import {
 } from "@/lib/dataIntegrity";
 import { migrateAsyncStorageToSQLite } from "@/lib/asyncStorageMigration";
 import { repairAssemblies } from "@/lib/assemblyRepair";
+import { useForegroundSync } from "@/hooks/useForegroundSync";
 
 function RootNavigator() {
   const { mode } = useTheme();
@@ -82,6 +83,10 @@ function RootLayout() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Starting up...");
   const [showSyncConsent, setShowSyncConsent] = useState(false);
+
+  // Auto-sync when returning from background (e.g. user comes back from email
+  // after approving a quote). 30s debounce, Pro+ only. Tier check is inside.
+  useForegroundSync();
 
   useEffect(() => {
     // Initialize app with crash loop detection FIRST
