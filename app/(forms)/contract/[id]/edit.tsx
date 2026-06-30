@@ -3,6 +3,7 @@
 
 import { useTheme } from "@/contexts/ThemeContext";
 import { getContractWithSignatures, updateContract, markContractSent, getContractShareLink, deleteSignature } from "@/lib/contracts";
+import { onContractChanged, notifyContractChanged } from "@/lib/contractEvents";
 import type { Contract } from "@/lib/types";
 import { ContractStatusMeta } from "@/lib/types";
 import {
@@ -11,7 +12,7 @@ import {
   useLocalSearchParams,
   useRouter,
 } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -72,6 +73,17 @@ export default function EditContract() {
       load();
     }, [load])
   );
+
+  // Side-channel refresh: sign/revert flows fire notifyContractChanged so we
+  // refetch even when useFocusEffect doesn't refire (e.g. Alert+router.back
+  // race when returning from the signature screen).
+  useEffect(() => {
+    if (!id) return;
+    const unsub = onContractChanged((cid) => {
+      if (cid === id) load();
+    });
+    return unsub;
+  }, [id, load]);
 
   const handleGoBack = async () => {
     // Auto-save on back
@@ -252,6 +264,7 @@ export default function EditContract() {
               const updated = await updateContract(id, { status: "draft" });
               if (updated) {
                 await load();
+                notifyContractChanged(id);
               }
             } catch {
               Alert.alert("Error", "Failed to revert to draft.");
@@ -339,13 +352,25 @@ export default function EditContract() {
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Status Badge — read-only. Forward motion happens via the morph
-            button below; the only way backward is Revert to Draft. */}
+            button at the bottom; rollback lives here next to the badge so the
+            relationship between "what status this is" and "how to go back" is
+            visually obvious. */}
         <View style={styles.statusRow}>
-          <View
-            style={[styles.statusBadge, { backgroundColor: statusMeta.color + "20" }]}
-          >
-            <View style={[styles.statusDot, { backgroundColor: statusMeta.color }]} />
-            <Text style={[styles.statusText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
+          <View style={styles.statusGroup}>
+            <View
+              style={[styles.statusBadge, { backgroundColor: statusMeta.color + "20" }]}
+            >
+              <View style={[styles.statusDot, { backgroundColor: statusMeta.color }]} />
+              <Text style={[styles.statusText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
+            </View>
+            {(contract.status === "sent" ||
+              contract.status === "viewed" ||
+              contract.status === "signed") && (
+              <Pressable style={styles.revertLink} onPress={handleRevertToDraft}>
+                <Ionicons name="arrow-undo-outline" size={14} color={theme.colors.muted} />
+                <Text style={styles.revertLinkText}>Revert to Draft</Text>
+              </Pressable>
+            )}
           </View>
           <Text style={styles.totalText}>${contract.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
         </View>
@@ -357,6 +382,50 @@ export default function EditContract() {
               <Text style={styles.anomalyTitle}>Customer can&apos;t sign this yet</Text>
               <Text style={styles.anomalyBody}>
                 You sent this contract before signing it. The portal won&apos;t let your client sign a contract you haven&apos;t agreed to. Revert to Draft, sign, then re-send.
+              </Text>
+              <Pressable style={styles.anomalyAction} onPress={handleRevertToDraft}>
+                <Text style={styles.anomalyActionText}>Revert to Draft</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {contract.status === "changes_requested" && (
+          <View style={styles.responseBanner}>
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color="#B45309" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.responseTitle}>
+                {clientName || "Your client"} requested changes
+              </Text>
+              {contract.changeRequestMessage && (
+                <Text style={styles.responseQuote}>
+                  &ldquo;{contract.changeRequestMessage}&rdquo;
+                </Text>
+              )}
+              <Text style={styles.responseBody}>
+                Revert to Draft, make the changes they asked for, sign, and re-send.
+              </Text>
+              <Pressable style={styles.anomalyAction} onPress={handleRevertToDraft}>
+                <Text style={styles.anomalyActionText}>Revert to Draft</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {contract.status === "declined" && (
+          <View style={styles.declinedBanner}>
+            <Ionicons name="close-circle-outline" size={20} color="#991B1B" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.declinedTitle}>
+                {clientName || "Your client"} declined this contract
+              </Text>
+              {contract.declineReason && (
+                <Text style={styles.responseQuote}>
+                  &ldquo;{contract.declineReason}&rdquo;
+                </Text>
+              )}
+              <Text style={styles.responseBody}>
+                If you want to re-pitch, Revert to Draft, make edits, and re-send.
               </Text>
               <Pressable style={styles.anomalyAction} onPress={handleRevertToDraft}>
                 <Text style={styles.anomalyActionText}>Revert to Draft</Text>
@@ -581,26 +650,19 @@ export default function EditContract() {
         </View>
       </ScrollView>
 
-      {/* Bottom Action Bar — single morph button. Label and handler are
-          derived from status + signature presence. Forward motion only.
-          Backward motion is the "Revert to Draft" link below (non-Draft only). */}
+      {/* Bottom Action Bar — single morph button. Label and handler derive
+          from status + signature presence. Rollback ("Revert to Draft") lives
+          up by the status badge, not here. */}
       <View style={styles.bottomBar}>
         <MorphActionButton
           status={contract.status}
           hasContractorSig={hasContractorSig}
           styles={styles}
-          themeColor={theme.colors.text}
           onSign={handleSignContract}
           onSend={handleSendContract}
           onShare={handleShareLink}
           onComplete={handleMarkComplete}
         />
-        {contract.status !== "draft" && contract.status !== "completed" && (
-          <Pressable style={styles.revertLink} onPress={handleRevertToDraft}>
-            <Ionicons name="arrow-undo-outline" size={14} color={theme.colors.muted} />
-            <Text style={styles.revertLinkText}>Revert to Draft</Text>
-          </Pressable>
-        )}
       </View>
     </>
   );
@@ -610,7 +672,6 @@ type MorphProps = {
   status: Contract["status"];
   hasContractorSig: boolean;
   styles: ReturnType<typeof createStyles>;
-  themeColor: string;
   onSign: () => void;
   onSend: () => void;
   onShare: () => void;
@@ -621,7 +682,6 @@ function MorphActionButton({
   status,
   hasContractorSig,
   styles,
-  themeColor,
   onSign,
   onSend,
   onShare,
@@ -631,14 +691,14 @@ function MorphActionButton({
   if (status === "draft") {
     if (!hasContractorSig) {
       return (
-        <Pressable style={[styles.buttonPrimary, { flex: 1 }]} onPress={onSign}>
+        <Pressable style={[styles.buttonPrimary, styles.buttonFull]} onPress={onSign}>
           <Ionicons name="create-outline" size={20} color="#000" />
           <Text style={styles.buttonPrimaryText}>Sign</Text>
         </Pressable>
       );
     }
     return (
-      <Pressable style={[styles.buttonPrimary, { flex: 1 }]} onPress={onSend}>
+      <Pressable style={[styles.buttonPrimary, styles.buttonFull]} onPress={onSend}>
         <Ionicons name="send-outline" size={20} color="#000" />
         <Text style={styles.buttonPrimaryText}>Send to Client</Text>
       </Pressable>
@@ -646,14 +706,11 @@ function MorphActionButton({
   }
 
   // Sent or Viewed: contract is with the client. Show Share (re-send link).
-  // If contractor somehow doesn't have a signature, the anomaly banner above
-  // is the primary CTA — keep the button neutral (Share) so they can re-send
-  // after recovering.
   if (status === "sent" || status === "viewed") {
     return (
-      <Pressable style={[styles.buttonSecondary, { flex: 1 }]} onPress={onShare}>
-        <Ionicons name="share-outline" size={20} color={themeColor} />
-        <Text style={styles.buttonSecondaryText}>Share Link</Text>
+      <Pressable style={[styles.buttonPrimary, styles.buttonFull]} onPress={onShare}>
+        <Ionicons name="share-outline" size={20} color="#000" />
+        <Text style={styles.buttonPrimaryText}>Share Link</Text>
       </Pressable>
     );
   }
@@ -661,7 +718,7 @@ function MorphActionButton({
   // Signed: client has signed, ready to mark complete when work is done.
   if (status === "signed") {
     return (
-      <Pressable style={[styles.buttonPrimary, { flex: 1 }]} onPress={onComplete}>
+      <Pressable style={[styles.buttonPrimary, styles.buttonFull]} onPress={onComplete}>
         <Ionicons name="checkmark-done-outline" size={20} color="#000" />
         <Text style={styles.buttonPrimaryText}>Mark Complete</Text>
       </Pressable>
@@ -723,6 +780,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       justifyContent: "space-between",
       alignItems: "center",
       marginBottom: theme.spacing(3),
+    },
+    statusGroup: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing(1.5),
+      flexShrink: 1,
     },
     statusBadge: {
       flexDirection: "row",
@@ -819,19 +882,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       color: theme.colors.text,
     },
     bottomBar: {
+      flexDirection: "row",
       padding: theme.spacing(2),
       paddingBottom: Math.max(theme.spacing(2), insets.bottom),
       backgroundColor: theme.colors.bg,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
-      gap: theme.spacing(1),
+    },
+    buttonFull: {
+      alignSelf: "stretch",
+      flex: 1,
     },
     revertLink: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
       gap: 4,
-      paddingVertical: theme.spacing(0.75),
     },
     revertLinkText: {
       fontSize: 13,
@@ -848,6 +913,58 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
       borderRadius: theme.radius.lg,
       borderWidth: 1,
       borderColor: "#FCD34D",
+    },
+    responseBanner: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing(1.5),
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(3),
+      backgroundColor: "#FEF3C7",
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: "#F59E0B",
+    },
+    responseTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: "#92400E",
+      marginBottom: 6,
+    },
+    responseBody: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: "#78350F",
+      marginTop: 8,
+    },
+    responseQuote: {
+      fontSize: 13,
+      lineHeight: 19,
+      color: "#78350F",
+      fontStyle: "italic",
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      backgroundColor: "rgba(255,255,255,0.6)",
+      borderLeftWidth: 3,
+      borderLeftColor: "#B45309",
+      borderRadius: 4,
+    },
+    declinedBanner: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing(1.5),
+      padding: theme.spacing(2),
+      marginBottom: theme.spacing(3),
+      backgroundColor: "#FEE2E2",
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: "#FCA5A5",
+    },
+    declinedTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: "#991B1B",
+      marginBottom: 6,
     },
     anomalyTitle: {
       fontSize: 15,

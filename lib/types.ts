@@ -352,7 +352,8 @@ export type ContractStatus =
   | "viewed" // Client has viewed it
   | "signed" // Both parties signed, work authorized
   | "completed" // Work finished, ready to invoice
-  | "declined" // Client declined
+  | "declined" // Client declined with reason
+  | "changes_requested" // Client wants changes before signing (v1.2.14)
   | "expired"; // Contract expired without signature
 
 /**
@@ -391,6 +392,11 @@ export const ContractStatusMeta: Record<
     label: "Declined",
     color: "#FF3B30",
     description: "Client declined to sign",
+  },
+  changes_requested: {
+    label: "Changes Requested",
+    color: "#FF9500",
+    description: "Client requested changes before signing",
   },
   expired: {
     label: "Expired",
@@ -459,6 +465,12 @@ export type Contract = {
   viewedAt?: string; // ISO 8601
   signedAt?: string; // ISO 8601
   expiresAt?: string; // ISO 8601
+
+  // Customer response (v1.2.14: Decline / Request Changes)
+  declineReason?: string;
+  changeRequestMessage?: string;
+  declinedAt?: string; // ISO 8601
+  changeRequestedAt?: string; // ISO 8601
 
   // Signatures (loaded separately or embedded)
   signatures?: Signature[];

@@ -3,7 +3,9 @@
 
 import { useTheme } from "@/contexts/ThemeContext";
 import { getContractById, addContractorSignature, markContractSent, getContractShareLink } from "@/lib/contracts";
+import { notifyContractChanged } from "@/lib/contractEvents";
 import { getUserState } from "@/lib/user";
+import { loadPreferences } from "@/lib/preferences";
 import type { Contract } from "@/lib/types";
 import {
   Stack,
@@ -43,6 +45,7 @@ export default function SignContract() {
   const [saving, setSaving] = useState(false);
   const [signerName, setSignerName] = useState("");
   const [hasSignature, setHasSignature] = useState(false);
+  const [companyName, setCompanyName] = useState("");
 
   const styles = React.useMemo(() => createStyles(theme, insets), [theme, insets]);
 
@@ -51,9 +54,10 @@ export default function SignContract() {
     const load = async () => {
       if (!id) return;
       setLoading(true);
-      const [c, user] = await Promise.all([
+      const [c, user, prefs] = await Promise.all([
         getContractById(id),
         getUserState(),
+        loadPreferences(),
       ]);
       if (c) {
         setContract(c);
@@ -62,6 +66,11 @@ export default function SignContract() {
       if (user?.displayName) {
         setSignerName(user.displayName);
       }
+      // Owner's company name used in the certification text below — reads
+      // naturally for owners ("on behalf of Acme") AND techs (the company
+      // they're authorized to sign for IS Acme), whereas "the contractor"
+      // sounded like a third party to owners signing for themselves.
+      setCompanyName(prefs?.company?.companyName?.trim() || "");
       setLoading(false);
     };
     load();
@@ -120,7 +129,10 @@ export default function SignContract() {
               {
                 text: "Not yet",
                 style: "cancel",
-                onPress: () => router.back(),
+                onPress: () => {
+                  notifyContractChanged(id);
+                  router.back();
+                },
               },
               {
                 text: "Send",
@@ -137,6 +149,7 @@ export default function SignContract() {
                   } catch {
                     Alert.alert("Error", "Failed to send contract.");
                   } finally {
+                    notifyContractChanged(id);
                     router.back();
                   }
                 },
@@ -150,7 +163,10 @@ export default function SignContract() {
             [
               {
                 text: "OK",
-                onPress: () => router.back(),
+                onPress: () => {
+                  notifyContractChanged(id);
+                  router.back();
+                },
               },
             ]
           );
@@ -299,7 +315,7 @@ export default function SignContract() {
 
         {/* Agreement Text */}
         <Text style={styles.agreementText}>
-          By signing above, I certify that I am authorized to enter into this agreement on behalf of the contractor.
+          By signing above, I certify that I am authorized to enter into this agreement on behalf of {companyName || "the contractor"}.
         </Text>
       </View>
 
