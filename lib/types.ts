@@ -113,6 +113,8 @@ export type Quote = {
   changeHistory?: string; // Auto-generated log of changes to approved quotes
   approvedSnapshot?: string; // JSON snapshot of items when quote was approved (for change tracking)
   followUpDate?: string; // ISO 8601 date for follow-up reminder
+  startDate?: string; // ISO 8601 date — when work is planned to start (Add to Calendar)
+  completionDate?: string; // ISO 8601 date — estimated completion (Add to Calendar)
   currency: CurrencyCode;
   status: QuoteStatus;
   pinned?: boolean; // For favoriting/starring quotes

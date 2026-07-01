@@ -16,6 +16,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -24,9 +26,11 @@ import {
   TextInput,
   View,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { Ionicons } from "@expo/vector-icons";
+import { shareCalendarEvent, contractToCalendarEvent } from "@/lib/calendar";
 
 export default function EditContract() {
   const { theme } = useTheme();
@@ -45,6 +49,10 @@ export default function EditContract() {
   const [projectName, setProjectName] = useState("");
   const [scopeOfWork, setScopeOfWork] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [completionDate, setCompletionDate] = useState("");
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showCompletionPicker, setShowCompletionPicker] = useState(false);
   const [termsAndConditions, setTermsAndConditions] = useState("");
 
   const styles = React.useMemo(() => createStyles(theme, insets), [theme, insets]);
@@ -63,6 +71,8 @@ export default function EditContract() {
       setProjectName(c.projectName || "");
       setScopeOfWork(c.scopeOfWork || "");
       setPaymentTerms(c.paymentTerms || "");
+      setStartDate(c.startDate || "");
+      setCompletionDate(c.completionDate || "");
       setTermsAndConditions(c.termsAndConditions || "");
     }
     setLoading(false);
@@ -97,6 +107,8 @@ export default function EditContract() {
         scopeOfWork: scopeOfWork.trim() || undefined,
         paymentTerms: paymentTerms.trim() || undefined,
         termsAndConditions: termsAndConditions.trim() || undefined,
+        startDate: startDate || undefined,
+        completionDate: completionDate || undefined,
       });
     }
     router.back();
@@ -512,8 +524,159 @@ export default function EditContract() {
                 numberOfLines={6}
               />
             </View>
+
+            {/* Work dates — power the Add to Calendar handoff below.
+                Both optional; contractor can set either or both. */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Work Start Date</Text>
+              <Pressable style={styles.dateInput} onPress={() => setShowStartPicker(true)}>
+                <Text style={startDate ? styles.dateInputText : styles.dateInputPlaceholder}>
+                  {startDate
+                    ? new Date(startDate).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "Set start date"}
+                </Text>
+                {startDate ? (
+                  <Pressable onPress={() => setStartDate("")} hitSlop={8}>
+                    <Text style={styles.dateInputClear}>Clear</Text>
+                  </Pressable>
+                ) : (
+                  <Ionicons name="calendar-outline" size={20} color={theme.colors.muted} />
+                )}
+              </Pressable>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Estimated Completion Date</Text>
+              <Pressable style={styles.dateInput} onPress={() => setShowCompletionPicker(true)}>
+                <Text style={completionDate ? styles.dateInputText : styles.dateInputPlaceholder}>
+                  {completionDate
+                    ? new Date(completionDate).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "Set completion date"}
+                </Text>
+                {completionDate ? (
+                  <Pressable onPress={() => setCompletionDate("")} hitSlop={8}>
+                    <Text style={styles.dateInputClear}>Clear</Text>
+                  </Pressable>
+                ) : (
+                  <Ionicons name="calendar-outline" size={20} color={theme.colors.muted} />
+                )}
+              </Pressable>
+            </View>
+
+            {(startDate || completionDate) && (
+              <Pressable
+                style={styles.addToCalendarButton}
+                onPress={async () => {
+                  const evt = contractToCalendarEvent({
+                    ...contract,
+                    startDate: startDate || undefined,
+                    completionDate: completionDate || undefined,
+                    projectName: projectName || contract.projectName,
+                    clientName: clientName || contract.clientName,
+                    clientAddress: clientAddress || contract.clientAddress,
+                  });
+                  if (!evt) return;
+                  try {
+                    await shareCalendarEvent(evt);
+                  } catch (e) {
+                    Alert.alert("Couldn't open calendar", e instanceof Error ? e.message : "Please try again.");
+                  }
+                }}
+              >
+                <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
+                <Text style={styles.addToCalendarText}>Add to Calendar</Text>
+              </Pressable>
+            )}
           </View>
         </View>
+
+        {/* iOS date picker modals — one per field. */}
+        {Platform.OS === "ios" && showStartPicker && (
+          <Modal transparent animationType="fade" visible={showStartPicker}>
+            <Pressable style={styles.datePickerOverlay} onPress={() => setShowStartPicker(false)}>
+              <View style={styles.datePickerModal}>
+                <View style={styles.datePickerHeader}>
+                  <Pressable onPress={() => setShowStartPicker(false)}>
+                    <Text style={styles.datePickerCancel}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.datePickerTitle}>Work Start Date</Text>
+                  <Pressable onPress={() => setShowStartPicker(false)}>
+                    <Text style={styles.datePickerDone}>Done</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={startDate ? new Date(startDate) : new Date()}
+                  mode="date"
+                  display="spinner"
+                  onChange={(_event, date) => {
+                    if (date) setStartDate(date.toISOString());
+                  }}
+                  textColor={theme.colors.text}
+                />
+              </View>
+            </Pressable>
+          </Modal>
+        )}
+        {Platform.OS === "android" && showStartPicker && (
+          <DateTimePicker
+            value={startDate ? new Date(startDate) : new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              setShowStartPicker(false);
+              if (event.type === "set" && date) setStartDate(date.toISOString());
+            }}
+          />
+        )}
+        {Platform.OS === "ios" && showCompletionPicker && (
+          <Modal transparent animationType="fade" visible={showCompletionPicker}>
+            <Pressable style={styles.datePickerOverlay} onPress={() => setShowCompletionPicker(false)}>
+              <View style={styles.datePickerModal}>
+                <View style={styles.datePickerHeader}>
+                  <Pressable onPress={() => setShowCompletionPicker(false)}>
+                    <Text style={styles.datePickerCancel}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.datePickerTitle}>Completion Date</Text>
+                  <Pressable onPress={() => setShowCompletionPicker(false)}>
+                    <Text style={styles.datePickerDone}>Done</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={completionDate ? new Date(completionDate) : (startDate ? new Date(startDate) : new Date())}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={startDate ? new Date(startDate) : undefined}
+                  onChange={(_event, date) => {
+                    if (date) setCompletionDate(date.toISOString());
+                  }}
+                  textColor={theme.colors.text}
+                />
+              </View>
+            </Pressable>
+          </Modal>
+        )}
+        {Platform.OS === "android" && showCompletionPicker && (
+          <DateTimePicker
+            value={completionDate ? new Date(completionDate) : (startDate ? new Date(startDate) : new Date())}
+            mode="date"
+            display="default"
+            minimumDate={startDate ? new Date(startDate) : undefined}
+            onChange={(event, date) => {
+              setShowCompletionPicker(false);
+              if (event.type === "set" && date) setCompletionDate(date.toISOString());
+            }}
+          />
+        )}
 
         {/* Materials Summary */}
         {contract.materials && contract.materials.length > 0 && (
@@ -849,6 +1012,79 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     textArea: {
       minHeight: 80,
       textAlignVertical: "top",
+    },
+    dateInput: {
+      backgroundColor: theme.colors.bg,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.5),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    dateInputText: {
+      fontSize: 16,
+      color: theme.colors.text,
+    },
+    dateInputPlaceholder: {
+      fontSize: 16,
+      color: theme.colors.muted,
+    },
+    dateInputClear: {
+      fontSize: 13,
+      color: theme.colors.accent,
+      fontWeight: "600",
+    },
+    addToCalendarButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginTop: theme.spacing(1),
+      paddingVertical: theme.spacing(1.5),
+      paddingHorizontal: theme.spacing(2),
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.accent,
+      backgroundColor: "transparent",
+    },
+    addToCalendarText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.accent,
+    },
+    datePickerOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.4)",
+      justifyContent: "flex-end",
+    },
+    datePickerModal: {
+      backgroundColor: theme.colors.card,
+      paddingBottom: theme.spacing(3),
+    },
+    datePickerHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: theme.spacing(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    datePickerTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.text,
+    },
+    datePickerCancel: {
+      fontSize: 15,
+      color: theme.colors.muted,
+    },
+    datePickerDone: {
+      fontSize: 15,
+      color: theme.colors.accent,
+      fontWeight: "700",
     },
     textAreaLarge: {
       minHeight: 120,

@@ -34,6 +34,8 @@ export type QuoteFormState = {
   taxPercent: string;
   notes: string;
   followUpDate: string;
+  startDate: string;
+  completionDate: string;
   tier: string;
 };
 
@@ -74,6 +76,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
   const [notes, setNotes] = useState("");
   const [changeHistory, setChangeHistory] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [completionDate, setCompletionDate] = useState("");
   const [tier, setTier] = useState("");
   const [tierGroupId, setTierGroupId] = useState<string | undefined>(undefined);
   const [linkedQuoteIds, setLinkedQuoteIds] = useState<string[] | undefined>(undefined);
@@ -146,6 +150,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       setNotes(q.notes || "");
       setChangeHistory(q.changeHistory || "");
       setFollowUpDate(q.followUpDate || "");
+      setStartDate(q.startDate || "");
+      setCompletionDate(q.completionDate || "");
       setTier(q.tier || "");
       setTierGroupId(q.tierGroupId);
       setLinkedQuoteIds(q.linkedQuoteIds);
@@ -213,6 +219,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       notes: notes.trim() || undefined,
       changeHistory: changeHistory.trim() || undefined,
       followUpDate: followUpDate || undefined,
+      startDate: startDate || undefined,
+      completionDate: completionDate || undefined,
       status,
       pinned,
       items,
@@ -234,6 +242,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     taxPercent,
     notes,
     followUpDate,
+    startDate,
+    completionDate,
     status,
     pinned,
     items,
@@ -279,6 +289,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       taxPercent.trim() ||
       notes.trim() ||
       followUpDate.trim() ||
+      startDate.trim() ||
+      completionDate.trim() ||
       tier.trim() ||
       items.length > 0;
 
@@ -391,10 +403,13 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     taxPercent,
     notes,
     followUpDate,
+    startDate,
+    completionDate,
     tier,
     items,
     getFormData,
     onNavigateBack,
+    navigateToQuotes,
   ]);
 
   // Validate required fields
@@ -577,6 +592,10 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     setChangeHistory,
     followUpDate,
     setFollowUpDate,
+    startDate,
+    setStartDate,
+    completionDate,
+    setCompletionDate,
     tier,
     setTier,
     tierGroupId,

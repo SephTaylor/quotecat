@@ -85,8 +85,11 @@ export async function createContractFromQuote(
     total,
     payment_terms: options?.paymentTerms || null,
     terms_and_conditions: options?.termsAndConditions || null,
-    start_date: options?.startDate || null,
-    completion_date: options?.completionDate || null,
+    // Work dates default to whatever's on the quote so a contractor who
+    // scheduled the job at the quote stage doesn't have to re-enter them.
+    // Explicit options override the quote's values.
+    start_date: options?.startDate || quote.startDate || null,
+    completion_date: options?.completionDate || quote.completionDate || null,
     status: "draft",
     created_at: now,
     updated_at: now,

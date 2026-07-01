@@ -37,6 +37,7 @@ import { loadPreferences, type CompanyDetails, type PaymentMethods } from "@/lib
 import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { createInvoiceFromQuote } from "@/lib/invoices";
 import { createContractFromQuote } from "@/lib/contracts";
+import { shareCalendarEvent, quoteToCalendarEvent } from "@/lib/calendar";
 import { uploadQuote } from "@/lib/quotesSync";
 import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 import type { TeamMember } from "@/lib/types";
@@ -529,6 +530,28 @@ export default function QuoteReviewScreen() {
     }
   };
 
+  const handleAddToCalendar = async () => {
+    if (!quote) return;
+    const evt = quoteToCalendarEvent(quote);
+    if (!evt) {
+      Alert.alert(
+        "No work dates yet",
+        "Set a work start or completion date on this quote first, then try Add to Calendar again.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    try {
+      await shareCalendarEvent(evt);
+    } catch (error) {
+      console.error("Add to Calendar error:", error);
+      Alert.alert(
+        "Couldn't open calendar",
+        error instanceof Error ? error.message : "Please try again."
+      );
+    }
+  };
+
   const handleShareLink = async () => {
     if (!quote) return;
 
@@ -567,6 +590,9 @@ export default function QuoteReviewScreen() {
     const menuItems: { label: string; action: () => void }[] = [
       { label: "Export as PDF", action: handleExportPDF },
       { label: "Export as CSV", action: handleExportSpreadsheet },
+      // All tiers get Add to Calendar — it's their own device's calendar, no
+      // portal/cloud involved. Universal contractor time-management feature.
+      { label: "Add to Calendar", action: handleAddToCalendar },
       isPro || isPremium
         ? { label: "Share as Link", action: handleShareLink }
         : { label: lockLabel("Share as Link", "Pro"), action: upgrade },

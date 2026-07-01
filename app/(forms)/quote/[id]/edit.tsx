@@ -61,6 +61,8 @@ export default function EditQuote() {
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showCompletionPicker, setShowCompletionPicker] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>("");
   const [showMenu, setShowMenu] = useState(false);
@@ -123,6 +125,8 @@ export default function EditQuote() {
     notes, setNotes,
     changeHistory, setChangeHistory,
     followUpDate, setFollowUpDate,
+    startDate, setStartDate,
+    completionDate, setCompletionDate,
     tier,
     tierGroupId,
     linkedQuoteIds,
@@ -1414,6 +1418,152 @@ export default function EditQuote() {
             <View style={{ height: theme.spacing(3) }} />
           </>
         )}
+
+        <Text style={styles.h2}>Work Dates</Text>
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Work Start Date</Text>
+        <Pressable
+          style={styles.datePickerButton}
+          onPress={() => setShowStartPicker(true)}
+        >
+          <Text style={startDate ? styles.datePickerText : styles.datePickerPlaceholder}>
+            {startDate
+              ? new Date(startDate).toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "Set start date"}
+          </Text>
+          {startDate && (
+            <Pressable
+              onPress={() => setStartDate("")}
+              hitSlop={8}
+              style={styles.clearDateButton}
+            >
+              <Text style={styles.clearDateText}>Clear</Text>
+            </Pressable>
+          )}
+        </Pressable>
+
+        {Platform.OS === "ios" && showStartPicker && (
+          <Modal transparent animationType="fade" visible={showStartPicker}>
+            <Pressable style={styles.datePickerOverlay} onPress={() => setShowStartPicker(false)}>
+              <View style={styles.datePickerModal}>
+                <View style={styles.datePickerHeader}>
+                  <Pressable onPress={() => setShowStartPicker(false)}>
+                    <Text style={styles.datePickerCancel}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.datePickerTitle}>Work Start Date</Text>
+                  <Pressable onPress={() => setShowStartPicker(false)}>
+                    <Text style={styles.datePickerDone}>Done</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={startDate ? new Date(startDate) : new Date()}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={new Date()}
+                  onChange={(event, date) => {
+                    if (date) setStartDate(date.toISOString());
+                  }}
+                  textColor={theme.colors.text}
+                />
+              </View>
+            </Pressable>
+          </Modal>
+        )}
+
+        {Platform.OS === "android" && showStartPicker && (
+          <DateTimePicker
+            value={startDate ? new Date(startDate) : new Date()}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            onChange={(event, date) => {
+              setShowStartPicker(false);
+              if (event.type === "set" && date) {
+                setStartDate(date.toISOString());
+              }
+            }}
+          />
+        )}
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <Text style={styles.label}>Estimated Completion Date</Text>
+        <Pressable
+          style={styles.datePickerButton}
+          onPress={() => setShowCompletionPicker(true)}
+        >
+          <Text style={completionDate ? styles.datePickerText : styles.datePickerPlaceholder}>
+            {completionDate
+              ? new Date(completionDate).toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "Set completion date"}
+          </Text>
+          {completionDate && (
+            <Pressable
+              onPress={() => setCompletionDate("")}
+              hitSlop={8}
+              style={styles.clearDateButton}
+            >
+              <Text style={styles.clearDateText}>Clear</Text>
+            </Pressable>
+          )}
+        </Pressable>
+
+        {Platform.OS === "ios" && showCompletionPicker && (
+          <Modal transparent animationType="fade" visible={showCompletionPicker}>
+            <Pressable style={styles.datePickerOverlay} onPress={() => setShowCompletionPicker(false)}>
+              <View style={styles.datePickerModal}>
+                <View style={styles.datePickerHeader}>
+                  <Pressable onPress={() => setShowCompletionPicker(false)}>
+                    <Text style={styles.datePickerCancel}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.datePickerTitle}>Completion Date</Text>
+                  <Pressable onPress={() => setShowCompletionPicker(false)}>
+                    <Text style={styles.datePickerDone}>Done</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={completionDate ? new Date(completionDate) : (startDate ? new Date(startDate) : new Date())}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={startDate ? new Date(startDate) : new Date()}
+                  onChange={(event, date) => {
+                    if (date) setCompletionDate(date.toISOString());
+                  }}
+                  textColor={theme.colors.text}
+                />
+              </View>
+            </Pressable>
+          </Modal>
+        )}
+
+        {Platform.OS === "android" && showCompletionPicker && (
+          <DateTimePicker
+            value={completionDate ? new Date(completionDate) : (startDate ? new Date(startDate) : new Date())}
+            mode="date"
+            display="default"
+            minimumDate={startDate ? new Date(startDate) : new Date()}
+            onChange={(event, date) => {
+              setShowCompletionPicker(false);
+              if (event.type === "set" && date) {
+                setCompletionDate(date.toISOString());
+              }
+            }}
+          />
+        )}
+
+        <View style={{ height: theme.spacing(3) }} />
 
         <Text style={styles.h2}>Notes & Adjustments</Text>
 
