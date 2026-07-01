@@ -33,5 +33,38 @@
       console && console.warn && console.warn('resource_clicked capture failed', err);
     }
   });
+
+  // Calculator engagement: any page whose <body> carries data-calculator="{name}"
+  // fires calculator_engaged the first time the visitor meaningfully touches an
+  // input on the page. Distinguishes "used it" from "landed and bounced" in
+  // pageview data. Single listener; the `fired` guard prevents repeats within
+  // the pageview.
+  (function () {
+    var calcName = document.body && document.body.getAttribute('data-calculator');
+    if (!calcName) return;
+    var fired = false;
+    function fire() {
+      if (fired) return;
+      fired = true;
+      try {
+        posthog.capture('calculator_engaged', {
+          calculator: calcName,
+          page: window.location.pathname,
+        });
+      } catch (err) {
+        console && console.warn && console.warn('calculator_engaged capture failed', err);
+      }
+    }
+    document.addEventListener('input', fire, { passive: true });
+    document.addEventListener('change', fire, { passive: true });
+    // Preset-value buttons on calculators (25%, 50%, etc.) are button clicks,
+    // not input events. Catch them too — but only if the click is inside an
+    // interactive control, not any random click on the page.
+    document.addEventListener('click', function (e) {
+      if (e.target && e.target.closest && e.target.closest('button, [role="button"], .preset-btn, [data-markup], [data-preset]')) {
+        fire();
+      }
+    }, { passive: true });
+  })();
 </script>
 {% endif %}
