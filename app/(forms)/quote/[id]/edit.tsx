@@ -1678,7 +1678,20 @@ export default function EditQuote() {
               />
               <Text style={styles.inputSuffix}>%</Text>
             </View>
-            <Text style={styles.helper}>Applied to line items only</Text>
+            {calculations.markupAmount > 0 ? (
+              <Text style={styles.helper}>
+                Applied to line items only — that&apos;s{" "}
+                <Text style={{ fontWeight: "700", color: theme.colors.accent }}>
+                  ${calculations.markupAmount.toLocaleString("en-US", {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}
+                </Text>{" "}
+                on this quote.
+              </Text>
+            ) : (
+              <Text style={styles.helper}>Applied to line items only</Text>
+            )}
 
             <View style={{ height: theme.spacing(2) }} />
 

@@ -38,6 +38,8 @@ import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { createInvoiceFromQuote } from "@/lib/invoices";
 import { createContractFromQuote } from "@/lib/contracts";
 import { shareCalendarEvent, quoteToCalendarEvent } from "@/lib/calendar";
+import { markNudgeShown, wasNudgeShownThisMonth, FREE_LIMITS } from "@/lib/user";
+import { PdfLimitNudge } from "@/components/PdfLimitNudge";
 import { uploadQuote } from "@/lib/quotesSync";
 import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 import type { TeamMember } from "@/lib/types";
@@ -65,6 +67,10 @@ export default function QuoteReviewScreen() {
   const [selectedDueDate, setSelectedDueDate] = useState<Date>(new Date());
   const [pendingInvoicePercentage, setPendingInvoicePercentage] = useState<number>(100);
   const [isCreatingContract, setIsCreatingContract] = useState(false);
+
+  // Free-tier PDF-limit nudge. Shown once per calendar month when a Free
+  // user actually hits the cap. Re-arms on the 1st via wasNudgeShownThisMonth.
+  const [showPdfLimitNudge, setShowPdfLimitNudge] = useState(false);
   const [targetMaterialsMarginPercent, setTargetMaterialsMarginPercent] = useState(0);
   const [overheadSettings, setOverheadSettings] = useState<OverheadSettings | undefined>(undefined);
   const [defaultLaborRate, setDefaultLaborRate] = useState(0);
@@ -135,6 +141,18 @@ export default function QuoteReviewScreen() {
     const { allowed, reason, remaining } = canExportPDF(userState);
 
     if (!allowed) {
+      // Free-tier PDF cap. Show the nudge modal (once per month) with the
+      // next-reset date + upgrade path. Falls back to the classic Alert
+      // if the nudge already fired this month, so the user isn't nagged
+      // repeatedly on the same day.
+      if (userState.tier === "free") {
+        const alreadyShownThisMonth = await wasNudgeShownThisMonth("pdfLimit");
+        if (!alreadyShownThisMonth) {
+          await markNudgeShown("pdfLimit");
+          setShowPdfLimitNudge(true);
+          return;
+        }
+      }
       Alert.alert(
         "Limit Reached",
         reason,
@@ -1053,6 +1071,12 @@ export default function QuoteReviewScreen() {
           }}
         />
       )}
+
+      <PdfLimitNudge
+        visible={showPdfLimitNudge}
+        onClose={() => setShowPdfLimitNudge(false)}
+        monthlyLimit={FREE_LIMITS.pdfs}
+      />
     </>
   );
 }

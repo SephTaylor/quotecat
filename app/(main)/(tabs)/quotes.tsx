@@ -15,7 +15,8 @@ import {
 } from "@/lib/quotes";
 import { generateAndShareMultiTierPDF } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
-import { getUserState, consumeUsage } from "@/lib/user";
+import { getUserState, consumeUsage, hasSeenNudge, markNudgeShown } from "@/lib/user";
+import { FirstQuoteNudge } from "@/components/FirstQuoteNudge";
 import { canExportPDF } from "@/lib/features";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { getCachedLogo } from "@/lib/logo";
@@ -74,6 +75,11 @@ export default function QuotesList() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // First-quote celebratory nudge (one-time, Free tier only). Fires when the
+  // list reloads and we detect (a) tier is free, (b) at least one saved
+  // quote exists, (c) we haven't shown this nudge before.
+  const [showFirstQuoteNudge, setShowFirstQuoteNudge] = useState(false);
+
   // Change order counts per quote
   const [coCounts, setCoCounts] = useState<Record<string, number>>({});
 
@@ -97,6 +103,19 @@ export default function QuotesList() {
           })
       );
       setCoCounts(counts);
+
+      // First-quote nudge check — after the list reloads so we know how
+      // many quotes exist. Only fire once ever, only for Free tier.
+      if (data.length >= 1) {
+        const user = await getUserState();
+        if (user.tier === "free") {
+          const seen = await hasSeenNudge("firstQuote");
+          if (!seen) {
+            await markNudgeShown("firstQuote");
+            setShowFirstQuoteNudge(true);
+          }
+        }
+      }
     } catch (error) {
       console.error("Failed to load quotes:", error);
       // Keep existing quotes state on error
@@ -1042,6 +1061,11 @@ export default function QuotesList() {
           setShowTierModal(false);
           setTierQuote(null);
         }}
+      />
+
+      <FirstQuoteNudge
+        visible={showFirstQuoteNudge}
+        onClose={() => setShowFirstQuoteNudge(false)}
       />
     </GestureHandlerRootView>
   );

@@ -7,6 +7,17 @@ import { markTierChanged } from "@/lib/tierState";
 
 export type UserTier = "free" | "pro" | "premium";
 
+/**
+ * One-time nudges keyed by an identifier. Value is the ISO timestamp when
+ * the nudge was shown, so we can also do "not-more-than-once-per-month"
+ * variants later without changing the field type.
+ */
+export type NudgeMap = {
+  firstQuote?: string;
+  pdfLimit?: string; // Timestamp of the last time we showed the pdf-limit nudge
+  [key: string]: string | undefined;
+};
+
 export type UserState = {
   tier: UserTier;
   email?: string;
@@ -19,6 +30,8 @@ export type UserState = {
   // Pro user fields
   proActivatedAt?: string;
   proExpiresAt?: string; // For trial/subscription tracking
+  // Free→Paid nudges seen (celebratory + limit-reached)
+  nudgesShown?: NudgeMap;
 };
 
 export const FREE_LIMITS = {
@@ -66,6 +79,23 @@ export async function saveUserState(state: UserState): Promise<void> {
 function getCurrentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Human-readable reset date for the next monthly quota rollover.
+ * Used in Free-tier nudges: "resets on August 1".
+ *
+ * Note: quotas do NOT accumulate. New month = 10 fresh, not
+ * "10 + whatever was left." migrateUserState() sets pdfsUsed = 0 on
+ * the rollover regardless of prior usage.
+ */
+export function getNextResetDateLabel(): string {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return next.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+  });
 }
 
 /**
@@ -150,6 +180,41 @@ export async function incrementPdfCount(): Promise<void> {
     ...state,
     pdfsUsed: state.pdfsUsed + 1,
   });
+}
+
+/**
+ * Has the reviewer/user seen a given one-time nudge?
+ * Returns true if the nudge has fired at any point in the past — the caller
+ * decides whether to re-arm it (e.g. pdfLimit refires each month).
+ */
+export async function hasSeenNudge(key: keyof NudgeMap): Promise<boolean> {
+  const state = await getUserState();
+  return !!state.nudgesShown?.[key];
+}
+
+/**
+ * Mark a nudge as shown. Timestamped so we can later detect "shown this
+ * month" or similar. For truly one-time nudges (first-quote congrats),
+ * hasSeenNudge is enough.
+ */
+export async function markNudgeShown(key: keyof NudgeMap): Promise<void> {
+  const state = await getUserState();
+  const nudgesShown: NudgeMap = { ...(state.nudgesShown || {}) };
+  nudgesShown[key] = new Date().toISOString();
+  await saveUserState({ ...state, nudgesShown });
+}
+
+/**
+ * Was this nudge shown in the current calendar month?
+ * Used to re-arm limit-reached nudges monthly without re-nagging inside
+ * the same month.
+ */
+export async function wasNudgeShownThisMonth(key: keyof NudgeMap): Promise<boolean> {
+  const state = await getUserState();
+  const shownAt = state.nudgesShown?.[key];
+  if (!shownAt) return false;
+  const shownMonth = shownAt.slice(0, 7); // YYYY-MM
+  return shownMonth === getCurrentMonth();
 }
 
 /**
