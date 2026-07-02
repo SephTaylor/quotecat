@@ -11,7 +11,7 @@
 
 import React from "react";
 import {
-  Linking,
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -38,17 +38,20 @@ export function PdfLimitNudge({ visible, onClose, monthlyLimit }: Props) {
 
   const handleSeePro = async () => {
     onClose();
+    // Legitimate limit-reached → IAP upgrade flow. Apple explicitly sanctions
+    // this path (in-app IAP for digital-content limits). If RevenueCat isn't
+    // ready (e.g. simulator, RC init failed), show a brief in-app alert and
+    // stay silent — DO NOT link to the marketing site as an alternative
+    // purchase path (that runs into Apple's anti-steering rules under
+    // Guideline 3.1.1). The dedicated in-app "compare plans" screen is on
+    // the roadmap and will host any richer upgrade content.
     setTimeout(async () => {
       const shown = await presentPaywallAndSync("pdf_limit_nudge");
-      // Same fallback as FirstQuoteNudge — presentPaywallAndSync returns
-      // false on sim / when RevenueCat isn't ready. Send the user to the
-      // marketing site so the tap always leads somewhere.
       if (!shown) {
-        try {
-          await Linking.openURL("https://quotecat.ai/#pricing");
-        } catch {
-          /* nothing more we can do */
-        }
+        Alert.alert(
+          "Not available right now",
+          "Purchases aren't available at the moment. Please try again in a bit."
+        );
       }
     }, 250);
   };

@@ -23,10 +23,8 @@ import {
   markProWelcomeAsSeen,
   markPremiumWelcomeAsSeen,
   markNotificationAsRead,
-  markProUpgradeHintAsSeen,
 } from "@/lib/reminders";
 import { RefreshEvents, RESUME_ONBOARDING } from "@/lib/refreshEvents";
-import { presentPaywallAndSync } from "@/lib/revenuecat";
 
 const PANEL_WIDTH = Dimensions.get("window").width * 0.85;
 const MAX_PANEL_WIDTH = 400;
@@ -99,23 +97,6 @@ export function NotificationPanel({
     if (reminder.type === "onboarding_incomplete") {
       onClose();
       RefreshEvents.emit(RESUME_ONBOARDING);
-      return;
-    }
-
-    // Pro upgrade hint (Free users who saw first-quote congrats). Same
-    // paywall-with-marketing-fallback pattern as the FirstQuoteNudge itself.
-    if (reminder.type === "pro_upgrade_hint") {
-      onClose();
-      await markProUpgradeHintAsSeen();
-      onRefresh();
-      const shown = await presentPaywallAndSync("pro_upgrade_hint_bell");
-      if (!shown) {
-        try {
-          await Linking.openURL("https://quotecat.ai/#pricing");
-        } catch {
-          /* nothing more we can do */
-        }
-      }
       return;
     }
 

@@ -1,11 +1,15 @@
 // components/FirstQuoteNudge.tsx
 // One-time celebratory modal after the user creates their first quote.
 //
-// This is deliberately NOT a paywall. The moment a contractor finishes
-// their first quote is a genuine win — the modal celebrates that first,
-// then plants a soft seed about what unlocks in Pro. If it feels like a
-// sales pitch the shine dulls; if it feels like acknowledgement, the
-// upgrade thought lands more warmly later.
+// Pure celebration + a passive preview of what Pro adds. Deliberately no
+// upgrade button here — that was bait-and-switch (button said "See what
+// Pro unlocks" but immediately asked for money) and the marketing-site
+// fallback also risked running into Apple's anti-steering rules.
+//
+// The real upgrade path lives elsewhere: legitimate limit-reached moments
+// (like the monthly PDF cap) route straight to the IAP paywall, which is
+// exactly what Apple sanctions. A dedicated in-app "compare plans" screen
+// with an IAP button is on the roadmap and will be Apple-compliant.
 //
 // Fires once, ever, tracked via UserState.nudgesShown.firstQuote.
 // Only shown to Free users — Pro/Premium users skip it since they're
@@ -13,7 +17,6 @@
 
 import React from "react";
 import {
-  Linking,
   Modal,
   Pressable,
   StyleSheet,
@@ -22,8 +25,6 @@ import {
 } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import { presentPaywallAndSync } from "@/lib/revenuecat";
-import { markProUpgradeHintAsSeen } from "@/lib/reminders";
 
 type Props = {
   visible: boolean;
@@ -33,30 +34,6 @@ type Props = {
 export function FirstQuoteNudge({ visible, onClose }: Props) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
-
-  const handleSeePro = async () => {
-    onClose();
-    // Tapping "See what Pro unlocks" fulfills the upgrade-hint intent —
-    // suppress the follow-up bell reminder so the user isn't nagged after
-    // they've already seen the Pro story.
-    await markProUpgradeHintAsSeen();
-    // Small delay so the modal dismiss animation completes before the
-    // paywall slides in — feels less like a bait-and-switch.
-    setTimeout(async () => {
-      const shown = await presentPaywallAndSync("first_quote_nudge");
-      // presentPaywallAndSync returns false when RevenueCat isn't ready —
-      // most commonly on the iOS simulator (no StoreKit) or when RC init
-      // has failed silently. Rather than the button doing nothing, fall
-      // back to the marketing site so the user still sees Pro's story.
-      if (!shown) {
-        try {
-          await Linking.openURL("https://quotecat.ai/#pricing");
-        } catch {
-          /* nothing more we can do — swallow silently */
-        }
-      }
-    }, 250);
-  };
 
   return (
     <Modal
@@ -79,22 +56,17 @@ export function FirstQuoteNudge({ visible, onClose }: Props) {
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionLabel}>When you&rsquo;re ready to grow</Text>
+          <Text style={styles.sectionLabel}>What Pro adds when you&rsquo;re ready</Text>
           <View style={styles.featureList}>
             <FeatureRow theme={theme} icon="cloud-outline" text="Cloud sync across your devices" />
             <FeatureRow theme={theme} icon="link-outline" text="Send quotes as a link, not just a PDF" />
-            <FeatureRow theme={theme} icon="card-outline" text="Accept card payments with a fee-free (to you) portal" />
+            <FeatureRow theme={theme} icon="card-outline" text="Accept card payments — no fee to you" />
             <FeatureRow theme={theme} icon="library-outline" text="Custom assemblies for the work you do most" />
           </View>
 
-          <View style={styles.buttonContainer}>
-            <Pressable style={[styles.button, styles.primaryButton]} onPress={handleSeePro}>
-              <Text style={styles.primaryButtonText}>See what Pro unlocks</Text>
-            </Pressable>
-            <Pressable style={[styles.button, styles.secondaryButton]} onPress={onClose}>
-              <Text style={styles.secondaryButtonText}>Keep going — I&rsquo;ll check later</Text>
-            </Pressable>
-          </View>
+          <Pressable style={[styles.button, styles.primaryButton]} onPress={onClose}>
+            <Text style={styles.primaryButtonText}>Got it</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -168,9 +140,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     featureList: {
       marginBottom: 20,
     },
-    buttonContainer: {
-      gap: 10,
-    },
     button: {
       paddingVertical: 14,
       paddingHorizontal: 20,
@@ -185,14 +154,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: "#000",
-    },
-    secondaryButton: {
-      backgroundColor: "transparent",
-    },
-    secondaryButtonText: {
-      fontSize: 14,
-      fontWeight: "500",
-      color: theme.colors.muted,
     },
   });
 }
