@@ -25,7 +25,7 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 19;
+const SCHEMA_VERSION = 20;
 
 /**
  * Get or create the database instance
@@ -92,6 +92,8 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
         tax_percent REAL,
         notes TEXT,
         follow_up_date TEXT,
+        start_date TEXT,
+        completion_date TEXT,
         currency TEXT NOT NULL DEFAULT 'USD',
         status TEXT NOT NULL DEFAULT 'draft',
         pinned INTEGER NOT NULL DEFAULT 0,
@@ -744,6 +746,24 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     console.log(`📦 Added sync columns to change_orders`);
   }
 
+  // v20: Add start_date + completion_date to quotes for the "Add to Calendar"
+  // feature. Both optional. Existing quotes read as NULL → undefined.
+  if (fromVersion < 20) {
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(quotes)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("start_date")) {
+      database.execSync(`ALTER TABLE quotes ADD COLUMN start_date TEXT;`);
+    }
+    if (!columnNames.has("completion_date")) {
+      database.execSync(`ALTER TABLE quotes ADD COLUMN completion_date TEXT;`);
+    }
+
+    console.log(`📦 Added start_date + completion_date to quotes`);
+  }
+
   // Update version
   database.runSync(
     "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
@@ -780,6 +800,8 @@ function rowToQuote(row: any): Quote {
     changeHistory: row.change_history || undefined,
     approvedSnapshot: row.approved_snapshot || undefined,
     followUpDate: row.follow_up_date || undefined,
+    startDate: row.start_date || undefined,
+    completionDate: row.completion_date || undefined,
     currency: row.currency || "USD",
     status: row.status || "draft",
     pinned: row.pinned === 1,
@@ -894,9 +916,10 @@ export function saveQuoteDB(quote: Quote): void {
       `INSERT OR REPLACE INTO quotes (
         id, quote_number, name, client_name, client_email, client_phone, client_address,
         items, labor, labor_entries, material_estimate, overhead, markup_percent, tax_percent,
-        notes, change_history, approved_snapshot, follow_up_date, currency, status, pinned, tier, tier_group_id, linked_quote_ids,
+        notes, change_history, approved_snapshot, follow_up_date, start_date, completion_date,
+        currency, status, pinned, tier, tier_group_id, linked_quote_ids,
         created_at, updated_at, deleted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         quote.id,
         quote.quoteNumber || null,
@@ -916,6 +939,8 @@ export function saveQuoteDB(quote: Quote): void {
         quote.changeHistory || null,
         quote.approvedSnapshot || null,
         quote.followUpDate || null,
+        quote.startDate || null,
+        quote.completionDate || null,
         quote.currency || "USD",
         quote.status || "draft",
         quote.pinned ? 1 : 0,

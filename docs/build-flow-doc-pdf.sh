@@ -1,12 +1,20 @@
 #!/bin/bash
-# Build the Mike flow doc as a QuoteCat-branded PDF.
-# Usage: ./docs/build-flow-doc-pdf.sh
+# Build a QuoteCat-branded PDF from a markdown flow doc.
+# Usage: ./docs/build-flow-doc-pdf.sh [basename]
+#   basename defaults to end-to-end-flow-for-mike (backward-compat).
+#   Reads docs/{basename}.md, writes docs/{basename}.html and .pdf.
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MD="$REPO_ROOT/docs/end-to-end-flow-for-mike.md"
-HTML="$REPO_ROOT/docs/end-to-end-flow-for-mike.html"
-PDF="$REPO_ROOT/docs/end-to-end-flow-for-mike.pdf"
+BASENAME="${1:-end-to-end-flow-for-mike}"
+MD="$REPO_ROOT/docs/${BASENAME}.md"
+HTML="$REPO_ROOT/docs/${BASENAME}.html"
+PDF="$REPO_ROOT/docs/${BASENAME}.pdf"
+
+if [ ! -f "$MD" ]; then
+  echo "Error: $MD not found"
+  exit 1
+fi
 LOGO_SRC="$REPO_ROOT/website/apple-touch-icon.png"
 LOGO_B64="$(base64 < "$LOGO_SRC" | tr -d '\n')"
 
