@@ -34,6 +34,49 @@
     }
   });
 
+  // App Store / Play Store click tracking. Auto-detects by URL so we don't
+  // have to tag every store link individually (there are already several
+  // across index.html, payment-success.html, callback.html, etc., and we
+  // want future ones caught for free). Fires app_store_click with store =
+  // "apple" | "google". Marketing-side "conversion" event: this is the
+  // strongest signal a visitor turned into a potential user.
+  document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest && e.target.closest('a[href]');
+    if (!el) return;
+    var href = el.getAttribute('href') || '';
+    var store = null;
+    if (href.indexOf('apps.apple.com') !== -1) store = 'apple';
+    else if (href.indexOf('play.google.com') !== -1) store = 'google';
+    if (!store) return;
+    try {
+      posthog.capture('app_store_click', {
+        store: store,
+        href: href,
+        page: window.location.pathname,
+      });
+    } catch (err) {
+      console && console.warn && console.warn('app_store_click capture failed', err);
+    }
+  });
+
+  // Generic CTA click tracking. Any element with [data-cta="name"] fires
+  // cta_clicked. Complements data-resource (for resource links) — data-cta
+  // is for anything else: "Sign up", "Watch demo", pricing selectors, etc.
+  // Untagged elements are ignored; explicit opt-in per CTA.
+  document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest && e.target.closest('[data-cta]');
+    if (!el) return;
+    try {
+      posthog.capture('cta_clicked', {
+        name: el.getAttribute('data-cta'),
+        href: el.getAttribute('href') || null,
+        page: window.location.pathname,
+      });
+    } catch (err) {
+      console && console.warn && console.warn('cta_clicked capture failed', err);
+    }
+  });
+
   // Calculator engagement: any page whose <body> carries data-calculator="{name}"
   // fires calculator_engaged the first time the visitor meaningfully touches an
   // input on the page. Distinguishes "used it" from "landed and bounced" in
