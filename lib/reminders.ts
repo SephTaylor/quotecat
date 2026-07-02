@@ -26,7 +26,8 @@ export type ReminderType =
   | "assembly_vote_up"    // Someone liked a shared assembly
   | "assembly_copied"     // Someone copied a shared assembly
   | "assembly_comment"    // Someone commented on a shared assembly
-  | "onboarding_incomplete"; // User skipped onboarding, can resume
+  | "onboarding_incomplete" // User skipped onboarding, can resume
+  | "pro_upgrade_hint";   // Free user saw the first-quote congrats without exploring Pro yet
 
 export type Reminder = {
   id: string;
@@ -415,6 +416,71 @@ export async function getPremiumWelcomeReminder(): Promise<Reminder | null> {
   if (isReminderDismissed(PREMIUM_WELCOME_REMINDER_ID, dismissed)) return null;
 
   return createPremiumWelcomeReminder();
+}
+
+// ============================================
+// Pro Upgrade Hint (bell reminder for Free users)
+// ============================================
+//
+// Follow-up to the FirstQuoteNudge congrats modal: if the user closed the
+// modal without tapping "See what Pro unlocks," we want them to be able to
+// find that upgrade path again from the notification bell. Only fires for
+// Free users who've seen the first-quote congrats. Dismissable from the
+// panel, and also auto-clears if the user taps "See what Pro unlocks" from
+// the modal (they've now seen it — no need to nag).
+
+const PRO_UPGRADE_HINT_KEY = "@quotecat/pro_upgrade_hint_seen";
+const PRO_UPGRADE_HINT_REMINDER_ID = "pro_upgrade_hint";
+
+export async function hasSeenProUpgradeHint(): Promise<boolean> {
+  try {
+    const value = await AsyncStorage.getItem(PRO_UPGRADE_HINT_KEY);
+    return value === "true";
+  } catch {
+    return false;
+  }
+}
+
+export async function markProUpgradeHintAsSeen(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PRO_UPGRADE_HINT_KEY, "true");
+    // Also dismiss the reminder from the panel so it disappears immediately.
+    await dismissReminder(PRO_UPGRADE_HINT_REMINDER_ID);
+  } catch (error) {
+    console.error("Failed to mark Pro upgrade hint as seen:", error);
+  }
+}
+
+export async function getProUpgradeHintReminder(): Promise<Reminder | null> {
+  // Free tier only. Pro/Premium users have no reason to see this.
+  // Dynamic import breaks a circular dependency between user.ts and reminders.ts.
+  const { getUserState, hasSeenNudge } = await import("./user");
+  const user = await getUserState();
+  if (user.tier !== "free") return null;
+
+  // Only after they've been through the first-quote congrats — that modal
+  // is the entry point that "primes" the reminder.
+  const sawFirstQuoteCongrats = await hasSeenNudge("firstQuote");
+  if (!sawFirstQuoteCongrats) return null;
+
+  // Skip if they've already tapped "See what Pro unlocks" (hint fulfilled)
+  // or manually dismissed the bell reminder.
+  if (await hasSeenProUpgradeHint()) return null;
+
+  const dismissed = await loadDismissedReminders();
+  if (isReminderDismissed(PRO_UPGRADE_HINT_REMINDER_ID, dismissed)) return null;
+
+  const now = new Date().toISOString();
+  return {
+    id: PRO_UPGRADE_HINT_REMINDER_ID,
+    type: "pro_upgrade_hint",
+    entityId: "system",
+    entityType: "system",
+    title: "See what Pro unlocks",
+    subtitle: "Cloud sync, payment links, unlimited PDFs, and more.",
+    dueDate: now,
+    createdAt: now,
+  };
 }
 
 // ============================================

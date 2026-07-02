@@ -9,7 +9,7 @@ import { useFocusEffect } from "expo-router";
 import { listQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { loadPreferences } from "@/lib/preferences";
-import { getActiveReminders, getProWelcomeReminder, getPremiumWelcomeReminder, getCloudNotifications, getAssemblyHealthReminders, getOnboardingReminder, type Reminder } from "@/lib/reminders";
+import { getActiveReminders, getProWelcomeReminder, getPremiumWelcomeReminder, getCloudNotifications, getAssemblyHealthReminders, getOnboardingReminder, getProUpgradeHintReminder, type Reminder } from "@/lib/reminders";
 import { getUserState } from "@/lib/user";
 import { NotificationPanel } from "./NotificationPanel";
 
@@ -76,6 +76,14 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
       const onboardingReminder = await getOnboardingReminder();
       if (onboardingReminder) {
         active.unshift(onboardingReminder);
+      }
+
+      // Add Pro upgrade hint (Free users who saw the first-quote congrats
+      // modal but haven't explored Pro yet). unshift so it appears near the
+      // top of the list without displacing the higher-priority welcomes.
+      const proUpgradeHint = await getProUpgradeHintReminder();
+      if (proUpgradeHint) {
+        active.push(proUpgradeHint);
       }
 
       setReminders(active);

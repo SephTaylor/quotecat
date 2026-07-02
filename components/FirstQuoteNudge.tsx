@@ -23,6 +23,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
+import { markProUpgradeHintAsSeen } from "@/lib/reminders";
 
 type Props = {
   visible: boolean;
@@ -35,6 +36,10 @@ export function FirstQuoteNudge({ visible, onClose }: Props) {
 
   const handleSeePro = async () => {
     onClose();
+    // Tapping "See what Pro unlocks" fulfills the upgrade-hint intent —
+    // suppress the follow-up bell reminder so the user isn't nagged after
+    // they've already seen the Pro story.
+    await markProUpgradeHintAsSeen();
     // Small delay so the modal dismiss animation completes before the
     // paywall slides in — feels less like a bait-and-switch.
     setTimeout(async () => {
