@@ -73,11 +73,6 @@ export const AnalyticsEvents = {
   PDF_LIMIT_NUDGE_UPGRADE_TAP: 'pdf_limit_nudge_upgrade_tap',
   PDF_LIMIT_NUDGE_DISMISS: 'pdf_limit_nudge_dismiss',
 
-  // v1.2.15 Add to Calendar — track whether the feature is discovered
-  // and used. Property `source` is 'quote' | 'contract' so we can see
-  // which surface drives adoption.
-  ADD_TO_CALENDAR_TAPPED: 'add_to_calendar_tapped',
-
   // Errors
   ERROR_OCCURRED: 'error_occurred',
 } as const;
