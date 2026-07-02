@@ -39,7 +39,12 @@
   // input on the page. Distinguishes "used it" from "landed and bounced" in
   // pageview data. Single listener; the `fired` guard prevents repeats within
   // the pageview.
-  (function () {
+  //
+  // Wrapped in DOMContentLoaded because this script runs from <head>, before
+  // document.body has been parsed. The first attempt at instrumentation was
+  // silently no-op'ing because document.body was null at head-execution time,
+  // so getAttribute returned null and the early-return killed the listeners.
+  function initCalculatorEngagement() {
     var calcName = document.body && document.body.getAttribute('data-calculator');
     if (!calcName) return;
     var fired = false;
@@ -65,6 +70,11 @@
         fire();
       }
     }, { passive: true });
-  })();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCalculatorEngagement);
+  } else {
+    initCalculatorEngagement();
+  }
 </script>
 {% endif %}
