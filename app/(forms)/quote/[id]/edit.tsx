@@ -4,6 +4,7 @@ import { useTechContext } from "@/contexts/TechContext";
 import { updateQuote, getQuoteById, duplicateQuote, createTierFromQuote, deleteQuote, getLinkedQuotes } from "@/lib/quotes";
 import { getClients, getAndClearLastCreatedClientId, getClientById, createClient, type Client } from "@/lib/clients";
 import { loadPreferences, type OverheadSettings } from "@/lib/preferences";
+import { recordWinAndMaybeRequestReview } from "@/lib/reviewPrompt";
 import { calculateQuoteProfitability, calculateLaborCostWithWorkerRates, getMarginColor, getMarginIcon } from "@/lib/calculations";
 import { FormInput, FormScreen } from "@/modules/core/ui";
 import { getItemId } from "@/lib/validation";
@@ -161,6 +162,12 @@ export default function EditQuote() {
         // Save immediately to storage to ensure consistency
         await updateQuote(effectiveId, { ...getFormData(), status });
       }
+      // Approve = a genuine win moment. Fire the in-app review prompt
+      // opportunistically (rate-limited by lib/reviewPrompt guards + the
+      // OS itself). Never blocks the save; failure is silent.
+      if (status === "approved") {
+        recordWinAndMaybeRequestReview();
+      }
     };
 
     // "sent" → automatically mark ALL tier group quotes as "sent"
@@ -233,6 +240,13 @@ export default function EditQuote() {
 
     // All other status changes - just set it (will be saved when user taps Save)
     setStatus(newStatus);
+
+    // Standalone quote → approved: same win moment as the tier-group
+    // path handles inside saveCurrentWithStatus. Fire the prompt here
+    // since the standalone fall-through doesn't route through that helper.
+    if (newStatus === "approved") {
+      recordWinAndMaybeRequestReview();
+    }
   }, [tierGroupId, linkedQuoteIds, setStatus, effectiveId, getFormData]);
 
   // Load Pro/Premium status, saved clients, and profitability settings

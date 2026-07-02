@@ -40,6 +40,7 @@ import { createContractFromQuote } from "@/lib/contracts";
 import { shareCalendarEvent, quoteToCalendarEvent } from "@/lib/calendar";
 import { markNudgeShown, wasNudgeShownThisMonth, FREE_LIMITS } from "@/lib/user";
 import { PdfLimitNudge } from "@/components/PdfLimitNudge";
+import { recordWinAndMaybeRequestReview } from "@/lib/reviewPrompt";
 import { uploadQuote } from "@/lib/quotesSync";
 import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 import type { TeamMember } from "@/lib/types";
@@ -510,6 +511,8 @@ export default function QuoteReviewScreen() {
       }
       workingQuote = updated;
       setQuote(updated);
+      // Same win moment as the edit-screen path. Fire and forget.
+      recordWinAndMaybeRequestReview();
     }
 
     try {
