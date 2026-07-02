@@ -1,15 +1,14 @@
 // components/FirstQuoteNudge.tsx
 // One-time celebratory modal after the user creates their first quote.
 //
-// Pure celebration + a passive preview of what Pro adds. Deliberately no
-// upgrade button here — that was bait-and-switch (button said "See what
-// Pro unlocks" but immediately asked for money) and the marketing-site
-// fallback also risked running into Apple's anti-steering rules.
+// Pure celebration first, then a passive Pro features preview + an honest
+// "Unlock Pro" CTA. The rename from "See what Pro unlocks" → "Unlock Pro"
+// fixes the earlier bait-and-switch (the button now says what it does).
+// If the user isn't ready, they can dismiss with the secondary button.
 //
-// The real upgrade path lives elsewhere: legitimate limit-reached moments
-// (like the monthly PDF cap) route straight to the IAP paywall, which is
-// exactly what Apple sanctions. A dedicated in-app "compare plans" screen
-// with an IAP button is on the roadmap and will be Apple-compliant.
+// The paywall is opened via presentPaywallAndSync (IAP, Apple-sanctioned).
+// If RC isn't ready (sim / edge case), we show a brief in-app alert — no
+// fallback link to the marketing site (Apple's anti-steering rule).
 //
 // Fires once, ever, tracked via UserState.nudgesShown.firstQuote.
 // Only shown to Free users — Pro/Premium users skip it since they're
@@ -17,6 +16,7 @@
 
 import React from "react";
 import {
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -25,6 +25,7 @@ import {
 } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import { presentPaywallAndSync } from "@/lib/revenuecat";
 
 type Props = {
   visible: boolean;
@@ -34,6 +35,21 @@ type Props = {
 export function FirstQuoteNudge({ visible, onClose }: Props) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  const handleUnlockPro = async () => {
+    onClose();
+    // Small delay so the modal dismiss animation completes before the
+    // paywall slides in.
+    setTimeout(async () => {
+      const shown = await presentPaywallAndSync("first_quote_nudge");
+      if (!shown) {
+        Alert.alert(
+          "Not available right now",
+          "Purchases aren't available at the moment. Please try again in a bit."
+        );
+      }
+    }, 250);
+  };
 
   return (
     <Modal
@@ -64,9 +80,14 @@ export function FirstQuoteNudge({ visible, onClose }: Props) {
             <FeatureRow theme={theme} icon="library-outline" text="Custom assemblies for the work you do most" />
           </View>
 
-          <Pressable style={[styles.button, styles.primaryButton]} onPress={onClose}>
-            <Text style={styles.primaryButtonText}>Got it</Text>
-          </Pressable>
+          <View style={styles.buttonContainer}>
+            <Pressable style={[styles.button, styles.primaryButton]} onPress={handleUnlockPro}>
+              <Text style={styles.primaryButtonText}>Unlock Pro</Text>
+            </Pressable>
+            <Pressable style={[styles.button, styles.secondaryButton]} onPress={onClose}>
+              <Text style={styles.secondaryButtonText}>Not yet</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </Modal>
@@ -140,6 +161,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     featureList: {
       marginBottom: 20,
     },
+    buttonContainer: {
+      gap: 10,
+    },
     button: {
       paddingVertical: 14,
       paddingHorizontal: 20,
@@ -154,6 +178,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 16,
       fontWeight: "700",
       color: "#000",
+    },
+    secondaryButton: {
+      backgroundColor: "transparent",
+    },
+    secondaryButtonText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: theme.colors.muted,
     },
   });
 }
