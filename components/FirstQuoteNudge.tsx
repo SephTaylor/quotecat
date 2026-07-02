@@ -13,6 +13,7 @@
 
 import React from "react";
 import {
+  Linking,
   Modal,
   Pressable,
   StyleSheet,
@@ -36,8 +37,19 @@ export function FirstQuoteNudge({ visible, onClose }: Props) {
     onClose();
     // Small delay so the modal dismiss animation completes before the
     // paywall slides in — feels less like a bait-and-switch.
-    setTimeout(() => {
-      presentPaywallAndSync("first_quote_nudge");
+    setTimeout(async () => {
+      const shown = await presentPaywallAndSync("first_quote_nudge");
+      // presentPaywallAndSync returns false when RevenueCat isn't ready —
+      // most commonly on the iOS simulator (no StoreKit) or when RC init
+      // has failed silently. Rather than the button doing nothing, fall
+      // back to the marketing site so the user still sees Pro's story.
+      if (!shown) {
+        try {
+          await Linking.openURL("https://quotecat.ai/#pricing");
+        } catch {
+          /* nothing more we can do — swallow silently */
+        }
+      }
     }, 250);
   };
 

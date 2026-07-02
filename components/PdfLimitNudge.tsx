@@ -11,6 +11,7 @@
 
 import React from "react";
 import {
+  Linking,
   Modal,
   Pressable,
   StyleSheet,
@@ -37,8 +38,18 @@ export function PdfLimitNudge({ visible, onClose, monthlyLimit }: Props) {
 
   const handleSeePro = async () => {
     onClose();
-    setTimeout(() => {
-      presentPaywallAndSync("pdf_limit_nudge");
+    setTimeout(async () => {
+      const shown = await presentPaywallAndSync("pdf_limit_nudge");
+      // Same fallback as FirstQuoteNudge — presentPaywallAndSync returns
+      // false on sim / when RevenueCat isn't ready. Send the user to the
+      // marketing site so the tap always leads somewhere.
+      if (!shown) {
+        try {
+          await Linking.openURL("https://quotecat.ai/#pricing");
+        } catch {
+          /* nothing more we can do */
+        }
+      }
     }, 250);
   };
 
