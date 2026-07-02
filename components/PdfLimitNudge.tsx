@@ -89,13 +89,13 @@ export function PdfLimitNudge({ visible, onClose, monthlyLimit }: Props) {
           <View style={styles.featureList}>
             <FeatureRow theme={theme} icon="infinite-outline" text="Unlimited PDF exports" />
             <FeatureRow theme={theme} icon="link-outline" text="Share as a live link — customer signs on their phone" />
-            <FeatureRow theme={theme} icon="card-outline" text="Get paid by card (fee-free to you)" />
+            <FeatureRow theme={theme} icon="card-outline" text="Get paid by card — no QuoteCat fees" />
             <FeatureRow theme={theme} icon="cloud-outline" text="Cloud sync + multi-device" />
           </View>
 
           <View style={styles.buttonContainer}>
             <Pressable style={[styles.button, styles.primaryButton]} onPress={handleSeePro}>
-              <Text style={styles.primaryButtonText}>See what Pro unlocks</Text>
+              <Text style={styles.primaryButtonText}>Unlock Pro</Text>
             </Pressable>
             <Pressable style={[styles.button, styles.secondaryButton]} onPress={onClose}>
               <Text style={styles.secondaryButtonText}>I&rsquo;ll wait until {resetLabel}</Text>

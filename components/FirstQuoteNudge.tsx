@@ -60,7 +60,7 @@ export function FirstQuoteNudge({ visible, onClose }: Props) {
           <View style={styles.featureList}>
             <FeatureRow theme={theme} icon="cloud-outline" text="Cloud sync across your devices" />
             <FeatureRow theme={theme} icon="link-outline" text="Send quotes as a link, not just a PDF" />
-            <FeatureRow theme={theme} icon="card-outline" text="Accept card payments — no fee to you" />
+            <FeatureRow theme={theme} icon="card-outline" text="Accept card payments — no QuoteCat fees" />
             <FeatureRow theme={theme} icon="library-outline" text="Custom assemblies for the work you do most" />
           </View>
 
