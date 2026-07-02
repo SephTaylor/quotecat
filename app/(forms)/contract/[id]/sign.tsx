@@ -181,20 +181,23 @@ export default function SignContract() {
     }
   };
 
+  // Single Stack.Screen identity across states. Title uses the contract
+  // number when loaded, a placeholder ("Sign Contract") during load/error.
+  // Custom orange back button preserved per CLAUDE.md convention.
+  const screenOptions = {
+    title: contract ? `Sign ${contract.contractNumber}` : "Sign Contract",
+    headerShown: true,
+    headerTitleAlign: "center" as const,
+    headerStyle: { backgroundColor: theme.colors.bg },
+    headerTintColor: theme.colors.accent,
+    headerTitleStyle: { color: theme.colors.text },
+    headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
+  };
+
   if (loading) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Sign Contract",
-            headerShown: true,
-            headerTitleAlign: "center",
-            headerStyle: { backgroundColor: theme.colors.bg },
-            headerTintColor: theme.colors.accent,
-            headerTitleStyle: { color: theme.colors.text },
-            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
+        <Stack.Screen options={screenOptions} />
         <View style={styles.center}>
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
@@ -205,17 +208,7 @@ export default function SignContract() {
   if (!contract) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Sign Contract",
-            headerShown: true,
-            headerTitleAlign: "center",
-            headerStyle: { backgroundColor: theme.colors.bg },
-            headerTintColor: theme.colors.accent,
-            headerTitleStyle: { color: theme.colors.text },
-            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
+        <Stack.Screen options={screenOptions} />
         <View style={styles.center}>
           <Text style={styles.errorText}>Contract not found</Text>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
@@ -228,17 +221,7 @@ export default function SignContract() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: `Sign ${contract.contractNumber}`,
-          headerShown: true,
-          headerTitleAlign: "center",
-          headerStyle: { backgroundColor: theme.colors.bg },
-          headerTintColor: theme.colors.accent,
-          headerTitleStyle: { color: theme.colors.text },
-          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-        }}
-      />
+      <Stack.Screen options={screenOptions} />
       <View style={styles.container}>
         {/* Contract Summary */}
         <View style={styles.summaryCard}>

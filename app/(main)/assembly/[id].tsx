@@ -167,25 +167,24 @@ export default function AssemblyCalculatorScreen() {
   };
 
 
+  // Single Stack.Screen identity across all four state branches. Title
+  // uses the assembly name once loaded, placeholder otherwise. headerBackTitle
+  // is dropped: it only takes effect when headerLeft is not set, and we
+  // always set headerLeft (custom orange per CLAUDE.md convention).
+  const screenOptions = {
+    title: assembly?.name ?? "Assembly Calculator",
+    headerShown: true,
+    headerTitleAlign: 'center' as const,
+    headerStyle: { backgroundColor: theme.colors.bg },
+    headerTintColor: theme.colors.text,
+    headerTitleStyle: { color: theme.colors.text },
+    headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
+  };
+
   if (loading || productsLoading) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Assembly Calculator",
-            headerShown: true,
-            headerTitleAlign: 'center',
-            headerBackTitle: "Assemblies",
-            headerStyle: {
-              backgroundColor: theme.colors.bg,
-            },
-            headerTintColor: theme.colors.text,
-            headerTitleStyle: {
-              color: theme.colors.text,
-            },
-            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
+        <Stack.Screen options={screenOptions} />
         <View style={styles.center}>
           <ActivityIndicator />
         </View>
@@ -196,22 +195,7 @@ export default function AssemblyCalculatorScreen() {
   if (!assemblyId) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Assembly Calculator",
-            headerShown: true,
-            headerTitleAlign: 'center',
-            headerBackTitle: "Assemblies",
-            headerStyle: {
-              backgroundColor: theme.colors.bg,
-            },
-            headerTintColor: theme.colors.text,
-            headerTitleStyle: {
-              color: theme.colors.text,
-            },
-            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
+        <Stack.Screen options={screenOptions} />
         <View style={styles.container}>
           <View style={styles.center}>
             <Text style={styles.h2}>Missing assembly id</Text>
@@ -225,22 +209,7 @@ export default function AssemblyCalculatorScreen() {
   if (!assembly) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Assembly Calculator",
-            headerShown: true,
-            headerTitleAlign: 'center',
-            headerBackTitle: "Assemblies",
-            headerStyle: {
-              backgroundColor: theme.colors.bg,
-            },
-            headerTintColor: theme.colors.text,
-            headerTitleStyle: {
-              color: theme.colors.text,
-            },
-            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
+        <Stack.Screen options={screenOptions} />
         <View style={styles.container}>
           <View style={styles.center}>
             <Text style={styles.h2}>Assembly not found</Text>
@@ -257,21 +226,7 @@ export default function AssemblyCalculatorScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: assembly.name,
-          headerShown: true,
-          headerBackTitle: "Back",
-          headerStyle: {
-            backgroundColor: theme.colors.bg,
-          },
-          headerTintColor: theme.colors.text,
-          headerTitleStyle: {
-            color: theme.colors.text,
-          },
-          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-        }}
-      />
+      <Stack.Screen options={screenOptions} />
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.body}>
           {/* Validation Errors */}

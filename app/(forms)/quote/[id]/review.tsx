@@ -285,24 +285,30 @@ export default function QuoteReviewScreen() {
     }
   };
 
+  // Header options declared once so every state branch below renders the
+  // same identity. Previous code declared Stack.Screen inside three
+  // separate returns, which caused iOS 18 to remount the back button pill
+  // on every state transition (loading → loaded → transient states). Now
+  // there's one Stack.Screen at the outermost return, and the branches
+  // only vary the body content — no header remount.
+  const screenOptions = {
+    title: "Quote Review",
+    headerShown: true,
+    headerTitleAlign: 'center' as const,
+    headerStyle: { backgroundColor: theme.colors.bg },
+    headerTintColor: theme.colors.accent,
+    headerTitleStyle: { color: theme.colors.text },
+    // Preserving the original intent: this screen has always used the
+    // custom orange HeaderBackButton, not the system black one. Do not
+    // remove headerLeft here — per CLAUDE.md the presence of headerLeft
+    // is the design signal for "custom back button, orange."
+    headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
+  };
+
   if (loading) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Quote Review",
-            headerShown: true,
-            headerTitleAlign: 'center',
-            headerStyle: {
-              backgroundColor: theme.colors.bg,
-            },
-            headerTintColor: theme.colors.accent,
-            headerTitleStyle: {
-              color: theme.colors.text,
-            },
-            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
+        <Stack.Screen options={screenOptions} />
         <View style={styles.center}>
           <ActivityIndicator color={theme.colors.accent} />
         </View>
@@ -313,21 +319,7 @@ export default function QuoteReviewScreen() {
   if (!qid || !quote) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Quote Review",
-            headerShown: true,
-            headerTitleAlign: 'center',
-            headerStyle: {
-              backgroundColor: theme.colors.bg,
-            },
-            headerTintColor: theme.colors.accent,
-            headerTitleStyle: {
-              color: theme.colors.text,
-            },
-            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
+        <Stack.Screen options={screenOptions} />
         <View style={styles.center}>
           <Text style={styles.errorText}>Quote not found</Text>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
@@ -637,21 +629,7 @@ export default function QuoteReviewScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: "Quote Review",
-          headerShown: true,
-          headerTitleAlign: 'center',
-          headerStyle: {
-            backgroundColor: theme.colors.bg,
-          },
-          headerTintColor: theme.colors.accent,
-          headerTitleStyle: {
-            color: theme.colors.text,
-          },
-          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-        }}
-      />
+      <Stack.Screen options={screenOptions} />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Logo Preview - Pro+ only */}
         {isPro && logo?.base64 && (

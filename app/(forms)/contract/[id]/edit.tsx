@@ -296,20 +296,25 @@ export default function EditContract() {
     return `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
   };
 
+  // One Stack.Screen identity across all state branches. Title is the
+  // only option that varies (placeholder "Contract" during loading/error,
+  // the contract number once loaded). Preserving the original headerLeft
+  // = HeaderBackButton (custom orange) intent per CLAUDE.md convention.
+  const headerTitle = contract?.contractNumber ?? "Contract";
+  const screenOptions = {
+    title: headerTitle,
+    headerShown: true,
+    headerTitleAlign: "center" as const,
+    headerStyle: { backgroundColor: theme.colors.bg },
+    headerTintColor: theme.colors.accent,
+    headerTitleStyle: { color: theme.colors.text },
+    headerLeft: () => <HeaderBackButton onPress={handleGoBack} />,
+  };
+
   if (loading) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Contract",
-            headerShown: true,
-            headerTitleAlign: "center",
-            headerStyle: { backgroundColor: theme.colors.bg },
-            headerTintColor: theme.colors.accent,
-            headerTitleStyle: { color: theme.colors.text },
-            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
+        <Stack.Screen options={screenOptions} />
         <View style={styles.center}>
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
@@ -320,17 +325,7 @@ export default function EditContract() {
   if (!contract) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Contract",
-            headerShown: true,
-            headerTitleAlign: "center",
-            headerStyle: { backgroundColor: theme.colors.bg },
-            headerTintColor: theme.colors.accent,
-            headerTitleStyle: { color: theme.colors.text },
-            headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
+        <Stack.Screen options={screenOptions} />
         <View style={styles.center}>
           <Text style={styles.errorText}>Contract not found</Text>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
@@ -351,17 +346,7 @@ export default function EditContract() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: contract.contractNumber,
-          headerShown: true,
-          headerTitleAlign: "center",
-          headerStyle: { backgroundColor: theme.colors.bg },
-          headerTintColor: theme.colors.accent,
-          headerTitleStyle: { color: theme.colors.text },
-          headerLeft: () => <HeaderBackButton onPress={handleGoBack} />,
-        }}
-      />
+      <Stack.Screen options={screenOptions} />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Status Badge — read-only. Forward motion happens via the morph
             button at the bottom; rollback lives here next to the badge so the
