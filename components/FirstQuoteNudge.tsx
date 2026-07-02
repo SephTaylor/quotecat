@@ -26,6 +26,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
+import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 
 type Props = {
   visible: boolean;
@@ -36,7 +37,21 @@ export function FirstQuoteNudge({ visible, onClose }: Props) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
+  // Fire _shown once when the modal opens (transition from hidden → visible).
+  // Guard against React rerenders re-firing the event via a ref.
+  const hasFiredShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (visible && !hasFiredShownRef.current) {
+      hasFiredShownRef.current = true;
+      trackEvent(AnalyticsEvents.FIRST_QUOTE_NUDGE_SHOWN);
+    }
+    if (!visible) {
+      hasFiredShownRef.current = false;
+    }
+  }, [visible]);
+
   const handleUnlockPro = async () => {
+    trackEvent(AnalyticsEvents.FIRST_QUOTE_NUDGE_UPGRADE_TAP);
     onClose();
     // Small delay so the modal dismiss animation completes before the
     // paywall slides in.
@@ -51,12 +66,17 @@ export function FirstQuoteNudge({ visible, onClose }: Props) {
     }, 250);
   };
 
+  const handleDismiss = () => {
+    trackEvent(AnalyticsEvents.FIRST_QUOTE_NUDGE_DISMISS);
+    onClose();
+  };
+
   return (
     <Modal
       visible={visible}
       animationType="fade"
       transparent
-      onRequestClose={onClose}
+      onRequestClose={handleDismiss}
     >
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
@@ -84,7 +104,7 @@ export function FirstQuoteNudge({ visible, onClose }: Props) {
             <Pressable style={[styles.button, styles.primaryButton]} onPress={handleUnlockPro}>
               <Text style={styles.primaryButtonText}>Unlock Pro</Text>
             </Pressable>
-            <Pressable style={[styles.button, styles.secondaryButton]} onPress={onClose}>
+            <Pressable style={[styles.button, styles.secondaryButton]} onPress={handleDismiss}>
               <Text style={styles.secondaryButtonText}>Not yet</Text>
             </Pressable>
           </View>

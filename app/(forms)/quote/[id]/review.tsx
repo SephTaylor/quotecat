@@ -551,6 +551,9 @@ export default function QuoteReviewScreen() {
       );
       return;
     }
+    // Only track successful adds (dates set + share sheet actually opened).
+    // Property `source` distinguishes quote vs contract adoption in PostHog.
+    trackEvent(AnalyticsEvents.ADD_TO_CALENDAR_TAPPED, { source: "quote" });
     try {
       await shareCalendarEvent(evt);
     } catch (error) {

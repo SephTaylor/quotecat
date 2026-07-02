@@ -22,6 +22,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { getNextResetDateLabel } from "@/lib/user";
+import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 
 type Props = {
   visible: boolean;
@@ -36,7 +37,26 @@ export function PdfLimitNudge({ visible, onClose, monthlyLimit }: Props) {
 
   const resetLabel = getNextResetDateLabel();
 
+  // Fire _shown once when the modal opens. Same guard-with-ref pattern as
+  // FirstQuoteNudge so React strict-mode / rerenders can't double-count.
+  const hasFiredShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (visible && !hasFiredShownRef.current) {
+      hasFiredShownRef.current = true;
+      trackEvent(AnalyticsEvents.PDF_LIMIT_NUDGE_SHOWN);
+    }
+    if (!visible) {
+      hasFiredShownRef.current = false;
+    }
+  }, [visible]);
+
+  const handleDismiss = () => {
+    trackEvent(AnalyticsEvents.PDF_LIMIT_NUDGE_DISMISS);
+    onClose();
+  };
+
   const handleSeePro = async () => {
+    trackEvent(AnalyticsEvents.PDF_LIMIT_NUDGE_UPGRADE_TAP);
     onClose();
     // Legitimate limit-reached → IAP upgrade flow. Apple explicitly sanctions
     // this path (in-app IAP for digital-content limits). If RevenueCat isn't
@@ -61,7 +81,7 @@ export function PdfLimitNudge({ visible, onClose, monthlyLimit }: Props) {
       visible={visible}
       animationType="fade"
       transparent
-      onRequestClose={onClose}
+      onRequestClose={handleDismiss}
     >
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
@@ -97,7 +117,7 @@ export function PdfLimitNudge({ visible, onClose, monthlyLimit }: Props) {
             <Pressable style={[styles.button, styles.primaryButton]} onPress={handleSeePro}>
               <Text style={styles.primaryButtonText}>Unlock Pro</Text>
             </Pressable>
-            <Pressable style={[styles.button, styles.secondaryButton]} onPress={onClose}>
+            <Pressable style={[styles.button, styles.secondaryButton]} onPress={handleDismiss}>
               <Text style={styles.secondaryButtonText}>I&rsquo;ll wait until {resetLabel}</Text>
             </Pressable>
           </View>

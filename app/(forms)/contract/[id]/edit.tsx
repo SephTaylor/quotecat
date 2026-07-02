@@ -31,6 +31,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
 import { Ionicons } from "@expo/vector-icons";
 import { shareCalendarEvent, contractToCalendarEvent } from "@/lib/calendar";
+import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 
 export default function EditContract() {
   const { theme } = useTheme();
@@ -571,6 +572,7 @@ export default function EditContract() {
                     clientAddress: clientAddress || contract.clientAddress,
                   });
                   if (!evt) return;
+                  trackEvent(AnalyticsEvents.ADD_TO_CALENDAR_TAPPED, { source: "contract" });
                   try {
                     await shareCalendarEvent(evt);
                   } catch (e) {

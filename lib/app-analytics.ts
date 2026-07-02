@@ -62,6 +62,22 @@ export const AnalyticsEvents = {
   PAYWALL_PURCHASED: 'paywall_purchased',
   PAYWALL_DISMISSED: 'paywall_dismissed',
 
+  // v1.2.15 nudges — measure whether the celebration + limit-reached
+  // nudges actually convert. Each nudge fires _shown once when it opens,
+  // _upgrade_tap when the user hits Unlock Pro, _dismiss on cancel/close.
+  // Compare shown→upgrade_tap vs shown→dismiss for conversion rate.
+  FIRST_QUOTE_NUDGE_SHOWN: 'first_quote_nudge_shown',
+  FIRST_QUOTE_NUDGE_UPGRADE_TAP: 'first_quote_nudge_upgrade_tap',
+  FIRST_QUOTE_NUDGE_DISMISS: 'first_quote_nudge_dismiss',
+  PDF_LIMIT_NUDGE_SHOWN: 'pdf_limit_nudge_shown',
+  PDF_LIMIT_NUDGE_UPGRADE_TAP: 'pdf_limit_nudge_upgrade_tap',
+  PDF_LIMIT_NUDGE_DISMISS: 'pdf_limit_nudge_dismiss',
+
+  // v1.2.15 Add to Calendar — track whether the feature is discovered
+  // and used. Property `source` is 'quote' | 'contract' so we can see
+  // which surface drives adoption.
+  ADD_TO_CALENDAR_TAPPED: 'add_to_calendar_tapped',
+
   // Errors
   ERROR_OCCURRED: 'error_occurred',
 } as const;
