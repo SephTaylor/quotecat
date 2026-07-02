@@ -77,6 +77,76 @@
     }
   });
 
+  // Scroll depth tracking. Fires page_scroll_depth at 25/50/75/100% the
+  // first time each threshold is reached on the current page. Passive
+  // listener + rAF-style ticking so it doesn't fight with smooth scrolling.
+  // Lets us segment "read past the fold" vs "bounced at hero" in PostHog
+  // without pulling in session replay's overhead.
+  function initScrollDepth() {
+    var milestones = [25, 50, 75, 100];
+    var hit = {};
+    var scheduled = false;
+
+    function measure() {
+      scheduled = false;
+      var doc = document.documentElement;
+      var body = document.body;
+      var scrollTop = window.pageYOffset || doc.scrollTop || body.scrollTop || 0;
+      var viewport = window.innerHeight || doc.clientHeight || 0;
+      var full = Math.max(
+        body.scrollHeight, doc.scrollHeight,
+        body.offsetHeight, doc.offsetHeight,
+        body.clientHeight, doc.clientHeight
+      );
+      var scrollable = full - viewport;
+      if (scrollable <= 0) {
+        // Nothing to scroll — page fits in the viewport. Fire 100 once so
+        // we can see "viewed fully but page was short" pages.
+        if (!hit[100]) {
+          hit[100] = true;
+          try {
+            posthog.capture('page_scroll_depth', {
+              depth: 100,
+              page: window.location.pathname,
+              viewport_only: true,
+            });
+          } catch (e) { /* swallow */ }
+        }
+        return;
+      }
+      var pct = Math.round(((scrollTop + viewport) / full) * 100);
+      for (var i = 0; i < milestones.length; i++) {
+        var m = milestones[i];
+        if (pct >= m && !hit[m]) {
+          hit[m] = true;
+          try {
+            posthog.capture('page_scroll_depth', {
+              depth: m,
+              page: window.location.pathname,
+            });
+          } catch (e) { /* swallow */ }
+        }
+      }
+    }
+
+    function onScroll() {
+      if (scheduled) return;
+      scheduled = true;
+      window.requestAnimationFrame(measure);
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // Also measure on load in case the page fits in the viewport (short
+    // pages like /support/ never trigger scroll and would otherwise show
+    // no depth signal at all).
+    measure();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initScrollDepth);
+  } else {
+    initScrollDepth();
+  }
+
   // Calculator engagement: any page whose <body> carries data-calculator="{name}"
   // fires calculator_engaged the first time the visitor meaningfully touches an
   // input on the page. Distinguishes "used it" from "landed and bounced" in
