@@ -106,6 +106,21 @@ async function saveSyncMetadata(metadata: SyncMetadata): Promise<void> {
 }
 
 /**
+ * Is cloud sync available for the current user? Assemblies are a Pro/Premium
+ * feature — Free users have no RLS-permitted write access on the assemblies
+ * table. Without this guard, background sync attempts trigger noisy
+ * PostgREST 42501 errors ("new row violates row-level security policy")
+ * that surfaced to Free users as console errors during in-app testing.
+ */
+export async function isAssemblySyncAvailable(): Promise<boolean> {
+  const userId = await getCurrentUserId();
+  if (!userId) return false;
+  const { getUserState } = await import("./user");
+  const userState = await getUserState();
+  return userState?.tier === "pro" || userState?.tier === "premium";
+}
+
+/**
  * Upload a single assembly to Supabase
  */
 export async function uploadAssembly(assembly: Assembly): Promise<boolean> {
@@ -115,6 +130,11 @@ export async function uploadAssembly(assembly: Assembly): Promise<boolean> {
       console.warn("Cannot upload assembly: user not authenticated");
       return false;
     }
+
+    // Defensive tier check. syncAssemblies() and the auth.ts call site
+    // should never invoke this for a Free user, but if they do, we bail
+    // cleanly instead of surfacing an RLS violation.
+    if (!(await isAssemblySyncAvailable())) return false;
 
     // Only sync items with fixed qty (filter out qtyFn items which can't be serialized)
     // Preserve name for unavailable product display
@@ -321,6 +341,14 @@ export async function syncAssemblies(): Promise<{
   downloaded: number;
   uploaded: number;
 }> {
+  // Assemblies are Pro/Premium only. Bail immediately for Free-tier users
+  // so we don't attempt writes that RLS will refuse — a Free user opening
+  // the app was firing "row-level security policy" console errors before
+  // this check landed.
+  if (!(await isAssemblySyncAvailable())) {
+    return { success: true, downloaded: 0, uploaded: 0 };
+  }
+
   await clearStaleLock();
 
   const canSync = await checkSyncCooldown();

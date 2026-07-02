@@ -8,7 +8,7 @@ import { syncQuotes, hasMigrated, migrateLocalQuotesToCloud } from "./quotesSync
 import { syncClients, migrateLocalClientsToCloud } from "./clientsSync";
 import { syncInvoices, hasInvoicesMigrated, migrateLocalInvoicesToCloud } from "./invoicesSync";
 import { syncPricebook } from "./pricebookSync";
-import { syncAssemblies, hasAssembliesMigrated, migrateLocalAssembliesToCloud } from "./assembliesSync";
+import { syncAssemblies, hasAssembliesMigrated, migrateLocalAssembliesToCloud, isAssemblySyncAvailable } from "./assembliesSync";
 import { syncBusinessSettings, downloadBusinessSettings } from "./businessSettingsSync";
 import { syncTeamMembers } from "./teamMembersSync";
 import { syncChangeOrders, isChangeOrderSyncAvailable } from "./changeOrdersSync";
@@ -291,8 +291,10 @@ async function runBackgroundSync(): Promise<void> {
 
   // Sync assemblies for Pro/Premium users
   try {
-    await syncAssemblies();
-    await gcBreak();
+    if (await isAssemblySyncAvailable()) {
+      await syncAssemblies();
+      await gcBreak();
+    }
   } catch (error) {
     console.error("❌ Assemblies sync failed:", error);
   }
