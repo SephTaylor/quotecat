@@ -45,6 +45,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SwipeableQuoteItem } from "@/components/SwipeableQuoteItem";
 import { QuoteGroup } from "@/components/QuoteGroup";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
+import { QuotesEmptyState } from "@/components/QuotesEmptyState";
 import { GradientBackground } from "@/components/GradientBackground";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -977,26 +978,18 @@ export default function QuotesList() {
               );
             }}
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>
-                  {selectedStatus === "all" && searchQuery === ""
-                    ? "No quotes yet"
-                    : searchQuery !== ""
-                    ? "No matches"
-                    : selectedStatus === "followup"
-                    ? "No follow-ups due"
-                    : `No ${selectedStatus} quotes`}
-                </Text>
-                <Text style={styles.emptyDescription}>
-                  {selectedStatus === "all" && searchQuery === ""
-                    ? "Tap the + to start"
-                    : searchQuery !== ""
-                    ? `Try a different search term`
-                    : selectedStatus === "followup"
-                    ? "You're all caught up!"
-                    : `Tap the + to start`}
-                </Text>
-              </View>
+              searchQuery !== "" ? (
+                <QuotesEmptyState onPress={handleCreateNewQuote} variant="filtered" />
+              ) : selectedStatus === "followup" ? (
+                <QuotesEmptyState onPress={handleCreateNewQuote} variant="followup" />
+              ) : selectedStatus === "all" ? (
+                <QuotesEmptyState onPress={handleCreateNewQuote} variant="start" />
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyTitle}>{`No ${selectedStatus} quotes`}</Text>
+                  <Text style={styles.emptyDescription}>Tap the + to start</Text>
+                </View>
+              )
             }
           />
         )}

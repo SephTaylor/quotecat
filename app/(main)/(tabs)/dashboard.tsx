@@ -19,11 +19,12 @@ import { SwipeableContractItem } from "@/components/SwipeableContractItem";
 import { QuoteGroup } from "@/components/QuoteGroup";
 import { UndoSnackbar } from "@/components/UndoSnackbar";
 import { GradientBackground } from "@/components/GradientBackground";
-import { OnboardingFlow } from "@/components/OnboardingFlow";
+import { SetupProgressCard } from "@/components/SetupProgressCard";
+import { DashboardHeroCard } from "@/components/DashboardHeroCard";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshEvents, REFRESH_QUOTES_LIST, RESUME_ONBOARDING } from "@/lib/refreshEvents";
-import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getLastSyncTime, isSyncAvailable, syncQuotes } from "@/lib/quotesSync";
 import { syncInvoices } from "@/lib/invoicesSync";
 import { syncClients } from "@/lib/clientsSync";
@@ -93,7 +94,16 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [defaultLaborRate, setDefaultLaborRate] = useState(0);
   const [defaultLaborCostRate, setDefaultLaborCostRate] = useState(0);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  // Setup progress card visibility. Session-scoped: dismissing hides it
+  // for this run of the app but not permanently. If the user hasn't
+  // completed setup, we surface it again on next launch. Once every
+  // setup step is complete, SetupProgressCard renders nothing regardless.
+  const [showSetupCard, setShowSetupCard] = useState(true);
+  // First-quote hero visibility. Session-scoped like showSetupCard: X
+  // dismisses for this run only, comes back next launch until the user
+  // actually makes a quote or invoice (at which point the render gate on
+  // quotes.length / invoices.length hides it permanently).
+  const [showHero, setShowHero] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // Track when we last loaded data (for smart refresh after sync)
@@ -123,21 +133,13 @@ export default function Dashboard() {
       const members = getLocalTeamMembers();
       setTeamMembers(members);
 
-      // Check if onboarding should show (first launch)
-      // Gate on actual data completeness as well — a user signing in on a new device
-      // (or any user whose preferences arrived via cloud sync) has populated company/
-      // overhead/pricing blocks but no completedAt flag. Without this check, the wizard
-      // launches, the user accepts defaults, and the real settings get clobbered with empties.
-      const hasCompleted = !!prefs.onboarding?.completedAt;
-      const hasSkipped = !!prefs.onboarding?.skippedAt;
-      const hasMeaningfulData = !!(
-        prefs.company?.companyName ||
-        prefs.overhead?.annualOverhead ||
-        prefs.pricing?.defaultLaborRate
-      );
-      if (!hasCompleted && !hasSkipped && !hasMeaningfulData) {
-        setShowOnboarding(true);
-      }
+      // Old blocking-modal onboarding was removed in the July 2026
+      // activation refactor. New users now land directly on the app
+      // (empty Quotes tab → prominent "Start my first quote" CTA) and
+      // see the SetupProgressCard as a non-blocking dashboard nudge.
+      // The prefs.onboarding.completedAt / skippedAt fields still exist
+      // for backward compatibility with existing users; new signups just
+      // never populate them.
 
       const syncTime = await getLastSyncTime();
       setLastSyncTime(syncTime);
@@ -203,10 +205,13 @@ export default function Dashboard() {
     return unsubscribe;
   }, [load]);
 
-  // Listen for resume onboarding event (from notification tap)
+  // Legacy RESUME_ONBOARDING handler kept as a no-op: nothing emits this
+  // event today, and the old blocking-modal flow it drove was removed in
+  // the July 2026 activation refactor. If we ever want to re-surface the
+  // setup nudge on demand, un-hide the SetupProgressCard here instead.
   useEffect(() => {
     const unsubscribe = RefreshEvents.subscribe(RESUME_ONBOARDING, () => {
-      setShowOnboarding(true);
+      setShowSetupCard(true);
     });
     return unsubscribe;
   }, []);
@@ -732,16 +737,29 @@ export default function Dashboard() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          {/* Welcome message */}
-          <View style={styles.welcomeSection}>
-            <Text style={styles.welcomeText}>Welcome back!</Text>
-            <Text style={styles.welcomeSubtext}>Here&apos;s your business overview</Text>
-            {syncAvailable && lastSyncTime && (
-              <Text style={styles.syncIndicator}>
-                ☁️ Synced {formatSyncTime(lastSyncTime)}
-              </Text>
-            )}
-          </View>
+          {/* Subtle sync indicator — the old "Welcome back!" filler
+              header was removed 2026-07-02. Returning users don't need to
+              be told they're on the Dashboard, and "back" is a lie for
+              first-timers anyway. */}
+          {syncAvailable && lastSyncTime && (
+            <Text style={styles.syncIndicator}>
+              ☁️ Synced {formatSyncTime(lastSyncTime)}
+            </Text>
+          )}
+
+          {/* First-run hero — only when the user has literally nothing
+              yet. Sits above SetupProgressCard so the activation moment
+              ("make your first quote") beats the homework nudge. */}
+          {showHero && quotes.length === 0 && invoices.length === 0 && (
+            <DashboardHeroCard
+              onPress={() => router.push("/quote/new/edit")}
+              onDismiss={() => setShowHero(false)}
+            />
+          )}
+
+          {showSetupCard && (
+            <SetupProgressCard onDismiss={() => setShowSetupCard(false)} />
+          )}
 
           {/* Quick Stats */}
           {preferences.showStats && (
@@ -1031,19 +1049,9 @@ export default function Dashboard() {
     {/* Quote Wizard FAB - outside GestureHandlerRootView for Android compatibility */}
     <WizardFAB />
 
-    {/* Onboarding Modal */}
-    <Modal
-      visible={showOnboarding}
-      animationType="slide"
-      presentationStyle="pageSheet"
-    >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <OnboardingFlow
-          onComplete={() => setShowOnboarding(false)}
-          tier={isPremium ? 'premium' : isPro ? 'pro' : 'free'}
-        />
-      </GestureHandlerRootView>
-    </Modal>
+    {/* Blocking onboarding modal removed 2026-07-02. The new pattern is
+        a non-blocking SetupProgressCard rendered inline near the top of
+        the dashboard scroll view — see where it's mounted above. */}
 
     {/* Create Tier Modal */}
     <TextInputModal
@@ -1141,8 +1149,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     syncIndicator: {
       fontSize: 12,
       color: theme.colors.muted,
-      marginTop: 8,
+      marginTop: 4,
+      marginBottom: theme.spacing(1.5),
       opacity: 0.7,
+      textAlign: "right",
     },
     statsGrid: {
       flexDirection: "row",
