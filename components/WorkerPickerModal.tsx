@@ -275,17 +275,28 @@ export function WorkerPickerModal({
                     onPress={() => setShowNewForm(true)}
                     hitSlop={8}
                     style={styles.addNewBtn}
+                    accessibilityLabel="Add new worker"
                   >
-                    <Ionicons name="add-circle" size={24} color={theme.colors.accent} />
+                    <Ionicons name="add-circle" size={20} color={theme.colors.accent} />
+                    <Text style={styles.addNewLabel}>New</Text>
                   </Pressable>
                 </View>
 
                 {/* Worker List */}
                 <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
                   {filteredMembers.length === 0 ? (
-                    <Text style={styles.emptyText}>
-                      {search ? "No workers found" : "No team members yet"}
-                    </Text>
+                    <View style={styles.emptyStateContainer}>
+                      <Text style={styles.emptyText}>
+                        {search ? "No workers found" : "No team members yet"}
+                      </Text>
+                      <Pressable
+                        style={styles.emptyStateAddBtn}
+                        onPress={() => setShowNewForm(true)}
+                      >
+                        <Ionicons name="add-circle" size={18} color="#000" />
+                        <Text style={styles.emptyStateAddText}>Add a new worker</Text>
+                      </Pressable>
+                    </View>
                   ) : (
                     filteredMembers.map((member) => {
                       const alreadyAssigned = isAlreadyAssigned(member.id);
@@ -537,7 +548,36 @@ function createStyles(
       flex: 1,
     },
     addNewBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
       marginLeft: theme.spacing(1),
+      paddingHorizontal: theme.spacing(1),
+      paddingVertical: theme.spacing(0.5),
+    },
+    addNewLabel: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: theme.colors.accent,
+    },
+    emptyStateContainer: {
+      alignItems: "center",
+      paddingVertical: theme.spacing(4),
+    },
+    emptyStateAddBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing(2),
+      paddingVertical: theme.spacing(1.25),
+      borderRadius: theme.radius.md,
+      marginTop: theme.spacing(1.5),
+    },
+    emptyStateAddText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#000",
     },
     // New worker form styles
     newWorkerForm: {

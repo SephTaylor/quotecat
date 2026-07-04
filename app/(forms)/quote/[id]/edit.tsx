@@ -18,7 +18,7 @@ import {
   useRouter,
 } from "expo-router";
 import React, { useEffect, useState, useCallback } from "react";
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SwipeableMaterialItem } from "@/components/SwipeableMaterialItem";
 import { SwipeableLaborEntry } from "@/components/SwipeableLaborEntry";
@@ -2172,11 +2172,19 @@ export default function EditQuote() {
         animationType="fade"
         onRequestClose={() => setEditingCustomItem(null)}
       >
-        <Pressable
-          style={styles.pickerOverlay}
-          onPress={() => setEditingCustomItem(null)}
+        {/* Tap-outside dismisses the keyboard, not the modal. Previously
+            it closed the modal, which lost unsaved edits — Mike's bug
+            report on v1.2.14. The X and Cancel buttons remain the only
+            ways to close. */}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <Pressable style={styles.customEditContent} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={styles.pickerOverlay}
+            onPress={() => Keyboard.dismiss()}
+          >
+            <Pressable style={styles.customEditContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>Edit Item</Text>
               <Pressable
@@ -2241,6 +2249,7 @@ export default function EditQuote() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Create Tier Modal */}
