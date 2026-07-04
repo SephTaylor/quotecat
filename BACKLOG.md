@@ -2,8 +2,8 @@
 
 **Canonical "what's left" index across the QuoteCat ecosystem.** One scannable list. For full design context on any item, drill into the linked source file.
 
-**Last updated:** 2026-06-09 (v1.2.8 shipped to ASC + Play Internal; v1.2.7 fully live on both stores)
-**Sources merged:** `FOLLOWUPS.md`, `CLAUDE.md`, `docs/codebase-health-audit-2026-06-01.md`, `quotecat-portal/docs/office-role-plan.md`, this session's conversation, code-level TODOs.
+**Last updated:** 2026-07-04 (v1.2.17 shipping — Mike-feedback fixes + CO discoverability)
+**Sources merged:** prior BACKLOG.md, `FOLLOWUPS.md`, `CLAUDE.md`, portal plan-review system, this session's conversation, code-level TODOs.
 
 ---
 
@@ -11,157 +11,97 @@
 
 Items where I think the work might already be done but couldn't auto-verify. **Please confirm status — if shipped, move to "Done" section.**
 
-- [ ] **`1modernrelic@gmail.com` undiscovered 9th paid user** — FOLLOWUPS.md notes this as "resolved" in body text but item still listed under "Open." Move to Done if you agree. (`FOLLOWUPS.md:285`)
-- [ ] **CLAUDE.md drift items (8 specific stale claims)** — Tier 1 of the audit. Includes "all data local" misleading, Drew tier gating ambiguity, "1Build" should be xByte, xByte status, etc. (`docs/codebase-health-audit-2026-06-01.md:195`)
-- [ ] **`@types/uuid` Tier 1 item** — partially attempted June 2, rolled back due to uuid major-version jump. Status: still open with a specific path forward documented. (`docs/codebase-health-audit-2026-06-01.md:194`)
-- [ ] **Stripe webhook fix in portal — "13 modified files + 2 untracked" caveat is now outdated** — those files were committed tonight (`af14eff`). Confirm the OTHER parts of that FOLLOWUPS entry (`PRICE_TO_TIER` map refresh, RPC migration, invite flow, welcome email) are still open. (`FOLLOWUPS.md:119-205`)
-- [ ] **Items from CLAUDE.md "Pending Features (Stashed)"** — that section names features stashed in November 2025. Worth verifying which ones eventually shipped (e.g., taxPercent, client contact fields, Quick Invoice). (`CLAUDE.md`, section "📋 Pending Features (Stashed - Nov 24, 2025)")
+- [ ] **Marketing copy ↔ card payments alignment** — was deferred 2026-06-23 pending `card_payments_enabled` flag flip. Card payments *did* ship in v1.2.9. Need to verify (a) the flag is flipped in prod, (b) the homepage / FAQ / tier cards / llms.txt sweep was executed. If flag is still off, remains blocked; if flipped without the sweep, still open.
+- [ ] **Portal Stripe webhook handler for marketing-site subscriptions** — significant portal work landed since (`531fc7c` split Connect events, `575f8e2` dedicated /webhook/payments). Verify `PRICE_TO_TIER` map refresh, invite flow for new marketing-site customers, welcome email. May or may not be fully done.
+- [ ] **`@types/uuid` Tier 1 item** — was rolled back June 2 due to uuid major-version jump. Re-attempt when convenient.
+- [ ] **CLAUDE.md drift items (8 stale claims)** — Tier 1 audit item. Includes "all data local" misleading, Drew tier gating, xByte status. Some may have naturally corrected via later doc passes.
+- [ ] **Wyatt + Drew TestFlight → public App Store transition** — was operational pending Apple review at v1.2.6. Multiple public releases have shipped since (v1.2.7 → v1.2.17). Presumed done.
+- [ ] **`1modernrelic@gmail.com` undiscovered 9th paid user** — FOLLOWUPS.md notes as "resolved" in body text but item still listed under "Open." Confirm and move.
+- [ ] **Sentry source maps upload** — status unknown. Confirm whether ever configured. If not, still ~15 min config.
 
 ---
 
-## 🟠 Tomorrow
+## 🟠 Tomorrow / near-term
 
-- **Office Staff role build** — third team-member role, portal-only, unlimited free seats on Premium. ~6h. Spec at `quotecat-portal/docs/office-role-plan.md`. Includes one coordinated mobile sign-in block (the only mobile change needed).
-- **🚨 Netlify Node 22 cutover (by 2026-06-16)** — `quotecat-portal/netlify.toml` pins `NODE_VERSION = "20"`. Netlify is forcing system Node 22 on June 16, after which `@netlify/plugin-nextjs` won't run on the old version. Fix: bump to `"22"` and push. ~2 min. Surfaced during v1.2.9 deploy 2026-06-12.
-- **Revert verbose Stripe error message before live launch** — `quotecat-portal/src/app/api/stripe/connect/route.ts` currently returns the raw Stripe SDK error message in 500 responses (commit `0fab2f7`, 2026-06-12). Added to diagnose the v1.2.9 sim sandbox auth flow. Fine in test mode; in live mode leaks internal detail to client-facing UI. Revert to the generic "Failed to create Stripe account" response before flipping `card_payments_enabled=true`. ~2 min.
-- **Netlify plugin-nextjs bump** — `@netlify/plugin-nextjs@5.15.3` is outdated; latest is `5.15.11`. Patch versions, non-breaking. Bump in `package.json`, redeploy. ~5 min. Pair with the Node 22 cutover above.
-- **🚨 Marketing copy ↔ card payments alignment** — Currently the live homepage and llms.txt market card payment acceptance as if it works for Pro tier, but `card_payments_enabled` flag is `false` in production and zero contractors have working Stripe Connect setup. **Deferred 2026-06-23 because we expect to verify the chain + flip the flag within 1-2 days.** When card payments go live, this becomes a 15-min copy sweep: (a) replace homepage feature card "Keep 100% of Payments" + "No payment processing fees. Ever." (still on the live page) with scoped framing per locked brand-framing memory; (b) replace "zero additional fees" in all three tier card descriptions with scoped framing; (c) update FAQ schema "All plans include zero additional fees" text; (d) llms.txt is already correctly scoped on the payment-fee framing but explicitly claims Pro has "card payment acceptance via Stripe Connect" — re-verify that claim is true after the flag flips. **Implicit constraint**: do NOT execute the outreach plan (Mike/DN/Wyatt intros, FB post replications, G2/Capterra, YouTuber DMs) until card payments are verified — driving real contractors into a broken funnel burns first impressions.
-
-- **Sentry source maps upload** — without this, every production crash is minified gibberish. ~15 min config + one build cycle. Full procedure documented. (`FOLLOWUPS.md:102-117`)
-- **Portal Stripe webhook handler is broken for marketing-site subscriptions** — `PRICE_TO_TIER` map references dead Stripe price IDs, doesn't write to new `subscriptions` table, no invite flow for new customers, no welcome email. Premium purchasers silently downgraded to Pro. (`FOLLOWUPS.md:119-205`)
-- **Stripe secret key rotation** — `sk_live_...0J00JmrGyvUO` was pasted into a Claude chat 2026-04-28. (`FOLLOWUPS.md:232`)
-- **Delete orphaned `sk_live_...NZXG` Stripe secret** — unused since Jan 17. (`FOLLOWUPS.md:238`)
-- **`.env`-in-git-history credential rotation** — rotate `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, `SUPABASE_ACCESS_TOKEN`. (`FOLLOWUPS.md:252-262`)
-- **Apple review of v1.2.6** — pending, operational. When clears, push "Pricing Health Check" headline copy to homepage.
-- **Wyatt + Drew TestFlight → public App Store transition** — operational, after v1.2.6 clears.
+- **Credential rotations** — Stripe secret (was pasted into a Claude chat 2026-04-28), .env-in-git-history keys (`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, `SUPABASE_ACCESS_TOKEN`), orphaned `sk_live_...NZXG` unused since Jan 17. Rotate systematically. Full procedure at `FOLLOWUPS.md:232-262`.
+- **Post-1.2.17 verification pass** — TestFlight processing + Play Console internal delivery for build 226/73 (Mike fixes) and build 227/74 (CO empty state). Confirm both land, notify Mike so he can test the Edit Item fix.
+- **Mike's Billing Workflow (v2) plan — awaiting sign-off** — refined answers on Q1 / Q2 / Q3 pushed to portal 2026-07-04 (`fbc42a6`). Mike has been messaged. Once he confirms the direction, unblocks the CO buildout below.
+- **Assembly sync RLS root cause** — this session diagnosed the sync error as account-switch data collision (previous user's data in local SQLite colliding with new user's session). Deferred fix, but worth investigating post-launch. Related to the "User Data Isolation on Account Switch" note in CLAUDE.md.
 
 ---
 
-## 🟡 v1.2.7 — Mike-response sprint (~5-7h, JS-only)
+## 🎯 Billing Workflow buildout (post-Mike-signoff)
 
-**Approved scope after web Claude peer review (2026-06-09):** original v1.2.7 was a 15-item mega-bundle that reproduced the v1.2.6 antipattern, collided Stripe with the founder-video messaging moment, and underweighted two-codebase deployment skew. Split into deliberate releases. v1.2.7 is now the pure Mike-response sprint. Full implementation plan: `~/.claude/plans/declarative-sparking-oasis.md`.
+The manual Change Order flow Mike approved in Billing Workflow (v2). Blocked on his sign-off of the three refined questions. Once he says go:
 
-### Pre-work
-- ✅ **Prod DB `quotes.status` CHECK constraint** — verified 2026-06-09. Live constraint allows `'draft', 'sent', 'approved', 'declined', 'completed', 'archived'` — matches `lib/types.ts` exactly. No drift. v1.3.0 Request Changes migration just needs `ALTER TABLE quotes DROP CONSTRAINT + ADD CONSTRAINT` with `'needs_revision'` appended. (Bonus: currency constraint allows `USD, CAD, EUR, CRC` — Costa Rica colón already in there.)
-- **10-min `expo-print` href survival spike** — generate PDF with anchor tag, open in iOS Files / sim, tap. Cash App / PayPal use HTTPS URLs (open Safari if href survives); Venmo uses `venmo://` (needs device with Venmo). If hrefs survive → tappable claim is true. If stripped → drop the tappable-links line from release notes (anchors degrade to plain text — zero regression). Still outstanding.
-
-### Mike's feedback items
-- **Rename "Create Tier" → "Add Option"** — display strings only at `edit.tsx:1948,2071,2072,2073,2074`, `quotes.tsx:1036,1037,1038,1039`, `dashboard.tsx:988,989,990,991`, `SwipeableQuoteItem.tsx:230`. ZERO code/var/column renames. Bundle mechanics untouched. ~30 min.
-- **Auto-prompt "Mark as Sent?" on quote PDF export** — `review.tsx` after `handleExportPDF:129` resolves, if status === "draft", prompt to flip to Sent. ~1h.
-- **Payment methods on quote PDFs** — extract `lib/pdf.ts:560-589` payment-methods block into shared helper; wire to `generateQuoteHTML:25`; delete stale comment at line 549. ~1h.
-- **Tappable payment links in PDFs** — Venmo / Cash App / PayPal anchor tags with URI schemes. Zelle / check / wire / other stay text-only. Conditional on href spike result. ~30 min - 3h.
-- **Clearer in-quote status control signposting** — `edit.tsx:1068-1087` chips are already Pressable; subtle border + chevron + "Status" label. ~30-45 min.
-
-### Bug fix from Mike triage
-- **Auto-approve prompt on Quote → Contract path** — `review.tsx:445` `handleCreateContract`, before calling `createContractFromQuote`, check status. If not Approved/Completed, show *"Mark as Approved and continue?"* alert. Fixes silent-null at `lib/contracts.ts:53`. ~1h.
-
-### Adjacent tinies (JS, low-risk, ride with the sprint)
-- **Export menu locks** — `review.tsx:501-614` show all options with 🔒 prefix on tier-gated entries; tap → paywall. Same on Android Alert variant 564-612. ~45 min.
-- **Duplicate-email signup UX fix** — check `data.user.identities.length === 0` after `signUp()` in `sign-up.tsx:268` (email/password) and `:214` (Google OAuth — corrected from prior :195). Show "Email already registered" with Sign In button. ~15 min.
+- **Manual "+ New Change Order" flow** (the actual code for the plan). First-class CO creation on approved quotes (Pro+) and contracts (Premium). New CO builder form: description, amount, optional line items, optional schedule. Not diff-triggered — user-initiated.
+- **Complete button on CO detail view** — implementing the "Bill in full when complete" default. Tap Complete → "Send $X invoice for CO 1000.1?" → one confirm fires the invoice.
+- **Nested CO numbering** — 1000.1 → 1000.1.2 → 1000.1.2.3. Auto-assigned, no cap. Per-CO cost tracking for job-costing.
+- **CO-level payment schedules** — each CO can carry its own optional schedule independent of the parent contract's schedule.
+- **Per-CO signatures** — same dual-signature flow as the parent contract, portal handoff, Sign / Decline / Request Changes on the customer end.
+- **Schedule amendment flow** — Required Acknowledge by default with 7-day contractor override ("confirmed via phone / email / in-person" + text note). Light "Schedule Amendment" affidavit for larger amendments.
+- **Delete auto-detect CO flow** — after manual create ships, decide whether to keep the current diff-triggered auto-detect flow or scrap it (my rec: scrap; contractors should be actor, not app).
+- **GC middleman contact-copy** — "Notify additional contacts on amendments" field on contract; contractor copies both GC and end customer. Backlog per Mike's Q1 comment. Not v1.3, don't lose it.
 
 ---
 
-## 🟡 v1.2.9 — Card payments (Pro+ feature) (~9-12h, ships exactly 2 weeks post-founder-video)
+## 🎯 Mike's other plans (in review or awaiting review)
 
-> **Renumbered 2026-06-09:** was v1.2.8; user chose to pull pricebook power-up forward as the next release. Card payments now sit behind it in the queue. Founder-video timing discipline still holds — v1.2.9 ships 2 weeks after the video drops, not based on v1.2.8 timing.
-
-**Why deferred from v1.2.7:** Stripe charges contractors ~2.9%+30¢ (Stripe's fee, not ours). Ships card payments too close to the founder video's "keep every dollar" punch and the optics get muddied — even though the claim stays accurate, the audience hasn't had time to absorb it. Defer 2 weeks past the video drop (fixed delay, not a "measure when the moment lands" vibe — that's ungameable). Use the gap to prepare the deliberate framing instead of trying to time the social signal.
-
-**Brand framing (locked 2026-06-09 after web Claude peer review):** *"QuoteCat never takes a cut of any payment, ever. The no-fee methods — Zelle, cash, check — are there for everyone. Card always carries a processor fee (Stripe's, not ours); a couple of other methods can too."* This is the honest version of what was originally "card is the only thing that costs money" — Stripe's fee comes out of what the contractor receives (they get ~97% of card payments), not what the customer pays; and Venmo G&S / PayPal G&S / Cash App Business all carry seller fees too depending on how the contractor configures them. Use this framing verbatim in BACKLOG justification, in-app copy, release notes, and the proactive video follow-up note. **Core story:** Free tier = the genuinely-free path (Zelle / cash / check, plus optional configuration of fee-bearing methods at the contractor's discretion). Card = the paid convenience that always carries a processor fee.
-
-**Architectural rule (locked 2026-06-09):** Free contractors NEVER share a QuoteCat-hosted URL, link, QR, or web page with their customer. The entire web layer (Share-as-Link, `/pay/[id]`, `/q/[id]`, `/c/[id]`) is exclusively Pro+. Free's customer-facing surface is the PDF only — no QR, no payment URL, nothing pointing to QuoteCat. Card payments therefore become a Pro+ feature.
-
-**Strategic fork named explicitly (per web Claude 2026-06-09):** Two coherent strategies exist for card payments:
-- **Strategy A (LOCKED) — Card is the Pro hook.** Stripe Connect available only to Pro+. Free has no path to card payments. Bundles cleanly with the Pro web-surface upgrade.
-- **Strategy B (rejected, named for honesty) — Card universal via Stripe-hosted Payment Links.** Stripe Payment Links (`pay.stripe.com/...`) live on Stripe's domain, NOT QuoteCat's. A Free contractor could put a Stripe Payment Link on their PDF and accept cards without ever touching a QuoteCat-hosted page. The Pro hook would then be the unified web experience (tappable methods, status sync), not card access itself. Coherent but rejected because it puts more support surface on QuoteCat for less differentiation.
-
-**Signals to watch post-launch (revisit Strategy A if either fires):**
-- Free→Pro conversion rate (quantitative, PostHog) — if it doesn't move on this release
-- Qualitative sentiment from Mike + support inbox + user feedback for "I lost a client because I couldn't take cards" — approximate signal, not dashboard-able, but real
-
-### Scope
-
-- **Stripe Connect collection — Pro and Premium** — Move Stripe Connect onboarding from Premium-portal-only to Pro+ mobile. (Premium retains portal access too.) New `lib/stripeConnect.ts` wrapper using `expo-web-browser` `WebBrowser.openAuthSessionAsync`. New screen inside existing Business Settings → Payment Collection section at `business-settings.tsx:277-297` as a sibling tile to existing Payment Methods (rename to "Other Payment Methods" for clarity). Tier-gated at mount: Free → paywall fires via `presentPaywallAndSync()`. Portal API route at `quotecat-portal/src/app/api/stripe/connect/route.ts` has no internal tier check — accept `source=mobile` param in POST body to adjust `return_url` to a mobile-friendly close-session page (no `app.json` deep-link scheme needed). Stripe **Checkout** (not Elements) for the card-pay flow — solo dev shouldn't build custom PCI UI; revisit only if conversion data demands it. Apple compliance OK (contractor's merchant account, not IAP). Pro and Premium get identical card capability — no artificial Premium-only card perk (Premium's differentiator is contracts + team management, not cards). ~6-7h.
-- **Tappable payment methods + Stripe card button on Pro+ portal pages** — On `quotecat-portal/src/app/pay/[id]/page.tsx` (lines 169-179 currently render methods as plain text), upgrade Venmo / Cash App / PayPal to real `<a href>` tags using the URI schemes from `lib/pdf.ts:buildPaymentLink` (browsers don't strip hrefs the way `expo-print` does — they actually work on the web). Add a "Pay by Card" button that fires Stripe Checkout when the contractor has Stripe Connect set up + the launch feature flag is enabled (see deployment-skew note below). Apply same pattern to `/q/[id]/QuoteView.tsx`, `/q/[id]/TierGroupView.tsx`, `/c/[id]/ContractView.tsx`. Page reads contractor tier from the invoice/quote/contract — Pro+ → full tappable; if a Free contractor's record somehow loads → degrade to plain text (defense-in-depth, but Free never has a path to share these URLs in the first place). ~45 min - 1h portal work.
-- **🚨 Deployment-skew mitigation (CRITICAL — web Claude catch 2026-06-09)** — Portal deploys instantly when merged; mobile is gated behind Apple review (24-48h, possibly weeks if rejected). Without a feature flag, the portal's new "Pay by Card" button + tappable hrefs go live BEFORE Pro contractors have a mobile path to enable Stripe Connect (the portal dashboard is Premium-only, so Pro contractors literally have no setup surface until mobile lands). **Fix:** add a `card_payments_enabled` boolean flag (env var or a single row in a `feature_flags` table, your call). Portal Pay-by-Card button + tappable hrefs render only when the flag is true. Flip the flag *after* the mobile build is approved AND propagating to TestFlight / production. ~10 min portal work + the discipline to not flip the flag early. This is the same shape as the Request Changes deployment skew we flagged in v1.2.7 planning — don't repeat the mistake.
-- **Locked "Card Payments (Pro)" tile in mobile Business Settings** — Visible to Free with parenthesized tier suffix; tap fires `presentPaywallAndSync()`. Same upsell pattern as v1.2.7 export menu locks. Reinforces upgrade story without exposing capability. ~30 min.
-- **Stripe support FAQ / help-doc (NEW — web Claude catch 2026-06-09)** — More Pro+ contractors onboarding to Stripe = more "payout didn't arrive," "verification failed," "1099-K showed up," "dispute came in" questions hitting the support inbox. Stripe handles the actual compliance/processing, but the volume of "I don't know if this is QuoteCat or Stripe" tickets goes up. Prep a help-doc *before* launch with top 5-7 questions + clear "Stripe handles this (contact them at...)" vs "QuoteCat handles this (here's where...)" routing. ~1h. Saves real triage time later for solo-dev support load.
-- **Proactive video follow-up note (NEW — web Claude catch 2026-06-09)** — Goes on the same channel as the founder video, ~2 weeks after the video drops, on or just before v1.2.8 launch. Two paragraphs max. Owns the addition loudly instead of hoping no one connects the dots — that's a trust win, not damage control. Draft (use the locked brand framing verbatim):
-  > *"You asked about cards. Here's how I think about it: QuoteCat still takes nothing on any payment, ever. The no-fee methods — Zelle, cash, check — are there for everyone. Card always carries a processor fee (Stripe's, not ours); a couple of other methods can too. Card is in if you need it. Most QuoteCat contractors will never enable it because Venmo and Zelle handle the job — and that's the point."*
-- **Google OAuth duplicate-email check** — Ride-along investigation only if scoped to <30 min and self-contained. The v1.2.7 fix patched the email/password `signUp` path; OAuth uses `signInWithIdToken` which surfaces duplicate-account-via-different-provider conflicts differently. Skip if it pulls into a broader auth refactor.
-- **Documentation + marketing** — Update `docs/QUOTECAT_FEATURES.md` tier tables to mark card payments as Pro+. Update `CLAUDE.md` pricing section. Update `website/index.html` Pro card bullet using the locked brand framing (no "keep 100%" absolutism — that's the v1.2.6 falseclaim we already truthed-up).
-- **Free tier unchanged.** Free PDFs stay exactly as v1.2.7 ships. No QR. No payment URL. No Stripe surface on the PDF. Free contractors continue to display Venmo / Cash App / Zelle / check as plain text on the PDF. The "Card Payments (Pro)" tile in Business Settings is visible to Free users but tapping fires the paywall.
-
-### Locked decisions from web Claude peer review (2026-06-09)
-
-| OQ | Decision |
-|---|---|
-| OQ2 — Timing measurement | Fixed 2 weeks post-video. Don't try to measure "moment landed." |
-| OQ3 — Stripe Elements vs Checkout | Stripe Checkout. Solo dev should not build custom PCI UI. |
-| OQ4 — Mobile return-URL | `?source=mobile` query param + thin close-session page. No `app.json` changes, no deep-link scheme. |
-| OQ5 — Pro vs Premium card differentiation | Identical for both. No artificial Premium-only card perk. Premium's diff stays contracts + team. |
-| OQ6 — Video follow-up | Proactive note required, ~2 weeks post-video, locked brand framing verbatim. |
-| OQ7 — Google OAuth dup-email | Ride-along investigation only if <30 min and self-contained. |
+- **Multi-User Workflow plan** (`portal/src/app/plan/multi-user-workflow`) — Tech + Worker roles. Foreman-assembles / Owner-approves. Magic-link Worker portal (no app install). Mike has not been assigned yet — invite via `plan_reviewers` table when ready.
+- **Job Costing (v2) plan** (`portal/src/app/plan/job-costing`) — PO numbering, actuals-vs-estimated, margin as trend + anomaly detector, mileage. Mike is assigned (his index shows 12/11 orphans from v1 pre-rewrite — expects re-review).
 
 ---
 
-## 🟡 v1.2.8 — "Build your pricebook your way" (~16-19h, shared native rebuild)
+## 🌱 Onboarding / activation follow-ups (from this session)
 
-> **Pulled forward 2026-06-09:** was v1.2.9; user opted for fast push past v1.2.8 card payments (which needs the founder-video timing window). Pricebook power-up is the next release. Coherent three-feature theme + one native rebuild covers all three.
+FTU refactor shipped in v1.2.16. These are the promised "later" pieces:
 
-**Why grouped:** all three require native rebuilds (`expo-camera`, `expo-document-picker`, `react-native-view-shot`). Share one build cycle. Coherent theme: scanner = one item at a time at the store; CSV/XLSX import = bulk from supplier extract; share card = turn audit results into reach.
+- **Contextual prompts at moments of relevance** — first quote save → prompt for company name; first PDF generation → prompt for logo with tier-aware copy ("PDFs stay QuoteCat-branded until Pro"); first gray margin indicator → prompt for overhead.
+- **Free-tier logo upload** — UX-only change. `lib/pdf.ts` already supports via `includeBranding` flag. Logo shows in app UI; PDF stays QC-branded until Pro. This session confirmed the plumbing exists.
+- **Animated app-tour intro** — nice-to-have. SVG paths + Reanimated drawing lines between features on first launch. "Some day" per the conversation.
+- **Nudge users toward the setup card** — if activation numbers still lag after FTU refactor deploy, next lever is a hint on the dashboard or firing contextual prompts.
 
-- **Barcode pricebook scanner (Pro)** — `expo-camera` install. Scanner modal with reticle + 2s debounce. Header-right icon on `app/(main)/price-book.tsx`. Free→paywall gate. Add `getPricebookItemBySkuExact(sku)` to `lib/pricebook.ts` (existing substring LIKE is wrong for barcodes). Broaden `NSCameraUsageDescription` at `app.json:60` (verified — not 62). Barcode types: `upc_a, upc_e, ean13, ean8, code128, code39`. Match → existing edit modal pre-populated; no match → create modal with `sku` pre-filled. Verify: 5 consecutive scans on real device Release build, 4-of-5 in ~3s, iOS + Android Samsung Galaxy. ~7-8h.
-- **CSV/XLSX pricebook import (Pro)** — `expo-document-picker` install. Move `xlsx` from devDeps to deps. New `app/(main)/pricebook-import.tsx`: file pick → parse → column-mapping UI (name, unitPrice required; sku, unitType, category, description optional) → preview → submit. Mobile uses existing `savePricebookItemsBatch`. Portal UI: new `dashboard/pricebook/import/page.tsx` — backend `POST /api/pricebook/import` route ALREADY exists (validates name + price, normalizes unit_type, 1000-item cap, row-level errors). Mobile ~3-4h + Portal ~1-2h. Pro+ gating. Pairs with future Kendall partnership for negotiated-pricing imports.
-- **Strava-style shareable Pricing Health Check card (Pro)** — `react-native-view-shot` for HTML-to-image. New `components/HealthCheckShareCard.tsx`: anonymous (no client names), shows flagged count + lost profit + window + QuoteCat branding. Share button on `pricing-health-check.tsx` after hero card at line 271. Data fields from `analyzeQuoteHealth()`. Verify on iOS + Android, iMessage + WhatsApp + native share sheet. ~4-5h.
+---
+
+## 🌱 Planned strategic features (from prior BACKLOG, still open)
+
+- **v1.3.0 scheduling** — mobile personal calendar + portal team dispatch. Pro mobile gets agenda view; Premium portal gets drag-drop dispatch calendar with realtime. Portal `CalendarView.tsx` already exists; mobile is greenfield (~13-16h). Closes biggest competitive gap per `docs/COMPETITOR-ANALYSIS.md`.
+- **Standalone contract creation + read-only lock on signed contracts — v1.3.0** — "Start a New Contract" entry in Contracts tab opens the quote form in contract-creation mode; save atomically creates the underlying quote + contract pair. Read-only lock when signatures attached. Removes the "You need an approved quote first" dead-end. ~3-4h.
+- **Industry Mode (Trades vs Services) + Spanish i18n combined feature** — adds `profiles.industry` enum + `react-i18next` + locale picker. Ships in same release as xByte re-enablement. ~2-2.5 weeks. (`FOLLOWUPS.md:31-100`)
+- **Pricing Foundation Setup (App + Portal)** — guided onboarding combining Overhead Calculator + Labor Rate Calculator + target margin into one flow. Synced between mobile and portal. 🎯 NEAR-TERM. Partially unblocked — v1.2.16 SetupProgressCard already deep-links to these calculators.
+- **AI Business Performance Coach** — Premium scoring + personalized advice via Claude. 🎯 NEAR-TERM. (`CLAUDE.md` Future Feature Ideas)
+- **Contract type selector (Premium, v1.4+)** — fixed-price, cost-plus, T&M, GMP, unit-price. Type-specific templates + calculation logic + margin checks. On-thesis: picking the right contract type IS a financial-intelligence decision.
+- **Unified `/client/{token}` portal — single-view multi-document client experience (v1.5+)** — one portal per contractor-client relationship instead of separate magic links for each quote/contract/invoice. `add_client_tokens.sql` migration exists.
+- **Per-team-member "views" (v1.4+)** — owner-configurable custom dashboards per role/user. Captured at `quotecat-portal/docs/office-role-plan.md`.
 
 ---
 
 ## ⚡ Portal performance backlog
 
-Tonight shipped: dashboard page Promise.all, dashboard layout cache+parallel+slim, `q/[id]` + `worker/[token]` parallelization. Remaining:
-
-- **NotificationBell polling reduction** — currently 3 queries every 2 min per active user. Three fix options: interval bump to 5 min (cheap), single Postgres RPC (better), Supabase realtime subscription (best). ~30 min / 2h / 3h depending on choice.
-- **Detail pages RSC conversion** — `invoices/[id]`, `contracts/[id]`, `profitability`, `messages` and other pages marked `'use client'` could be split into server-rendered shells + client islands. ~1-2h each, ~200-400ms LCP improvement per page.
-- **Lazy-load `lib/pdf.ts` + `html2pdf.js` via `dynamic()`** — drops main bundle by ~150-200KB. ~1h. (Portal audit candidate #4)
-- **`pay/[id]` perf** — 2 sequential queries (invoice → profile). Second depends on first's `user_id`, so requires PostgREST embedded select syntax. Skipped tonight to avoid runtime errors from guessed FK constraint name. Revisit with confidence around the right syntax.
-- **Option B portal gating: middleware migration** — long-term arch fix. Move tier check from layout to Next.js middleware so layout-render does zero Supabase queries. Hybrid approach keeps tech-account check in layout with React `cache()`. ~1-2 days (not hours, as initially miscalled tonight). Requires tier-in-JWT decision + auth helpers alignment.
-- **Portal site perf audit pass (broader)** — Lighthouse on `/dashboard`, profile LCP/TBT/CLS, iterate. ~2-4h. (`FOLLOWUPS.md:367-386`)
+- **NotificationBell polling reduction** — currently 3 queries every 2 min per active user. Options: interval bump to 5 min, single Postgres RPC, Supabase realtime subscription. ~30 min / 2h / 3h.
+- **Detail pages RSC conversion** — `invoices/[id]`, `contracts/[id]`, `profitability`, `messages` marked `'use client'`. Split into server-rendered shells + client islands. ~1-2h each, ~200-400ms LCP improvement per page.
+- **Lazy-load `lib/pdf.ts` + `html2pdf.js` via `dynamic()`** — drops main bundle by ~150-200KB. ~1h.
+- **`pay/[id]` perf** — 2 sequential queries (invoice → profile). Second depends on first's `user_id`; needs PostgREST embedded select. Revisit with confidence around the right syntax.
+- **Option B portal gating: middleware migration** — long-term arch fix. Move tier check from layout to Next.js middleware; zero Supabase queries in layout-render. ~1-2 days.
+- **Portal site perf audit pass (broader)** — Lighthouse on `/dashboard`, iterate. ~2-4h.
 
 ---
 
 ## 🧹 Marketing site
 
-- **Sweep beyond `index.html`** — `faq.html`, `support.html`, `privacy.html`, `terms.html` were NOT re-checked tonight for any straggler stale claims. Same patterns to grep: "keep 100%", "2.9%", "100 spots", "Priority phone support". 15-30 min.
-- **Premium card update post Office Staff ship** — add line about unlimited office staff seats once feature is live. (`quotecat-portal/docs/office-role-plan.md`)
-- **Workers vs Techs vs Office Staff explainer** — refresh the info-tooltip pattern on the Premium card to include all three roles once Office Staff ships.
-- **v1.2.6 "what's new" homepage push** — Pricing Health Check as the headline beat once Apple review clears.
+- **Sweep beyond `index.html` for stale claims** — `faq.html`, `support.html`, `privacy.html`, `terms.html` not re-checked in the last card-payments truth-up. Grep patterns: "keep 100%", "2.9%", "100 spots", "Priority phone support". 15-30 min.
+- **v1.2.13 → v1.2.17 marketing beats** — homepage / features / release-notes for the string of releases. Screenshot pipeline refresh already done for v1.2.12; extend for FTU + Add to Calendar + margin polish.
+- **Premium card update post Office Staff ship** — unlimited office staff seats line once feature lives. (`quotecat-portal/docs/office-role-plan.md`)
+- **Workers vs Techs vs Office Staff explainer** — info-tooltip pattern on Premium card once Office Staff ships.
 
 ---
 
 ## 📊 Data & analytics
 
-- **Drift #2: partial-invoice analytics design** — "Cash collected vs Completed jobs only" toggle. Mobile + portal coordinated. Both currently have inconsistent behavior on `percentage < 100` invoices; both are wrong in different ways. Affects only analytics surfaces, not financial transactions. v1.3.x design decision needed before implementation.
-- **Startup Kit welcome email** — fires on email confirmation OR Apple/Google OAuth signup. Resend transactional with kit PDF link (not attachment). `welcome_kit_sent_at` column on profiles for idempotency. ~5h standalone build. Picked option B (standalone, not v1.2.7) in tonight's discussion.
-- **PostHog dashboards** — App Health, Quote Lifecycle Funnel, Problems all built tonight. Marketing→Mobile funnel + activation deferred until traffic is bigger and signal worthwhile.
-- **Sentry instrumentation expansion** — `Sentry.setUser` after sign-in ✅ done tonight via `identifyUser`. Pipe `trackEvent(ERROR_OCCURRED)` from sync/RevenueCat/Drew/auth catch blocks to Sentry too — currently swallowed silently. ~1h.
-
----
-
-## 🌱 Planned strategic features
-
-- **Industry Mode (Trades vs Services) + Spanish i18n combined feature** — adds `profiles.industry` enum + `react-i18next` + locale picker. Ships in same release as xByte re-enablement. ~2-2.5 weeks. (`FOLLOWUPS.md:31-100`)
-- **v1.3.0 scheduling — mobile personal calendar + portal team dispatch** — Pro mobile gets agenda view; Premium portal gets drag-drop dispatch calendar with realtime. Portal `CalendarView.tsx` already exists; mobile is greenfield (~13-16h). Closes biggest competitive gap per `docs/COMPETITOR-ANALYSIS.md`.
-- **Request Changes (full threaded version) — v1.3.0** — earlier "lite" version was deferred during the v1.2.7 re-scope; instead of shipping lite + full separately, ship the proper threaded version directly in v1.3.0. Proper conversation log: threaded back-and-forth on each quote/contract, contractor replies inline, full timeline with timestamps, history preserved across revisions. Schema: `needs_revision` in quote + contract status enums; `quote_revisions` / `contract_revisions` tables for history; `client_notes` no longer needed as standalone column. Push notification on each new client message. Critical to coordinate portal-mobile deploy (feature flag on portal until mobile builds approved). Two-codebase coordination — accept full QA cost. ~14-18h.
-- **Standalone contract creation + read-only lock on signed contracts — v1.3.0** — "Start a New Contract" entry in Contracts tab opens the quote form in contract-creation mode (`?mode=contract-creation` route param); save atomically creates the underlying quote + contract pair. Architectural rule: every contract has an underlying quote, always. Quote stays visible in Quotes tab with a "Contract" chip on row. Read-only lock when contract has signatures attached (signed contract edit would invalidate signature). Removes the dead-end at `app/(main)/(tabs)/contracts.tsx:165-167` ("You need an approved quote first"). ~3-4h.
-- **Pricing Foundation Setup (App + Portal)** — guided onboarding combining Overhead Calculator + Labor Rate Calculator + target margin into one flow. Synced between mobile and portal. (`CLAUDE.md`, in "Future Feature Ideas" → marked 🎯 NEAR-TERM)
-- **AI Business Performance Coach** — premium scoring + personalized advice via Claude. (`CLAUDE.md`, in "Future Feature Ideas" → marked 🎯 NEAR-TERM)
-- **Two-way SMS texting** — Premium-only via Twilio. **Already shipped on portal**; mobile-side equivalent (if any) TBD. (`FOLLOWUPS.md` Office Staff entry confirms portal has it)
-- **QuickBooks sync** — Premium-only. **Already shipped on portal**. (`CLAUDE.md` Future Feature Ideas — may need de-listing as already done)
-- **Change Orders sync to portal** — mobile has change orders working locally, portal doesn't render them. Schema gap. Plan: `docs/CHANGE-ORDERS-SYNC-PLAN.md` (in repo).
-- **Per-team-member "views" (v1.4+)** — owner-configurable custom dashboards per role/user. Captured at `quotecat-portal/docs/office-role-plan.md` "Future direction" section.
-- **Contract type selector (Premium, v1.4+)** — Premium contractors pick contract type (fixed-price, cost-plus, T&M, GMP, unit-price) when creating a contract, and the template + calculation logic adjusts to match. **Why this is on-thesis, not just "more templates":** picking the right contract type for a job IS a financial-intelligence decision — wrong type → lost margin. Cost-plus contracts surface markup math live; fixed-price contracts include change-order language; T&M contracts auto-build a rate schedule from the existing overhead-loaded labor rate. Margin awareness stays attached ("this cost-plus job is at 25% markup; your typical margin on cost-plus is 33% — review?"). Competitors can't do this well because they don't have the financial layer. Phase 1: dropdown + per-type template text. Phase 2: type-specific calculation logic + margin checks. Phase 3: "answer 3 questions about job scope, we suggest the type." Captured 2026-06-22 after Seph noticed it watching YouTube content on contract types.
-- **Unified `/client/{token}` portal — single-view multi-document client experience (v1.5+)** — Today a Pro+ contractor's client receives separate magic links over a job lifecycle: `/q/[id]` (quote), `/c/[id]` (contract, Premium), `/pay/[id]` (invoice). Each is its own URL with its own state. Across a single engagement that's 2-3 different magic links the client has to manage in their inbox/text history. Build a unified `/client/{clientToken}` view that shows all documents from a single contractor in one place: list of quotes (with status), contracts (signed/pending), invoices (paid/partial/unpaid), payment history, contractor contact info. Each document linked from the unified view; status visible at a glance ("Quote sent 3 days ago, viewed, no response"). **Strategic fit:** closes a real Jobber Client Hub feature gap with a sharper version (per-contractor-relationship rather than per-contractor-platform — the client sees ONE portal per contractor, not one portal for QuoteCat as a whole). **Infrastructure note:** existing migration `supabase/migrations/add_client_tokens.sql` already establishes per-client token infrastructure, so this is smaller than greenfield — probably 3-5 focused days. **Defer trigger:** build after card payments verify AND we have actual users reporting the magic-link-per-document pattern feels disjointed. Don't pre-build. Captured 2026-06-23 after Seph confirmed the Pro magic-link surface already covers quotes+invoices (not payment-only as Claude Code had initially mis-characterized).
+- **Startup Kit welcome email** — fires on email confirmation or Apple/Google OAuth signup. Resend transactional with kit PDF link. `welcome_kit_sent_at` column on profiles for idempotency. ~5h standalone.
+- **PostHog dashboards for v1.2.15 conversion funnel** — event instrumentation shipped (nudges, first-quote congrats, PDF-limit). Insights saved this session. Watch trends.
+- **Drift #2: partial-invoice analytics design** — "Cash collected vs Completed jobs only" toggle. Mobile + portal coordinated. Both currently have inconsistent behavior on `percentage < 100` invoices. Affects only analytics surfaces.
+- **Sentry instrumentation expansion** — pipe `trackEvent(ERROR_OCCURRED)` from sync/RevenueCat/Drew/auth catch blocks to Sentry — currently swallowed silently. ~1h.
 
 ---
 
@@ -170,13 +110,12 @@ Tonight shipped: dashboard page Promise.all, dashboard layout cache+parallel+sli
 From `CLAUDE.md` "Future Feature Ideas" section. Listed for navigability; defer scoping until product signal warrants.
 
 ### Quotes
-- Supplier Price Trend Alerts (uses weekly X-Byte data for "Home Depot raised lumber 8% this week")
+- Supplier Price Trend Alerts (uses weekly xByte data for "Home Depot raised lumber 8% this week")
 - Time & Materials quoting (T&M alongside flat-rate)
-- Materials Margin Indicator — ✅ shipped in v1.2.5 (Free tier per CLAUDE.md). Should be moved to Done if still listed.
-- Quick Custom Items — ✅ shipped in Build #141 (Free tier per CLAUDE.md). Should be moved to Done.
 
 ### Invoices
-- Payment reminders for overdue invoices ("Send Reminder" CTA + auto-send intervals) — partially shipped (Pro+ has `sendInvoiceReminder`). Auto-send intervals still future.
+- Payment reminders for overdue invoices — partially shipped (Pro+ has `sendInvoiceReminder`). Auto-send intervals still future.
+- Payment Reminders auto-cadence (3/7/14 day intervals)
 
 ### Communication / Premium add-ons
 - Workflow automations (Knock.app for delivery)
@@ -191,22 +130,26 @@ From `CLAUDE.md` "Future Feature Ideas" section. Listed for navigability; defer 
 ### Drew AI
 - Site Visit Mode (voice-to-scope recording, Whisper API)
 - Drew visibility toggle
+- Hybrid state machine (Phase 2) — server-side flow + Claude for personality only. ~60-70% additional cost reduction after prompt caching (which is already live). See CLAUDE.md "Current Work: Drew Quote Wizard" section.
 
 ### Analytics
-- Win Rate Dashboard (with tier-group bundle handling)
+- Win Rate Dashboard (with tier-group bundle handling — approved bundle = 1 win, all declined = 1 loss)
 
 ### Integrations & Marketplace
 - Local Supplier Network — self-service supplier portal for catalog uploads (Phase 2/3)
-- Spanish language support — folded into Industry Mode + i18n combined feature above
+- xByte real-time supplier pricing — deferred; not the moat. Manual entry + custom pricebook covers most contractors.
 
 ### Growth
-- Regional Expansion Referral System — unique referral codes, threshold-based subscription extensions
+- Regional Expansion Referral System — unique referral codes, threshold-based subscription extensions (6 Pro subs in a region → notify + auto-extend referrer 2 months)
+
+### Onboarding messaging
+- "Double-counting overhead" differentiator — most contractors on spreadsheets or other apps build overhead into labor rate AND deduct it again. QuoteCat does it right. Messaging opportunity in Overhead Calculator completion, first profit indicator, marketing.
 
 ---
 
 ## 🔧 Technical debt / hygiene
 
-From `docs/codebase-health-audit-2026-06-01.md`:
+From `docs/codebase-health-audit-2026-06-01.md` (still mostly accurate):
 
 ### Tier 1 (low effort, high impact)
 - ✅ `calculateQuoteTotals` duplication — shipped `fed5c8a`
@@ -215,7 +158,7 @@ From `docs/codebase-health-audit-2026-06-01.md`:
 - ⏳ CLAUDE.md drift items — 8 stale claims to update
 
 ### Tier 2 (~half to full day)
-- Get TypeScript back to 0 errors — ~4-6h. Currently 24 pre-existing errors in portal (counted tonight).
+- Get TypeScript back to 0 errors — currently ~24 pre-existing errors in portal, some in mobile too (surfaced during this session's typechecks). ~4-6h.
 - Decide `expo-dev-client` location — ~30 min decision
 - Fix the 5 performance smells — ~2-3h
 
@@ -225,7 +168,7 @@ From `docs/codebase-health-audit-2026-06-01.md`:
 - Extract `useDashboardState` hook
 - Unify calculation source of truth (one canonical `lib/calculations.ts`)
 - Build `lib/syncManager.ts` orchestrator (replaces ad-hoc cooldown duplication)
-- Audit the portal codebase with same 3-D sweep (architecture/bloat, duplication/dead code/stale docs, TS/deps/perf) — ~1 day. **Note:** tonight's perf work did pieces of this informally.
+- Audit the portal codebase with same 3-D sweep (architecture/bloat, duplication/dead code/stale docs, TS/deps/perf) — ~1 day.
 
 ### Tier 4 (longer-term)
 - Remove `as any` escape hatches at cloud-data ingress; add Zod or similar runtime validation
@@ -237,94 +180,115 @@ From `docs/codebase-health-audit-2026-06-01.md`:
 
 ## 🔐 Subscription & auth hygiene
 
-From `FOLLOWUPS.md` (the Manage Account refactor follow-ups):
+From `FOLLOWUPS.md`:
 
-- **Phase 2 cleanup of `profiles` Stripe columns** — after new `subscriptions` flow is verified, drop `profiles.stripe_customer_id` and `profiles.stripe_subscription_id`. Update `delete-account/index.ts:81` reads. (`FOLLOWUPS.md:209`)
-- **`presentPaywallAndSync` race window** — fixed 2-second sleep → poll-with-timeout (500ms × up to 10s). Defer until race fires in production. (`FOLLOWUPS.md:218`)
-- **Optional `webhook_events` audit table** — for event-level debugging beyond RC/Stripe dashboards. (`FOLLOWUPS.md:226`)
-- **`STRIPE_*_PRICE_ID` env vars cleanup** — 4 Supabase secrets not referenced anywhere in current edge function code. Verify unused, then delete. (`FOLLOWUPS.md:242`)
-- **Stripe `incomplete` status mapping verification** — post-launch declined-card test. (`FOLLOWUPS.md:264`)
-- **Stripe `paused` status mapping** — revisit if/when seasonal pause-and-resume is used. (`FOLLOWUPS.md:270`)
-- **Alert on `rc_webhook_orphan_user` logs** — post-launch monitoring. (`FOLLOWUPS.md:274`)
-- **GoTrue admin DELETE bug for legacy users** — recovery procedure documented (SQL fallback). Worth investigating with Supabase support. (`FOLLOWUPS.md:291`)
-- **Apple grace period (`in_grace_period` status)** — if users start losing access prematurely during failed renewals, add enum value and handle `BILLING_ISSUE` event. (`FOLLOWUPS.md:313`)
-- **Reconcile Supabase migration tracking table** — most migrations applied via SQL editor, not recorded in `schema_migrations`. `npx supabase db push` fails because of it. Fix: `migration repair --status applied` per version. (`FOLLOWUPS.md:319`)
-- **Service role key rotation** — alongside other credential rotations. (`FOLLOWUPS.md:329`)
-- **Smoother Google Sign-In: migrate from `expo-auth-session` to `@react-native-google-signin/google-signin`** — repeat sign-ins become "Continue as user" with one tap. ~half-day. (`FOLLOWUPS.md:303`)
+- **Phase 2 cleanup of `profiles` Stripe columns** — after new `subscriptions` flow verified, drop `profiles.stripe_customer_id` and `profiles.stripe_subscription_id`. Update `delete-account/index.ts:81` reads.
+- **`presentPaywallAndSync` race window** — fixed 2-second sleep → poll-with-timeout (500ms × up to 10s). Defer until race fires in production.
+- **Optional `webhook_events` audit table** — for event-level debugging beyond RC/Stripe dashboards.
+- **`STRIPE_*_PRICE_ID` env vars cleanup** — 4 Supabase secrets not referenced in current edge function code. Verify unused, delete.
+- **Stripe `incomplete` status mapping verification** — post-launch declined-card test.
+- **Stripe `paused` status mapping** — revisit if/when seasonal pause-and-resume is used.
+- **Alert on `rc_webhook_orphan_user` logs** — post-launch monitoring.
+- **GoTrue admin DELETE bug for legacy users** — recovery procedure documented (SQL fallback). Worth investigating with Supabase support.
+- **Apple grace period (`in_grace_period` status)** — if users start losing access prematurely during failed renewals, add enum value and handle `BILLING_ISSUE` event.
+- **Reconcile Supabase migration tracking table** — most migrations applied via SQL editor, not recorded in `schema_migrations`. `npx supabase db push` fails. Fix: `migration repair --status applied` per version.
+- **Smoother Google Sign-In: migrate from `expo-auth-session` to `@react-native-google-signin/google-signin`** — repeat sign-ins become "Continue as user" with one tap. ~half-day.
 
 ---
 
 ## 🛒 Portal-specific
 
-- **"Buy more seats" CTA only routes to 5-pack** — single-pack option exists but button doesn't expose it. ~30 min. (`FOLLOWUPS.md:337-348`)
-- **MarginIndicator dead-code cleanup** — ✅ shipped tonight in `af14eff`. (No action; for ref only.)
+- **"Buy more seats" CTA only routes to 5-pack** — single-pack option exists but button doesn't expose it. ~30 min.
+- **Change Orders sync from mobile → portal** — mobile has COs working locally; portal doesn't render them. Schema gap. Plan: `docs/CHANGE-ORDERS-SYNC-PLAN.md`. Blocked until manual CO flow ships (this backlog's Billing Workflow buildout section).
 
 ---
 
 ## 💻 Code-level TODOs found in source
 
-Tonight's grep across both repos:
-
 | Location | Comment |
 |---|---|
 | `lib/analytics.ts:49` | `TODO: Send anonymous analytics if user opted in` |
 | `lib/analytics.ts:138` | `TODO: Implement when ready for cloud analytics` |
-| `lib/teamMembers.ts:107,110,113` | 3 `@deprecated` function aliases (`getTeamMembers`/`getTeamMemberById`/`searchTeamMembers`) — old names still exported for back-compat |
 | `lib/pricebookMatching.ts:20` | `TODO: Performance optimization for large pricebooks (1000+ items)` |
-| `lib/wizardApi.ts:455` | `@deprecated Use searchCatalog instead for large catalogs (30k+ products)` |
-| `lib/browser.ts:66` | `@deprecated Use openProductSearch instead - direct URLs are blocked by retailers` |
-| `lib/reminders.ts:498` | `@deprecated Use getCloudNotifications instead` |
-| `lib/database.ts:2135` | `@deprecated Use searchProductsFTS instead` |
 | `modules/settings/index.ts:13` | `TODO: later read from persistence / profile` |
-| `modules/assemblies/storageSQLite.ts:157` | `@deprecated Use clearDeletedAssemblyId for individual tombstones` |
 | `quotecat-portal/src/app/api/twilio/webhook/route.ts:195` | `TODO: use contractor's timezone` |
 
-Most of these are deprecation aliases kept for back-compat — clean them up during a refactor cycle, not piecemeal.
+Deprecation aliases (kept for back-compat, clean up during a refactor cycle, not piecemeal):
+
+| Location | Comment |
+|---|---|
+| `lib/teamMembers.ts:107,110,113` | 3 `@deprecated` function aliases (`getTeamMembers`/`getTeamMemberById`/`searchTeamMembers`) |
+| `lib/wizardApi.ts:455` | `@deprecated Use searchCatalog instead for large catalogs (30k+ products)` |
+| `lib/browser.ts:66` | `@deprecated Use openProductSearch instead — direct URLs are blocked by retailers` |
+| `lib/reminders.ts:498` | `@deprecated Use getCloudNotifications instead` |
+| `lib/database.ts:2135` | `@deprecated Use searchProductsFTS instead` |
+| `modules/assemblies/storageSQLite.ts:157` | `@deprecated Use clearDeletedAssemblyId for individual tombstones` |
 
 ---
 
-## ✅ Recently shipped (kept for context, can be archived)
+## ✅ Recently shipped (July 2026)
 
-2026-06-09 (late) — v1.2.8 "Build your pricebook your way":
+**2026-07-04 — v1.2.17 (Mike-feedback + CO discoverability):**
+- Custom Item edit modal — KeyboardAvoidingView so Save stays above numeric keypad; outside-tap dismisses keyboard, not modal (Mike bug report on v1.2.14). Commit `0f1f99a`.
+- WorkerPickerModal — "New" label next to + icon + prominent "Add a new worker" CTA in empty state (Mike discoverability). Commit `0f1f99a`.
+- ChangeOrderList empty state on approved Pro+ quotes with "Edit quote to add a change" button. Fixes the Pro-feature-invisibility bug. Commit `204560f`.
+- Two builds shipped: 226/73 (first two fixes), 227/74 (bundled all three).
 
-- CSV/XLSX pricebook import (mobile + portal) — commit `99ee695` (mobile) + `070e8e5` (portal)
-- Barcode pricebook scanner with exact-SKU lookup + SKU as first-class form field — commit `cf9b76d`
-- Strava-style shareable Pricing Health Check card (anonymous, 600×600 PNG via react-native-view-shot) — commit `8b20528`
-- Dashboard widget for Pricing Health Check (Pro+, default-on, dismissable) — commit `a6bdf72`
-- Perf: lazy-loaded expo-camera (BarcodeScannerModal) + xlsx (only loads for XLSX files) — commit `8b20528`
-- iOS build 213 submitted to App Store Connect (TestFlight processing)
-- Android versionCode 60 submitted to Google Play Internal track (manual promotion pending)
-- All four features verified in iOS sim; barcode scanner specifically still needs real-device 4-of-5 UPC decode verification before public release
+**2026-07-04 — Portal plan-review counter fix + refined answers:**
+- Filter counters by current registry section keys — v1 orphaned rows no longer inflate "answered" counts. Commit `c163773`.
+- Refined answers to Mike's Q1/Q2/Q3 pushed as three new sections on the change-orders (Billing Workflow v2) plan. "New since you reviewed" amber banner at top. PLAN_REGISTRY updated. Commit `fbc42a6`.
 
-2026-06-09 (earlier) — v1.2.7 Mike-response sprint, both stores fully live:
+**2026-07-02/03 — v1.2.16 (FTU refactor):**
+- DashboardHeroCard (first-run "Start your first quote" CTA that hides once user has any quote/invoice). Session-dismissable.
+- SetupProgressCard (non-blocking, collapsible 4-step setup checklist replacing the old blocking Modal wizard). Session-dismissable. Starts collapsed so hero owns primary attention.
+- QuotesEmptyState (three variants: start / filtered / followup) with big orange first-quote CTA.
+- Dashboard "Welcome back!" + "business overview" filler removed. Sync indicator survives as a small right-aligned line.
+- Blocking OnboardingFlow.tsx deleted entirely.
+- Commits: `8f4b371`, `7d4af23`.
 
-- All 8 v1.2.7 items shipped — commit `b65165d` (feature work) + `53273a0` (v1.2.8 lock + EAS build-number bumps)
-- iOS build 212 submitted to App Store Connect (TestFlight processing)
-- Android versionCode 59 submitted to Google Play Internal track (manual promotion to Production pending)
-- v1.2.7 scope: "Create Tier" → "Add Option" sweep, auto-Sent prompt after PDF export, payment methods on quote PDFs, auto-approve prompt on Quote→Contract (fixes silent createContractFromQuote null), tappable payment URL scheme codepath (expo-print verified to strip hrefs — falls back to plain text), status chip "Tap a status to update" hint, export menu locks for tier upsell, duplicate-email signup detection
-- Key strategic decision locked: Free contractors NEVER share URLs/links/QR/web pages with customer. Web layer is exclusively Pro+. v1.2.8 reframed: card payments become Pro+ feature, not all-tier ungating
+**2026-07-02 — v1.2.15 (Add to Calendar + conversion nudges + polish):**
+- Add to Calendar on quotes and contracts (one-tap .ics handoff to native calendar; contractor time-management, no portal or tier gating).
+- First-quote celebration modal with Unlock Pro CTA + features preview.
+- PDF-limit nudge with next-reset date and Unlock Pro path.
+- Materials markup $-impact tooltip on quote edit.
+- iOS 18 header pill flicker fix (quote review, contract edit, contract sign, assembly calculator).
+- Assembly-sync tier gate to stop RLS errors on Free tier.
+- Quote work-date persistence through SQLite (schema v20) + Supabase (migration 033).
+- In-app review prompt (`expo-store-review`) after quote-approved win moments. ~3-day install guard, 90-day between-prompt guard, 2-win minimum.
+- Analytics: FirstQuoteNudge / PdfLimitNudge shown / upgrade tap / dismiss events. Marketing-site `calculator_engaged`, `app_store_click`, `cta_clicked`, `page_scroll_depth` 25/50/75/100.
 
-2026-06-05:
+**2026-06-2X — v1.2.14 (contract workflow redesign + foreground sync + Request Changes):**
+- Linear contract status flow with one rollback (Revert to Draft clears sigs).
+- Morph primary action button (Sign / Send / Share / Complete).
+- Read-only status badge.
+- Customer Decline + Request Changes channel from portal.
+- Foreground sync.
+- Triggered by Mike Kane's beta feedback.
 
-- Marketing site truth-up (false claims removed, Founder Hotline block added) — commit `19b4524`
-- Analytics identity instrumentation (PostHog + Sentry tied to Supabase user) — commit `024f21d`
-- `review_opened` event instrumentation — commit `024f21d`
-- Doc refresh: features, plans, FOLLOWUPS pointers — commit `63932c2`
-- Branded features PDF — commit `3a1e153`
-- Portal dashboard query Promise.all — commit `1307788`
-- Portal dashboard layout cache+parallel+slim — commit `8dff519`
-- Portal `q/[id]` + `worker/[token]` parallelization — commit `116b226`
-- Office Staff plan doc — commit `89fc3c0` (portal repo)
-- FOLLOWUPS pointer to Office Staff spec — commit `976bb21`
-- Portal billable_rate bundle + Drift #1 + MarginIndicator landmine cleanup — commit `af14eff` (portal repo)
+**2026-06 — v1.2.13 (quality release):**
+- Dark-mode fixes across the app.
+- Signature UX polish.
+- Financial-intelligence polish (margin indicator, target margin flow).
 
-Earlier this cycle:
+**2026-06 — v1.2.12 (IAP + screenshot pipeline):**
+- Subscription / Manage Account refactor (structural commit `9535c1f` + IAP follow-ups `375168d`, `bca4eac`).
+- RC re-alias on every paywall/restore.
+- Instant tier propagation post-purchase (no sign-out/in needed).
+- Refreshed screenshot pipeline: 10 framed PNGs at 1284×2778, financial-intelligence story arc.
 
-- v1.2.6 Pricing Health Check — awaiting Apple review
-- v1.2.5 Materials Margin Indicator → Free tier
-- Build #141 Quick Custom Items — Free tier
-- Tier 1 audit items: `calculateQuoteTotals` dedup (`fed5c8a`), `_old/` removal (`6e57200`)
-- Pricing Strategy Q1-Q5 marketing decisions
+**2026-06 — v1.2.9 → v1.2.10 (card payments + version cleanup):**
+- Card payment acceptance for Pro+ contractors via Stripe Connect. Mobile in-app onboarding. QuoteCat takes no cut; Stripe charges standard processor fee.
+- Portal v1.2.9 ungate + Connect events split (`531fc7c`, `575f8e2`).
+- Hotfix v1.2.9.1 → v1.2.10 clean 3-part version.
+
+**Portal since 2026-06-09:**
+- Plan review system built (`88ea3c2`, `ad2e2db`, `b7cd6be`, `8430c5f`).
+- Plans v2: Billing Workflow + Multi-User + revised Job Costing (`818346a`, `2898b92`, `f6d9bbf`).
+- Mike v1 wrap-up preserved as read-only context (`2898b92`).
+- Contract Decline + Request Changes UI (`8fffad4`, `eb0457e`).
+- Netlify Node 22 cutover + Netlify plugin bump + Stripe error revert (`81d3265`, `7717671`).
+- Stripe webhook Connected events endpoint split (`531fc7c`, `ffcaa78`, `032ff78`).
+- Contract fetch dedupe + fire-and-forget viewed update (`853e1b7`).
 
 ---
 
@@ -333,5 +297,5 @@ Earlier this cycle:
 - **Add** items at the top of their bucket as they're discovered. Cite source.
 - **Move** items to "Recently shipped" with commit hash when done.
 - **Re-validate** the "Needs verification" section first whenever this file is consulted — that's where confusion lives.
-- **De-duplicate** when items appear in multiple sources. The canonical pointer goes to the most-detailed source (usually FOLLOWUPS.md).
+- **De-duplicate** when items appear in multiple sources. Canonical pointer goes to the most-detailed source.
 - **Don't re-explain** items here when their detail lives in FOLLOWUPS.md or a `docs/*-plan.md`. Link to them.
