@@ -12,6 +12,14 @@ Update this file when work is completed (move to "Done" section) or when new fol
 
 ---
 
+## 🚨 Highest-leverage still-open item (verified 2026-07-04)
+
+**The Portal Stripe webhook fix (below) has been sitting for two months while card payments went live in v1.2.9.** Verified 2026-07-04: `PRICE_TO_TIER` in `quotecat-portal/src/app/api/stripe/webhook/route.ts:17-41` still contains the ten stale `price_1SRYud...` / `price_1Sqdi...` IDs from the 2026-04-29 audit; no calls to `upsert_subscription_event` RPC; no calls to `inviteUserByEmail`; still writes directly to `profiles`.
+
+As soon as the marketing site drives real subscription traffic, Premium buyers will silently get downgraded to Pro and new customers will get zero invite email. Pull this into a near-term sprint — arguably the single highest-priority still-open item across FOLLOWUPS and BACKLOG.
+
+---
+
 ## Open
 
 ### 🟡 Strategically deferred: xByte supplier-pricing catalog sync
@@ -107,6 +115,8 @@ If Services becomes a meaningful segment (>20% of paying users, or higher LTV/CA
 
 ### 🔴 Sentry source maps upload — HIGH PRIORITY, within first week post-launch
 
+**Verified still open 2026-07-04.** `app.json` still has the bare `"@sentry/react-native/expo"` plugin string — no `{ url, organization, project }` config. Every prod crash is still landing as minified gibberish.
+
 **Priority:** Within first week post-launch. Not gating tonight's build.
 
 **Discovered:** 2026-05-07 while wiring Sentry for launch.
@@ -123,6 +133,8 @@ If Services becomes a meaningful segment (>20% of paying users, or higher LTV/CA
 Estimated time: ~15 minutes of work, then one build cycle for the upload to take effect.
 
 ### 🔴 Portal Stripe webhook handler is broken for marketing-site subscriptions
+
+**Verified still open 2026-07-04.** Two months since discovery. Recent portal webhook work (`531fc7c`, `575f8e2`, `ffcaa78`, `032ff78`) was for **Stripe Connect** (contractor merchant accounts for card payments), a completely different endpoint. The marketing-site `/api/stripe/webhook/route.ts` still has the ten stale `price_1SRYud...` / `price_1Sqdi...` IDs, still writes directly to `profiles`, still has no `upsert_subscription_event` call, still has no `inviteUserByEmail` call. See the "🚨 Highest-leverage" note at the top.
 
 **Priority:** Pre-HGTV / before any real marketing-site Stripe traffic. NOT blocking IAP launch.
 
@@ -223,6 +235,8 @@ After the new `subscriptions`-based flow is verified in production for a few wee
 
 ### `presentPaywallAndSync` race window
 
+**Verified partially mitigated 2026-07-04.** The 2s sleep is still there (`lib/revenuecat.ts:154` — `await new Promise(r => setTimeout(r, 2000))`), so the underlying race window is unchanged. But defense-in-depth logic was added around line 166+ that refuses to downgrade tier based on a stale Supabase read, which prevents the visible flicker even when the webhook chain takes longer than 2s. Symptom masked; root cause untouched. Convert to poll-with-timeout if we ever want to reclaim UI responsiveness in the fast-webhook case.
+
 `lib/revenuecat.ts:73-74` waits a fixed 2 seconds after a successful purchase, then reads `profiles.tier` once. If the RevenueCat webhook is slower than 2s end-to-end, the read sees stale tier and the UI shows free briefly.
 
 Fix: convert from `await sleep(2000); fetch()` to a poll-with-timeout: poll `profiles.tier` every 500ms for up to 10 seconds, return as soon as it shows the new tier. Bail out gracefully if it never arrives (user can refresh manually).
@@ -288,12 +302,6 @@ Post-launch, if a real customer's `auth.users` row gets deleted but their RC sub
 
 The alert is the trigger. Without it, orphan events log silently and we'd only notice via support tickets ("I paid but the app says I'm free").
 
-### `1modernrelic@gmail.com` — undiscovered 9th paid user (resolved)
-
-The 2026-04-28 audit identified 8 users with `tier IN ('pro','premium')`. Webhook verification on 2026-04-29 surfaced a 9th: `1modernrelic@gmail.com` (`65082a64-d6ea-4158-a5a0-3fbe38b7d0d0`), created 2026-04-20. They had a real Play Store Pro Monthly purchase that died with `BILLING_ERROR` and now sit at `tier='free'` — which is correct.
-
-Not currently a problem. Noting because the audit underestimated total active testers by one. If you do another audit pass before public launch, expect the count to be 23 users / 2 real paid IAP / 6 dropped-to-free / Drew + Wyatt at premium / 13 free testers. The arithmetic was off-by-one because expired-billing-error users sit at `tier='free'` so they didn't appear in the paid-users query.
-
 ### GoTrue admin DELETE bug for some legacy users
 
 During Step 9 cleanup (2026-04-29), `joseph@quotecat.ai` returned 500 `Database error deleting user` from `DELETE /auth/v1/admin/users/{id}` even after we patched the row's NULL `is_super_admin` column. A direct SQL `DELETE FROM auth.users WHERE id = ...` succeeded immediately and CASCADE-deleted all dependent rows correctly.
@@ -307,6 +315,8 @@ GoTrue must have some preflight or post-step that fails for legacy rows, indepen
 Worth investigating once we have time: Supabase support ticket with the `error_id` from a future failure should clarify what GoTrue's choking on.
 
 ### Smoother Google Sign-In: migrate from expo-auth-session to native SDK
+
+**Verified still open 2026-07-04.** `@react-native-google-signin/google-signin` is not in `package.json`; mobile app still uses `expo-auth-session/providers/google`.
 
 Today, after sign-out → tap "Sign in with Google" → user goes through the full account picker every time (because `expo-auth-session` opens a fresh in-app browser session with no memory of prior Google login). Once signed in, session persists across app launches; this only affects the sign-out → sign-back-in path.
 
@@ -342,6 +352,8 @@ When rotating: update `SUPABASE_SERVICE_ROLE_KEY` in Supabase Edge Function secr
 
 ### 🟡 Portal: "Buy more seats" CTA only routes to 5-pack
 
+**Verified still open 2026-07-04.** `TechList.tsx:68` still hardcodes `const selectedPackage = 'fivepack'; // Only 5-pack available for now`. Single-pack not exposed.
+
 **Spotted:** 2026-06-05 by user inspecting `portal.quotecat.ai/dashboard/team`.
 
 **The bug:** The "buy more seats" / "buy more techs" CTA in the Premium contractor's team management area routes only to the 5-pack purchase flow. The single-pack option exists in the underlying Stripe / billing setup but the button doesn't expose it as a choice.
@@ -355,6 +367,8 @@ When rotating: update `SUPABASE_SERVICE_ROLE_KEY` in Supabase Edge Function secr
 ---
 
 ### 📋 SCOPED — Office Staff role (portal-only team members, unlimited/free)
+
+**Verified still open 2026-07-04.** No migration for `office` role exists in `quotecat-portal/supabase`. No role handling in `dashboard/team`. Build planned for 2026-06-06 didn't happen; item is still pure spec.
 
 **Spec written 2026-06-05, build planned 2026-06-06.** Full design lives at `quotecat-portal/docs/office-role-plan.md` (committed to the portal repo).
 
@@ -395,4 +409,8 @@ When rotating: update `SUPABASE_SERVICE_ROLE_KEY` in Supabase Edge Function secr
 
 ## Done
 
-(none yet)
+### `1modernrelic@gmail.com` — undiscovered 9th paid user (moved to Done 2026-07-04)
+
+The 2026-04-28 audit identified 8 users with `tier IN ('pro','premium')`. Webhook verification on 2026-04-29 surfaced a 9th: `1modernrelic@gmail.com` (`65082a64-d6ea-4158-a5a0-3fbe38b7d0d0`), created 2026-04-20. They had a real Play Store Pro Monthly purchase that died with `BILLING_ERROR` and now sit at `tier='free'` — which is correct.
+
+Not currently a problem. Noting because the audit underestimated total active testers by one. If you do another audit pass before public launch, expect the count to be 23 users / 2 real paid IAP / 6 dropped-to-free / Drew + Wyatt at premium / 13 free testers. The arithmetic was off-by-one because expired-billing-error users sit at `tier='free'` so they didn't appear in the paid-users query.
