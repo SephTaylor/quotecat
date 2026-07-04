@@ -1,9 +1,53 @@
 # EAS Build ignore file
 # Excludes files from the source upload to EAS, even if they're tracked in git.
-# Note: Metro tree-shakes unreferenced files at runtime, so anything not
-# imported wouldn't ship in the JS bundle anyway. This list is about reducing
-# upload size and Metro scan surface, not runtime bundle composition.
+# Metro tree-shakes unreferenced files at runtime, so anything not imported
+# wouldn't ship in the JS bundle anyway. This list is about reducing upload
+# size and Metro scan surface, not runtime bundle composition.
 
 # Legacy code we keep around for reference but never want shipping
 _old/
 _old/**
+
+# ==============================================================================
+# Native build artifacts — regenerated fresh by EAS during every build
+# ==============================================================================
+# Podfile / Podfile.lock stay in the archive; Pods/ itself gets reinstalled
+# via `pod install` in the cloud. Excluding this alone drops ~950 MB.
+ios/Pods/
+ios/build/
+ios/DerivedData/
+
+# Same story for Android — build artifacts, not source
+android/build/
+android/.gradle/
+android/app/build/
+android/.cxx/
+
+# ==============================================================================
+# Local caches / editor state — not needed for a fresh cloud build
+# ==============================================================================
+.expo/
+.vscode/
+.idea/
+.DS_Store
+*.log
+coverage/
+
+# ==============================================================================
+# Non-mobile-app subprojects that share this repo
+# ==============================================================================
+# The Eleventy marketing site lives here for co-location but has zero mobile deps.
+website/
+# Screenshot pipeline (frame.py + framed PNGs) for App Store / Play submissions.
+marketing/
+Screenshots/
+
+# ==============================================================================
+# Documentation — kept in git for future-us, not needed for the build
+# ==============================================================================
+docs/
+
+# ==============================================================================
+# Backups / notes
+# ==============================================================================
+*.bak
