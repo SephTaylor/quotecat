@@ -67,7 +67,11 @@ export default function BusinessSettings() {
   }, []);
 
   const handleUploadLogo = async () => {
-    if (!hasProAccess) return;
+    // Ungated 2026-07-09: Free users can upload a logo and see it in the app
+    // (dashboard header, sidebar). PDF export still uses `includeBranding=true`
+    // for Free, so the exported PDF stays QuoteCat-branded until they upgrade.
+    // Blocking upload entirely was the previous behavior — that broke the
+    // FTU refactor's "Add your company info" step for Free users.
     try {
       setUploadingLogo(true);
       const uploadedLogo = await uploadCompanyLogo();
@@ -168,44 +172,41 @@ export default function BusinessSettings() {
             </View>
           )}
 
-          {/* Company Section */}
+          {/* Company Section
+              Ungated 2026-07-09: Company Details + Logo are open to Free.
+              Was Pro-only, which broke the FTU refactor's "Add your company
+              info" step. PDF branding is still gated via lib/pdf.ts's
+              `includeBranding` flag — Free's PDFs still show QC branding
+              regardless of what they set here. The logo they upload shows
+              in-app (dashboard, sidebar). Company details show on-screen
+              only until they upgrade to Pro. */}
         <Pressable style={styles.section} onPress={Keyboard.dismiss}>
           <Text style={styles.sectionTitle}>Company</Text>
           <View style={styles.card}>
             <Pressable
               style={styles.row}
-              onPress={() => (hasProAccess && canEdit) ? router.push("/(main)/company-details") : (!hasProAccess ? handleLearnMore() : undefined)}
+              onPress={() => canEdit ? router.push("/(main)/company-details") : undefined}
               disabled={isTech}
             >
               <Text style={styles.rowLabel}>Company Details</Text>
-              {hasProAccess ? (
-                <View style={styles.rowRight}>
-                  <Text style={styles.rowValue} numberOfLines={1}>
-                    {preferences.company?.companyName || "Not set"}
-                  </Text>
-                  {canEdit && <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />}
-                </View>
-              ) : (
-                <LockBadge theme={theme} />
-              )}
+              <View style={styles.rowRight}>
+                <Text style={styles.rowValue} numberOfLines={1}>
+                  {preferences.company?.companyName || "Not set"}
+                </Text>
+                {canEdit && <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />}
+              </View>
             </Pressable>
 
             <View style={styles.divider} />
 
-            <Pressable
-              style={styles.row}
-              onPress={() => !hasProAccess ? handleLearnMore() : undefined}
-              disabled={hasProAccess}
-            >
+            <View style={styles.row}>
               <View style={styles.logoLeft}>
                 <Text style={styles.rowLabel}>Logo</Text>
                 {logo?.base64 && (
                   <Image source={{ uri: logo.base64 }} style={styles.logoThumb} resizeMode="contain" />
                 )}
               </View>
-              {!hasProAccess ? (
-                <LockBadge theme={theme} />
-              ) : canEdit ? (
+              {canEdit ? (
                 <View style={styles.logoButtons}>
                   <Pressable style={styles.textButton} onPress={handleUploadLogo} disabled={uploadingLogo}>
                     {uploadingLogo ? (
@@ -223,7 +224,12 @@ export default function BusinessSettings() {
               ) : (
                 <Text style={styles.rowValue}>{logo ? "Set" : "Not set"}</Text>
               )}
-            </Pressable>
+            </View>
+            {!hasProAccess && !isTech && (
+              <Text style={styles.tierHint}>
+                Shown in the app. PDFs stay QuoteCat-branded until Pro.
+              </Text>
+            )}
           </View>
         </Pressable>
 
@@ -713,5 +719,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], insets: { bot
     textButton: { paddingVertical: 4, paddingHorizontal: 8 },
     textButtonLabel: { fontSize: 15, color: theme.colors.accent, fontWeight: "600" },
     deleteButton: { padding: 4 },
+    tierHint: {
+      fontSize: 12,
+      color: theme.colors.muted,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      lineHeight: 16,
+    },
   });
 }
