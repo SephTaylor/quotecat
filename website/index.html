@@ -2024,6 +2024,82 @@
                         </svg>
                     </a>
                 </div>
+
+                <!--
+                  Desktop-only QR panel.
+
+                  The store badges above are NOT broken on desktop — verified
+                  2026-08-26, both Apple and Google serve full web listings to a
+                  desktop browser. The problem is that they are a DEAD END: a
+                  visitor on a computer clicks through, lands on a page for a phone
+                  app they cannot install from that machine, and has to remember to
+                  come back on their phone. Most don't. PostHog showed only 7
+                  app_store_click events from 5 users across 14 days.
+
+                  This hands them the app on the device that will actually run it.
+                  Hidden below 900px, where the badges already do the right thing
+                  because the visitor is already on the phone.
+
+                  images/qr-download.svg encodes:
+                    https://quotecat.ai/?utm_source=website&utm_medium=qr&utm_campaign=desktop-download
+                  Deliberately the TOP of the page, no #download anchor — the
+                  printed notepad QRs already land there, and every QR behaving the
+                  same way is worth more than saving a scroll. The utm_* params
+                  still separate scans from ordinary homepage traffic, which is
+                  otherwise all $direct and indistinguishable.
+
+                  Regenerate with: segno.make(url, error='h').save(path, scale=10, border=2)
+                -->
+                <style>
+                    /* Both store badges stay visible on every device, deliberately.
+                       Showing iOS and Android side by side signals that QuoteCat
+                       ships on both, which is worth more than saving one tap. */
+                    .desktop-qr { display: none; }
+
+                    @media (min-width: 900px) {
+                        .desktop-qr {
+                            display: flex;
+                            align-items: center;
+                            gap: 22px;
+                            max-width: 470px;
+                            margin: 32px auto 0;
+                            padding: 20px 24px;
+                            background: rgba(255, 255, 255, 0.04);
+                            border: 1px solid rgba(249, 115, 22, 0.25);
+                            border-radius: 16px;
+                            text-align: left;
+                        }
+                        .desktop-qr img {
+                            width: 148px;
+                            height: 148px;
+                            flex-shrink: 0;
+                            background: #fff;
+                            padding: 7px;
+                            border-radius: 8px;
+                        }
+                        .desktop-qr strong {
+                            display: block;
+                            color: #ffffff;
+                            font-size: 16px;
+                            font-weight: 700;
+                            margin-bottom: 6px;
+                        }
+                        .desktop-qr p {
+                            font-size: 14px;
+                            color: #d1d5db;
+                            line-height: 1.55;
+                            margin: 0;
+                        }
+                    }
+                </style>
+                <div class="desktop-qr">
+                    <img src="/images/qr-download.svg" width="148" height="148"
+                         alt="QR code that opens QuoteCat on your phone">
+                    <div>
+                        <strong>On a computer?</strong>
+                        <p>Scan with your phone's camera. QuoteCat is a mobile app, so it installs from your phone.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </section>

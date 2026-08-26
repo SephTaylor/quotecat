@@ -54,6 +54,12 @@
   to = "/resources.html"
   status = 200
 
+# NOTE (verified 2026-08-26): the clean-URL rules below point at .html files
+# Eleventy never produces — there is no _site/privacy.html, only
+# _site/privacy/index.html. These pages work because of Eleventy's directory
+# output, not because of these rules. Harmless, but don't copy the pattern when
+# adding a page; it isn't what's serving them.
+
 [[redirects]]
   from = "/privacy"
   to = "/privacy.html"
