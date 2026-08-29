@@ -224,6 +224,58 @@ The portal repo currently has 13 modified files + 2 untracked files from prior u
 
 ---
 
+### 🟡 `appVersionSource: local` leaves an uncommitted `app.json` after every build
+
+**Found 2026-08-28** while writing the `google-play-release` Skill, and confirmed by an
+actual `git diff`: `app.json` was sitting uncommitted with iOS 227→228 and Android
+74→75, left over from an earlier build.
+
+**Mechanism.** `eas.json` sets `"appVersionSource": "local"` with
+`build.production.autoIncrement: true`. Version state therefore lives in the repo, so
+the build bumps `ios.buildNumber` and `android.versionCode` by editing `app.json`. EAS
+does not commit it (a build tool committing to your repo would be worse), so the change
+just sits in the working tree.
+
+**Consequence if forgotten.** The next build increments from a stale base, and the repo
+stops recording which version code shipped with which commit.
+
+**The alternative: `appVersionSource: "remote"`.** EAS holds the build numbers on their
+servers and increments there. `app.json` is never touched and the problem disappears
+entirely. Note `version` (the user-facing `1.2.18` string) stays in `app.json` either
+way — `appVersionSource` only governs the build numbers.
+
+**Migration, if we do it:**
+1. Set `appVersionSource: "remote"` in `eas.json`
+2. **Seed the current values with `eas build:version:set`** — iOS **228**, Android **75**
+   as of 2026-08-28
+3. Optionally delete the now-ignored fields from `app.json`
+
+⚠️ **Step 2 is the dangerous one.** Seed too low and the next build produces a version
+code the store already has, and the submission is rejected. A version code cannot be
+reused even from a deleted release, so recovering means burning numbers to climb back
+past the collision.
+
+**Nothing in the app breaks.** The only code reference to version info is
+`app/(main)/settings.tsx:754`, which reads `Constants.expoConfig?.version` — the
+user-facing string, unaffected either way.
+
+**Why this is NOT an obvious win, and why it is still open.** Local version source keeps
+version history in git: `git log app.json` answers "which commit shipped build 214."
+Remote trades that local fact for an `eas build:version:get` lookup or release tags. For
+debugging a specific build, the git history is genuinely useful. That may be exactly why
+local was chosen.
+
+**Deliberately deferred past 2026-09-02.** A config change with a step that can burn
+version numbers is not worth doing days before an interview that uses this app as the
+primary credential. Revisit after.
+
+**Related:** the `google-play-release` Skill documents this gotcha. Worth recognising
+that half of that Skill is compensating for a config decision rather than teaching
+genuine judgment — if we switch to remote, that section should be deleted, not kept.
+The parts worth keeping are the ones that cannot be enforced: the `production` submit
+profile publishing to the `internal` track, and knowing when a new SDK means the Data
+Safety form needs updating.
+
 ### Phase 2 cleanup of `profiles` Stripe columns
 
 After the new `subscriptions`-based flow is verified in production for a few weeks:
@@ -325,6 +377,68 @@ Pros use **`@react-native-google-signin/google-signin`** (native SDK, not web-ba
 **Migration cost:** ~half-day work — add config plugin, install native dependency, drop in `google-services.json` / `GoogleService-Info.plist`, swap `expo-auth-session/providers/google` calls for native SDK calls in `sign-in.tsx` and `sign-up.tsx`, fresh native build cycle. Apple Sign-In path stays the same.
 
 **Priority:** Polish, not blocking. Real users sign in once and stay signed in. Worth doing once the launch dust settles.
+
+### 🟡 Nothing expires a subscription except an inbound webhook (found 2026-08-26)
+
+Subscription expiry is **entirely event-driven, with no backstop**. If a webhook
+never arrives, a subscription stays `active` forever and the user keeps their
+tier indefinitely.
+
+The happy path is correct: RC sends `EXPIRATION` →
+`revenuecat-webhook/index.ts` calls `upsert_subscription_event` with
+`p_status: "expired"` → the RPC recomputes `profiles.tier` from the user's
+remaining `status = 'active'` rows (`025_rebuild_subscriptions.sql:218-236`) →
+premium drops to free. Stripe has an equivalent path. Nothing wrong with any of
+that. The problem is it's the *only* path.
+
+**Evidence that there is no second line of defence:**
+
+- `current_period_end` is only ever **written** (both webhooks) and read once in
+  `create-portal-session` for ordering. It **never gates access** — not in the
+  mobile app, not in the portal, not in any RPC. The column is descriptive only.
+- `profiles.tier_expires_at` is declared in `001_initial_schema.sql:16` and
+  referenced **nowhere in any codebase**. Dead column.
+- No `pg_cron` job reconciles subscriptions. (Note the mechanism exists —
+  `cleanup-deleted` already runs on a DB cron via `net.http_post` — so adding
+  one has precedent and needs no new infrastructure.)
+
+**The row that surfaced this:** `awaknows@gmail.com`, `profiles.tier = premium`,
+subscription `active / premium / play_store`, `started_at`
+2026-05-13T22:02:21Z, `current_period_end` 2026-05-14T01:32:20Z. Still `active`
+three months later.
+
+Note the duration: **3½ hours.** That is a Play Store *test* purchase (Play
+compresses subscription durations for license testing), not a real customer. So
+this is almost certainly stale test data rather than a lost paying user — but it
+demonstrates the gap exactly: the subscription ended, no `EXPIRATION` was
+processed, and nothing has noticed in three months.
+
+**Why the obvious fix is wrong.** A naive sweep (`current_period_end < now()` →
+expire) would contradict a deliberate decision already in the code. The
+`BILLING_ISSUE` branch of `revenuecat-webhook/index.ts:235-237` states the tier
+persists until `EXPIRATION` fires — correct, because Play and Apple both have
+retry/grace windows where the period end is in the past but the subscription is
+still legitimately alive. A naive sweep would downgrade paying customers
+mid-retry. See **Apple grace period (`in_grace_period` status)** below, which is
+the same underlying issue from the other direction.
+
+**Options, cheapest first:**
+
+1. Sweep with a generous grace buffer — only expire when `current_period_end <
+   now() - interval '21 days'` (past Apple's 16-day grace). Crude but safe, and
+   catches exactly the case above.
+2. Periodic reconciliation against the RevenueCat REST API, which is the actual
+   source of truth for store subscriptions. More correct, more work.
+3. Defensive read: have entitlement checks consider `current_period_end`
+   alongside `status`. Touches many call sites; least attractive.
+
+**Priority: low right now, rising with scale.** At 6 paid accounts a missed
+webhook is a one-off you can fix by hand. It becomes real when there are enough
+subscribers that dropped webhooks are routine. Do it before any meaningful
+subscriber growth, not before launch.
+
+**Immediate cleanup (optional):** set that one row to `status = 'expired'` and
+let the RPC recompute, or leave it — it's test data.
 
 ### Apple grace period (`in_grace_period` status)
 

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "quotecat": {
+      "type": "stdio",
+      "command": "/Users/sephtaylor/Projects/quotecat-mcp/.venv/bin/quotecat-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}
