@@ -274,10 +274,22 @@ export async function presentPaywallAndSync(source?: string): Promise<boolean> {
         console.warn('[paywall] background Supabase sync failed:', e);
       });
 
-      trackEvent(AnalyticsEvents.PAYWALL_PURCHASED, {
-        source: source ?? 'unknown',
-        outcome: result.toLowerCase(),
-      });
+      // A new purchase and a restore both grant the tier (handled above,
+      // correctly), but they are not the same business outcome and must not
+      // share an event name. A restore is a reinstall recovering an
+      // entitlement they already paid for; counting it as a conversion
+      // inflates every paywall funnel.
+      trackEvent(
+        result === 'RESTORED'
+          ? AnalyticsEvents.PAYWALL_RESTORED
+          : AnalyticsEvents.PAYWALL_PURCHASED,
+        {
+          source: source ?? 'unknown',
+          // Kept so analysis can span the 2026-08-28 split, when both
+          // outcomes still shared the paywall_purchased event name.
+          outcome: result.toLowerCase(),
+        },
+      );
       return true;
     }
     trackEvent(AnalyticsEvents.PAYWALL_DISMISSED, {

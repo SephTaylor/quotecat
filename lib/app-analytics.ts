@@ -61,6 +61,19 @@ export const AnalyticsEvents = {
   PAYWALL_SHOWN: 'paywall_shown',
   PAYWALL_PURCHASED: 'paywall_purchased',
   PAYWALL_DISMISSED: 'paywall_dismissed',
+  // Split out 2026-08-28. PAYWALL_PURCHASED used to fire for RevenueCat's
+  // RESTORED result as well, distinguished only by an `outcome` property.
+  // Any funnel built on the event name therefore counted reinstalls as
+  // conversions. Reading the data for the first time showed 3 "purchases":
+  // one real (fired 3x for a single user on 2026-06-22) and two restores.
+  //
+  // A restore still grants the tier — that logic is unchanged and correct.
+  // Only the reporting was wrong.
+  //
+  // ⚠️ HISTORICAL DATA: events before 2026-08-28 are all under
+  // `paywall_purchased`. To analyse across the boundary, filter on the
+  // `outcome` property, which has always been recorded correctly.
+  PAYWALL_RESTORED: 'paywall_restored',
 
   // v1.2.15 nudges — measure whether the celebration + limit-reached
   // nudges actually convert. Each nudge fires _shown once when it opens,
