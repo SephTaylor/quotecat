@@ -49,6 +49,23 @@ Work through this in order. Stop and report if any preflight check fails; do not
 - **Unpushed commits.** `git log origin/main..HEAD --oneline`. Shipping code that is not
   pushed means the repo does not match what is in the store.
 
+- **Does this release contradict anything written down?** *(Report only — this does not
+  block the build.)* Look at what is actually in the release and ask whether it makes a
+  documented claim false. Two checks worth doing every time:
+
+  - **New dependency?** `git diff origin/main..HEAD -- package.json`. If an SDK was added,
+    it probably receives user data, which means the **Data Safety form and the App Store
+    privacy answers need updating** — and both stores treat a mismatch as a compliance
+    issue, not paperwork.
+  - **Does any shipped behavior contradict a rule in `CLAUDE.md`?** Policies written for
+    an earlier phase do not retract themselves.
+
+  *Why this check exists: `CLAUDE.md` said "DO NOT implement in-app purchases" for months
+  after RevenueCat shipped — an instruction that would have led an agent to delete working
+  revenue code. Nothing caught it, because shipping the feature never triggered a review
+  of the rule forbidding it. Found 2026-08-30 by an audit, not by the release process.
+  The same audit found RevenueCat and Sentry missing from the Data Safety disclosures.*
+
 ## 2. Confirm before building
 
 Builds cost money and take time, so stop here once and show:
@@ -93,9 +110,12 @@ stops recording which commit shipped which build. This has already happened once
   Production → create from the internal build → roll out.
 - iOS is in App Store Connect and needs release action there.
 - Confirm the `app.json` bump was committed.
-- If any new third-party SDK landed in this release, the **Play Data Safety form needs
-  updating** — a mismatch between what the app does and what the form says is a
-  compliance problem, not paperwork.
+- If any new third-party SDK landed in this release, the **Play Data Safety form and the
+  App Store privacy answers need updating** — a mismatch between what the app does and
+  what the form says is a compliance problem, not paperwork. **Regenerate the disclosure
+  list from `package.json`; do not trust any written copy of it**, including the one in
+  the `google-play-release` Skill. That copy was missing RevenueCat and Sentry until
+  2026-08-30.
 
 ## Notes
 
