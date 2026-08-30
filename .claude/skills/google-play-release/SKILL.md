@@ -1,6 +1,17 @@
 ---
 name: google-play-release
-description: Build, submit, and release the QuoteCat Android app to Google Play. Use for production or beta Android builds, EAS submit, promoting between Play Console tracks, version code questions, or filling in the Data Safety form.
+description: |
+  Build, submit, and release the QuoteCat Android app to Google Play.
+  TRIGGER — read BEFORE running any eas command, whenever: the task is shipping,
+  releasing, submitting, or building for Android or Google Play; the prompt mentions
+  eas build, eas submit, versionCode, buildNumber, app-bundle, AAB, Play Console, an
+  internal/beta/production track, or the Data Safety form; app.json version fields are
+  about to be edited; or a build has just finished and the working tree needs checking.
+  SKIP when: the work is iOS-only with no Android component (App Store Connect,
+  TestFlight, .p8 keys, ascAppId) — this Skill covers Android only; the task is ordinary
+  app development that merely happens to touch a file, with no release intent; or the
+  question is about the Expo dev client, `expo start`, or the preview profile, none of
+  which can be submitted to Play.
 ---
 
 # Google Play release
@@ -10,7 +21,7 @@ a different key; this covers Android only.
 
 ## Before building
 
-Confirm all four. Skipping any of these is how a build gets burned.
+Confirm all five. Skipping any of these is how a build gets burned.
 
 1. **Working tree is clean, or the pending changes are intended for this build.**
    `eas build` uploads what is on disk, not what is committed.
@@ -19,6 +30,12 @@ Confirm all four. Skipping any of these is how a build gets burned.
 3. **You are on the branch you mean to ship.**
 4. **Decide the track before you start** (see Tracks below). It changes which submit
    profile you use.
+5. **Has `version` been bumped, if this build has user-visible changes?**
+   `autoIncrement` bumps `versionCode` and `buildNumber`. **It does NOT bump `version`** —
+   the string users actually see. Ship without bumping it and Play accepts the build
+   (the version code went up) while every user sees the same version number as last
+   time, so a real release looks like nothing happened. Bump `version` in `app.json`
+   **before** building.
 
 ## Build
 
