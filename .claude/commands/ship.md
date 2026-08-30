@@ -22,6 +22,30 @@ Work through this in order. Stop and report if any preflight check fails; do not
   have them.
 - **Current version.** Read `app.json` and report `version`, `ios.buildNumber`, and
   `android.versionCode`. State what the next build numbers will be.
+
+- **⚠️ Build numbers are AHEAD of everything already built.** This is the check that
+  prevents a burned release. Run:
+
+      eas build:list --platform ios --limit 15 --non-interactive
+      eas build:list --platform android --limit 15 --non-interactive
+
+  Find the **highest build number that exists on each platform** — including builds that
+  failed, were cancelled, or never shipped. A consumed number is consumed.
+
+  Because `appVersionSource` is `local` with `autoIncrement`, the next build is
+  **`app.json`'s current value plus one**. So `app.json` must be **greater than or equal
+  to** the highest existing build number. If it is behind, the next build produces a
+  number the store has already seen and the submission is rejected — and a version code
+  cannot be reused, even from a deleted release, so recovering means burning numbers to
+  climb back past the collision.
+
+  **If `app.json` is behind, stop.** Report both numbers and ask whether to raise
+  `app.json` to a safe value before continuing. Do not raise it silently.
+
+  *Why this check exists: on 2026-06-05 a version-source mismatch shipped v1.2.5 builds
+  while `app.json` said 1.2.6, and three iOS builds were burned finding out (208, 209,
+  and one more). The fix commit `9fa6710` recommended exactly this preflight and it was
+  never written down until now.*
 - **Unpushed commits.** `git log origin/main..HEAD --oneline`. Shipping code that is not
   pushed means the repo does not match what is in the store.
 
