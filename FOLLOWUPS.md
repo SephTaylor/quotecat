@@ -138,6 +138,77 @@ Estimated time: ~15 minutes of work, then one build cycle for the upload to take
 
 **Priority:** Pre-HGTV / before any real marketing-site Stripe traffic. NOT blocking IAP launch.
 
+---
+
+#### 🔎 SKILL-ASSISTED REVIEW 2026-08-30 — the stale price IDs are not the only problem
+
+Ran the Stripe plugin's `stripe:stripe-best-practices` Skill against
+`src/app/api/stripe/webhook/route.ts`. It returned **12 findings**. The three most severe
+were **spot-checked against the source and all three confirmed** — see the verification
+note at the bottom.
+
+**⚠️ The remaining nine are UNVERIFIED agent output.** Treat them as leads, not facts.
+This project has history here: `MOBILE_PORTAL_AUDIT.md` records 9 of 27 findings from an
+earlier agent audit being outright misreads. Verify before acting.
+
+**CONFIRMED (checked against source 2026-08-30):**
+
+1. **Every failure path returns HTTP 200, so Stripe never retries.** Line 128 returns
+   `{received: true}` unconditionally after the switch; every handler failure is a
+   `console.error` plus a bare `return`. A transient Supabase error while writing a
+   subscription means the customer is charged and has no entitlement, permanently. No
+   dead-letter table, no reconciliation job. Inconsistent too:
+   `stripe.subscriptions.retrieve` throws and produces a proper 500 with retry, while a
+   DB error does not. **Transient failures should return 5xx — Stripe retries with
+   backoff for up to 3 days.**
+
+2. **The idempotency key collides across genuinely different events.** Line 267:
+   `p_event_id: \`sub_upd_${subscription.id}_${subscription.status}\``. Status is
+   unchanged across most updates, so every active→active transition shares one key and
+   the RPC returns `skipped_duplicate`. Concretely: a user upgrades Pro→Premium, the key
+   matches an earlier update, the write is skipped, and they pay for Premium while
+   staying on Pro. **`event.id` is the correct key** and is globally unique per delivery,
+   but `event` is never passed into the handlers.
+
+3. **`Date.now()` disables the RPC's out-of-order protection.** Lines 268 and 336. The
+   RPC has a `skipped_out_of_order` branch that only works if the timestamp comes from
+   Stripe (`event.created * 1000`). Worse, the handlers disagree — line 192 uses
+   `subscription.start_date`, lines 268 and 336 use wall clock. A delayed redelivery of
+   an old event always looks newer than current state and can re-activate a cancelled
+   subscription.
+
+**UNVERIFIED — plausible, needs checking before anyone acts:**
+
+4. Entitlement granted before payment settles — `session.payment_status` is never
+   checked and line 183 hardcodes `p_status: 'active'`. No
+   `checkout.session.async_payment_succeeded` handler exists.
+5. `mapStripeStatus` maps `past_due`, `unpaid`, and `incomplete` all to `'active'`, and
+   defaults to `'active'` for unknown statuses. No `invoice.payment_failed` handler.
+6. Cancellation fails **open** on an unknown price ID — user keeps the paid tier forever.
+   A cancel does not need the price at all.
+7. Seat price IDs may belong to a different Stripe account — `PRICE_TO_TIER` entries
+   share the infix `Cz2LFZfwAI` while `PRICE_TO_SEATS` entries share `EJ6nOeXQIm`.
+   Testable with `stripe prices retrieve price_1Sqdi4EJ6nOeXQImH8Yp6Ls9`.
+8. Seat purchase is not idempotent and read-modify-writes the whole `preferences` blob.
+9. Seat removal never clears `seat_subscriptions` and looks the user up by a different
+   key than the purchase used.
+10. Supabase errors are discarded — only `data` is destructured, so a transient error is
+    indistinguishable from "user not found."
+11. `item.current_period_end` reads the raw webhook payload, whose API version is set by
+    the Dashboard endpoint config, not by the SDK constructor. If that endpoint is
+    pre-Basil this throws a `RangeError` on every subscription update.
+12. All work, including an outbound Resend call, happens before the ACK.
+
+**Verification method, for the record:** three claims checked by reading the cited lines
+directly. All held, including the subtle one — line 192 really does use Stripe's
+timestamp while 268 and 336 use wall clock, so the handlers are genuinely inconsistent.
+
+**Why the hit rate was better than the 2026-06 audit:** that one asked "do these two
+codebases behave the same," which requires holding two systems in mind and inferring from
+both — and that is where it hallucinated. This one asked "what is wrong with this one
+file," and every claim cited a line the agent had actually read. **Claims about what a
+single file does are more reliable than claims about how two systems differ.**
+
 **Discovered:** 2026-04-29 during post-IAP-fix Stripe webhook config verification. No production impact yet because zero real Stripe customers have flowed through the marketing site (audit confirmed live Stripe Customers tab has only one $0-spend record).
 
 **Repo affected:** `quotecat-portal` (separate repo, separate Vercel deploy from the QuoteCat app)
@@ -224,6 +295,84 @@ The portal repo currently has 13 modified files + 2 untracked files from prior u
 
 ---
 
+### 🔴 `signup_completed` has NEVER fired — the email path is structurally unreachable
+
+**Found 2026-08-28** by auditing the full PostHog event taxonomy for the first time.
+Zero `signup_completed` events, ever, across 24 distinct event names on record. Supabase
+has 36 profiles, so people are demonstrably signing up.
+
+**The email path is the definite bug.** `app/(auth)/sign-up.tsx:318`:
+
+    // Check if email confirmation is required
+    if (data.session) {
+      // User is signed in immediately (email confirmation disabled)
+      ...
+      trackEvent(AnalyticsEvents.SIGNUP_COMPLETED, { provider: "email", tier: "free" });
+    }
+
+Email confirmation IS enabled — line 278 sets
+`emailRedirectTo: "https://quotecat.ai/confirmed.html"` — so `data.session` is always
+null on signup and the else branch at :369 runs instead ("We sent you a confirmation
+link"). **The tracking call is unreachable.** Every email signup ever has taken the
+untracked branch.
+
+**Apple (:198) and Google (:236) are unproven.** They gate on
+`if (isNewSignup)` from `ensureProfileExists()`, which correctly returns true when it
+creates a profile. No `on_auth_user_created` trigger exists to race it, and profile
+`created_at`/`updated_at` deltas are irregular rather than clustered, so nothing
+server-side is pre-creating profiles. Most likely explanation is simply that few or no
+users have signed up via OAuth. Provider mix could not be confirmed — the
+`quotecat_mcp_ro` role has no grant on `auth.users`, which is the least-privilege
+boundary working as designed.
+
+**THE FIX:** move the call out of the session check. The account was created either way;
+whether it has been confirmed is a property, not a precondition.
+
+    trackEvent(AnalyticsEvents.SIGNUP_COMPLETED, {
+      provider: "email",
+      tier: "free",
+      confirmation_pending: !data.session,
+    });
+
+**That also buys a metric we do not currently have:** how many people sign up and never
+confirm. Given 36 profiles and an activation rate where 88% never create a quote, the
+unconfirmed gap may be a meaningful part of that story.
+
+⚠️ **Check `sign-in.tsx:143` before shipping the fix.** It also fires
+`SIGNUP_COMPLETED`, on the sign-IN screen. That may be legitimate (a first OAuth sign-in
+does create an account) but if it is misplaced it will double-count once the email path
+starts working.
+
+**Why this matters beyond the metric.** The code comment on that event says: *"these are
+the conversion-funnel events the marketing push depends on. Without them we can't read
+the funnel."* A marketing push then ran (100+ notepads dropped in Lansing and Battle
+Creek, August 2026) and the funnel could not be read — because the event it depended on
+had never fired once.
+
+---
+
+### 🟡 Other events defined but never emitting (found in the same 2026-08-28 audit)
+
+Full taxonomy is 24 event names. These are declared in `lib/app-analytics.ts` and absent
+from PostHog:
+
+| Event | Status | Likely explanation |
+|---|---|---|
+| `csv_generated`, `csv_shared` | never fired | needs checking — are the call sites wired? |
+| `pdf_limit_nudge_shown` / `_upgrade_tap` / `_dismiss` | never fired | **probably innocent** — only 35 users have ever generated a PDF, so nobody has hit the 10/month ceiling |
+| `quote_created` | **stopped 2026-06-19** | suspicious: `quote_updated` still fires through 2026-08-26. Either the creation path changed or quotes are now created via a route that does not track |
+| `error_occurred` | **stopped 2025-10-28** | 12 events from one user, then silence. Sentry shows errors happen, so this is almost certainly not wired to the real error paths |
+
+`quote_created` and `error_occurred` are the two worth investigating. The PDF-limit nudge
+is low volume rather than broken, and that distinction matters — do not "fix" something
+that is simply waiting for traffic.
+
+**The general lesson, worth keeping:** instrumenting is not the same as verifying the
+instrument works. Confirm an event actually arrives before trusting any dashboard built
+on it.
+
+---
+
 ### 🟡 `appVersionSource: local` leaves an uncommitted `app.json` after every build
 
 **Found 2026-08-28** while writing the `google-play-release` Skill, and confirmed by an
@@ -239,35 +388,50 @@ just sits in the working tree.
 **Consequence if forgotten.** The next build increments from a stale base, and the repo
 stops recording which version code shipped with which commit.
 
-**The alternative: `appVersionSource: "remote"`.** EAS holds the build numbers on their
-servers and increments there. `app.json` is never touched and the problem disappears
-entirely. Note `version` (the user-facing `1.2.18` string) stays in `app.json` either
-way — `appVersionSource` only governs the build numbers.
+## ⛔ DO NOT "FIX" THIS BY SWITCHING TO REMOTE — corrected 2026-08-30
 
-**Migration, if we do it:**
-1. Set `appVersionSource: "remote"` in `eas.json`
-2. **Seed the current values with `eas build:version:set`** — iOS **228**, Android **75**
-   as of 2026-08-28
-3. Optionally delete the now-ignored fields from `app.json`
+**An earlier version of this entry recommended `appVersionSource: "remote"`. That
+recommendation was made without reading the git history and is wrong.**
 
-⚠️ **Step 2 is the dangerous one.** Seed too low and the next build produces a version
-code the store already has, and the submission is rejected. A version code cannot be
-reused even from a deleted release, so recovering means burning numbers to climb back
-past the collision.
+`git log -S appVersionSource -- eas.json` leads to commit **`9fa6710`, 2026-06-05:
+"fix(eas): switch to local appVersionSource — single source of truth in app.json."** This
+project **was** on remote, and remote caused a production incident:
 
-**Nothing in the app breaks.** The only code reference to version info is
-`app/(main)/settings.tsx:754`, which reads `Constants.expoConfig?.version` — the
-user-facing string, unaffected either way.
+> "iOS builds kept shipping at v1.2.5 despite app.json being at 1.2.6 for days. Root
+> cause: eas.json was set to appVersionSource: "remote", which tells EAS to use its own
+> server-side version registry as the source of truth for the App Version string. The
+> registry was never synced when we bumped app.json, so EAS shipped 1.2.5 builds."
+>
+> "The eas build:version:set CLI command turns out to bump build_number only, not the App
+> Version string. Not documented clearly in the help text — **found out by burning three
+> iOS builds today** (208, 209, and 829aaa64)."
 
-**Why this is NOT an obvious win, and why it is still open.** Local version source keeps
-version history in git: `git log app.json` answers "which commit shipped build 214."
-Remote trades that local fact for an `eas build:version:get` lookup or release tags. For
-debugging a specific build, the git history is genuinely useful. That may be exactly why
-local was chosen.
+**The uncommitted-app.json tradeoff was accepted deliberately, in that same commit:**
 
-**Deliberately deferred past 2026-09-02.** A config change with a step that can burn
-version numbers is not worth doing days before an interview that uses this app as the
-primary credential. Revisit after.
+> "each build will now produce a buildNumber bump commit in git. That's noise but it's
+> **honest noise** — the commit history shows exactly which build numbers shipped at which
+> versions, which is actually useful for debugging release issues like the one we hit
+> today."
+
+**So local is the considered choice and remote is the known hazard. Leave it.**
+
+### The real gap is smaller than it looked
+
+That commit assumed autoIncrement "bumps these values directly in app.json after each
+build **and commits them back to git**." **It does not commit them** — verified
+2026-08-28, when iOS 227→228 and Android 74→75 were found sitting in the working tree.
+
+So the design is sound; only the auto-commit assumption was wrong.
+
+**Fix: commit the bump as part of shipping.** Already handled in two places as of
+2026-08-30 — the `google-play-release` Skill documents it, and the `/ship` slash command
+does it as an explicit step. **No config change needed.**
+
+✅ **DONE 2026-08-30 (`970f1c7`).** The commit's own closing note suggested a release-prep
+check that `app.json` build numbers are AHEAD of the highest existing build number before
+triggering. That is now `/ship` preflight: it runs `eas build:list` for both platforms,
+compares against `app.json`, and **stops** if `app.json` is behind rather than raising it
+silently. Consumed numbers count, including failed and cancelled builds.
 
 **Related:** the `google-play-release` Skill documents this gotcha. Worth recognising
 that half of that Skill is compensating for a config decision rather than teaching
@@ -275,6 +439,62 @@ genuine judgment — if we switch to remote, that section should be deleted, not
 The parts worth keeping are the ones that cannot be enforced: the `production` submit
 profile publishing to the `internal` track, and knowing when a new SDK means the Data
 Safety form needs updating.
+
+### 🟡 OTA updates are fully wired and have never once been used (found 2026-08-30)
+
+**What is configured.** `expo-updates@~29.0.16` is installed, `app.json` has
+`updates.url` pointing at the EAS endpoint, `eas.json` assigns a `channel` to all three
+build profiles, and three channels exist (`development`, `preview`, `production`) each
+with a matching branch. This was set up deliberately on 2026-01-08 in `1f966bd`
+("feat: ... OTA updates").
+
+**What has actually happened.** Nothing. `eas branch:list` reports
+`Runtime Version: N/A` and `Group ID: N/A` for all three branches — **zero updates have
+ever been published on any channel** in the ~8 months since.
+
+**The discipline is being followed, though.** `runtimeVersion` is a hardcoded string
+(not a policy like `{"policy": "appVersion"}`) and it has tracked `version` exactly
+through every release since 1.2.12: 1.2.12, .13, .14, .15, .16, .17, .18. Nobody has
+let it drift.
+
+#### Why this matters — the trap is in the interaction, not either file alone
+
+An OTA update only reaches installs whose **`runtimeVersion` matches exactly**. Because
+`runtimeVersion` is bumped in lockstep with `version`, every release starts a fresh
+cohort with zero carryover. That is correct and safe (JS should never land on a build
+with different native code) but it has a consequence worth understanding **before** an
+emergency rather than during one:
+
+⚠️ **`app.json` on disk is the version you are building NEXT, not the version users are
+running.** The moment `version`/`runtimeVersion` are bumped to prepare a build, a
+publish from that working tree targets a runtime **nobody has installed yet**. The
+publish succeeds, reports success, and reaches **zero users** — a silent no-op that
+looks exactly like a working hotfix.
+
+**And the first use will almost certainly be an emergency**, because that is what OTA is
+for: shipping a JS fix without waiting on App Store review. That is the worst possible
+moment to discover an untested path.
+
+#### What to do
+
+1. **Do a dry run while nothing is on fire.** Publish a trivial no-op change to the
+   `preview` channel, install a `preview` build, confirm it actually lands. Roughly
+   30 minutes, and it converts "configured" into "known to work."
+2. **Write down the pre-publish check:** confirm the `runtimeVersion` in the working
+   tree matches the `version` users are actually running (App Store Connect / Play
+   Console), not the one being prepared. If they differ, publish from the release tag,
+   not from `main`.
+3. **Know the rollback.** `eas update:republish` points a branch back at an earlier
+   update group. Worth reading once now rather than under pressure.
+4. **Only then consider it available as a hotfix path.** Until step 1 is done, treat
+   OTA as unavailable and plan on a store submission.
+
+**Not urgent** — nothing is broken, and never having used OTA has cost nothing so far.
+It matters the first time a bad build reaches production, and its value is entirely in
+being tested beforehand.
+
+**Effort:** ~30 min dry run, plus adding the pre-publish check to `/ship` or the
+`google-play-release` Skill.
 
 ### Phase 2 cleanup of `profiles` Stripe columns
 
