@@ -97,9 +97,16 @@ Play requires this and re-asks whenever disclosures change. Current answers:
 invoices, clients, assemblies), device info (device type, OS version, app version),
 analytics (anonymized usage via PostHog).
 
-**Third parties to disclose:** Supabase (database, auth), Stripe (payments),
+**Third parties to disclose:** Supabase (database, auth), **RevenueCat** (subscription
+purchases, app user IDs), **Sentry** (crash reports, device info), Stripe (payments),
 Anthropic/Claude (AI features), OpenAI (embeddings), X-Byte (supplier pricing),
 PostHog (analytics).
+
+⚠️ **Do not trust this list — regenerate it.** RevenueCat and Sentry were both shipped
+and missing from it until an audit on 2026-08-30. **Check `package.json` against this
+list every submission.** A hardcoded list of facts inside a Skill goes stale exactly like
+a hardcoded list of facts anywhere else; the Skill's value is the *instruction to check*,
+not the copy below it.
 
 **Privacy policy:** https://quotecat.ai/privacy
 

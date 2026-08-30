@@ -440,6 +440,37 @@ The parts worth keeping are the ones that cannot be enforced: the `production` s
 profile publishing to the `internal` track, and knowing when a new SDK means the Data
 Safety form needs updating.
 
+### 🔴 Data Safety / privacy disclosures are missing RevenueCat and Sentry (found 2026-08-30)
+
+**This is a live compliance gap, not a docs problem.** Both SDKs are shipped and both
+process user data, and neither appears in the third-party disclosure list that was
+submitted to Google Play (or, by extension, in the App Store privacy answers).
+
+| SDK | Version | What it receives |
+|---|---|---|
+| `react-native-purchases` (RevenueCat) | ^9.10.5 | Subscription purchases, app user IDs |
+| `@sentry/react-native` | ~7.2.0 | Crash reports, device and OS info |
+
+**Why it happened.** The disclosure list lived as a hardcoded copy in `CLAUDE.md`, and
+later a second copy in the `google-play-release` Skill. Neither is generated from
+`package.json`, so adding an SDK never forced an update. The Skill even carries a warning
+about this exact failure mode ("it is easy to add an SDK and forget the disclosure") while
+itself carrying the incomplete list. **A fact inside a Skill rots exactly like a fact
+inside a doc.**
+
+**Fixed so far (docs only):** both lists now include RevenueCat and Sentry, and both now
+say to regenerate from `package.json` rather than trust the copy.
+
+**Still to do — the part that actually matters:**
+1. Update the **Play Console Data Safety form** with both.
+2. Review **App Store Connect privacy answers** for the same omission.
+3. Confirm `https://quotecat.ai/privacy` names both.
+4. Consider deriving the list from `package.json` at release time instead of maintaining
+   a copy at all.
+
+**Urgency:** do it before the next store submission. A mismatch between what the app does
+and what the form says is a compliance issue, and both stores treat it as one.
+
 ### 🟡 OTA updates are fully wired and have never once been used (found 2026-08-30)
 
 **What is configured.** `expo-updates@~29.0.16` is installed, `app.json` has

@@ -50,9 +50,10 @@ QuoteCat is a construction quoting platform with three main components:
 - **Edge Functions**: `wizard-chat` (AI), `create-checkout`, `stripe-webhook`, `cleanup-deleted`, `sync-xbyte`, `ingest-prices`
 - **Stripe**: Payment processing for subscriptions
 
-### Launch Target
-- **Public Launch**: January 31, 2025
-- **Current Status**: TestFlight beta (Build #145, v1.2.0)
+### Status
+- **Shipped** on the App Store and Google Play.
+- **Current version**: see `app.json` (`version`, `ios.buildNumber`, `android.versionCode`).
+  Do not restate build numbers here — they change every release and this file does not.
 
 ---
 
@@ -96,7 +97,7 @@ If these are missing, you'll see an error in development. Restart Metro after ad
 
 The codebase uses a modular architecture with domain-specific modules in `modules/`:
 
-- **quotes**: Quote persistence and business logic using AsyncStorage. Handles legacy key migration from multiple storage keys.
+- **quotes**: Quote persistence and business logic. **Backed by SQLite** (`storageSQLite.ts`), which `index.ts` re-exports. Migrated from AsyncStorage to fix OOM crashes during sync; the `pre-sqlite-migration-backup` branch has the old implementation.
 - **catalog**: Product catalog with categories (framing, drywall, electrical, plumbing). Products have id, name, unit, and unitPrice.
 - **assemblies**: Templates for groups of products with computed quantities (e.g., "frame a room" uses dynamic qty calculations based on room dimensions).
 - **materials**: Product selection UI with Map-based selection state.
@@ -130,13 +131,16 @@ Uses Expo Router (v6) with file-based routing:
 
 ### Data Layer
 
-**Quotes Storage (`modules/quotes/index.ts`)**:
+**Quotes Storage (`modules/quotes/index.ts` → `modules/quotes/storageSQLite.ts`)**:
 
-- Uses AsyncStorage with legacy key migration
-- Reads from multiple keys: `@quotecat/quotes`, `quotes`, `qc:quotes:v1`
-- Always writes to primary key: `@quotecat/quotes`
+- **SQLite** (`expo-sqlite`), not AsyncStorage. `index.ts` is a thin re-export.
+- The migration exists because loading/syncing everything through AsyncStorage caused
+  out-of-memory crashes.
 - De-duplicates by id, preferring latest updatedAt/createdAt
 - Normalizes data with forward-compatible extra fields
+- Computes total on save (never trust stored totals)
+
+⚠️ **There is no `modules/quotes/storage.ts`.** Older notes cite it; it does not exist.
 
 **Library Storage (`modules/library/`)**:
 
@@ -289,63 +293,89 @@ Navigating between groups (e.g., `(forms)` → `(main)`) requires explicit back 
 
 ## 🎯 Business Model & Monetization Strategy
 
-### CRITICAL: Avoid Apple's 30% Commission
+### In-app purchases are SHIPPED — via RevenueCat
 
-**DO NOT implement in-app purchases in Phase 1.** All payments must go through external website to avoid Apple taking 30%.
+⚠️ **This section previously said "DO NOT implement in-app purchases." That was Phase 1
+policy and it is now false.** Corrected 2026-08-30. Do not act on the old rule; IAP is
+live revenue infrastructure and removing it would break paying customers.
 
-**Allowed in App:**
-- ✅ Show locked features with "Pro" badge
-- ✅ "Learn More" button → opens website in Safari
-- ✅ Login screen for users who bought on website
-- ✅ Check subscription tier after login
-- ✅ Display current tier in settings
+**What is live:**
 
-**NOT Allowed in App:**
-- ❌ Any pricing displayed ($29, $79, etc.)
-- ❌ "Buy", "Purchase", "Subscribe" buttons
-- ❌ Payment forms
-- ❌ Urgency messaging with pricing ("Only 47 spots at $29!")
-- ❌ Price comparisons
+| Piece | Where |
+|---|---|
+| SDK | `react-native-purchases` + `react-native-purchases-ui` |
+| Client config, entitlements (`pro`, `premium`), purchase + restore | `lib/revenuecat.ts` |
+| Entitlement mirroring into `profiles.tier` | `supabase/functions/revenuecat-webhook/` |
+| Paywall presentation | 10+ screens (dashboard, pro-tools, assemblies, contracts, quote review, nudges) |
+
+**So in-app pricing and Buy/Subscribe buttons are expected and correct.** Store
+commission is the cost of the IAP channel, accepted deliberately.
+
+**Two payment paths coexist — do not conflate them:**
+- **Subscriptions** (Pro/Premium) → RevenueCat IAP through Apple and Google.
+- **Contractor-to-customer payments** → Stripe Connect (`lib/stripeConnect.ts`). This is
+  the contractor collecting from *their* client. QuoteCat takes no cut.
+
+**Store rules that DO still bind:** the usual App Store guidance against steering users
+to outside payment for subscriptions. See commits `37da275` (stripped upgrade paths that
+conflicted) and `096a316` (restored with compliant copy) for the nuance — this has been
+tuned, not guessed.
 
 ### Pricing Tiers (As of Feb 2026)
 
 **Free Tier:**
 - Price: $0
-- Features:
-  - Unlimited quotes (local only)
-  - Unlimited clients
-  - 5 quote PDF exports/month (resets on 1st)
-  - 5 invoice PDF exports/month (with QuoteCat branding, resets on 1st)
-  - 5 CSV exports/month (resets on 1st)
-  - Full invoice access (create, track, manage)
-- No assemblies, no cloud sync, no portal links
+- ⚠️ **Limits live in `lib/user.ts` (`FREE_LIMITS`) — that is the source of truth.**
+  Enforced by `lib/features.ts`. The values below are a convenience copy; if they
+  disagree with the code, the code is right and this list is stale.
+
+  | Limit | Value |
+  |---|---|
+  | `quotes` | **10** (a hard cap, NOT unlimited) |
+  | `pdfs` | 10/month |
+  | `invoices` | 10/month (with QuoteCat branding) |
+  | `spreadsheets` (CSV) | 10/month |
+  | `pricebookItems` | 50 total |
+
+- Unlimited clients. Full invoice access (create, track, manage).
+- No assemblies, no cloud sync, no portal links.
+- ⛔ **Free contractors never get a web surface.** PDF only — no portal links, no shared
+  URLs, no QR codes to customers. The entire web layer is Pro+.
 
 **Pro Tier - Founder Pricing:**
 - Price: $29/mo (first 50 customers, locked forever)
-- Regular price: $49/mo
+- Regular price: $39/mo
 - Features: Everything in Free + unlimited exports (no branding), custom assemblies, cloud sync, multi-device, portal links, company branding on PDFs, **card payment acceptance via Stripe Connect** (v1.2.9+, mobile in-app onboarding; QuoteCat takes no cut, Stripe charges its standard processor fee)
 
 **Premium Tier - Founder Pricing:**
 - Price: $79/mo (first 25 customers, locked forever)
-- Regular price: $109/mo
+- Regular price: $99/mo
 - Features: Everything in Pro + contracts, Drew AI quote building, web portal access, priority support
 
 **Price Increase Triggers:**
-- Primary: Hit founder cap (50 Pro customers → $49/mo, 25 Premium customers → $109/mo)
+- Primary: Hit founder cap (50 Pro customers → $39/mo, 25 Premium customers → $99/mo)
 - Secondary: 90 days from TestFlight launch
 - Backup: High conversion rate (>20%) for 30 days
 
-### User Journey (Compliant)
+### Upgrade journey (current)
 
-1. User downloads free app from App Store
-2. Uses app, sees "🔒 Pro Feature"
-3. Taps "Learn More" → Opens quotecat.app in Safari
-4. Website shows pricing, urgency, spots remaining
-5. Buys via Stripe on website
-6. Gets email with login credentials
-7. Returns to app → Logs in
-8. App checks Supabase: tier = 'pro'
-9. Pro features unlock ✅
+⚠️ **Corrected 2026-08-30.** This previously described buying on the website and
+returning to the app to log in. That was the Phase 1 flow and it is no longer how
+subscriptions are sold.
+
+1. User downloads the free app from the App Store or Google Play
+2. Uses the app, hits a gated feature or a nudge
+3. **Paywall presents in-app** (RevenueCat)
+4. Purchase completes through Apple or Google
+5. `revenuecat-webhook` mirrors the entitlement into `profiles.tier`
+6. Features unlock
+
+**Restores** go through `restorePurchases()` in `lib/revenuecat.ts`. They are tracked as
+`paywall_restored`, deliberately separate from `paywall_purchased` — a restore is not a
+conversion (fixed 2026-08-30, `d9b0188`).
+
+The marketing site is **quotecat.ai** (not `.app`) and still sells via Stripe Checkout,
+but that is the web path, not the in-app path.
 
 ---
 
@@ -805,7 +835,7 @@ These changes need to be added back incrementally, testing each batch:
 
 ### Pricing Strategy
 - Founder pricing: $29/mo Pro (first 50 customers), $79/mo Premium (first 25 customers)
-- Regular pricing after cap: $49/mo Pro, $109/mo Premium
+- Regular pricing after cap: $39/mo Pro, $99/mo Premium
 - Price locked forever for early adopters
 - Raise prices at customer milestones, not time-based
 - Grandfathering creates loyalty and urgency
@@ -852,7 +882,13 @@ When submitting to Google Play, use these answers for the Data Safety section:
 
 ### Third Parties to Disclose
 
+⚠️ **Audited 2026-08-30 — RevenueCat and Sentry were shipped but never added here.**
+Verify against `package.json` before every submission; this list is a copy and copies
+drift.
+
 - Supabase (database, auth)
+- **RevenueCat** (`react-native-purchases`) — subscription purchases, app user IDs
+- **Sentry** (`@sentry/react-native`) — crash reports, device and OS info
 - Stripe (payments)
 - Anthropic/Claude (AI features)
 - OpenAI (embeddings)
