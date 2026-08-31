@@ -440,6 +440,54 @@ The parts worth keeping are the ones that cannot be enforced: the `production` s
 profile publishing to the `internal` track, and knowing when a new SDK means the Data
 Safety form needs updating.
 
+### 🟢 MCP server: add a live-schema Resource (deferred to after 2026-09-02)
+
+**Status:** deliberately deferred. Considered on 2026-08-30 and **decided against building
+before the HUB interview** — implementing a protocol primitive with no operational need,
+two days before being asked about it, is worse than being able to explain why it is absent.
+Revisit after.
+
+**What the server exposes today.** Tools only — `check_entitlement_drift`,
+`check_user_state`, `free_tier_pressure`. MCP defines three server primitives:
+
+| Primitive | Controlled by | Purpose |
+|---|---|---|
+| Tools | Model | Actions the model invokes |
+| Resources | Application | Passive read-only context the app pulls in |
+| Prompts | User | Workflow templates the user explicitly picks |
+
+**Prompts — not planned.** There is one user (Joe), reached through one client (Claude
+Code), which already has slash commands. `/ship` is a slash command and works. An MCP
+Prompt would be the same function with more indirection and no additional reach.
+
+**Resources — one candidate that holds up: the live database schema.**
+
+The test for whether a Resource earns its place is whether the data is *already reachable
+by the client*. Most candidates fail it — Claude Code sits in the repo, so `lib/user.ts`
+(`FREE_LIMITS`) is one Read away and a Resource mirroring it is redundant.
+
+The schema passes:
+
+- **The current shape of a table is not in any single file.** It is the result of applying
+  37 incremental migrations in order. Reconstructing `profiles` means mentally replaying
+  every `ALTER TABLE` across the whole directory.
+- **A written-down copy would rot**, which is exactly why "database schema notes" was
+  rejected as a Skill candidate. The conclusion then was *"schema questions have a better
+  answer: query the live database."* A Resource is that answer, structured.
+- It is **passive reference data**, which is the Resource shape rather than the Tool shape.
+
+**Sketch:** `schema://public/{table}` as a resource template, reading
+`information_schema.columns` / `table_constraints` through the existing read-only role.
+`resources/list` enumerates tables; `resources/read` returns columns, types, nullability,
+defaults, and constraints.
+
+**Prerequisite:** the `quotecat_mcp_ro` role currently has `GRANT SELECT` on exactly two
+tables (`profiles`, `subscriptions`). Reading `information_schema` needs its own grant.
+Grant only what the schema read requires — do not widen the role to all tables to make
+this easier.
+
+**Effort:** ~2 hours including the grant and testing the handshake.
+
 ### 🔴 Data Safety / privacy disclosures are missing RevenueCat and Sentry (found 2026-08-30)
 
 **This is a live compliance gap, not a docs problem.** Both SDKs are shipped and both
