@@ -2,6 +2,7 @@
 // Reminder/notification calculation and storage
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { sortedReleaseNotes } from "./releaseNotes";
 import type { Quote, Invoice } from "./types";
 import type { NotificationPreferences } from "./preferences";
 import { supabase } from "./supabase";
@@ -26,7 +27,8 @@ export type ReminderType =
   | "assembly_vote_up"    // Someone liked a shared assembly
   | "assembly_copied"     // Someone copied a shared assembly
   | "assembly_comment"    // Someone commented on a shared assembly
-  | "onboarding_incomplete"; // User skipped onboarding, can resume
+  | "onboarding_incomplete" // User skipped onboarding, can resume
+  | "release_note";       // "here is what changed" note from a release
 
 export type Reminder = {
   id: string;
@@ -622,4 +624,70 @@ export async function getOnboardingReminder(): Promise<Reminder | null> {
     console.error("Error getting onboarding reminder:", error);
     return null;
   }
+}
+
+
+// ---------------------------------------------------------------------------
+// Release notes
+// ---------------------------------------------------------------------------
+
+const RELEASE_NOTES_BASELINE_KEY = "@quotecat/release_notes_baseline";
+
+/** Most recent notes surfaced at once, so a lapsed user gets highlights not a wall. */
+const MAX_RELEASE_NOTES = 3;
+
+/**
+ * The date this install started paying attention to release notes.
+ *
+ * Written once, on first read. Notes dated before it are never shown, so
+ * somebody installing next month does not open the bell to a backlog of
+ * history they were never part of. Notes published from today onward still
+ * reach everyone already using the app.
+ */
+async function getReleaseNotesBaseline(): Promise<string> {
+  try {
+    const existing = await AsyncStorage.getItem(RELEASE_NOTES_BASELINE_KEY);
+    if (existing) return existing;
+    const today = new Date().toISOString().slice(0, 10);
+    await AsyncStorage.setItem(RELEASE_NOTES_BASELINE_KEY, today);
+    return today;
+  } catch {
+    // Fail open. Showing a note we could have hidden is a smaller problem than
+    // silently swallowing every release note because storage hiccuped.
+    return "0000-00-00";
+  }
+}
+
+/**
+ * Release notes the user has not dismissed and is entitled to see.
+ *
+ * Dismissal reuses the existing permanent-dismiss path, so a note tapped away
+ * never comes back.
+ */
+export async function getReleaseNoteReminders(tier: string): Promise<Reminder[]> {
+  const [baseline, dismissed] = await Promise.all([
+    getReleaseNotesBaseline(),
+    loadDismissedReminders(),
+  ]);
+
+  const visible = sortedReleaseNotes().filter((note) => {
+    if (note.date < baseline) return false;
+    if (isReminderDismissed(note.id, dismissed)) return false;
+    // A premium-only note stays with premium. A pro note also reaches premium,
+    // since premium includes everything pro has.
+    if (note.tier === "premium" && tier !== "premium") return false;
+    if (note.tier === "pro" && tier !== "pro" && tier !== "premium") return false;
+    return true;
+  });
+
+  return visible.slice(0, MAX_RELEASE_NOTES).map((note) => ({
+    id: note.id,
+    type: "release_note" as const,
+    entityId: "system",
+    entityType: "system" as const,
+    title: note.title,
+    subtitle: note.body,
+    dueDate: `${note.date}T00:00:00.000Z`,
+    createdAt: `${note.date}T00:00:00.000Z`,
+  }));
 }

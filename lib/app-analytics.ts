@@ -86,6 +86,13 @@ export const AnalyticsEvents = {
   PDF_LIMIT_NUDGE_UPGRADE_TAP: 'pdf_limit_nudge_upgrade_tap',
   PDF_LIMIT_NUDGE_DISMISS: 'pdf_limit_nudge_dismiss',
 
+  // Release notes in the notification bell. Without these there is no way to
+  // know whether anyone reads them, and that is the question that decides
+  // whether to keep writing them.
+  RELEASE_NOTE_SHOWN: 'release_note_shown',
+  RELEASE_NOTE_TAPPED: 'release_note_tapped',
+  RELEASE_NOTE_DISMISSED: 'release_note_dismissed',
+
   // Errors
   ERROR_OCCURRED: 'error_occurred',
 } as const;

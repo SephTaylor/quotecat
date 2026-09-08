@@ -25,6 +25,7 @@ import {
   markNotificationAsRead,
 } from "@/lib/reminders";
 import { RefreshEvents, RESUME_ONBOARDING } from "@/lib/refreshEvents";
+import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 
 const PANEL_WIDTH = Dimensions.get("window").width * 0.85;
 const MAX_PANEL_WIDTH = 400;
@@ -49,6 +50,13 @@ export function NotificationPanel({
 
   useEffect(() => {
     if (visible) {
+      // Impression per open. Gives the denominator for tap and dismiss rates,
+      // which is how we find out whether anyone actually reads these.
+      for (const r of reminders) {
+        if (r.type === "release_note") {
+          trackEvent(AnalyticsEvents.RELEASE_NOTE_SHOWN, { noteId: r.id });
+        }
+      }
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
@@ -78,6 +86,9 @@ export function NotificationPanel({
   }, [visible, slideAnim, fadeAnim]);
 
   const handleDismiss = useCallback(async (reminder: Reminder) => {
+    if (reminder.type === "release_note") {
+      trackEvent(AnalyticsEvents.RELEASE_NOTE_DISMISSED, { noteId: reminder.id });
+    }
     await dismissReminder(reminder.id);
     onRefresh();
   }, [onRefresh]);
@@ -90,6 +101,13 @@ export function NotificationPanel({
   const handleTap = useCallback(async (reminder: Reminder) => {
     if (reminder.type === "pro_welcome") {
       // Pro welcome doesn't navigate anywhere on tap
+      return;
+    }
+
+    // A release note has nowhere to navigate to. Leave the panel open so the
+    // user can finish reading rather than having it close under them.
+    if (reminder.type === "release_note") {
+      trackEvent(AnalyticsEvents.RELEASE_NOTE_TAPPED, { noteId: reminder.id });
       return;
     }
 
@@ -412,6 +430,8 @@ function getReminderTypeInfo(reminder: Reminder): {
       return { label: "PAID", icon: "checkmark-circle-outline", color: "#34C759" };
     case "assembly_unhealthy":
       return { label: "NEEDS REVIEW", icon: "warning-outline", color: "#FF9500" };
+    case "release_note":
+      return { label: "WHAT'S NEW", icon: "sparkles-outline", color: "#f97316" };
     default:
       return { label: "NOTIFICATION", icon: "notifications-outline", color: "#8E8E93" };
   }

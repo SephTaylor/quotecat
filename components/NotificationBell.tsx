@@ -9,7 +9,7 @@ import { useFocusEffect } from "expo-router";
 import { listQuotes } from "@/lib/quotes";
 import { listInvoices } from "@/lib/invoices";
 import { loadPreferences } from "@/lib/preferences";
-import { getActiveReminders, getProWelcomeReminder, getPremiumWelcomeReminder, getCloudNotifications, getAssemblyHealthReminders, getOnboardingReminder, type Reminder } from "@/lib/reminders";
+import { getActiveReminders, getProWelcomeReminder, getPremiumWelcomeReminder, getCloudNotifications, getAssemblyHealthReminders, getOnboardingReminder, getReleaseNoteReminders, type Reminder } from "@/lib/reminders";
 import { getUserState } from "@/lib/user";
 import { NotificationPanel } from "./NotificationPanel";
 
@@ -48,6 +48,10 @@ export function NotificationBell({ side = "right" }: NotificationBellProps) {
         const assemblyReminders = await getAssemblyHealthReminders();
         active.push(...assemblyReminders);
       }
+
+      // Release notes last, so real work stays at the top of the list.
+      const releaseNotes = await getReleaseNoteReminders(userState.tier);
+      active.push(...releaseNotes);
 
       // Add welcome reminder if user was explicitly activated as Pro/Premium
       // (not just defaulted to Pro for TestFlight). Check proActivatedAt to confirm.
