@@ -104,12 +104,6 @@ export function NotificationPanel({
       return;
     }
 
-    // A release note has nowhere to navigate to. Leave the panel open so the
-    // user can finish reading rather than having it close under them.
-    if (reminder.type === "release_note") {
-      trackEvent(AnalyticsEvents.RELEASE_NOTE_TAPPED, { noteId: reminder.id });
-      return;
-    }
 
     // Handle onboarding reminder - emit event to show modal on dashboard
     if (reminder.type === "onboarding_incomplete") {
@@ -217,6 +211,13 @@ export function NotificationPanel({
                     onFeatureTap={handleProFeatureTap}
                     theme={theme}
                   />
+                ) : reminder.type === "release_note" ? (
+                  <ReleaseNoteCard
+                    key={reminder.id}
+                    reminder={reminder}
+                    onDismiss={() => handleDismiss(reminder)}
+                    theme={theme}
+                  />
                 ) : (
                   <ReminderItem
                     key={reminder.id}
@@ -234,6 +235,43 @@ export function NotificationPanel({
       </View>
       </GestureHandlerRootView>
     </Modal>
+  );
+}
+
+interface ReleaseNoteCardProps {
+  reminder: Reminder;
+  onDismiss: () => void;
+  theme: any;
+}
+
+/**
+ * Release notes need their own card because ReminderItem never renders
+ * `subtitle` and caps the title at one line. A note whose body is invisible is
+ * worse than no note at all.
+ */
+function ReleaseNoteCard({ reminder, onDismiss, theme }: ReleaseNoteCardProps) {
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  return (
+    <View style={[styles.proWelcomeCard, styles.releaseNoteCard]}>
+      <View style={styles.proWelcomeHeader}>
+        <View style={[styles.proWelcomeIcon, styles.releaseNoteIcon]}>
+          <Ionicons name="sparkles" size={22} color="#f97316" />
+        </View>
+        <View style={styles.proWelcomeHeaderText}>
+          <Text style={styles.proWelcomeSubtitle}>WHAT&apos;S NEW</Text>
+          <Text style={styles.proWelcomeTitle}>{reminder.title}</Text>
+        </View>
+      </View>
+
+      <View style={styles.releaseNoteBodyWrap}>
+        <Text style={styles.releaseNoteBody}>{reminder.subtitle}</Text>
+      </View>
+
+      <Pressable style={[styles.proWelcomeDismiss, styles.releaseNoteDismiss]} onPress={onDismiss}>
+        <Text style={[styles.proWelcomeDismissText, styles.releaseNoteDismissText]}>Got it</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -705,6 +743,29 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     premiumWelcomeDismissText: {
       color: "#FFF",
+    },
+    // Release note card overrides
+    releaseNoteCard: {
+      borderColor: "#f97316",
+    },
+    releaseNoteIcon: {
+      backgroundColor: "#f9731620",
+    },
+    releaseNoteBodyWrap: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 4,
+    },
+    releaseNoteBody: {
+      fontSize: 15,
+      lineHeight: 21,
+      color: theme.colors.text,
+    },
+    releaseNoteDismiss: {
+      backgroundColor: "#f97316",
+    },
+    releaseNoteDismissText: {
+      color: "#000",
     },
   });
 }
