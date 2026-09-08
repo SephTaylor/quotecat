@@ -138,6 +138,23 @@ export async function deleteLogoFromStorage(): Promise<boolean> {
  * Called on login to sync settings from another device
  * For techs, downloads the OWNER's settings so PDFs use the owner's branding
  */
+/**
+ * Merge a numbering block (prefix + nextNumber) from cloud into local.
+ *
+ * Everything except the counter takes the cloud value, because the cloud is
+ * the shared source of truth for settings. The counter takes the HIGHER of the
+ * two, because it is a monotonic floor: a number that has been issued must
+ * never be handed out again.
+ */
+function mergeNumbering<T extends { nextNumber?: number }>(
+  local: T | undefined,
+  cloud: Partial<T> | undefined,
+): T {
+  const merged = { ...(local ?? ({} as T)), ...(cloud ?? {}) } as T;
+  merged.nextNumber = Math.max(local?.nextNumber ?? 1, (cloud as any)?.nextNumber ?? 1);
+  return merged;
+}
+
 export async function downloadBusinessSettings(): Promise<{ success: boolean; error?: string }> {
   const userId = await getCurrentUserId();
   if (!userId) {
@@ -241,14 +258,20 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
       // Merge cloud preferences if they exist
       if (profile.preferences) {
         const cloudPrefs = profile.preferences as any;
+        // nextNumber is a monotonic floor and must never move backwards.
+        // Spreading the cloud copy last used to reset it to 1 on every launch:
+        // the counter is written to AsyncStorage immediately but only reaches
+        // Supabase on the next settings sync, so the cloud copy is routinely
+        // stale. That is what made every contract, quote and invoice come out
+        // numbered 001. See mergeNumbering.
         if (cloudPrefs.invoice) {
-          updatedPrefs.invoice = { ...localPrefs.invoice, ...cloudPrefs.invoice };
+          updatedPrefs.invoice = mergeNumbering(localPrefs.invoice, cloudPrefs.invoice);
         }
         if (cloudPrefs.contract) {
-          updatedPrefs.contract = { ...localPrefs.contract, ...cloudPrefs.contract };
+          updatedPrefs.contract = mergeNumbering(localPrefs.contract, cloudPrefs.contract);
         }
         if (cloudPrefs.quote) {
-          updatedPrefs.quote = { ...localPrefs.quote, ...cloudPrefs.quote };
+          updatedPrefs.quote = mergeNumbering(localPrefs.quote, cloudPrefs.quote);
         }
         if (cloudPrefs.pricing) {
           updatedPrefs.pricing = { ...updatedPrefs.pricing, ...cloudPrefs.pricing };

@@ -7,19 +7,84 @@ import { getCurrentUserId } from "./authUtils";
 import { loadPreferences, updateContractSettings } from "./preferences";
 import { calculateQuoteTotal } from "./calculations";
 
+/** Escape a user-supplied prefix before putting it in a RegExp. */
+function escapeForRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
- * Generate next contract number using user preferences
- * Format: PREFIX-###  (e.g., CTR-001, CONTRACT-001, etc.)
- * Number only increments, never resets (even after deletions)
+ * Highest number already issued to a live contract for this user.
+ *
+ * The stored counter alone is not trustworthy: it lives in AsyncStorage and
+ * was being reset to 1 on every launch by the cloud merge in
+ * businessSettingsSync. On 2026-09-08 that produced two contracts 24 minutes
+ * apart both numbered CTR-001. Reading the records makes a duplicate
+ * impossible even if the counter is stale.
+ */
+async function getHighestIssuedContractNumber(prefix: string): Promise<number> {
+  const userId = await getCurrentUserId();
+  if (!userId) return 0;
+
+  const { data, error } = await supabase
+    .from("contracts")
+    .select("contract_number")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Failed to read existing contract numbers:", error);
+    return 0;
+  }
+
+  const pattern = new RegExp(`^${escapeForRegExp(prefix)}-(\\d+)$`);
+  return (data || []).reduce<number>((highest, row) => {
+    const match = pattern.exec(String(row.contract_number ?? ""));
+    const parsed = match ? parseInt(match[1], 10) : NaN;
+    return Number.isFinite(parsed) && parsed > highest ? parsed : highest;
+  }, 0);
+}
+
+/**
+ * Generate the next contract number.
+ * Format: PREFIX-###  (e.g., CTR-001)
+ *
+ * The stored counter is a FLOOR, not the answer, and it only advances when a
+ * contract is actually sent (see burnContractNumber). So:
+ *   - a draft deleted before it was ever sent returns its number to the pool
+ *   - a number that reached a client is retired permanently
+ * which is the behaviour contractors expect when numbers are tied to cost
+ * tracking and PO matching.
  */
 async function generateContractNumber(): Promise<string> {
   const prefs = await loadPreferences();
-  const { prefix, nextNumber } = prefs.contract;
+  const { prefix } = prefs.contract;
 
-  // Increment the next number in preferences
-  await updateContractSettings({ nextNumber: nextNumber + 1 });
+  const floor = prefs.contract.nextNumber || 1;
+  const highest = await getHighestIssuedContractNumber(prefix);
+  const assigned = Math.max(floor, highest + 1);
 
-  return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
+  return `${prefix}-${String(assigned).padStart(3, "0")}`;
+}
+
+/**
+ * Retire a contract number so it can never be reused.
+ *
+ * Called when a contract is SENT, not when it is created. A number the client
+ * has seen has to stay with that job even if the contract is later deleted.
+ * A draft that never left the building has no such claim on its number.
+ */
+async function burnContractNumber(contractNumber: string): Promise<void> {
+  const prefs = await loadPreferences();
+  const prefix = prefs.contract.prefix;
+  const match = new RegExp(`^${escapeForRegExp(prefix)}-(\\d+)$`).exec(contractNumber);
+  if (!match) return;
+
+  const used = parseInt(match[1], 10);
+  if (!Number.isFinite(used)) return;
+
+  const floor = prefs.contract.nextNumber || 1;
+  if (used + 1 > floor) {
+    await updateContractSettings({ nextNumber: used + 1 });
+  }
 }
 
 /**
@@ -239,10 +304,51 @@ export async function deleteContract(id: string): Promise<boolean> {
  * Mark contract as sent
  */
 export async function markContractSent(id: string): Promise<Contract | null> {
-  return updateContract(id, {
+  const updated = await updateContract(id, {
     status: "sent",
     sentAt: new Date().toISOString(),
   });
+
+  // Sending is what makes a number permanent. Do this after the update
+  // succeeds so a failed send does not consume a number.
+  if (updated?.contractNumber) {
+    await burnContractNumber(updated.contractNumber);
+  }
+
+  return updated;
+}
+
+/**
+ * Move a contract back to Draft for editing.
+ *
+ * Clears the send and view timestamps along with the status. Leaving them
+ * behind produced records that read "draft" while still carrying a sent_at,
+ * so any report counting sent contracts disagreed with any report reading
+ * status. It also left the client's existing link showing the contract above
+ * a banner claiming it had never been sent.
+ *
+ * Signatures are deleted by the caller, which already confirms with the user.
+ */
+export async function revertContractToDraft(id: string): Promise<Contract | null> {
+  const { data, error } = await supabase
+    .from("contracts")
+    .update({
+      status: "draft",
+      sent_at: null,
+      viewed_at: null,
+      signed_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to revert contract to draft:", error);
+    return null;
+  }
+
+  return mapSupabaseToContract(data);
 }
 
 /**

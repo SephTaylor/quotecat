@@ -2,7 +2,7 @@
 // Contract editing screen for Premium users
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { getContractWithSignatures, updateContract, markContractSent, getContractShareLink, deleteSignature } from "@/lib/contracts";
+import { getContractWithSignatures, updateContract, markContractSent, revertContractToDraft, getContractShareLink, deleteSignature } from "@/lib/contracts";
 import { onContractChanged, notifyContractChanged } from "@/lib/contractEvents";
 import type { Contract } from "@/lib/types";
 import { ContractStatusMeta } from "@/lib/types";
@@ -273,7 +273,7 @@ export default function EditContract() {
                   contract.signatures.map(s => deleteSignature(s.id))
                 );
               }
-              const updated = await updateContract(id, { status: "draft" });
+              const updated = await revertContractToDraft(id);
               if (updated) {
                 await load();
                 notifyContractChanged(id);
@@ -663,24 +663,10 @@ export default function EditContract() {
           />
         )}
 
-        {/* Materials Summary */}
-        {contract.materials && contract.materials.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Materials ({contract.materials.length} items)</Text>
-            <View style={styles.card}>
-              {contract.materials.map((item, index) => (
-                <View key={item.id || index} style={[styles.materialRow, index === contract.materials.length - 1 && { borderBottomWidth: 0 }]}>
-                  <View style={styles.materialInfo}>
-                    <Text style={styles.materialName}>{item.name}</Text>
-                    <Text style={styles.materialDetails}>${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {item.qty}</Text>
-                  </View>
-                  <Text style={styles.materialTotal}>${(item.unitPrice * item.qty).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
+        {/* Terms before Materials: payment terms are commercially more
+            important than the line-item list, and the list can be any
+            length. Buried below it, a real customer never found the
+            Payment Terms field and typed the split into Scope of Work. */}
         {/* Terms Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Terms</Text>
@@ -711,6 +697,24 @@ export default function EditContract() {
             </View>
           </View>
         </View>
+
+        {/* Materials Summary */}
+        {contract.materials && contract.materials.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Materials ({contract.materials.length} items)</Text>
+            <View style={styles.card}>
+              {contract.materials.map((item, index) => (
+                <View key={item.id || index} style={[styles.materialRow, index === contract.materials.length - 1 && { borderBottomWidth: 0 }]}>
+                  <View style={styles.materialInfo}>
+                    <Text style={styles.materialName}>{item.name}</Text>
+                    <Text style={styles.materialDetails}>${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {item.qty}</Text>
+                  </View>
+                  <Text style={styles.materialTotal}>${(item.unitPrice * item.qty).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Signatures Section */}
         <View style={styles.section}>

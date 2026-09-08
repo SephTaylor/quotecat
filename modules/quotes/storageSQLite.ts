@@ -4,6 +4,7 @@
 
 import type { Quote } from "@/lib/types";
 import { normalizeQuote, calculateMaterialSubtotal } from "@/lib/validation";
+import { calculateQuoteTotal } from "@/lib/calculations";
 import {
   listQuotesDB,
   getQuoteByIdDB,
@@ -64,7 +65,7 @@ export async function listQuotes(options?: { skipCache?: boolean }): Promise<Quo
   const processed = quotes.map((quote) => ({
     ...quote,
     materialSubtotal: calculateMaterialSubtotal(quote.items),
-    total: calculateMaterialSubtotal(quote.items) + (quote.labor || 0),
+    total: calculateQuoteTotal(quote),
   }));
 
   // Sort by most recent (stable sort using id as tiebreaker)
@@ -92,7 +93,7 @@ export async function getQuoteById(id: string): Promise<Quote | null> {
     const processed = {
       ...quote,
       materialSubtotal: calculateMaterialSubtotal(quote.items),
-      total: calculateMaterialSubtotal(quote.items) + (quote.labor || 0),
+      total: calculateQuoteTotal(quote),
     };
     cache.set(cacheKey, processed);
     return processed;
@@ -158,7 +159,7 @@ export async function saveQuoteLocally(quote: Quote): Promise<Quote> {
     ...normalizeQuote(quote),
     updatedAt: quote.updatedAt || new Date().toISOString(),
     materialSubtotal: calculateMaterialSubtotal(quote.items),
-    total: calculateMaterialSubtotal(quote.items) + (quote.labor || 0),
+    total: calculateQuoteTotal(quote),
   };
 
   saveQuoteDB(updated);
@@ -181,7 +182,7 @@ export async function saveQuotesBatch(quotes: Quote[]): Promise<void> {
     ...normalizeQuote(quote),
     updatedAt: quote.updatedAt || new Date().toISOString(),
     materialSubtotal: calculateMaterialSubtotal(quote.items),
-    total: calculateMaterialSubtotal(quote.items) + (quote.labor || 0),
+    total: calculateQuoteTotal(quote),
   }));
 
   saveQuotesBatchDB(normalized);
@@ -205,7 +206,7 @@ export async function saveQuote(quote: Quote): Promise<Quote> {
     ...normalizeQuote(quote),
     updatedAt: nowIso,
     materialSubtotal: calculateMaterialSubtotal(quote.items),
-    total: calculateMaterialSubtotal(quote.items) + (quote.labor || 0),
+    total: calculateQuoteTotal(quote),
   };
 
   saveQuoteDB(updated);
