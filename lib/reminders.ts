@@ -637,20 +637,35 @@ const RELEASE_NOTES_BASELINE_KEY = "@quotecat/release_notes_baseline";
 const MAX_RELEASE_NOTES = 3;
 
 /**
+ * How far back a freshly-established baseline reaches.
+ *
+ * The baseline is written the first time this code runs, which for an existing
+ * user is whenever they next open the app after the update lands. Setting it to
+ * "today" would filter out the very note that shipped alongside this code if
+ * they opened even a day late, which defeats the point. Back-dating gives
+ * recent notes a chance to be seen while still hiding real history from someone
+ * installing months from now.
+ */
+const RELEASE_NOTES_LOOKBACK_DAYS = 14;
+
+/**
  * The date this install started paying attention to release notes.
  *
  * Written once, on first read. Notes dated before it are never shown, so
  * somebody installing next month does not open the bell to a backlog of
- * history they were never part of. Notes published from today onward still
- * reach everyone already using the app.
+ * history they were never part of.
  */
 async function getReleaseNotesBaseline(): Promise<string> {
   try {
     const existing = await AsyncStorage.getItem(RELEASE_NOTES_BASELINE_KEY);
     if (existing) return existing;
-    const today = new Date().toISOString().slice(0, 10);
-    await AsyncStorage.setItem(RELEASE_NOTES_BASELINE_KEY, today);
-    return today;
+
+    const start = new Date();
+    start.setDate(start.getDate() - RELEASE_NOTES_LOOKBACK_DAYS);
+    const baseline = start.toISOString().slice(0, 10);
+
+    await AsyncStorage.setItem(RELEASE_NOTES_BASELINE_KEY, baseline);
+    return baseline;
   } catch {
     // Fail open. Showing a note we could have hidden is a smaller problem than
     // silently swallowing every release note because storage hiccuped.
