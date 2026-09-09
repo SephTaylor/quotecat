@@ -146,6 +146,47 @@ export async function deleteLogoFromStorage(): Promise<boolean> {
  * two, because it is a monotonic floor: a number that has been issued must
  * never be handed out again.
  */
+/**
+ * Merge a numeric settings object down from the cloud without letting a stale
+ * cloud copy erase a real local value.
+ *
+ * Same staleness problem mergeNumbering solves. Settings are written to
+ * AsyncStorage the instant a user saves them, but only reach Supabase on the
+ * next settings *upload*, so immediately after saving, the cloud copy is
+ * behind. It also stores explicit zeros rather than omitting unset fields, so
+ * a plain spread of cloud-over-local overwrites a freshly entered rate with 0.
+ *
+ * That is what reset the "set up your business" checklist on every launch: a
+ * user set a billable rate and a target margin, relaunched, and watched three
+ * of four steps drop back to one.
+ *
+ * Rule: take the cloud value only when it is actually a value. A cloud zero
+ * never beats a local number greater than zero, and a cloud blank never beats
+ * local text. Deliberately not applied to paymentMethods, where false is a
+ * real choice the user made and must sync.
+ */
+function mergeSettings<T extends Record<string, unknown>>(
+  local: T | undefined,
+  cloud: unknown
+): T {
+  const merged: Record<string, unknown> = { ...(local || {}) };
+  if (!cloud || typeof cloud !== "object") return merged as T;
+
+  for (const [key, value] of Object.entries(cloud as Record<string, unknown>)) {
+    if (value === undefined || value === null || value === "") continue;
+    if (
+      typeof value === "number" &&
+      value === 0 &&
+      typeof merged[key] === "number" &&
+      (merged[key] as number) > 0
+    ) {
+      continue;
+    }
+    merged[key] = value;
+  }
+  return merged as T;
+}
+
 function mergeNumbering<T extends { nextNumber?: number }>(
   local: T | undefined,
   cloud: Partial<T> | undefined,
@@ -274,13 +315,15 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
           updatedPrefs.quote = mergeNumbering(localPrefs.quote, cloudPrefs.quote);
         }
         if (cloudPrefs.pricing) {
-          updatedPrefs.pricing = { ...updatedPrefs.pricing, ...cloudPrefs.pricing };
+          updatedPrefs.pricing = mergeSettings(updatedPrefs.pricing, cloudPrefs.pricing);
         }
         if (cloudPrefs.paymentMethods) {
           updatedPrefs.paymentMethods = cloudPrefs.paymentMethods;
         }
         if (cloudPrefs.overhead) {
-          updatedPrefs.overhead = cloudPrefs.overhead;
+          // Was a wholesale replace, which deleted a locally set target margin
+          // whenever the cloud copy predated it.
+          updatedPrefs.overhead = mergeSettings(updatedPrefs.overhead, cloudPrefs.overhead);
         }
       }
     }
