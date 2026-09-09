@@ -363,8 +363,10 @@ export async function getQuotesNeedingInvoice(): Promise<Quote[]> {
   );
 
   const contracts = await listContracts();
+  // Same rule as the dashboard: a draft contract has not superseded anything
+  // yet, so it must not hide a finished job from the invoice queue.
   const quotesWithContracts = new Set(
-    contracts.filter(c => c.quoteId).map(c => c.quoteId)
+    contracts.filter(c => c.quoteId && c.status !== "draft").map(c => c.quoteId)
   );
 
   return completedQuotes.filter(q =>

@@ -240,9 +240,15 @@ export default function Dashboard() {
 
   // Calculate stats
   const stats = React.useMemo(() => {
-    // Get quote IDs that have become contracts (don't double-count these)
+    // Quotes superseded by a contract that has actually gone out. Draft
+    // contracts do NOT count: the handover only works one way round, because
+    // sent contracts feed pendingValue and signed ones feed approvedValue, but
+    // a draft feeds neither. Excluding a quote for a draft contract subtracts
+    // it from the quote side and never adds it back on the contract side, so
+    // the money silently vanishes off the dashboard. Dormant until the
+    // quote-to-contract link was repaired in v1.2.19, which switched it on.
     const quotesWithContracts = new Set(
-      contracts.filter(c => c.quoteId).map(c => c.quoteId)
+      contracts.filter(c => c.quoteId && c.status !== "draft").map(c => c.quoteId)
     );
 
     // Filter out quotes that have become contracts for value calculations
