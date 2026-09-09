@@ -9,6 +9,7 @@ import { getCurrentUserId } from "./authUtils";
 import { getTechContext } from "./team";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getTombstonesDB, deleteTombstoneDB } from "./database";
+import { calculateQuoteTotal } from "./calculations";
 
 const SYNC_METADATA_KEY = "@quotecat/sync_metadata";
 const SYNC_LOCK_KEY = "@quotecat/quotes_sync_lock";
@@ -196,7 +197,12 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
       payment_terms: quote.paymentTerms || null,
       change_history: quote.changeHistory || null,
       approved_snapshot: quote.approvedSnapshot || null,
-      total: quote.total || 0, // Store calculated total for single source of truth
+      // Recompute rather than upload the cached total. This is the last gate
+      // before a number leaves the device, and uploading a stale cache is how
+      // wrong totals reached the cloud (and from there, client-facing pages)
+      // in Sep 2026. Computing here means a device with a bad cache heals it
+      // on its next sync instead of spreading it.
+      total: calculateQuoteTotal(quote),
       created_at: quote.createdAt,
       updated_at: quote.updatedAt,
       synced_at: new Date().toISOString(),

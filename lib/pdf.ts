@@ -1069,7 +1069,11 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
     const taxAmount = (subtotal * taxPercent) / 100;
 
     // Use stored total if available (single source of truth), otherwise calculate
-    const grandTotal = quote.total ?? (subtotal + taxAmount);
+    // Always compute. quote.total is a cache and five writers were found
+    // disagreeing with it in Sep 2026. A client-facing document must not
+    // trust a cache it cannot verify. The single-quote PDF above already
+    // does this; these tier-comparison paths were the stragglers.
+    const grandTotal = subtotal + taxAmount;
 
     // Line items show names and quantities only (no prices for client view)
     const lineItemsHTML = quote.items && quote.items.length > 0
@@ -1181,7 +1185,11 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
     const taxAmount = (subtotal * taxPercent) / 100;
 
     // Use stored total if available (single source of truth), otherwise calculate
-    const grandTotal = quote.total ?? (subtotal + taxAmount);
+    // Always compute. quote.total is a cache and five writers were found
+    // disagreeing with it in Sep 2026. A client-facing document must not
+    // trust a cache it cannot verify. The single-quote PDF above already
+    // does this; these tier-comparison paths were the stragglers.
+    const grandTotal = subtotal + taxAmount;
 
     return `
       <tr>
