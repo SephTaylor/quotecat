@@ -109,7 +109,12 @@ export type Quote = {
   overhead?: number; // Flat overhead/additional costs
   markupPercent?: number; // Markup percentage applied to subtotal
   taxPercent?: number; // Tax percentage (e.g., 8.25 for 8.25%)
-  notes?: string; // Internal notes or special instructions
+  notes?: string; // Describes the work. NOT internal: prints on the quote PDF and
+                  // shows on the client's web quote, and becomes the contract's
+                  // scope_of_work on conversion. Labelled "Scope of Work" in the UI.
+  paymentTerms?: string; // Free text, e.g. "50% deposit, 50% on completion". Carries
+                         // through to contracts.payment_terms. Never parsed or
+                         // computed on — it exists so terms stop landing in notes.
   changeHistory?: string; // Auto-generated log of changes to approved quotes
   approvedSnapshot?: string; // JSON snapshot of items when quote was approved (for change tracking)
   followUpDate?: string; // ISO 8601 date for follow-up reminder

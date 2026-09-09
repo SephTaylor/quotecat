@@ -426,9 +426,18 @@ function generateQuoteHTML(quote: Quote, options: PDFOptions): string {
 
       ${quote.notes ? `
         <div class="section">
-          <div class="section-title">Notes</div>
+          <div class="section-title">Scope of Work</div>
           <div style="padding: 16px; background: #f9f9f9; border-radius: 6px; color: #333; line-height: 1.6;">
             ${quote.notes.replace(/\n/g, '<br>')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${quote.paymentTerms ? `
+        <div class="section">
+          <div class="section-title">Payment Terms</div>
+          <div style="padding: 16px; background: #f9f9f9; border-radius: 6px; color: #333; line-height: 1.6;">
+            ${quote.paymentTerms.replace(/\n/g, '<br>')}
           </div>
         </div>
       ` : ''}
@@ -1135,9 +1144,18 @@ function generateMultiTierQuoteHTML(quotes: Quote[], options: PDFOptions): strin
 
         ${quote.notes ? `
           <div class="section">
-            <div class="section-title">Notes</div>
+            <div class="section-title">Scope of Work</div>
             <div style="padding: 12px; background: #f9f9f9; border-radius: 6px; color: #333; font-size: 13px; line-height: 1.5;">
               ${quote.notes.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${quote.paymentTerms ? `
+          <div class="section">
+            <div class="section-title">Payment Terms</div>
+            <div style="padding: 12px; background: #f9f9f9; border-radius: 6px; color: #333; font-size: 13px; line-height: 1.5;">
+              ${quote.paymentTerms.replace(/\n/g, '<br>')}
             </div>
           </div>
         ` : ''}

@@ -33,6 +33,7 @@ export type QuoteFormState = {
   markupPercent: string;
   taxPercent: string;
   notes: string;
+  paymentTerms: string;
   followUpDate: string;
   startDate: string;
   completionDate: string;
@@ -74,6 +75,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
   const [markupPercent, setMarkupPercent] = useState("");
   const [taxPercent, setTaxPercent] = useState("");
   const [notes, setNotes] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
   const [changeHistory, setChangeHistory] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -148,6 +150,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       setPinned(q.pinned || false);
       setItems(q.items ?? []);
       setNotes(q.notes || "");
+      setPaymentTerms(q.paymentTerms || "");
       setChangeHistory(q.changeHistory || "");
       setFollowUpDate(q.followUpDate || "");
       setStartDate(q.startDate || "");
@@ -217,6 +220,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       markupPercent: parseFloat(markupPercent) || undefined,
       taxPercent: parseFloat(taxPercent) || undefined,
       notes: notes.trim() || undefined,
+      paymentTerms: paymentTerms.trim() || undefined,
       changeHistory: changeHistory.trim() || undefined,
       followUpDate: followUpDate || undefined,
       startDate: startDate || undefined,
@@ -241,6 +245,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     changeHistory,
     taxPercent,
     notes,
+    paymentTerms,
     followUpDate,
     startDate,
     completionDate,
@@ -288,6 +293,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
       markupPercent.trim() ||
       taxPercent.trim() ||
       notes.trim() ||
+      paymentTerms.trim() ||
       followUpDate.trim() ||
       startDate.trim() ||
       completionDate.trim() ||
@@ -402,6 +408,7 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     markupPercent,
     taxPercent,
     notes,
+    paymentTerms,
     followUpDate,
     startDate,
     completionDate,
@@ -588,6 +595,8 @@ export function useQuoteForm({ quoteId, onNavigateBack, onNavigateToQuotes }: Us
     setTaxPercent,
     notes,
     setNotes,
+    paymentTerms,
+    setPaymentTerms,
     changeHistory,
     setChangeHistory,
     followUpDate,

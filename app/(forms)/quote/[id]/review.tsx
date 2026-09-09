@@ -36,7 +36,7 @@ import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { loadPreferences, type CompanyDetails, type PaymentMethods } from "@/lib/preferences";
 import { getCompanyLogo, type CompanyLogo } from "@/lib/logo";
 import { createInvoiceFromQuote } from "@/lib/invoices";
-import { createContractFromQuote } from "@/lib/contracts";
+import { createContractFromQuote, getContractForQuote } from "@/lib/contracts";
 import { shareCalendarEvent, quoteToCalendarEvent } from "@/lib/calendar";
 import { markNudgeShown, wasNudgeShownThisMonth, FREE_LIMITS } from "@/lib/user";
 import { PdfLimitNudge } from "@/components/PdfLimitNudge";
@@ -513,6 +513,32 @@ export default function QuoteReviewScreen() {
       setQuote(updated);
       // Same win moment as the edit-screen path. Fire and forget.
       recordWinAndMaybeRequestReview();
+    }
+
+    // A contract is a snapshot, not a live view of the quote, so a second one
+    // is a separate document rather than an updated one. Warn, but let them
+    // through: deleting and rebuilding is currently the only way to reprice.
+    const existing = await getContractForQuote(workingQuote.id);
+    if (existing) {
+      const proceed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          "This quote already has a contract",
+          `${existing.contractNumber} was created from this quote. Changes you make here don't reach a contract that already exists, so you'd end up with two separate documents.`,
+          [
+            { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+            {
+              text: "Open it",
+              onPress: () => {
+                resolve(false);
+                router.push(`/(forms)/contract/${existing.id}/edit`);
+              },
+            },
+            { text: "Create another", onPress: () => resolve(true) },
+          ],
+          { cancelable: false }
+        );
+      });
+      if (!proceed) return;
     }
 
     try {

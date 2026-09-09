@@ -42,6 +42,11 @@ export default function ContractsScreen() {
 
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [approvedQuotes, setApprovedQuotes] = useState<Quote[]>([]);
+  // Quotes that already produced a contract. Kept visible rather than hidden:
+  // deleting the contract and rebuilding from the quote is currently the only
+  // way to reprice a job, so hiding the quote would wall off someone doing
+  // exactly that. We warn instead of blocking.
+  const [contractByQuoteId, setContractByQuoteId] = useState<Map<string, Contract>>(new Map());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -54,13 +59,21 @@ export default function ContractsScreen() {
         listQuotes(),
       ]);
       setContracts(contractData);
-      // Filter to only approved/completed quotes that don't already have contracts
-      // Also exclude unsaved quotes (id === "new")
-      const contractQuoteIds = new Set(contractData.map(c => c.quoteId));
+
+      // Index contracts by the quote they came from. This was broken until
+      // v1.2.19: contracts.quote_id was declared UUID while quote ids from the
+      // app look like "quote_1788797883416_37nhbrz", so the link was silently
+      // dropped and this map was always empty.
+      const byQuote = new Map<string, Contract>();
+      for (const c of contractData) {
+        if (c.quoteId && !byQuote.has(c.quoteId)) byQuote.set(c.quoteId, c);
+      }
+      setContractByQuoteId(byQuote);
+
+      // Approved/completed quotes, excluding unsaved ones (id === "new").
       const available = quotesData.filter(
         q => q.id !== "new" &&
-             (q.status === "approved" || q.status === "completed") &&
-             !contractQuoteIds.has(q.id)
+             (q.status === "approved" || q.status === "completed")
       );
       setApprovedQuotes(available);
     }
@@ -84,7 +97,7 @@ export default function ContractsScreen() {
     router.push(`/(forms)/contract/${contract.id}/edit`);
   };
 
-  const createFromQuote = useCallback(async (quote: Quote) => {
+  const buildContract = useCallback(async (quote: Quote) => {
     try {
       const contract = await createContractFromQuote(quote);
       if (contract) {
@@ -105,6 +118,29 @@ export default function ContractsScreen() {
     }
   }, [load, router]);
 
+  // A contract is a snapshot, not a live view of the quote. Editing the quote
+  // afterwards changes nothing on the contract, which is why a real customer
+  // made a second contract when their first one came out blank. Say so, offer
+  // the existing one, and let them proceed anyway if they mean to.
+  const createFromQuote = useCallback(async (quote: Quote) => {
+    const existing = contractByQuoteId.get(quote.id);
+    if (!existing) {
+      await buildContract(quote);
+      return;
+    }
+
+    const label = quote.name || quote.clientName || "this quote";
+    Alert.alert(
+      "This quote already has a contract",
+      `${existing.contractNumber} was created from ${label}. Changes you make to a quote don't reach a contract that already exists, so you'd end up with two separate documents.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Create another", onPress: () => { void buildContract(quote); } },
+        { text: "Open it", onPress: () => router.push(`/(forms)/contract/${existing.id}/edit`) },
+      ]
+    );
+  }, [contractByQuoteId, buildContract, router]);
+
   const handleCreateContract = useCallback(() => {
     if (approvedQuotes.length === 0) {
       Alert.alert(
@@ -115,7 +151,11 @@ export default function ContractsScreen() {
     }
 
     // Build options list
-    const options = approvedQuotes.map(q => q.name || q.clientName || "Untitled Quote");
+    const options = approvedQuotes.map(q => {
+      const base = q.name || q.clientName || "Untitled Quote";
+      const existing = contractByQuoteId.get(q.id);
+      return existing ? `${base} (${existing.contractNumber})` : base;
+    });
     options.push("Cancel");
 
     if (Platform.OS === "ios") {
@@ -155,7 +195,7 @@ export default function ContractsScreen() {
         );
       }
     }
-  }, [approvedQuotes, createFromQuote]);
+  }, [approvedQuotes, createFromQuote, contractByQuoteId]);
 
   // Watch for trigger param to open quote picker
   useEffect(() => {

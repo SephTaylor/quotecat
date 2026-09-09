@@ -25,7 +25,7 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
 
 /**
  * Get or create the database instance
@@ -91,6 +91,7 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
         markup_percent REAL,
         tax_percent REAL,
         notes TEXT,
+        payment_terms TEXT,
         follow_up_date TEXT,
         start_date TEXT,
         completion_date TEXT,
@@ -764,6 +765,23 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     console.log(`📦 Added start_date + completion_date to quotes`);
   }
 
+  // v21: Add payment_terms to quotes. A quote had exactly one free-text box
+  // (notes), and notes becomes the contract's scope_of_work on conversion, so a
+  // contractor writing "8000 deposit / 7000 on completion" got it filed as their
+  // scope of work. Optional. Existing quotes read as NULL → undefined.
+  if (fromVersion < 21) {
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(quotes)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("payment_terms")) {
+      database.execSync(`ALTER TABLE quotes ADD COLUMN payment_terms TEXT;`);
+    }
+
+    console.log(`📦 Added payment_terms to quotes`);
+  }
+
   // Update version
   database.runSync(
     "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
@@ -797,6 +815,7 @@ function rowToQuote(row: any): Quote {
     markupPercent: row.markup_percent || undefined,
     taxPercent: row.tax_percent || undefined,
     notes: row.notes || undefined,
+    paymentTerms: row.payment_terms || undefined,
     changeHistory: row.change_history || undefined,
     approvedSnapshot: row.approved_snapshot || undefined,
     followUpDate: row.follow_up_date || undefined,
@@ -916,10 +935,10 @@ export function saveQuoteDB(quote: Quote): void {
       `INSERT OR REPLACE INTO quotes (
         id, quote_number, name, client_name, client_email, client_phone, client_address,
         items, labor, labor_entries, material_estimate, overhead, markup_percent, tax_percent,
-        notes, change_history, approved_snapshot, follow_up_date, start_date, completion_date,
+        notes, payment_terms, change_history, approved_snapshot, follow_up_date, start_date, completion_date,
         currency, status, pinned, tier, tier_group_id, linked_quote_ids,
         created_at, updated_at, deleted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         quote.id,
         quote.quoteNumber || null,
@@ -936,6 +955,7 @@ export function saveQuoteDB(quote: Quote): void {
         quote.markupPercent || null,
         quote.taxPercent || null,
         quote.notes || null,
+        quote.paymentTerms || null,
         quote.changeHistory || null,
         quote.approvedSnapshot || null,
         quote.followUpDate || null,

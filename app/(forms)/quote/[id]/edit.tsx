@@ -124,6 +124,7 @@ export default function EditQuote() {
     markupPercent, setMarkupPercent,
     taxPercent, setTaxPercent,
     notes, setNotes,
+    paymentTerms, setPaymentTerms,
     changeHistory, setChangeHistory,
     followUpDate, setFollowUpDate,
     startDate, setStartDate,
@@ -1345,6 +1346,77 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(3) }} />
 
+        {canViewPricing && (
+          <>
+          {/* The lump-sum path, deliberately next to the itemised one. These two
+              fields used to live under "Notes & Adjustments" below the follow-up
+              reminder, where "Materials (Quick Estimate)" sat directly above
+              "Material Markup %" and read as a pair. The markup applies to line
+              items, not to the estimate, and a real customer set 40% on a quote
+              with no line items and got nothing. Renamed and moved beside Items so
+              the two ways of pricing materials are visibly alternatives. */}
+          <Text style={styles.label}>Materials (Quick Estimate)</Text>
+          <FormInput
+            placeholder="0.00"
+            value={materialEstimate}
+            onChangeText={(text) => setMaterialEstimate(formatLaborInput(text))}
+            onBlur={() => setMaterialEstimate(formatMoneyOnBlur(materialEstimate))}
+            keyboardType="decimal-pad"
+          />
+
+          <View style={{ height: theme.spacing(2) }} />
+
+          <Text style={styles.label}>Line Item Markup %</Text>
+          <View style={styles.inputWithSuffix}>
+            <FormInput
+              placeholder="0"
+              value={markupPercent}
+              onChangeText={(text) => {
+                // Only allow numbers and one decimal point
+                const cleaned = text.replace(/[^0-9.]/g, "");
+                const parts = cleaned.split(".");
+                if (parts.length > 2) {
+                  setMarkupPercent(parts[0] + "." + parts.slice(1).join(""));
+                } else {
+                  setMarkupPercent(cleaned);
+                }
+              }}
+              keyboardType="decimal-pad"
+              style={styles.inputWithSuffixField}
+            />
+            <Text style={styles.inputSuffix}>%</Text>
+          </View>
+          {calculations.markupAmount > 0 ? (
+            <Text style={styles.helper}>
+              Applied to line items only — that&apos;s{" "}
+              <Text style={{ fontWeight: "700", color: theme.colors.accent }}>
+                ${calculations.markupAmount.toLocaleString("en-US", {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+              </Text>{" "}
+              on this quote.
+            </Text>
+          ) : (parseFloat(markupPercent) || 0) > 0 && calculations.materialsFromItems === 0 ? (
+            // Markup is set but there is nothing for it to act on. The neutral
+            // "Applied to line items only" line loses to the field names, so say
+            // plainly that the number they typed is doing nothing. Deliberately
+            // does not change the arithmetic.
+            <Text style={[styles.helper, { color: theme.colors.accent, fontWeight: "600" }]}>
+              Applied to line items only. This quote has none, so this markup is not
+              changing your total. Add items above, or build your margin into the
+              Materials (Quick Estimate) amount.
+            </Text>
+          ) : (
+            <Text style={styles.helper}>Applied to line items only</Text>
+          )}
+          </>
+        )}
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        <View style={{ height: theme.spacing(3) }} />
+
         {/* Labor section - tier-based UI */}
         {/* Free: flat fee only, Pro: flat OR calculator, Premium: toggle between Simple/Team */}
         {canViewPricing && (
@@ -1661,54 +1733,6 @@ export default function EditQuote() {
 
         {canViewPricing && (
           <>
-            <Text style={styles.label}>Materials (Quick Estimate)</Text>
-            <FormInput
-              placeholder="0.00"
-              value={materialEstimate}
-              onChangeText={(text) => setMaterialEstimate(formatLaborInput(text))}
-              onBlur={() => setMaterialEstimate(formatMoneyOnBlur(materialEstimate))}
-              keyboardType="decimal-pad"
-            />
-
-            <View style={{ height: theme.spacing(2) }} />
-
-            <Text style={styles.label}>Material Markup %</Text>
-            <View style={styles.inputWithSuffix}>
-              <FormInput
-                placeholder="0"
-                value={markupPercent}
-                onChangeText={(text) => {
-                  // Only allow numbers and one decimal point
-                  const cleaned = text.replace(/[^0-9.]/g, "");
-                  const parts = cleaned.split(".");
-                  if (parts.length > 2) {
-                    setMarkupPercent(parts[0] + "." + parts.slice(1).join(""));
-                  } else {
-                    setMarkupPercent(cleaned);
-                  }
-                }}
-                keyboardType="decimal-pad"
-                style={styles.inputWithSuffixField}
-              />
-              <Text style={styles.inputSuffix}>%</Text>
-            </View>
-            {calculations.markupAmount > 0 ? (
-              <Text style={styles.helper}>
-                Applied to line items only — that&apos;s{" "}
-                <Text style={{ fontWeight: "700", color: theme.colors.accent }}>
-                  ${calculations.markupAmount.toLocaleString("en-US", {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                  })}
-                </Text>{" "}
-                on this quote.
-              </Text>
-            ) : (
-              <Text style={styles.helper}>Applied to line items only</Text>
-            )}
-
-            <View style={{ height: theme.spacing(2) }} />
-
             <Text style={styles.label}>Tax %</Text>
             <View style={styles.inputWithSuffix}>
               <FormInput
@@ -1734,15 +1758,41 @@ export default function EditQuote() {
 
         <View style={{ height: theme.spacing(2) }} />
 
-        <Text style={styles.label}>Notes</Text>
+        {/* Called "Notes" until v1.2.19, which was wrong twice over: it is not
+            internal (it prints on the quote PDF and shows on the customer's web
+            quote) and it becomes the contract's Scope of Work on conversion. A
+            real customer read "Notes" as the catch-all box and typed their
+            payment split into it, which then became their scope of work. */}
+        <Text style={styles.label}>Scope of Work</Text>
         <FormInput
-          placeholder="Special instructions, conditions, etc..."
+          placeholder="Describe the work you will be doing..."
           value={notes}
           onChangeText={setNotes}
           multiline
           numberOfLines={3}
           style={{ height: 80, textAlignVertical: "top" }}
         />
+        <Text style={styles.helper}>
+          Your customer sees this, and it carries onto the contract.
+        </Text>
+
+        <View style={{ height: theme.spacing(2) }} />
+
+        {/* Terms belong on the quote, not just the contract: contractors agree
+            them while pitching. Before this existed the only free-text box was
+            the one above, so terms landed there. Free text, never parsed. */}
+        <Text style={styles.label}>Payment Terms</Text>
+        <FormInput
+          placeholder="e.g. 50% deposit, 50% on completion"
+          value={paymentTerms}
+          onChangeText={setPaymentTerms}
+          multiline
+          numberOfLines={2}
+          style={{ height: 64, textAlignVertical: "top" }}
+        />
+        <Text style={styles.helper}>
+          How and when you get paid. Carries onto the contract.
+        </Text>
 
         <View style={{ height: theme.spacing(3) }} />
 

@@ -128,13 +128,15 @@ export async function createContractFromQuote(
 
   const now = new Date().toISOString();
 
-  // quote_id should be null for local quotes (non-UUID IDs)
-  // Only set quote_id if it's a valid Supabase UUID
-  const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quote.id);
-
   const contractData = {
     user_id: userId,
-    quote_id: isValidUuid ? quote.id : null,
+    // Always record which quote this came from. This used to be dropped for
+    // any quote created on a phone (ids look like "quote_1788797883416_37nhbrz")
+    // because the column was declared UUID while quotes.id is TEXT. That
+    // orphaned every app-created contract and silently broke the "this quote
+    // already has a contract" guard, the dashboard's double-count guard, and
+    // the quote lineage carried onto invoices. Column widened in migration 035.
+    quote_id: quote.id,
     contract_number: contractNumber,
     client_name: quote.clientName || "Unnamed Client",
     client_email: quote.clientEmail || null,
@@ -148,7 +150,9 @@ export async function createContractFromQuote(
     markup_percent: quote.markupPercent || null,
     tax_percent: quote.taxPercent || null,
     total,
-    payment_terms: options?.paymentTerms || null,
+    // Terms entered on the quote carry through. Explicit options win so a
+    // caller can still override at creation time.
+    payment_terms: options?.paymentTerms || quote.paymentTerms || null,
     terms_and_conditions: options?.termsAndConditions || null,
     // Work dates default to whatever's on the quote so a contractor who
     // scheduled the job at the quote stage doesn't have to re-enter them.
@@ -178,6 +182,35 @@ export async function createContractFromQuote(
     console.error("Contract creation exception:", err);
     return null;
   }
+}
+
+/**
+ * Find an existing contract created from this quote, if there is one.
+ *
+ * A contract is a snapshot taken at creation time, not a live view of the
+ * quote, so making a second one from the same quote produces two independent
+ * documents rather than an updated one. Callers use this to warn before that
+ * happens. Returns the oldest match, which is the one the user most likely
+ * means when they say "the contract for this job".
+ */
+export async function getContractForQuote(quoteId: string): Promise<Contract | null> {
+  const userId = await getCurrentUserId();
+  if (!userId || !quoteId || quoteId === "new") return null;
+
+  const { data, error } = await supabase
+    .from("contracts")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("quote_id", quoteId)
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (error) {
+    console.error("Failed to look up contract for quote:", error);
+    return null;
+  }
+
+  return data && data.length > 0 ? mapSupabaseToContract(data[0]) : null;
 }
 
 /**

@@ -193,6 +193,7 @@ export async function uploadQuote(quote: Quote): Promise<boolean> {
       start_date: quote.startDate || null,
       completion_date: quote.completionDate || null,
       notes: quote.notes || null,
+      payment_terms: quote.paymentTerms || null,
       change_history: quote.changeHistory || null,
       approved_snapshot: quote.approvedSnapshot || null,
       total: quote.total || 0, // Store calculated total for single source of truth
@@ -349,6 +350,7 @@ export async function downloadQuotes(since?: string, isInitialSync = false): Pro
           startDate: row.start_date || undefined,
           completionDate: row.completion_date || undefined,
           notes: row.notes || undefined,
+          paymentTerms: row.payment_terms || undefined,
           changeHistory: row.change_history || undefined,
           approvedSnapshot: row.approved_snapshot || undefined,
           total: row.total ? parseFloat(row.total) : undefined,
