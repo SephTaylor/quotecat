@@ -282,6 +282,42 @@ export async function loadPreferences(): Promise<UserPreferences> {
 /**
  * Save user preferences to storage
  */
+/**
+ * Push business settings to the cloud shortly after they change.
+ *
+ * Until this existed, only two things ever uploaded settings: changing the
+ * logo, and launching the app. So the cloud copy was routinely behind whatever
+ * the user had just saved. Launch runs download-then-upload, which gave that
+ * stale copy a chance to overwrite fresh local values and then cement the
+ * result. Every settings-sync bug found on 2026-09-09 traces back here.
+ *
+ * Fire and forget, and debounced: the business settings screen saves per field,
+ * so editing several in a row should produce one upload rather than five.
+ * Failure is silent because the local save has already succeeded.
+ */
+let settingsUploadTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSettingsUpload(): void {
+  if (settingsUploadTimer) clearTimeout(settingsUploadTimer);
+  settingsUploadTimer = setTimeout(() => {
+    settingsUploadTimer = null;
+    void (async () => {
+      try {
+        // Dynamic imports to avoid a circular dependency: businessSettingsSync
+        // imports this module.
+        const { getUserState } = await import("./user");
+        const state = await getUserState();
+        if (state.tier !== "pro" && state.tier !== "premium") return;
+
+        const { forceSyncBusinessSettings } = await import("./businessSettingsSync");
+        await forceSyncBusinessSettings();
+      } catch (error) {
+        console.error("Settings cloud upload failed:", error);
+      }
+    })();
+  }, 3000);
+}
+
 export async function savePreferences(
   preferences: UserPreferences,
 ): Promise<void> {
@@ -325,6 +361,7 @@ export async function updateCompanyDetails(
     },
   };
   await savePreferences(updated);
+  scheduleSettingsUpload();
   return updated;
 }
 
@@ -343,6 +380,7 @@ export async function updateInvoiceSettings(
     },
   };
   await savePreferences(updated);
+  scheduleSettingsUpload();
   return updated;
 }
 
@@ -361,6 +399,7 @@ export async function updateContractSettings(
     },
   };
   await savePreferences(updated);
+  scheduleSettingsUpload();
   return updated;
 }
 
@@ -379,6 +418,7 @@ export async function updateQuoteSettings(
     },
   };
   await savePreferences(updated);
+  scheduleSettingsUpload();
   return updated;
 }
 
@@ -415,6 +455,7 @@ export async function updatePricingSettings(
     },
   };
   await savePreferences(updated);
+  scheduleSettingsUpload();
   return updated;
 }
 
@@ -433,6 +474,7 @@ export async function updatePaymentMethods(
     },
   };
   await savePreferences(updated);
+  scheduleSettingsUpload();
   return updated;
 }
 
@@ -448,6 +490,7 @@ export async function updateOverheadSettings(
     overhead,
   };
   await savePreferences(updated);
+  scheduleSettingsUpload();
   return updated;
 }
 
