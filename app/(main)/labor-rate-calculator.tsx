@@ -130,7 +130,10 @@ export default function LaborRateCalculator() {
         roundedCostRate > 0
           ? `Billable: $${roundedRate}/hr\nCost: $${roundedCostRate}/hr\n\nYour profit on labor: $${roundedRate - roundedCostRate}/hr`
           : `Billable: $${roundedRate}/hr\n\nYou haven't entered a salary or benefits, so your labor cost is $0 and quotes will show labor as all profit. Add those above whenever you want a true margin.`,
-        [{ text: "OK" }]
+        // Return to where they came from, matching the overhead calculator and
+        // the target margin screen. This one used to sit still after saving,
+        // which left the user stranded on a screen they were finished with.
+        [{ text: "Done", onPress: () => router.back() }]
       );
     };
 
