@@ -122,9 +122,14 @@ export default function LaborRateCalculator() {
         targetProfitMarginPercent: profitPct > 0 ? profitPct : undefined,
       });
 
+      // A zero cost rate means no salary or benefits were entered, so quotes
+      // will treat labor as pure profit. Saying "your profit on labor: $21/hr"
+      // in that state reads as good news when it is really a gap.
       Alert.alert(
         "Rates Saved",
-        `Billable: $${roundedRate}/hr\nCost: $${roundedCostRate}/hr\n\nYour profit on labor: $${roundedRate - roundedCostRate}/hr`,
+        roundedCostRate > 0
+          ? `Billable: $${roundedRate}/hr\nCost: $${roundedCostRate}/hr\n\nYour profit on labor: $${roundedRate - roundedCostRate}/hr`
+          : `Billable: $${roundedRate}/hr\n\nYou haven't entered a salary or benefits, so your labor cost is $0 and quotes will show labor as all profit. Add those above whenever you want a true margin.`,
         [{ text: "OK" }]
       );
     };

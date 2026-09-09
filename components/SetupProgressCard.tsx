@@ -65,9 +65,12 @@ export function SetupProgressCard({ onDismiss }: SetupProgressCardProps) {
         key: "laborRate",
         title: "Find your billable rate",
         route: "/labor-rate-calculator",
-        done:
-          (prefs.pricing?.defaultLaborRate ?? 0) > 0 &&
-          (prefs.pricing?.defaultLaborCostRate ?? 0) > 0,
+        // Billable rate only. The cost rate is derived from salary and
+        // benefits, which a user can legitimately leave blank and still get a
+        // usable billable rate out of overhead plus target margin. Requiring
+        // both meant the step could never tick for those users: they set a
+        // rate, saw the confirmation, came back, and found it unchecked.
+        done: (prefs.pricing?.defaultLaborRate ?? 0) > 0,
       },
       {
         key: "margin",
