@@ -5,7 +5,7 @@
 import { supabase } from "./supabase";
 import { getCurrentUserId } from "./authUtils";
 import { getTechContext } from "./team";
-import { loadPreferences, savePreferences, type UserPreferences } from "./preferences";
+import { loadPreferences, savePreferences, type UserPreferences, type SyncedSection } from "./preferences";
 import { getCompanyLogo, type CompanyLogo } from "./logo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
@@ -165,6 +165,28 @@ export async function deleteLogoFromStorage(): Promise<boolean> {
  * local text. Deliberately not applied to paymentMethods, where false is a
  * real choice the user made and must sync.
  */
+/**
+ * Which copy of a section was written more recently, or null when that cannot
+ * be established.
+ *
+ * Preferences carry a per-section timestamp so this is answerable rather than
+ * guessed. A missing stamp on one side means that side predates stamping, so
+ * the stamped side is treated as newer. Neither stamped means legacy data on
+ * both ends, and the caller falls back to the older value-shape heuristics.
+ */
+function newerSide(
+  section: SyncedSection,
+  local: UserPreferences,
+  cloud: { sectionUpdatedAt?: Partial<Record<SyncedSection, string>> } | undefined
+): "cloud" | "local" | null {
+  const localAt = local.sectionUpdatedAt?.[section];
+  const cloudAt = cloud?.sectionUpdatedAt?.[section];
+  if (!localAt && !cloudAt) return null;
+  if (!cloudAt) return "local";
+  if (!localAt) return "cloud";
+  return cloudAt > localAt ? "cloud" : "local";
+}
+
 function mergeSettings<T extends Record<string, unknown>>(
   local: T | undefined,
   cloud: unknown
@@ -348,19 +370,44 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
         if (cloudPrefs.quote) {
           updatedPrefs.quote = mergeNumbering(localPrefs.quote, cloudPrefs.quote);
         }
+        // Keep whichever stamp is later per section, so a device that has been
+        // offline does not rewind the record of when things changed.
+        if (cloudPrefs.sectionUpdatedAt) {
+          const merged = { ...(localPrefs.sectionUpdatedAt || {}) };
+          for (const [sec, at] of Object.entries(cloudPrefs.sectionUpdatedAt)) {
+            const key = sec as SyncedSection;
+            if (typeof at === "string" && (!merged[key] || at > merged[key]!)) {
+              merged[key] = at;
+            }
+          }
+          updatedPrefs.sectionUpdatedAt = merged;
+        }
         if (cloudPrefs.pricing) {
-          updatedPrefs.pricing = mergeSettings(updatedPrefs.pricing, cloudPrefs.pricing);
+          const side = newerSide("pricing", localPrefs, cloudPrefs);
+          const winner =
+            side === "cloud" ? cloudPrefs.pricing
+            : side === "local" ? localPrefs.pricing
+            : mergeSettings(localPrefs.pricing, cloudPrefs.pricing);
+          // Re-apply the zip resolution, which reads a dedicated column rather
+          // than the JSONB blob.
+          updatedPrefs.pricing = {
+            ...winner,
+            zipCode: profile.zip_code || winner?.zipCode || "",
+          };
         }
         if (cloudPrefs.paymentMethods) {
-          updatedPrefs.paymentMethods = mergePaymentMethods(
-            updatedPrefs.paymentMethods,
-            cloudPrefs.paymentMethods
-          );
+          const side = newerSide("paymentMethods", localPrefs, cloudPrefs);
+          updatedPrefs.paymentMethods =
+            side === "cloud" ? cloudPrefs.paymentMethods
+            : side === "local" ? localPrefs.paymentMethods
+            : mergePaymentMethods(updatedPrefs.paymentMethods, cloudPrefs.paymentMethods);
         }
         if (cloudPrefs.overhead) {
-          // Was a wholesale replace, which deleted a locally set target margin
-          // whenever the cloud copy predated it.
-          updatedPrefs.overhead = mergeSettings(updatedPrefs.overhead, cloudPrefs.overhead);
+          const side = newerSide("overhead", localPrefs, cloudPrefs);
+          updatedPrefs.overhead =
+            side === "cloud" ? cloudPrefs.overhead
+            : side === "local" ? localPrefs.overhead
+            : mergeSettings(updatedPrefs.overhead, cloudPrefs.overhead);
         }
       }
     }
@@ -491,6 +538,7 @@ export async function syncBusinessSettings(): Promise<{ success: boolean; error?
         pricing: preferences.pricing,
         paymentMethods: preferences.paymentMethods,
         overhead: preferences.overhead, // Profitability overhead settings
+        sectionUpdatedAt: preferences.sectionUpdatedAt,
       },
       updated_at: new Date().toISOString(),
     };

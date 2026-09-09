@@ -118,7 +118,41 @@ export type UserPreferences = {
   paymentMethods: PaymentMethods;
   overhead?: OverheadSettings; // Profitability overhead settings (configured via portal)
   onboarding?: OnboardingPreferences; // Onboarding flow progress
+  /**
+   * When each synced section was last changed on this device, ISO 8601.
+   *
+   * Without this there is no way to tell whether the cloud copy or the local
+   * one is newer, so merging had to guess: prefer local when the cloud value
+   * looks unset. That guess is why a cloud zero could not be allowed to beat a
+   * local number, and why an empty payment method had to defer to local. With a
+   * stamp the question is answerable instead of estimated.
+   *
+   * Absent on preferences written before this existed, so the merge keeps the
+   * old heuristics as a fallback whenever a stamp is missing on either side.
+   */
+  sectionUpdatedAt?: Partial<Record<SyncedSection, string>>;
 };
+
+/** Sections that sync to the cloud and therefore need conflict resolution. */
+export type SyncedSection =
+  | "company"
+  | "invoice"
+  | "contract"
+  | "quote"
+  | "pricing"
+  | "paymentMethods"
+  | "overhead";
+
+/** Record that a section just changed here, so the merge can rank it later. */
+function stampSection(prefs: UserPreferences, section: SyncedSection): UserPreferences {
+  return {
+    ...prefs,
+    sectionUpdatedAt: {
+      ...(prefs.sectionUpdatedAt || {}),
+      [section]: new Date().toISOString(),
+    },
+  };
+}
 
 const PREFERENCES_KEY = "@quotecat/preferences";
 
@@ -360,9 +394,10 @@ export async function updateCompanyDetails(
       ...updates,
     },
   };
-  await savePreferences(updated);
+  const stamped = stampSection(updated, "company");
+  await savePreferences(stamped);
   scheduleSettingsUpload();
-  return updated;
+  return stamped;
 }
 
 /**
@@ -379,9 +414,10 @@ export async function updateInvoiceSettings(
       ...updates,
     },
   };
-  await savePreferences(updated);
+  const stamped = stampSection(updated, "invoice");
+  await savePreferences(stamped);
   scheduleSettingsUpload();
-  return updated;
+  return stamped;
 }
 
 /**
@@ -398,9 +434,10 @@ export async function updateContractSettings(
       ...updates,
     },
   };
-  await savePreferences(updated);
+  const stamped = stampSection(updated, "contract");
+  await savePreferences(stamped);
   scheduleSettingsUpload();
-  return updated;
+  return stamped;
 }
 
 /**
@@ -417,9 +454,10 @@ export async function updateQuoteSettings(
       ...updates,
     },
   };
-  await savePreferences(updated);
+  const stamped = stampSection(updated, "quote");
+  await savePreferences(stamped);
   scheduleSettingsUpload();
-  return updated;
+  return stamped;
 }
 
 /**
@@ -454,9 +492,10 @@ export async function updatePricingSettings(
       ...updates,
     },
   };
-  await savePreferences(updated);
+  const stamped = stampSection(updated, "pricing");
+  await savePreferences(stamped);
   scheduleSettingsUpload();
-  return updated;
+  return stamped;
 }
 
 /**
@@ -473,9 +512,10 @@ export async function updatePaymentMethods(
       ...updates,
     },
   };
-  await savePreferences(updated);
+  const stamped = stampSection(updated, "paymentMethods");
+  await savePreferences(stamped);
   scheduleSettingsUpload();
-  return updated;
+  return stamped;
 }
 
 /**
@@ -489,9 +529,10 @@ export async function updateOverheadSettings(
     ...prefs,
     overhead,
   };
-  await savePreferences(updated);
+  const stamped = stampSection(updated, "overhead");
+  await savePreferences(stamped);
   scheduleSettingsUpload();
-  return updated;
+  return stamped;
 }
 
 /**
