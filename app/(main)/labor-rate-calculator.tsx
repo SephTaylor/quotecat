@@ -19,6 +19,14 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { updatePricingSettings, updateOverheadSettings, loadPreferences } from "@/lib/preferences";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Only the derived rates are stored in preferences, so returning to this screen
+// used to show a mostly blank form even for someone who had already completed
+// it. Worse than confusing: re-entering a couple of fields and saving
+// recalculated the cost rate from incomplete inputs and overwrote a good one.
+// The overhead calculator already persists its raw inputs; this matches it.
+const INPUTS_KEY = "@quotecat/labor_rate_inputs";
 
 export default function LaborRateCalculator() {
   const router = useRouter();
@@ -45,6 +53,19 @@ export default function LaborRateCalculator() {
         // Load target profit margin from business settings
         if (prefs.overhead?.targetProfitMarginPercent && prefs.overhead.targetProfitMarginPercent > 0) {
           setProfitMargin(String(prefs.overhead.targetProfitMarginPercent));
+        }
+
+        // Restore what the user actually typed last time. Applied after the
+        // preference-derived values above so their own entries win.
+        const savedJson = await AsyncStorage.getItem(INPUTS_KEY);
+        if (savedJson) {
+          const saved = JSON.parse(savedJson) as Record<string, string>;
+          if (saved.desiredSalary) setDesiredSalary(saved.desiredSalary);
+          if (saved.healthInsurance) setHealthInsurance(saved.healthInsurance);
+          if (saved.retirement) setRetirement(saved.retirement);
+          if (saved.annualOverhead) setAnnualOverhead(saved.annualOverhead);
+          if (saved.profitMargin) setProfitMargin(saved.profitMargin);
+          if (saved.billableHours) setBillableHours(saved.billableHours);
         }
       } catch (error) {
         console.error("Failed to load saved settings:", error);
@@ -91,6 +112,9 @@ export default function LaborRateCalculator() {
   const isLosingMoney = costRate >= hourlyRate && hourlyRate > 0;
 
   const handleReset = () => {
+    // Clear the remembered inputs too, or Reset would appear to work and then
+    // the old numbers would reappear on the next visit.
+    AsyncStorage.removeItem(INPUTS_KEY).catch(() => {});
     setDesiredSalary("");
     setHealthInsurance("");
     setRetirement("");
@@ -109,6 +133,20 @@ export default function LaborRateCalculator() {
     const roundedCostRate = Math.round(costRate);
 
     const doSave = async () => {
+      // Keep the raw inputs so this screen can be reopened and adjusted rather
+      // than re-derived from memory.
+      await AsyncStorage.setItem(
+        INPUTS_KEY,
+        JSON.stringify({
+          desiredSalary,
+          healthInsurance,
+          retirement,
+          annualOverhead,
+          profitMargin,
+          billableHours,
+        })
+      );
+
       // Save labor rates
       await updatePricingSettings({
         defaultLaborRate: roundedRate,
