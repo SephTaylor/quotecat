@@ -39,11 +39,11 @@ import { repairAssemblies } from "@/lib/assemblyRepair";
 import { useForegroundSync } from "@/hooks/useForegroundSync";
 
 function RootNavigator() {
-  const { mode } = useTheme();
+  const { isDark } = useTheme();
 
   return (
     <>
-      <StatusBar style={mode === "dark" ? "light" : "dark"} />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
         screenOptions={{
           headerShown: false, // Hidden by default, individual screens can override

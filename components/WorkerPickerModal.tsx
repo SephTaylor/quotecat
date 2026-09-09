@@ -44,8 +44,7 @@ export function WorkerPickerModal({
   onTeamMembersChanged,
   showRates = true,
 }: Props) {
-  const { theme, mode } = useTheme();
-  const isDark = mode === "dark";
+  const { theme, isDark } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
 
   const [search, setSearch] = useState("");

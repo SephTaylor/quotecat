@@ -43,11 +43,10 @@ export const SwipeableMaterialItem = React.memo(
     isCustom,
     onEdit,
   }: SwipeableMaterialItemProps) => {
-    const { theme, mode } = useTheme();
+    const { theme, isDark } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
     // Auto-detect custom items: no productId = custom item
     const isCustomItem = isCustom ?? !item.productId;
-    const isDark = mode === "dark";
     const styles = React.useMemo(() => createStyles(theme, isCustomItem, isDark), [theme, isCustomItem, isDark]);
 
     const renderRightActions = (

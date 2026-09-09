@@ -41,8 +41,7 @@ const DISMISSED_TECHS_KEY = "@quotecat/team-members-techs-dismissed";
 
 export default function TeamMembersScreen() {
   const router = useRouter();
-  const { theme, mode } = useTheme();
-  const isDark = mode === "dark";
+  const { theme, isDark } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
 
   const [members, setMembers] = useState<TeamMember[]>([]);

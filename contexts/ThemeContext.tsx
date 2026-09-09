@@ -5,7 +5,12 @@ import { getTheme, type ThemeMode } from "@/constants/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type ThemeContextType = {
+  /** The user's stored preference. Can be "system", so do NOT compare this to
+   *  "dark" to decide how to paint. Use `isDark`. */
   mode: ThemeMode;
+  /** The mode actually in effect, with "system" already resolved against the
+   *  device. This is what `theme` was built from. */
+  isDark: boolean;
   theme: ReturnType<typeof getTheme>;
   setThemeMode: (mode: ThemeMode) => void;
 };
@@ -59,7 +64,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ mode, theme, setThemeMode }}>
+    <ThemeContext.Provider value={{ mode, isDark: resolvedMode === "dark", theme, setThemeMode }}>
       {children}
     </ThemeContext.Provider>
   );

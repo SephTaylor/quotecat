@@ -40,8 +40,7 @@ export function AddLaborEntrySheet({
   editingEntry,
   showRate = true,
 }: Props) {
-  const { theme, mode } = useTheme();
-  const isDark = mode === "dark";
+  const { theme, isDark } = useTheme();
   const styles = React.useMemo(() => createStyles(theme, isDark), [theme, isDark]);
 
   // Form state

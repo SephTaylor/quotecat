@@ -17,9 +17,8 @@ type SwipeableLaborEntryProps = {
 
 export const SwipeableLaborEntry = React.memo(
   ({ entry, onDelete, onEdit, onHoursChange, isLastItem, showRate = true }: SwipeableLaborEntryProps) => {
-    const { theme, mode } = useTheme();
+    const { theme, isDark } = useTheme();
     const swipeableRef = useRef<Swipeable>(null);
-    const isDark = mode === "dark";
     const styles = React.useMemo(
       () => createStyles(theme, isDark),
       [theme, isDark]

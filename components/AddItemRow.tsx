@@ -26,8 +26,7 @@ type AddItemRowProps = {
 };
 
 export const AddItemRow = React.memo(({ onAddItem, isLastItem = true, onDelete }: AddItemRowProps) => {
-  const { theme, mode } = useTheme();
-  const isDark = mode === "dark";
+  const { theme, isDark } = useTheme();
   const styles = React.useMemo(() => createStyles(theme, isDark), [theme, isDark]);
 
   // Input state
