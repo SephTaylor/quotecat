@@ -187,6 +187,40 @@ function mergeSettings<T extends Record<string, unknown>>(
   return merged as T;
 }
 
+/**
+ * Merge payment methods down from the cloud.
+ *
+ * Each method is { enabled, value }. A plain replace meant a stale cloud copy
+ * of all-disabled-and-blank wiped a contractor's configured Zelle or Venmo,
+ * and because launch does download-then-upload, the wipe was then pushed back
+ * up and cemented.
+ *
+ * Cannot use mergeSettings here: `enabled: false` is a real choice a user made
+ * and must sync, so falsy values are not skipped wholesale. Instead only an
+ * entirely empty cloud entry (not enabled AND no value) defers to local, which
+ * is exactly the stale-copy case. A cloud entry carrying any content wins, so
+ * turning a method off on another device still propagates.
+ */
+function mergePaymentMethods<T extends Record<string, unknown>>(
+  local: T | undefined,
+  cloud: unknown
+): T {
+  const merged: Record<string, unknown> = { ...(local || {}) };
+  if (!cloud || typeof cloud !== "object") return merged as T;
+
+  for (const [method, cloudEntry] of Object.entries(cloud as Record<string, unknown>)) {
+    const localEntry = merged[method] as { enabled?: boolean; value?: string } | undefined;
+    const entry = cloudEntry as { enabled?: boolean; value?: string } | undefined;
+
+    const cloudIsEmpty = !entry || (!entry.enabled && !entry.value);
+    const localHasContent = !!localEntry && (!!localEntry.enabled || !!localEntry.value);
+
+    if (cloudIsEmpty && localHasContent) continue;
+    merged[method] = cloudEntry;
+  }
+  return merged as T;
+}
+
 function mergeNumbering<T extends { nextNumber?: number }>(
   local: T | undefined,
   cloud: Partial<T> | undefined,
@@ -318,7 +352,10 @@ export async function downloadBusinessSettings(): Promise<{ success: boolean; er
           updatedPrefs.pricing = mergeSettings(updatedPrefs.pricing, cloudPrefs.pricing);
         }
         if (cloudPrefs.paymentMethods) {
-          updatedPrefs.paymentMethods = cloudPrefs.paymentMethods;
+          updatedPrefs.paymentMethods = mergePaymentMethods(
+            updatedPrefs.paymentMethods,
+            cloudPrefs.paymentMethods
+          );
         }
         if (cloudPrefs.overhead) {
           // Was a wholesale replace, which deleted a locally set target margin
