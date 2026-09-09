@@ -214,6 +214,30 @@ export async function getContractForQuote(quoteId: string): Promise<Contract | n
 }
 
 /**
+ * Which of the two things a client actually needs to understand a contract are
+ * missing. Shared because there are two ways to send: the editor's action
+ * button, and the prompt that appears right after signing a draft. The second
+ * one shipped without any checks and let a contract go out with nothing in it.
+ *
+ * Deliberately advisory. Some contractors put everything in the attached Terms
+ * & Conditions instead, so callers warn rather than block.
+ */
+export function missingContractTerms(
+  scopeOfWork?: string | null,
+  paymentTerms?: string | null
+): string[] {
+  const missing: string[] = [];
+  if (!scopeOfWork?.trim()) missing.push("scope of work");
+  if (!paymentTerms?.trim()) missing.push("payment terms");
+  return missing;
+}
+
+/** "no scope of work and no payment terms" */
+export function describeMissingTerms(missing: string[]): string {
+  return missing.map((m) => `no ${m}`).join(" and ");
+}
+
+/**
  * Get all contracts for current user (with signatures)
  */
 export async function listContracts(): Promise<Contract[]> {

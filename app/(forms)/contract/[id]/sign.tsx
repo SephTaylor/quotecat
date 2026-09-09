@@ -2,7 +2,7 @@
 // Contractor signature capture screen
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { getContractById, addContractorSignature, markContractSent, getContractShareLink } from "@/lib/contracts";
+import { getContractById, addContractorSignature, markContractSent, getContractShareLink, missingContractTerms, describeMissingTerms } from "@/lib/contracts";
 import { notifyContractChanged } from "@/lib/contractEvents";
 import { getUserState } from "@/lib/user";
 import { loadPreferences } from "@/lib/preferences";
@@ -122,9 +122,22 @@ export default function SignContract() {
         const isDraft = contract.status === "draft";
 
         if (isDraft) {
+          // This prompt is a full second send path, separate from the editor's
+          // action button, and it shipped with no checks at all. A contract
+          // went out with no scope and no payment terms through here. Same
+          // advisory warning as the editor, from the same shared helper.
+          const missing = missingContractTerms(
+            contract.scopeOfWork,
+            contract.paymentTerms
+          );
+          const sendBody =
+            missing.length > 0
+              ? `This contract has ${describeMissingTerms(missing)}. Your client will see it exactly as it is now.\n\nSend it anyway?`
+              : "Ready to send the contract to your client now?";
+
           Alert.alert(
             "Signature Saved",
-            "Ready to send the contract to your client now?",
+            sendBody,
             [
               {
                 text: "Not yet",
@@ -135,7 +148,7 @@ export default function SignContract() {
                 },
               },
               {
-                text: "Send",
+                text: missing.length > 0 ? "Send anyway" : "Send",
                 onPress: async () => {
                   try {
                     const updated = await markContractSent(id);

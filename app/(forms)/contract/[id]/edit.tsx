@@ -2,7 +2,7 @@
 // Contract editing screen for Premium users
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { getContractWithSignatures, updateContract, markContractSent, revertContractToDraft, getContractShareLink, deleteSignature } from "@/lib/contracts";
+import { getContractWithSignatures, updateContract, markContractSent, revertContractToDraft, getContractShareLink, deleteSignature, missingContractTerms, describeMissingTerms } from "@/lib/contracts";
 import { onContractChanged, notifyContractChanged } from "@/lib/contractEvents";
 import type { Contract } from "@/lib/types";
 import { ContractStatusMeta } from "@/lib/types";
@@ -140,15 +140,13 @@ export default function EditContract() {
     // nor payment terms is almost always unfinished, and once it is sent the
     // client has seen it. Deliberately folded into the existing confirmation
     // rather than stacking a second dialog on top of it.
-    const missing: string[] = [];
-    if (!scopeOfWork.trim()) missing.push("scope of work");
-    if (!paymentTerms.trim()) missing.push("payment terms");
+    const missing = missingContractTerms(scopeOfWork, paymentTerms);
 
     const sendTitle =
       missing.length > 0 ? `Send without ${missing.join(" or ")}?` : "Send Contract";
     const sendBody =
       missing.length > 0
-        ? `This contract has no ${missing.join(" and no ")}. Your client will see it exactly as it is now.\n\nSending marks it as sent and shares a link with ${clientName || "the client"}.`
+        ? `This contract has ${describeMissingTerms(missing)}. Your client will see it exactly as it is now.\n\nSending marks it as sent and shares a link with ${clientName || "the client"}.`
         : `This will mark the contract as sent and share a link with ${clientName || "the client"}.\n\nThe client will be able to view and sign the contract.`;
 
     Alert.alert(
