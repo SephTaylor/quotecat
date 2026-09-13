@@ -2402,10 +2402,26 @@
     </div>
 
     <script>
-        // Fetch spots remaining on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            fetchSpotsRemaining();
-        });
+        // DISABLED 2026-09-13. The live spot counter was never correct and the
+        // endpoint has always fallen back to hardcoded 50/25, so the page was
+        // showing "50 of 50" and "25 of 25" regardless of real subscribers.
+        //
+        // Three things must be fixed before re-enabling:
+        //   1. get_spots_remaining() has the wrong limits (pro 500, premium 100;
+        //      should be 50 and 25).
+        //   2. It counts profiles.tier, which includes comped VIP testers and
+        //      internal accounts. It should count active, non-cancelled rows in
+        //      `subscriptions` instead. As of today that is exactly one.
+        //   3. The Netlify function returns "Using fallback data", most likely
+        //      because SUPABASE_URL / SUPABASE_ANON_KEY are not set for it.
+        //      (anon DOES have EXECUTE on the function, so it is not permissions.)
+        //
+        // Until then the static tier text stands, which is accurate and claims
+        // no live count. To re-enable, restore the listener below.
+        //
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     fetchSpotsRemaining();
+        // });
 
         // Fetch spots remaining from Netlify function
         async function fetchSpotsRemaining() {

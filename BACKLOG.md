@@ -7,6 +7,40 @@
 
 ---
 
+## ⬜ FOUNDER SPOT COUNTER — disabled 2026-09-13, wire it later
+
+**The live counter on quotecat.ai was never correct.** Disabled rather than patched, because
+patching the number would hide four separate problems. Static tier text now stands, which is
+accurate and claims no live count.
+
+**What was actually wrong:**
+
+1. **`get_spots_remaining()` has the wrong limits.** Pro founder = **500**, Premium founder =
+   **100**. The site and the strategy both say **50** and **25**.
+2. **It counts `profiles.tier`**, which includes comped VIP testers (Wyatt, DN), three of
+   Joseph's own addresses, and an apparent duplicate account. Nine Premium profiles, nowhere
+   near nine customers.
+3. **`pricing_tier` is not being set to `founder` on real purchases.** Exactly one row in the
+   whole database says `founder`, and it is `joseph@quotecat.ai`.
+4. **The Netlify function returns `"error": "Using fallback data"`**, so none of the above ever
+   reached the page anyway. **Not permissions** — `anon` has EXECUTE on the function. Most likely
+   `SUPABASE_URL` / `SUPABASE_ANON_KEY` are unset for that function in Netlify.
+
+**Ground truth as of 2026-09-13**, from the `subscriptions` table: **exactly one genuinely active
+paying subscriber**, `osmanchavez26@gmail.com` (Camsa), Premium yearly, started 2026-09-07, not
+cancelled. Everything else is expired test subscriptions or accounts that cancelled within a day.
+So the honest numbers are **24 of 25 Premium** and **50 of 50 Pro**.
+
+**The fix, when there is appetite:** rewrite the function to count active, non-cancelled rows in
+`subscriptions` rather than `profiles.tier`, and correct the limits to 50 and 25. Counting real
+subscriptions is self-maintaining: it excludes VIPs and internal accounts automatically, because
+they have no active subscription row.
+
+⚠️ **Scope, verified:** the only caller is `website/netlify/functions/spots-remaining.js`. Nothing
+in the mobile app or the portal uses it. Changing it cannot affect anyone's tier or access.
+
+---
+
 ## ✅ FREE TRIAL + GLOBAL AVAILABILITY 2026-09-13
 
 **Premium free trial is live on the App Store.** One month, free, 175 territories, no end date, on
