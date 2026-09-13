@@ -787,6 +787,9 @@
             color: var(--text-light);
             margin-bottom: 24px;
             font-size: 16px;
+            /* Reserve two lines so a short description on one card does not
+               pull its feature list higher than the others. */
+            min-height: 48px;
         }
 
         .tier-features {
@@ -900,6 +903,10 @@
             color: var(--text-light);
             margin-bottom: 24px;
             font-weight: 600;
+            /* 'Forever' vs 'Founder pricing, while it lasts' must occupy the
+               same height or the cards drift apart. */
+            min-height: 18px;
+            white-space: nowrap;
         }
 
         .tier-button {
@@ -973,7 +980,9 @@
         }
 
         .tier-trial {
-            margin-top: 10px;
+            margin-top: -14px;
+            margin-bottom: 20px;
+            white-space: nowrap;
             padding: 6px 12px;
             display: inline-block;
             font-size: 13px;
