@@ -978,10 +978,20 @@
             display: inline-block;
             font-size: 13px;
             font-weight: 700;
+            line-height: 1.3;
             color: #f97316;
             background: rgba(249, 115, 22, 0.12);
             border: 1px solid rgba(249, 115, 22, 0.35);
             border-radius: 999px;
+        }
+
+        /* Free and Pro carry the same slot so all three cards stay aligned,
+           but without the pill treatment — only Premium's line is an offer. */
+        .tier-trial-plain {
+            color: #9ca3af;
+            background: transparent;
+            border-color: transparent;
+            font-weight: 600;
         }
 
         .tier-note {
@@ -1917,9 +1927,10 @@
                 <div class="tier-card fade-in-up stagger-1">
                     <img src="drew-card.png" alt="" class="tier-drew-icon">
                     <div class="tier-name">Free</div>
-                    <div class="tier-description">Quote real jobs and get paid. No card required.</div>
+                    <div class="tier-description">Quote real jobs and get paid.</div>
                     <div class="tier-price">$0</div>
                     <div class="tier-price-period">Forever</div>
+                    <div class="tier-trial tier-trial-plain">No card required</div>
                     <ul class="tier-features">
                         <li>Real margin on every quote</li>
                         <li>Estimated profit per quote</li>
@@ -1941,6 +1952,7 @@
                     <div class="tier-description">Stop leaving money on the table.</div>
                     <div class="tier-price">$29<span class="tier-price-small">/mo</span></div>
                     <div class="tier-price-period">Founder pricing, while it lasts</div>
+                    <div class="tier-trial tier-trial-plain">Cancel any time</div>
                     <ul class="tier-features">
                         <li>Everything in Free, plus:</li>
                         <li>Pricing Health Check — audit underpriced quotes</li>
@@ -1965,7 +1977,7 @@
                     <div class="tier-description">Run the whole crew. One flat fee.</div>
                     <div class="tier-price">$79<span class="tier-price-small">/mo</span></div>
                     <div class="tier-price-period">Founder pricing, while it lasts</div>
-                    <div class="tier-trial">First month free. Cancel any time.</div>
+                    <div class="tier-trial">Free month for new customers</div>
                     <ul class="tier-features">
                         <li>Everything in Pro, plus:</li>
                         <li>Contracts &amp; e-signatures</li>
