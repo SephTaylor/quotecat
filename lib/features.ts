@@ -162,13 +162,6 @@ export function canAccessDrewSupport(_user: UserState): boolean {
 }
 
 /**
- * Check if user can access dashboard value tracking
- */
-export function canAccessValueTracking(user: UserState): boolean {
-  return user.tier === "pro" || user.tier === "premium";
-}
-
-/**
  * Get remaining quota for a resource
  */
 export function getQuotaRemaining(

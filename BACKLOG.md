@@ -7,6 +7,42 @@
 
 ---
 
+## 🔴 NO PAYWALL IS CONFIGURED (found 2026-09-13)
+
+**Every paywall a customer has ever seen is RevenueCat's stock fallback template.**
+
+Verified directly against the RevenueCat API using the app's own public SDK key. The `default`
+offering is returned as `current_offering_id` with **no legacy paywall and no v2 paywall
+components attached.** `RevenueCatUI.presentPaywall()` therefore renders the generic default.
+
+**The plumbing is fine and is not the problem.** All four products resolve correctly
+(`pro_monthly`, `pro_yearly`, `premium_monthly`, `premium_yearly`), entitlements work, and a real
+purchase completed on 2026-09-08.
+
+**What is missing is the entire pitch.** Founder pricing, the $29 / $79 tiers, spots remaining,
+the tier comparison, any branding. None of it can appear on a stock template, and that pricing
+strategy is almost entirely story.
+
+**Funnel over 60 days:** 22 `paywall_shown`, 18 `paywall_dismissed`, **1 `paywall_purchased`.**
+Nineteen decisions is too few to read a rate from, but a generic paywall is a sufficient
+explanation for a weak one.
+
+- [ ] **Build and publish a paywall against the `default` offering** in the RevenueCat dashboard.
+      **Dashboard work, no app release** — paywalls are served remotely, so it reaches existing
+      installs immediately.
+- [ ] **First, open the app and tap any upgrade button** (Settings has three) to see exactly what
+      customers have been seeing.
+
+⚠️ **This was never tracked anywhere.** It has been silently true since in-app purchases shipped.
+The RevenueCat SDK does log a warning, but it says "This error will be hidden in production," so
+nothing surfaced it. It only came to light inside the breadcrumbs of an unrelated crash.
+
+**Priority note:** this outranks every item in `memory/project_conversion_candidates.md`. Those
+five candidates are all about driving traffic *to* the paywall. This is about what happens when
+traffic arrives.
+
+---
+
 ## 🚨 Needs your verification (status uncertain)
 
 Items where I think the work might already be done but couldn't auto-verify. **Please confirm status — if shipped, move to "Done" section.**

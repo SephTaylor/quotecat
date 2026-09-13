@@ -851,7 +851,6 @@ export default function Dashboard() {
           )}
 
           {/* Margin Card (Pro+ only) */}
-          {/* Margin Card (Pro+ only) */}
           {isPro && preferences.showMargin && (
             <View style={styles.marginSection}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

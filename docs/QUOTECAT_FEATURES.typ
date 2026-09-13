@@ -229,9 +229,10 @@ All sign-in methods are available to all tiers.
     table.hline(),
     [Quote stats: total / draft / sent / approved / to-invoice /
     follow-ups], [Free], [],
-    [#strong[Business value tracking] (sent value, approved value,
-    to-invoice value)], [Pro+], [`canAccessValueTracking()` ---
-    `lib/features.ts:167`],
+    [Business value tracking (sent value, approved value,
+    to-invoice value)], [#strong[Free]], [Corrected 2026-09-13: was listed as
+    Pro+ against `canAccessValueTracking()`, which was dead code and never
+    called. Available to Free. Function deleted.],
     [#strong[Average profit margin card] (from paid
     invoices)], [Pro+], [Requires `showMargin` preference + default
     labor rates configured],

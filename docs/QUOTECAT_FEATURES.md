@@ -63,7 +63,7 @@ All sign-in methods are available to all tiers.
 | Surface | Tier | Notes |
 |---|---|---|
 | Quote stats: total / draft / sent / approved / to-invoice / follow-ups | Free | |
-| **Business value tracking** (sent value, approved value, to-invoice value) | Pro+ | `canAccessValueTracking()` — `lib/features.ts:167` |
+| Business value tracking (sent value, approved value, to-invoice value) | **Free** | ⚠️ Corrected 2026-09-13. Previously listed as Pro+ against `canAccessValueTracking()`, which was **dead code, defined 2025-10-19 in `5f953ae` and never called.** The gate was written but never wired to the dashboard, so this has always been available to Free. The function has now been deleted. |
 | **Average profit margin card** (from paid invoices) | Pro+ | Requires `showMargin` preference + default labor rates configured |
 | Recent quotes / recent invoices | Free | Free users see all their own quotes/invoices |
 | **Recent contracts** | Premium | `isPremium && preferences.showRecentContracts` |
