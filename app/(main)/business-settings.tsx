@@ -111,9 +111,13 @@ export default function BusinessSettings() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   // Hide paywall for techs - they inherit owner's tier
+  // `source` is defensive: this handler is passed as a prop in places where a
+  // caller could hand it an event object instead of a string. Anything that is
+  // not a string is discarded rather than forwarded into analytics.
   const handleLearnMore = (source?: string) => {
     if (!isTech) {
-      presentPaywallAndSync(source ?? "business_settings");
+      const safeSource = typeof source === "string" ? source : undefined;
+      presentPaywallAndSync(safeSource ?? "business_settings");
     }
   };
 
@@ -653,7 +657,13 @@ function InlineField({
           {suffix && <Text style={{ fontSize: 15, color: theme.colors.muted, marginLeft: 4 }}>{suffix}</Text>}
         </View>
       ) : (
-        <Pressable onPress={onLocked} style={{ flexDirection: "row", alignItems: "center" }}>
+        // Deliberately not onPress={onLocked}: Pressable passes its synthetic
+        // press event as the first argument, which would land in onLocked's
+        // `source` parameter and then in a PostHog property. That event holds a
+        // React Fiber node, Fibers are circular, and PostHog's persist throws
+        // "cyclical structure in JSON object" on every flush afterwards.
+        // Crashed a production user on the paywall, 1.2.18+228.
+        <Pressable onPress={() => onLocked?.()} style={{ flexDirection: "row", alignItems: "center" }}>
           {prefix && <Text style={{ fontSize: 15, color: theme.colors.muted, marginRight: 2, opacity: 0.6 }}>{prefix}</Text>}
           <View style={{
             paddingVertical: 6,

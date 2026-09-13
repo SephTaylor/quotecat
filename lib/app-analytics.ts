@@ -100,13 +100,56 @@ export const AnalyticsEvents = {
 /**
  * Track an analytics event
  */
+/**
+ * Strip anything that cannot be safely serialised.
+ *
+ * PostHog persists its whole store by JSON.stringify, and it flushes the same
+ * way. A single non-serialisable value anywhere in the queue therefore poisons
+ * every later persist and flush, not just the one event — and because that
+ * throw happens inside PostHog's own async persistence it lands outside the
+ * try/catch below, reaching the global handler as an unhandled fatal.
+ *
+ * That is not hypothetical. On 2026-09-07 a Pressable passed its synthetic
+ * press event into a `source` property. The event carried a React Fiber node,
+ * Fibers are circular, and a production user's app crashed on the paywall
+ * (Sentry 7717436701 and 7717436883, build 1.2.18+228).
+ *
+ * The call site that caused it is fixed. This exists so the next one cannot.
+ */
+function sanitizeProperties(
+  properties?: Record<string, any>,
+  eventName?: string
+): Record<string, any> | undefined {
+  if (!properties) return properties;
+  const safe: Record<string, any> = {};
+  for (const [key, value] of Object.entries(properties)) {
+    if (value === null || value === undefined) continue;
+    const t = typeof value;
+    if (t === 'string' || t === 'number' || t === 'boolean') {
+      safe[key] = value;
+      continue;
+    }
+    // Objects and arrays are allowed only if they actually serialise.
+    try {
+      JSON.stringify(value);
+      safe[key] = value;
+    } catch {
+      safe[key] = '[unserializable]';
+      console.warn(
+        `[analytics] dropped unserializable property "${key}" on event "${eventName}"`
+      );
+    }
+  }
+  return safe;
+}
+
 export function trackEvent(
   eventName: string,
   properties?: Record<string, any>
 ): void {
   try {
     if (posthogInstance) {
-      posthogInstance.capture(eventName, properties);
+      posthogInstance.capture(eventName, sanitizeProperties(properties, eventName));
     }
   } catch (error) {
     console.error('Failed to track event:', eventName, error);
