@@ -7,7 +7,7 @@
 
 ---
 
-## 🔴 NO PAYWALL IS CONFIGURED (found 2026-09-13)
+## ✅ PAYWALL BUILT AND PUBLISHED 2026-09-13 (was: no paywall configured)
 
 **Every paywall a customer has ever seen is RevenueCat's stock fallback template.**
 
@@ -27,11 +27,14 @@ strategy is almost entirely story.
 Nineteen decisions is too few to read a rate from, but a generic paywall is a sufficient
 explanation for a weak one.
 
-- [ ] **Build and publish a paywall against the `default` offering** in the RevenueCat dashboard.
-      **Dashboard work, no app release** — paywalls are served remotely, so it reaches existing
-      installs immediately.
-- [ ] **First, open the app and tap any upgrade button** (Settings has three) to see exactly what
-      customers have been seeing.
+- [x] **Built and published**, revision 15, attached to `default`. Two tiers as tabs, annual
+      preselected, brand mark, legal links, prices from package variables. Copy and the full
+      history are in `docs/PAYWALL-COPY.md`.
+- ⬜ **Now worth measuring.** The 22-shown / 1-purchased baseline was against RevenueCat's stock
+      fallback template. Watch `paywall_shown` against `paywall_purchased` from 2026-09-13 forward
+      and compare. That is the first real read on whether the paywall was the problem.
+- ⬜ **Then consider the trial.** One subscription group means one introductory offer per customer
+      ever, so it should go on Premium. Nothing is configured today on either store.
 
 ⚠️ **This was never tracked anywhere.** It has been silently true since in-app purchases shipped.
 The RevenueCat SDK does log a warning, but it says "This error will be hidden in production," so

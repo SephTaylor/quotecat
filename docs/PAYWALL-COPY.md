@@ -12,48 +12,56 @@ $79.99 / $789.99. Annual is roughly two months free on both.
 
 ---
 
-## Header
+## ✅ LIVE as of 2026-09-13, revision 15
 
-**Headline:** Send quotes that look like your business
+Paywall `pwf219640be5f547f1`, attached to offering `ofrng0f95143aea` (`default`) and published.
+**This section reflects exactly what customers see.** Edit the paywall, then edit this.
 
-**Subhead:** Unlimited quotes and invoices, your logo instead of ours, and a link your client can
-open on any device.
+**Headline:** You can see one job. Now see the business.
 
----
+**Subhead:** Your margin across every job, whether you are charging enough, and no limits on
+what you send.
 
-## Pro tab
+The headline deliberately extends the marketing site's H1, "Stop guessing what you make on every
+job." Margin is a **Free** feature, so the paywall cannot sell margin. It sells **scope**: the
+same insight applied to the whole business rather than the quote in front of you.
 
-**Price:** monthly or yearly, yearly preselected. Let the template compute the saving.
+### Pro tab
 
 - Unlimited quotes, invoices and exports
-- Your logo on everything you send. No QuoteCat branding
-- Your full pricebook instead of 50 items
-- Assemblies, so a job you have done before takes one tap
-- Cloud sync across every device you use
-- Send a link your client opens in a browser, not just a PDF
-- Accept card payments from your clients. QuoteCat takes no cut
-- Change orders for when the job changes
-- Your profit margin across the whole business, not just one quote
-- A Pricing Health Check that tells you whether you are charging enough
+- Your logo on everything. No QuoteCat branding
+- Cloud sync, assemblies and your full pricebook
+- Client links and card payments, with no cut taken
+- Your margin across the business, plus a Pricing Health Check
 
-**Button:** Start Pro
+### Premium tab
 
----
-
-## Premium tab
-
-**Headline for the tab:** Get it signed, not just sent
-
-Everything in Pro, plus:
-
+- Everything in Pro
 - Contracts your client signs on their phone
-- Drew builds the quote with you, start to finish
 - Multi-worker labour, so a crew job prices correctly
 - Invite your techs and workers and run the job as a crew
 - The full web portal for quoting at a desk
 - Priority support
 
-**Button:** Start Premium
+🚫 **Drew was removed from the paywall 2026-09-13 at Joseph's direction.** Do not put it back
+without asking. Drew quote-building is still Premium-gated in code (`canAccessWizard`), it is
+simply not being promised on the paywall.
+
+### Also live
+
+- Brand mark: the app icon, uploaded to RevenueCat's CDN, 22x22.
+- Legal links: `https://quotecat.ai/terms/` and `https://quotecat.ai/privacy/`, **with trailing
+  slashes** (they 301 without).
+- Annual preselected on both tabs. Prices and savings come from package variables.
+
+⚠️ **THE PAYWALL WOULD NOT SERVE UNTIL THE LEGAL URLS WERE SET.** The Terms and Privacy buttons
+existed with `destination: "terms"` and `destination: "privacy_policy"` but no URL behind either.
+The SDK fell back to the stock template and a clean reinstall did not fix it. **If a paywall ever
+silently refuses to serve, check the dashboard for validation errors first.**
+
+⚠️ **Concurrent edits clobber each other.** The dashboard editor writes the whole document, so a
+browser tab holding an old revision will overwrite API changes on save, with no conflict warning.
+It happened once here. **Refresh the editor before editing; close it before asking Claude to.**
 
 ---
 
