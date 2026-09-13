@@ -101,4 +101,18 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   });
 }
 
+// ⚠️ LOAD-BEARING. Do not delete.
+//
+// This is the ONLY way `Screen` reaches `@/modules/core/ui`. The barrel uses
+// `export *`, which does not carry default exports, so the default on line 34
+// is not enough on its own. Four screens import { Screen } from the barrel:
+// wizard/new-quote, community-assemblies, copy-assembly/[id] and
+// (tabs)/assemblies. Remove this line and all four break.
+//
+// There used to be a `Screen.tsx` next to this file whose comment claimed to
+// alias Screen "so existing imports keep working". It never did — it
+// re-exported only a default, which `export *` skips. It was created in
+// b2b8961 (2025-10-17) two days AFTER this named export already made Screen
+// work, so it was redundant from birth and nothing ever imported it. Deleted
+// 2026-09-13 precisely so this line stops looking like the redundant one.
 export { Screen };

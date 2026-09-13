@@ -813,6 +813,53 @@ These changes need to be added back incrementally, testing each batch:
 
 ---
 
+## 🚫 DELETED: `modules/core/ui/Screen.tsx` (2026-09-13)
+
+**It did nothing, and its existence made the file that does the work look redundant.**
+
+**What it contained, in full:**
+```ts
+// Alias "Screen" to our safe-area screen so existing imports keep working.
+export { default } from "./safe-screen";
+```
+
+**Why that was a lie.** The barrel uses `export *`, and `export *` does not carry default
+exports. So re-exporting a default from `Screen.tsx` contributed nothing to
+`@/modules/core/ui`. Nothing ever imported `Screen.tsx` directly either — verified across every
+import form, relative and aliased.
+
+**Where `Screen` actually comes from, and always has:** `safe-screen.tsx` line 104,
+`export { Screen };`. That named export was added 2025-10-15 in `8ccac91`. `Screen.tsx` was
+created **two days later** in `b2b8961`, a barrel-tidying commit that solved "Screen is not
+exported from the barrel" twice in one go — once correctly by adding `export * from
+"./safe-screen"`, and once uselessly by creating this file. **It was redundant from birth.**
+That commit claimed "ESLint: 0 warnings", so the rule that catches it was evidently not on yet.
+
+**The actual danger, and the reason for deleting rather than ignoring.** A whole file named
+`Screen.tsx` whose comment claims to handle aliasing makes `safe-screen.tsx` line 104 look like
+the redundant one. Delete line 104 and **four screens break**: `wizard/new-quote`,
+`community-assemblies`, `copy-assembly/[id]` and `(tabs)/assemblies`. That line now carries a
+LOAD-BEARING warning explaining exactly this.
+
+⚠️ **Do not confuse the two files.** `safe-screen.tsx` is 104 lines of real work: SafeAreaView
+for the notch and status bar, keyboard avoidance, and a `withBottomBar` option adding 88px of
+bottom padding so a fixed button bar does not cover content. **That is the file that fixes
+"buttons going off the bottom of the screen."** `Screen.tsx` was two lines and never touched any
+of it.
+
+## 🔇 ESLint ignores `supabase/functions/**` (2026-09-13)
+
+Those functions run on **Deno**, which imports modules by URL (`https://esm.sh/...`,
+`https://deno.land/...`). That is correct for Deno and unresolvable for a config built for the
+Expo app. It produced **30 `import/no-unresolved` errors against working code** — most of the
+total, and the reason the output was not worth reading.
+
+**They are not going unchecked.** The Supabase CLI typechecks and bundles them on deploy.
+
+**Result:** 48 errors became 17, and all 17 are `react/no-unescaped-entities` — apostrophes and
+quotes inside user-facing text like `No products match "{searchQuery}"`. They render correctly;
+the rule is stylistic. Fixable with `--fix` whenever, harmless until then.
+
 ## ⚠️ Critical Gotchas
 
 ### Apple In-App Purchase
