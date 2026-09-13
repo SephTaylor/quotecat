@@ -20,10 +20,16 @@ without using it, and a trialist who later downgrades to Pro is still a conversi
 
 Both Premium products carry it because you cannot know which one a customer will tap.
 
-⬜ **Google Play equivalent not done yet.** Free trial, 1 month, new-customer-acquisition
-eligibility, on both Premium base plans.
-⬜ **Paywall copy not updated for the trial yet.** Premium button needs the offer and the required
-disclosure; Pro tab needs to not look broken next to it.
+✅ **Google Play done.** Free trial, 1 month, new-customer-acquisition eligibility, offers
+`premium-monthly-free-month` and `premium-yearly-free-month`, both activated.
+✅ **Paywall updated, revision 17.** Price rows carry an `intro_offer`-conditional override, so
+eligible customers see "Free for 1 month, then $X" and everyone else sees the plain price.
+Mechanism documented in `docs/PAYWALL-COPY.md`.
+⬜ **RevenueCat `trial_duration` still reads null** on all eight products. Store metadata sync
+lags. The device asks StoreKit directly so this is cosmetic, but if it is still null after a day
+it is worth a look.
+⬜ **Testing the trial needs an Apple ID that has never subscribed.** Anyone who has ever had any
+QuoteCat subscription is ineligible and will correctly see plain pricing.
 
 ### Global availability, and it is a decision not an oversight
 

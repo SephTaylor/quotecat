@@ -12,7 +12,7 @@ $79.99 / $789.99. Annual is roughly two months free on both.
 
 ---
 
-## ✅ LIVE as of 2026-09-13, revision 15
+## ✅ LIVE as of 2026-09-13, revision 17
 
 Paywall `pwf219640be5f547f1`, attached to offering `ofrng0f95143aea` (`default`) and published.
 **This section reflects exactly what customers see.** Edit the paywall, then edit this.
@@ -46,6 +46,47 @@ same insight applied to the whole business rather than the quote in front of you
 🚫 **Drew was removed from the paywall 2026-09-13 at Joseph's direction.** Do not put it back
 without asking. Drew quote-building is still Premium-gated in code (`canAccessWizard`), it is
 simply not being promised on the paywall.
+
+### The free trial, and how it is gated
+
+**Premium carries a one-month free trial** (App Store and Play Store, both Premium products,
+175 territories, no end date). **Pro deliberately has none** — see `BACKLOG.md` for why.
+
+The price rows use a **conditional override** rather than hardcoded trial text:
+
+| | Renders |
+|---|---|
+| Customer **eligible** for an intro offer | `Free for {{ product.offer_period_with_unit }}, then {{ product.price }}/mo` |
+| Customer **not eligible** | `{{ product.price }}/mo, billed monthly` |
+
+**Why it must be conditional and must never be hardcoded.** Apple grants one introductory offer
+per customer per subscription group for life. Anyone who has ever subscribed to QuoteCat, on any
+tier, is ineligible. Hardcoding "Free for 1 month" would promise a trial to people Apple will
+charge immediately: they tap expecting free and get billed $79.99. Refund requests and one-star
+reviews.
+
+**The mechanism**, discovered by probing the API since it is not documented:
+
+```json
+"overrides": [
+  { "conditions": [{ "type": "intro_offer" }],
+    "properties": { "text_lid": "<a different localization id>" } }
+]
+```
+
+- The valid condition type is **`intro_offer`**. Not `introductory_offer`, not `offer`, not
+  `eligible_for_intro_offer` — all rejected.
+- Both **`text_lid`** and **`visible`** are valid override properties. `text_lid` is better here:
+  one component, two strings, no layout shift.
+- ⚠️ **Offer variables (`product.offer_price`, `product.offer_period_with_unit` and the rest) only
+  work inside an `intro_offer`-gated context.** Outside one they render for people who are not
+  eligible.
+
+**Applied to all four price rows including Pro**, on purpose. Pro has no offer so the condition
+never fires and nothing changes. If a Pro trial is ever added, the copy is already wired.
+
+**This also satisfies Apple's disclosure rule**, which was not met before: trial length and the
+price after are both visible pre-purchase, with cancellation covered in the footer.
 
 ### Also live
 
