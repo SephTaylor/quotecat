@@ -14,6 +14,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Premium price IDs get a free trial; Pro deliberately does not.
+//
+// This mirrors the stores exactly. On the App Store all four products share one
+// subscription group and Apple grants ONE introductory offer per customer for
+// life, so spending it on Pro would make Premium untrialable forever. The web
+// path has no such constraint, but the offer must match what the app promises
+// or the same visitor sees two different deals.
+const PREMIUM_PRICE_IDS = new Set([
+  "price_1T1uYzCz2LFZfwAIgnNYeAi4", // Founder Premium Monthly - $79/mo
+  "price_1T1uYzCz2LFZfwAIWloEKf1W", // Founder Premium Yearly  - $790/yr
+  "price_1T1uZ1Cz2LFZfwAIQ94BNZ02", // Premium Monthly         - $99/mo
+  "price_1T1uZ1Cz2LFZfwAIuqAtNru0", // Premium Yearly          - $948/yr
+]);
+
+const TRIAL_DAYS = 30;
+
 // One-time purchase products (mode: "payment")
 const ONE_TIME_PRODUCTS: Record<string, { successUrl: string }> = {
   // Pricing Guide - $29
@@ -83,6 +99,31 @@ serve(async (req) => {
       customerId = existingCustomers.data[0].id;
     }
 
+    // Decide whether this checkout gets the free month.
+    //
+    // Stripe, unlike Apple, will happily hand the same person a trial every time
+    // they resubscribe. Apple allows one introductory offer per customer for
+    // life, so without this check a web customer could cancel and re-trial
+    // indefinitely while an App Store customer gets exactly one. Anyone who has
+    // ever had a subscription with us is charged immediately.
+    let grantTrial = !isOneTime && PREMIUM_PRICE_IDS.has(priceId);
+    if (grantTrial && customerId) {
+      try {
+        const priorSubs = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "all",
+          limit: 1,
+        });
+        if (priorSubs.data.length > 0) {
+          grantTrial = false;
+        }
+      } catch (e) {
+        // If we cannot confirm they are new, do not give away a free month.
+        console.error("Prior-subscription check failed, withholding trial:", e);
+        grantTrial = false;
+      }
+    }
+
     // Create checkout session - different config for subscriptions vs one-time
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       mode: isOneTime ? "payment" : "subscription",
@@ -107,8 +148,15 @@ serve(async (req) => {
       metadata: {
         email: email,
         product_type: isOneTime ? "one_time" : "subscription",
+        trial_granted: grantTrial ? "true" : "false",
       },
     };
+
+    if (grantTrial) {
+      sessionConfig.subscription_data = {
+        trial_period_days: TRIAL_DAYS,
+      };
+    }
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
