@@ -7,6 +7,46 @@
 
 ---
 
+## ✅ FREE TRIAL + GLOBAL AVAILABILITY 2026-09-13
+
+**Premium free trial is live on the App Store.** One month, free, 175 territories, no end date, on
+**both** `premium.monthly` and `premium.yearly`. **Nothing on Pro, deliberately.**
+
+**Why Pro gets no trial, and do not "fix" this.** All four products share one subscription group
+(`QuoteCat Subscriptions`, id 21953485), and **Apple grants one introductory offer per customer
+across the whole group, ever.** A customer who burns their one offer on Pro can never trial
+Premium. Putting it only on Premium means the free option is the tier that is hardest to imagine
+without using it, and a trialist who later downgrades to Pro is still a conversion.
+
+Both Premium products carry it because you cannot know which one a customer will tap.
+
+⬜ **Google Play equivalent not done yet.** Free trial, 1 month, new-customer-acquisition
+eligibility, on both Premium base plans.
+⬜ **Paywall copy not updated for the trial yet.** Premium button needs the offer and the required
+disclosure; Pro tab needs to not look broken next to it.
+
+### Global availability, and it is a decision not an oversight
+
+**Availability opened to all territories 2026-09-13.** Joseph's reasoning, recorded so nobody
+proposes a "fix":
+
+- **Dropping xByte is what made it coherent.** The supplier catalog (Lowe's, Home Depot, Menards,
+  three Michigan cities) was the only structurally US-locked part of the quoting flow.
+- **This is opening the door, not entering the market.** It costs nothing and you cannot sell
+  where you are not listed.
+
+🚫 **Do NOT propose regional pricing as a correction.** It was raised and declined on purpose:
+*"if people can't afford those prices in those regions then just don't use it."* Regional pricing
+is an optimization for a business with volume. With one real conversion to date, tuning the price
+for Peru would be solving the wrong problem. Revisit only if international installs actually
+appear.
+
+⚠️ **Known and accepted consequence:** the app is English only, so non-English markets may install
+it, fail to use it, and leave poor ratings. Spanish i18n is already in this backlog at roughly
+5 to 7 days. Watch ratings by territory; that is the signal that would justify doing it.
+
+---
+
 ## ✅ PAYWALL BUILT AND PUBLISHED 2026-09-13 (was: no paywall configured)
 
 **Every paywall a customer has ever seen is RevenueCat's stock fallback template.**
