@@ -10,7 +10,7 @@ import {
   deleteChangeOrder,
   getNextChangeOrderNumber,
   getNetChangeForQuote,
-} from "../storage";
+} from "../storageSQLite";
 
 type UseChangeOrdersReturn = {
   changeOrders: ChangeOrder[];

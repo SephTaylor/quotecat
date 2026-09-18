@@ -1640,6 +1640,42 @@ export function hasMigratedFromAsyncStorage(): boolean {
 }
 
 /**
+ * Generic one-time-migration flags, stored in the same migration_status table.
+ *
+ * The pair above is hardcoded to the 'asyncstorage_migrated' key, which covers
+ * quotes, invoices and clients. That key is already 'true' on every device that
+ * has launched since that migration shipped, so a later migration CANNOT reuse
+ * it: piggy-backing on it would silently never run. Anything new needs its own
+ * key, which is what these are for.
+ */
+export function hasMigrationRun(key: string): boolean {
+  try {
+    const database = getDatabase();
+    const result = database.getFirstSync<{ value: string }>(
+      "SELECT value FROM migration_status WHERE key = ?",
+      [key]
+    );
+    return result?.value === "true";
+  } catch (error) {
+    console.error(`Failed to check migration status for ${key}:`, error);
+    return false;
+  }
+}
+
+export function markMigrationRun(key: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync(
+      "INSERT OR REPLACE INTO migration_status (key, value, migrated_at) VALUES (?, ?, ?)",
+      [key, "true", new Date().toISOString()]
+    );
+  } catch (error) {
+    console.error(`Failed to set migration status for ${key}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Mark migration from AsyncStorage as complete
  */
 export function setMigratedFromAsyncStorage(): void {

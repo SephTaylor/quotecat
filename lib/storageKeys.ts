@@ -44,6 +44,18 @@ export const ASSEMBLY_KEYS = {
 } as const;
 
 /**
+ * Storage keys for change orders
+ *
+ * Legacy. Change orders now live in SQLite; this key exists so the migration
+ * can find pre-move data and so ALL_KEYS is actually complete. It was absent
+ * from this file entirely until 2026-09-18, despite the header above, which
+ * meant anything driven off ALL_KEYS silently skipped change orders.
+ */
+export const CHANGE_ORDER_KEYS = {
+  PRIMARY: "@quotecat/change-orders",
+} as const;
+
+/**
  * Storage keys for user settings
  */
 export const SETTINGS_KEYS = {
@@ -64,6 +76,7 @@ export const ALL_KEYS = [
   PRICE_KEYS.CACHE,
   PRICE_KEYS.SYNC_TIMESTAMP,
   ASSEMBLY_KEYS.CACHE,
+  CHANGE_ORDER_KEYS.PRIMARY,
   SETTINGS_KEYS.CURRENCY,
   SETTINGS_KEYS.THEME,
 ] as const;
