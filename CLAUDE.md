@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## Planning discipline rules (locked 2026-06-10 after three rounds of the same pattern)
+## Planning discipline rules (Rules 1 to 3 locked 2026-06-10; Rule 4 added 2026-09-18)
 
 These are infrastructure, not session-level intentions. Read them before every plan-mode entry, before every BACKLOG edit, before proposing scope changes to any locked release.
 
@@ -25,6 +25,25 @@ Sparse production-data points are not evidence of feature deadness:
 - "Zero current users on surface X" means the user base hasn't grown into that surface yet, not that it's dead code.
 - Office staff, owners using desktop, future tier expansions, and downgrades from higher tiers all create future-state users of surfaces that look empty today.
 - Don't infer deprecation candidates from current data without considering structural future cohorts.
+
+### Rule 4: Cite the read, or do not make the claim (added 2026-09-18 after four walk-backs in one session)
+Before stating what code or data does, name the file you read or the query you ran. If you cannot cite it, the claim is not earned yet. Go read it. Reasoning about a path is not the same as reading it, and the answer is reliably in the part that got skipped.
+
+- **Read the whole path, not the first file in it.** A flow that spans creation, storage, display and settlement is not described by any one of those files.
+- **Two surfaces are not one.** The app and the portal each carry their own copy of the same calculation. Fixing one says nothing about the other. Open both.
+- **Query the way the app queries.** Production tables carry `deleted_at`. A row the dashboard cannot see is not live data, and a query missing the filter will report it as though it were.
+- **A rendered screen outranks a calculation.** Arithmetic proves a number is right. Only the screen proves it reached the user.
+- **Sparse data invites invention.** With a single row it is tempting to explain it. Check how it was actually created before treating it as evidence. (Same family as Rule 3, opposite direction: Rule 3 stops you calling something dead, this stops you calling it broken.)
+
+Trigger phrases to flag for your own self-check: *"it must be doing X"*, *"that would mean Y"*, *"so the same fix covers"*. Each signals a conclusion built on inference rather than on a file. Stop and open the file.
+
+Evidence, all four in one session on 2026-09-18, each caught by Seph rather than by me:
+1. Reported an invoice under-billed by half. The figure came from assuming how the row was written. Comparing it to its source quote showed the row was correct all along.
+2. Reported that a tampered payment request could mark an invoice paid, having read one file of three. The webhook already reconciled against Stripe's own amount and recorded it as partial.
+3. Fixed a profitability calculation in the app and reported the portal covered by it. The portal had its own separate calculation carrying the same bug, still live.
+4. Recommended a quote for testing that had been soft-deleted nine days earlier, because the query omitted the `deleted_at` filter every app surface uses.
+
+The underlying work survived all four. The claims wrapped around it did not. That asymmetry is the thing this rule exists to close.
 
 ### Reviewer naming (locked 2026-06-10)
 - **Claude Code** = this terminal/CLI planning agent (self-references as "I" / "me")
