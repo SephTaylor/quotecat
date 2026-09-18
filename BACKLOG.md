@@ -7,6 +7,25 @@
 
 ---
 
+## ⬜ LEGACY ASYNCSTORAGE DATA IS STILL ON DEVICES
+
+Quotes, invoices, clients and (as of 2026-09-18) change orders all moved to SQLite. Products,
+categories and assemblies moved earlier. In none of those cases was the AsyncStorage copy
+removed: `cleanupAsyncStorage()` exists, is commented out at its call site "for safety", and
+has never run.
+
+So a long-lived device may still be carrying full duplicate copies of quotes, invoices,
+clients, change orders, the product cache, the category cache and the assembly cache. Nothing
+reads any of it. It is dead weight, and on a large pricebook it will not be small.
+
+**Do this before deleting any key names.** The constants in `lib/storageKeys.ts` are the map to
+that data, and `ALL_KEYS` is the list you would iterate. Deleting the names first, which was
+briefly attempted on 2026-09-18 and reverted, would leave the data stranded with nothing
+pointing at it.
+
+Order: measure what is actually there on a real device, clean it up, then retire the names.
+
+
 ## ⬜ MAKE THE CLAUDE.md PLANNING RULES HARDER TO SKIP
 
 Rule 4 was added 2026-09-18. Its own section header already says to read these rules before

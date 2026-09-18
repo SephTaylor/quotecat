@@ -16,6 +16,13 @@ export const QUOTE_KEYS = {
 /**
  * Storage keys for products/catalog
  */
+/**
+ * NOTE (2026-09-18): products, categories and assemblies all moved to SQLite,
+ * so nothing reads or writes the three CACHE keys below any more. They are
+ * kept deliberately. They are the map to whatever those locations still hold
+ * on a long-lived device, and cleanupAsyncStorage() has never been called.
+ * Clean the data up first, then remove the names. Not the other way round.
+ */
 export const PRODUCT_KEYS = {
   CACHE: "@quotecat/products",
   SYNC_TIMESTAMP: "@quotecat/products_sync",

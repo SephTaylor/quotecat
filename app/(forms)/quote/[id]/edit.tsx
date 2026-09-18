@@ -33,7 +33,6 @@ import { LaborModeToggle, type LaborMode } from "@/components/LaborModeToggle";
 import { TextInputModal } from "@/components/TextInputModal";
 import { Ionicons } from "@expo/vector-icons";
 import { mergeById } from "@/modules/quotes/merge";
-import { formatNetChange } from "@/modules/changeOrders/diff";
 import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 
 export default function EditQuote() {
@@ -493,50 +492,6 @@ export default function EditQuote() {
     await handleGoBackBase();
   }, [maybePromptToSaveClient, handleGoBackBase]);
 
-  // Helper to format change history entry for notes
-  const formatChangeHistory = useCallback((diff: NonNullable<ReturnType<typeof checkForChanges>>) => {
-    const now = new Date();
-    const dateStr = now.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-    const timeStr = now.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-    const lines: string[] = [];
-    lines.push("---");
-    lines.push("Change History");
-    lines.push("");
-    lines.push(`[${dateStr} - ${timeStr}]`);
-
-    // List added/changed items
-    diff.items.forEach((item) => {
-      if (item.qtyBefore === 0) {
-        // Newly added
-        lines.push(`Added: ${item.name} (${item.qtyAfter}) ${formatNetChange(item.lineDelta)}`);
-      } else if (item.qtyAfter === 0) {
-        // Removed
-        lines.push(`Removed: ${item.name} (${item.qtyBefore}) ${formatNetChange(item.lineDelta)}`);
-      } else {
-        // Quantity changed
-        lines.push(`Changed: ${item.name} (${item.qtyBefore} → ${item.qtyAfter}) ${formatNetChange(item.lineDelta)}`);
-      }
-    });
-
-    // Labor change
-    if (diff.laborDelta !== 0) {
-      lines.push(`Labor: ${formatNetChange(diff.laborDelta)}`);
-    }
-
-    lines.push(`Net change: ${formatNetChange(diff.netChange)}`);
-    lines.push("---");
-
-    return lines.join("\n");
-  }, []);
 
   // Simplified save handler - saves directly, auto-logs changes
   const handleSaveWithChangeDetection = useCallback(async () => {
