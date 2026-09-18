@@ -176,8 +176,11 @@ export async function createInvoiceFromQuote(
     dueDate.setDate(dueDate.getDate() + 30);
   }
 
-  const multiplier = percentage / 100;
-
+  // A partial invoice stores the WHOLE job and records the percentage beside it.
+  // The percentage is applied exactly once, at read time, by calculateInvoiceTotals
+  // and by both PDF generators. Scaling here as well billed percentage squared:
+  // a 50% deposit charged 25%. Scaling the quantities also printed "5 outlets"
+  // on a ten-outlet job, describing work nobody agreed to.
   const invoice: Invoice = {
     id: `inv_${Date.now()}`,
     quoteId: quote.id,
@@ -187,15 +190,10 @@ export async function createInvoiceFromQuote(
     clientEmail: quote.clientEmail,
     clientPhone: quote.clientPhone,
     clientAddress: quote.clientAddress,
-    items: percentage === 100
-      ? quote.items
-      : quote.items.map(item => ({
-          ...item,
-          qty: item.qty * multiplier,
-        })),
-    labor: quote.labor * multiplier,
-    materialEstimate: quote.materialEstimate ? quote.materialEstimate * multiplier : undefined,
-    overhead: quote.overhead ? quote.overhead * multiplier : undefined,
+    items: quote.items,
+    labor: quote.labor,
+    materialEstimate: quote.materialEstimate,
+    overhead: quote.overhead,
     markupPercent: quote.markupPercent,
     taxPercent: quote.taxPercent,
     notes: percentage === 100
@@ -235,8 +233,8 @@ export async function createInvoiceFromContract(
     dueDate.setDate(dueDate.getDate() + 30);
   }
 
-  const multiplier = percentage / 100;
-
+  // Stores the whole job; the percentage is applied once at read time.
+  // See createInvoiceFromQuote above for why.
   const invoice: Invoice = {
     id: `inv_${Date.now()}`,
     quoteId: contract.quoteId,
@@ -247,14 +245,9 @@ export async function createInvoiceFromContract(
     clientEmail: contract.clientEmail,
     clientPhone: contract.clientPhone,
     clientAddress: contract.clientAddress,
-    items: percentage === 100
-      ? contract.materials
-      : contract.materials.map(item => ({
-          ...item,
-          qty: item.qty * multiplier,
-        })),
-    labor: contract.labor * multiplier,
-    materialEstimate: contract.materialEstimate ? contract.materialEstimate * multiplier : undefined,
+    items: contract.materials,
+    labor: contract.labor,
+    materialEstimate: contract.materialEstimate,
     markupPercent: contract.markupPercent,
     taxPercent: contract.taxPercent,
     notes: percentage === 100

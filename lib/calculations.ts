@@ -336,9 +336,18 @@ export function calculateInvoiceProfitability(
   }
 
   const totals = calculateInvoiceTotals(invoice);
+
+  // A partial invoice bills a share of the job, so it earns that share of the
+  // profit. calculateInvoiceTotals applies the percentage to `total`, but
+  // profitability works from `subtotal` (tax is pass-through, not profit) and
+  // from the raw material/labor figures, none of which are scaled. Invoices
+  // now store the whole job, so without this a 50/50 split would report the
+  // full profit twice and the dashboard margin card would double-count it.
+  const billedShare = (invoice.percentage ?? 100) / 100;
+
   // Use subtotal, not total - tax is pass-through, not profit
-  const revenue = totals.subtotal;
-  const materialsCost = totals.materialsFromItems; // Before markup
+  const revenue = totals.subtotal * billedShare;
+  const materialsCost = totals.materialsFromItems * billedShare; // Before markup
 
   // Calculate TRUE labor cost
   // Default cost ratio for entries without per-worker rates
@@ -360,6 +369,10 @@ export function calculateInvoiceProfitability(
     // Fall back to global ratio for all labor
     laborCost = totals.labor * defaultCostRatio;
   }
+
+  // Scale to the share this invoice bills. Applied after both branches so the
+  // per-worker path and the ratio path stay consistent.
+  laborCost *= billedShare;
 
   // Profit = Revenue - direct costs only
   const profit = revenue - materialsCost - laborCost;

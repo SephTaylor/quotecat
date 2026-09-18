@@ -898,6 +898,12 @@ function generateInvoiceHTML(invoice: Invoice, options: PDFOptions): string {
                 <td class="value">$${fmt(taxAmount)}</td>
               </tr>
             ` : ''}
+            ${invoice.percentage && invoice.percentage < 100 ? `
+              <tr>
+                <td class="label">Partial Invoice (${invoice.percentage}%)</td>
+                <td class="value">-$${fmt((subtotal + taxAmount) * (1 - invoice.percentage / 100))}</td>
+              </tr>
+            ` : ''}
             <tr class="total-row">
               <td class="label">Invoice Total</td>
               <td class="value">$${fmt(grandTotal)}</td>
