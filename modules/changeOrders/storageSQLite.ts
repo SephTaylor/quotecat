@@ -16,6 +16,7 @@ import {
   uploadChangeOrder,
   deleteChangeOrderFromCloud,
 } from "@/lib/changeOrdersSync";
+import { composeChangeOrderNumber } from "@/lib/changeOrderNumbering";
 
 /**
  * Convert SQLite row to ChangeOrder object
@@ -135,7 +136,21 @@ export async function saveChangeOrderLocally(
  * Expects quoteNumber to be passed in from the quote
  */
 export async function createChangeOrder(
-  changeOrder: ChangeOrder
+  changeOrder: ChangeOrder,
+  options?: {
+    /**
+     * The parent's number: the contract number ("CTR-001") for a top-level
+     * change order, or the parent change order's displayNumber when nesting.
+     *
+     * Passed in rather than looked up because contracts are cloud-only and
+     * never land in SQLite, so this layer cannot read one synchronously. The
+     * screen creating the change order already has the contract in hand.
+     *
+     * Omit it and displayNumber stays null, which is correct for a draft
+     * contract that has not been numbered yet.
+     */
+    parentNumber?: string;
+  }
 ): Promise<ChangeOrder> {
   const now = new Date().toISOString();
 
@@ -151,6 +166,9 @@ export async function createChangeOrder(
   const coWithNumber: ChangeOrder = {
     ...changeOrder,
     number: nextNumber,
+    displayNumber:
+      changeOrder.displayNumber ||
+      composeChangeOrderNumber(options?.parentNumber, nextNumber),
     createdAt: changeOrder.createdAt || now,
     updatedAt: changeOrder.updatedAt || now,
   };

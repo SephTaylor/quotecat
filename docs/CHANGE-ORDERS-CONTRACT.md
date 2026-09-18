@@ -83,22 +83,29 @@ parent. This is settled and implemented.
 `display_number` is the human-facing dotted string that prints on the document and doubles as
 a purchase order reference.
 
-> **The display scheme is an open question. Do not implement it on either surface yet.**
->
-> Mike's own words describe **sequential** change orders on one contract: *"first change order
-> number could be 1000.1, if there is a second change order it could be 1000.1.2, third could
-> be 1000.1.2.3."*
->
-> The plan he later approved describes the same strings as **nesting depth**: 1000.1 is the
-> first change order, 1000.1.2 is a change to that change order, 1000.1.2.3 is a change to
-> that.
->
-> He agreed to both, at different times, probably without noticing they differ. Under one
-> reading three change orders on a contract read 1000.1, 1000.1.2, 1000.1.2.3. Under the other
-> they read 1000.1, 1000.2, 1000.3. Same input, completely different printed number, on a
-> document used as a purchase order reference.
->
-> Ask him. Do not guess, and do not let the two surfaces guess separately.
+**Decided 2026-09-18.** The display number appends to the parent's number verbatim:
+
+```
+CTR-001            the signed contract
+  CTR-001.1        first modification
+  CTR-001.2        second
+  CTR-001.3        third
+    CTR-001.3.1    a change to that third modification
+```
+
+Siblings count up. Depth appears only when you modify a modification.
+
+Implemented once, in `lib/changeOrderNumbering.ts`, which is pure string logic with no imports
+so the portal can mirror it exactly. **Do not write a second version.**
+
+The parent's number is appended whole, prefix included, because the contract prefix is a user
+setting (CTR, CON, anything). Parsing it off would break the day someone changes it.
+
+Mike described the alternative reading in July, where each successive change order adds a
+level: 1000.1, then 1000.1.2, then 1000.1.2.3. Rejected because the eighth reads
+1000.1.2.3.4.5.6.7.8, which does not fit a purchase order field and forces you to count
+segments to know which change order you hold, and because it leaves no notation for the nesting
+he separately asked for. He was told the decision rather than asked, on the plan page.
 
 ---
 
