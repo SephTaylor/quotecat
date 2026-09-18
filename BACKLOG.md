@@ -7,6 +7,22 @@
 
 ---
 
+## ⬜ MAKE THE CLAUDE.md PLANNING RULES HARDER TO SKIP
+
+Rule 4 was added 2026-09-18. Its own section header already says to read these rules before
+every plan-mode entry and every BACKLOG edit, and on the day it was written that instruction
+was ignored: plan mode was entered once and BACKLOG edited three times without the file being
+opened.
+
+So the rules are necessary and not sufficient. The text cannot enforce itself.
+
+Options, none chosen yet: a hook that surfaces the rules block on plan-mode entry, moving the
+rules somewhere loaded by default rather than the top of a 1,200-line file, or splitting them
+into their own short file that is cheap to read every time.
+
+Parked 2026-09-18 until after the v1.3 release.
+
+
 ## ⬜ ONE-CENT DISPLAY DRIFT BETWEEN THE DASHBOARD AND THE PDF
 
 On an amount ending in half a cent, the contractor's dashboard shows a cent more than the
