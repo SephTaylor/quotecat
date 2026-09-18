@@ -34,7 +34,7 @@ import {
   recoverFromCloud,
   markStartupSuccess
 } from "@/lib/dataIntegrity";
-import { migrateAsyncStorageToSQLite, migrateChangeOrdersToSQLite } from "@/lib/asyncStorageMigration";
+import { migrateAsyncStorageToSQLite } from "@/lib/asyncStorageMigration";
 import { repairAssemblies } from "@/lib/assemblyRepair";
 import { useForegroundSync } from "@/hooks/useForegroundSync";
 
@@ -125,19 +125,6 @@ function RootLayout() {
           // Continue even if migration fails - we'll try again next launch
         }
 
-        // Step 1.6: Move change orders from AsyncStorage to SQLite.
-        // Separate call with its own flag on purpose: the migration above
-        // guards on a key that is already set on every existing install, so
-        // folding change orders into it would never run. Must happen before
-        // anything reads change orders, because the list hook now reads SQLite.
-        try {
-          const coResult = await migrateChangeOrdersToSQLite();
-          if (coResult.migrated && coResult.count > 0) {
-            console.log(`📦 Migrated ${coResult.count} change orders to SQLite`);
-          }
-        } catch (e) {
-          console.error("Change order migration error:", e);
-        }
 
         // Step 2: Check data integrity BEFORE auth
         setLoadingMessage("Checking data...");

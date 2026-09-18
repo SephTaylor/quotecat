@@ -29,6 +29,7 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HeaderBackButton } from "@/components/HeaderBackButton";
+import { ContractChangeOrders } from "@/modules/changeOrders/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { shareCalendarEvent, contractToCalendarEvent } from "@/lib/calendar";
 
@@ -444,6 +445,12 @@ export default function EditContract() {
             </View>
           </View>
         )}
+
+        {/* Change Orders — directly under the status badge, because once a
+            contract is signed everything below is a record and this is the only
+            live thing on the screen. Renders nothing on an unsigned contract
+            with no history. */}
+        <ContractChangeOrders contract={contract} theme={theme} />
 
         {/* Client Section */}
         <View style={styles.section}>

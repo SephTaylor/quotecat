@@ -281,13 +281,9 @@ export type InvoicePayment = {
 /**
  * A change order is a modification to a signed contract, so it moves through
  * the SAME lifecycle a contract does. Kept deliberately identical to
- * ContractStatus below: the two documents sign the same way, and any divergence
+ * ContractStatus below: the two documents sign the same way, and divergence
  * here would show up as mobile and the portal disagreeing about what state a
  * change order is in.
- *
- * The last three are legacy. Change orders used to be a diff on a quote, and
- * pre-January rows on a long-lived device still carry these. They are preserved
- * rather than rewritten, per the January decision to keep that history.
  */
 export type ChangeOrderStatus =
   | "draft"
@@ -297,10 +293,7 @@ export type ChangeOrderStatus =
   | "completed"
   | "declined"
   | "changes_requested"
-  | "expired"
-  | "pending"
-  | "approved"
-  | "cancelled";
+  | "expired";
 
 /**
  * Status metadata for Change Order UI display
@@ -348,22 +341,6 @@ export const ChangeOrderStatusMeta: Record<
     label: "Expired",
     color: "#8E8E93",
     description: "Expired without signature",
-  },
-  // Legacy, from when a change order was a diff on a quote.
-  pending: {
-    label: "Pending",
-    color: "#FF9500",
-    description: "Awaiting client approval",
-  },
-  approved: {
-    label: "Approved",
-    color: "#34C759",
-    description: "Client approved this change",
-  },
-  cancelled: {
-    label: "Cancelled",
-    color: "#8E8E93",
-    description: "Change was cancelled",
   },
 };
 

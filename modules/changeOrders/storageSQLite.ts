@@ -2,9 +2,10 @@
 // SQLite-based change order storage - replaces AsyncStorage implementation
 // This file has the same API as storage.ts but uses SQLite for efficiency
 
-import type { ChangeOrder, ChangeOrderUpdate, Quote, QuoteItem } from "@/lib/types";
+import type { ChangeOrder, ChangeOrderUpdate } from "@/lib/types";
 import {
   listChangeOrdersDB,
+  listChangeOrdersForContractDB,
   getChangeOrderByIdDB,
   saveChangeOrderDB,
   deleteChangeOrderDB,
@@ -87,6 +88,23 @@ export async function getChangeOrdersForQuote(
     return rows.map(dbRowToChangeOrder);
   } catch (error) {
     console.error(`Failed to get change orders for quote ${quoteId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Every change order raised against a contract.
+ *
+ * The contract-side equivalent of getChangeOrdersForQuote. New change orders
+ * hang off contracts; the quote version stays for pre-January rows.
+ */
+export async function getChangeOrdersForContract(
+  contractId: string
+): Promise<ChangeOrder[]> {
+  try {
+    return listChangeOrdersForContractDB(contractId).map(dbRowToChangeOrder);
+  } catch (error) {
+    console.error(`Failed to get change orders for contract ${contractId}:`, error);
     return [];
   }
 }
@@ -241,8 +259,8 @@ export async function deleteChangeOrder(
   }
 
   const co = dbRowToChangeOrder(row);
-  if (co.status !== "pending") {
-    throw new Error("Only pending change orders can be deleted");
+  if (co.status !== "draft") {
+    throw new Error("Only draft change orders can be deleted. Once it has been sent, decline it instead.");
   }
 
   deleteChangeOrderDB(changeOrderId);
@@ -264,7 +282,7 @@ export async function getActiveChangeOrderCount(
   quoteId: string
 ): Promise<number> {
   const cos = await getChangeOrdersForQuote(quoteId);
-  return cos.filter((co) => co.status !== "cancelled").length;
+  return cos.filter((co) => co.status !== "declined").length;
 }
 
 /**
@@ -281,90 +299,6 @@ export async function quoteHasChangeOrders(quoteId: string): Promise<boolean> {
 export async function getNetChangeForQuote(quoteId: string): Promise<number> {
   const cos = await getChangeOrdersForQuote(quoteId);
   return cos
-    .filter((co) => co.status !== "cancelled")
+    .filter((co) => co.status !== "declined")
     .reduce((sum, co) => sum + co.netChange, 0);
-}
-
-/**
- * Approve a change order and apply the changes to the quote
- * This is the ONLY place where quote modifications happen for COs
- *
- * @param quoteId - The quote ID
- * @param changeOrderId - The change order ID to approve
- * @param getQuoteById - Function to get current quote (injected to avoid circular deps)
- * @param updateQuote - Function to update the quote (injected to avoid circular deps)
- */
-export async function approveChangeOrder(
-  quoteId: string,
-  changeOrderId: string,
-  getQuoteById: (id: string) => Promise<Quote | null>,
-  updateQuote: (id: string, patch: Partial<Quote>) => Promise<Quote | null>
-): Promise<void> {
-  // Get the change order
-  const co = await getChangeOrderById(quoteId, changeOrderId);
-  if (!co) {
-    throw new Error(`Change order ${changeOrderId} not found`);
-  }
-
-  if (co.status !== "pending") {
-    throw new Error("Only pending change orders can be approved");
-  }
-
-  // Get the current quote
-  const quote = await getQuoteById(quoteId);
-  if (!quote) {
-    throw new Error(`Quote ${quoteId} not found`);
-  }
-
-  // Apply the changes to the quote
-  // Build new items array based on CO diff
-  const newItems: QuoteItem[] = [];
-
-  // Start with current items
-  const itemsMap = new Map<string, QuoteItem>();
-  for (const item of quote.items) {
-    const key = item.productId || item.name;
-    itemsMap.set(key, { ...item });
-  }
-
-  // Apply CO item changes
-  for (const coItem of co.items) {
-    const key = coItem.productId || coItem.name;
-
-    if (coItem.qtyAfter === 0) {
-      // Item was removed
-      itemsMap.delete(key);
-    } else if (coItem.qtyBefore === 0) {
-      // Item was added
-      itemsMap.set(key, {
-        productId: coItem.productId,
-        name: coItem.name,
-        unitPrice: coItem.unitPrice,
-        qty: coItem.qtyAfter,
-      });
-    } else {
-      // Item quantity changed
-      const existing = itemsMap.get(key);
-      if (existing) {
-        existing.qty = coItem.qtyAfter;
-      }
-    }
-  }
-
-  // Convert map back to array
-  for (const item of itemsMap.values()) {
-    newItems.push(item);
-  }
-
-  // Update the quote with new items and labor
-  await updateQuote(quoteId, {
-    items: newItems,
-    labor: co.laborAfter,
-  });
-
-  // Mark the CO as approved
-  await updateChangeOrder(quoteId, {
-    id: changeOrderId,
-    status: "approved",
-  });
 }

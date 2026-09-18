@@ -20,7 +20,6 @@ import {
   getChangeOrderById,
   updateChangeOrder,
   deleteChangeOrder,
-  approveChangeOrder,
   ChangeOrderStatusMeta,
   type ChangeOrder,
   type ChangeOrderStatus,
@@ -69,56 +68,11 @@ export default function ChangeOrderDetailScreen() {
     loadData();
   }, [loadData]);
 
-  const handleStatusChange = async (newStatus: ChangeOrderStatus) => {
-    if (!changeOrder || !quoteId) return;
-
-    const isApprove = newStatus === "approved";
-    const isCancel = newStatus === "cancelled";
-
-    Alert.alert(
-      isApprove ? "Approve Change Order?" : isCancel ? "Cancel Change Order?" : "Update Status?",
-      isApprove
-        ? "This will apply the changes to the quote. The quote items and totals will be updated."
-        : isCancel
-        ? "This will cancel the change order. The quote will remain unchanged."
-        : "Change the status of this change order?",
-      [
-        { text: "Go Back", style: "cancel" },
-        {
-          text: isApprove ? "Approve" : isCancel ? "Cancel CO" : "Confirm",
-          style: isCancel ? "destructive" : "default",
-          onPress: async () => {
-            setUpdating(true);
-            try {
-              if (newStatus === "approved") {
-                // Use approveChangeOrder to apply changes to the quote
-                await approveChangeOrder(
-                  quoteId,
-                  changeOrder.id,
-                  getQuoteById,
-                  updateQuote
-                );
-              } else {
-                // For cancel, just update the status
-                await updateChangeOrder(quoteId, {
-                  id: changeOrder.id,
-                  status: newStatus,
-                });
-              }
-              await loadData();
-            } catch (error) {
-              Alert.alert(
-                "Error",
-                error instanceof Error ? error.message : "Failed to update status"
-              );
-            } finally {
-              setUpdating(false);
-            }
-          },
-        },
-      ]
-    );
-  };
+  // The Approve / Cancel CO flow that used to live here was the January design:
+  // approving applied the change order's items back onto the quote. A change
+  // order is now a modification to a signed contract and never rewrites its
+  // parent, so approveChangeOrder has been deleted rather than translated.
+  // Signing and sending replace it (Band C2); until then this screen reads.
 
   const handleExportPDF = async () => {
     if (!changeOrder || !quote) return;
@@ -154,8 +108,11 @@ export default function ChangeOrderDetailScreen() {
   const handleDelete = () => {
     if (!changeOrder || !quoteId) return;
 
-    if (changeOrder.status !== "pending") {
-      Alert.alert("Cannot Delete", "Only pending change orders can be deleted.");
+    if (changeOrder.status !== "draft") {
+      Alert.alert(
+        "Cannot Delete",
+        "Only a draft change order can be deleted. Once it has been sent, decline it instead so the record survives."
+      );
       return;
     }
 
@@ -274,7 +231,7 @@ export default function ChangeOrderDetailScreen() {
           headerTitleStyle: { color: theme.colors.text },
           headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerRight: () =>
-            changeOrder.status === "pending" ? (
+            changeOrder.status === "draft" ? (
               <Pressable onPress={handleDelete} hitSlop={8} disabled={updating}>
                 <Ionicons
                   name="trash-outline"
@@ -350,31 +307,6 @@ export default function ChangeOrderDetailScreen() {
           </Pressable>
         </View>
 
-        {/* Actions */}
-        {changeOrder.status === "pending" && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Actions</Text>
-            <View style={styles.actionsCard}>
-              <Pressable
-                style={[styles.actionButton, styles.approveButton]}
-                onPress={() => handleStatusChange("approved")}
-                disabled={updating}
-              >
-                <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                <Text style={styles.approveButtonText}>Approve</Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.actionButton, styles.cancelButton]}
-                onPress={() => handleStatusChange("cancelled")}
-                disabled={updating}
-              >
-                <Ionicons name="close-circle" size={20} color="#EF4444" />
-                <Text style={styles.cancelButtonText}>Cancel CO</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
       </ScrollView>
     </>
   );

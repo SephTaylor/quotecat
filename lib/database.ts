@@ -2897,6 +2897,27 @@ function rowToChangeOrder(row: any): ChangeOrderDB {
 /**
  * List all change orders for a quote
  */
+/**
+ * Every change order raised against a contract, including nested ones.
+ *
+ * Ordered by creation rather than by display_number, because display_number is
+ * text: sorting it would put "CTR-001.10" before "CTR-001.2". Creation order is
+ * also the order the contractor raised them, which is what they remember.
+ */
+export function listChangeOrdersForContractDB(contractId: string): ChangeOrderDB[] {
+  try {
+    const database = getDatabase();
+    const rows = database.getAllSync(
+      "SELECT * FROM change_orders WHERE contract_id = ? ORDER BY created_at ASC",
+      [contractId]
+    );
+    return rows.map(rowToChangeOrder);
+  } catch (error) {
+    console.error(`Failed to list change orders for contract ${contractId}:`, error);
+    return [];
+  }
+}
+
 export function listChangeOrdersDB(quoteId: string): ChangeOrderDB[] {
   try {
     const database = getDatabase();

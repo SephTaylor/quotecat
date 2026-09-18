@@ -42,7 +42,12 @@ export function ChangeOrderCard({ changeOrder, theme, onPress }: Props) {
     >
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Text style={styles.coNumber}>CO #{changeOrder.number}</Text>
+          {/* displayNumber is the number that prints on the document and
+              doubles as a PO reference ("CTR-001.2"). Pre-January rows have
+              none, so they keep the old counter. */}
+          <Text style={styles.coNumber}>
+            {changeOrder.displayNumber || `CO #${changeOrder.number}`}
+          </Text>
           <View style={[styles.badge, { backgroundColor: statusMeta.color + "20" }]}>
             <Text style={[styles.badgeText, { color: statusMeta.color }]}>
               {statusMeta.label}
@@ -52,9 +57,9 @@ export function ChangeOrderCard({ changeOrder, theme, onPress }: Props) {
         <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
       </View>
 
-      {changeOrder.note && (
+      {changeOrder.description && (
         <Text style={styles.reason} numberOfLines={2}>
-          {changeOrder.note}
+          {changeOrder.description}
         </Text>
       )}
 

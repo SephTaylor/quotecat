@@ -69,8 +69,16 @@ the underscore. A change order signs the way a contract signs, so it moves the w
 moves. Any surface inventing its own vocabulary here creates a disagreement about what state a
 document is in.
 
-Three legacy values also remain valid: `pending`, `approved`, `cancelled`. Those are from when
-a change order was a diff on a quote. **Accept them, display them, never produce them.**
+**There are no legacy statuses.** An earlier draft kept `pending`, `approved` and `cancelled`
+for change orders made before January. Establishing the dates showed that population is empty:
+creation existed for about two and a half weeks (22 December to 8 January), only one account
+existed inside that window and it was created on the last day of it, and there were zero
+subscriptions of any kind before May 2026 for the Pro/Premium tier the feature was gated
+behind. Anyone touching the app then was testing it.
+
+Worth recording why that was nearly missed: change order cloud sync did not exist until
+23 March 2026, two months after creation was removed. The empty cloud table was therefore not
+evidence that nothing was ever created, and it was briefly treated as if it were.
 
 ---
 

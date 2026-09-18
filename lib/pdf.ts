@@ -6,6 +6,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import type { Quote, Invoice, ChangeOrder } from './types';
+import { ChangeOrderStatusMeta } from './types';
 import type { CompanyDetails, PaymentMethods } from './preferences';
 import { trackEvent, AnalyticsEvents } from './app-analytics';
 
@@ -1548,8 +1549,8 @@ function generateChangeOrderHTML(
         </div>
         <div style="text-align: right;">
           <div style="font-size: 14px; color: #666;">${dateString}</div>
-          <div style="margin-top: 8px; padding: 6px 12px; background: ${changeOrder.status === 'approved' ? '#22C55E' : changeOrder.status === 'cancelled' ? '#EF4444' : '#F59E0B'}20; color: ${changeOrder.status === 'approved' ? '#22C55E' : changeOrder.status === 'cancelled' ? '#EF4444' : '#F59E0B'}; border-radius: 4px; font-weight: 600; text-transform: uppercase; font-size: 12px;">
-            ${changeOrder.status}
+          <div style="margin-top: 8px; padding: 6px 12px; background: ${ChangeOrderStatusMeta[changeOrder.status].color}20; color: ${ChangeOrderStatusMeta[changeOrder.status].color}; border-radius: 4px; font-weight: 600; text-transform: uppercase; font-size: 12px;">
+            ${ChangeOrderStatusMeta[changeOrder.status].label}
           </div>
         </div>
       </div>
