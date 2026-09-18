@@ -7,6 +7,26 @@
 
 ---
 
+## ⬜ ONE-CENT DISPLAY DRIFT BETWEEN THE DASHBOARD AND THE PDF
+
+On an amount ending in half a cent, the contractor's dashboard shows a cent more than the
+customer's PDF. Seen on a 50% invoice whose exact total is $8,372.675: dashboard $8,372.68,
+PDF $8,372.67.
+
+Cause is the formatter, not the arithmetic. The PDF uses `.toFixed(2)` and the Stripe call
+uses `Math.round(x * 100)`, both landing on 837267 cents. The dashboard uses
+`Intl.NumberFormat`, which rounds the half up.
+
+**The document and the charge agree**, so the customer never sees a discrepancy, and
+`handleInvoicePaymentCompleted`'s existing `+ 0.005` tolerance means the payment still settles
+as paid rather than sticking at partial. Only the contractor's own screen is out.
+
+Pre-existing, not introduced by the partial-invoice work; partial invoices merely make
+half-cent totals more likely, since halving an odd-cent job produces one.
+
+Low priority. Fix would be to agree one rounding rule across the formatters.
+
+
 ## ⬜ OVERPAYMENT RENDERS AS A NEGATIVE AMOUNT DUE
 
 When recorded payments exceed the invoice total, the invoice detail page shows a negative
