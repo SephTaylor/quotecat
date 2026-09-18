@@ -2,10 +2,46 @@
 
 **Canonical "what's left" index across the QuoteCat ecosystem.** One scannable list. For full design context on any item, drill into the linked source file.
 
-**Last updated:** 2026-07-04 (v1.2.17 shipping — Mike-feedback fixes + CO discoverability)
+**Last updated:** 2026-09-18 (partial-invoice fixes; two items parked below)
 **Sources merged:** prior BACKLOG.md, `FOLLOWUPS.md`, `CLAUDE.md`, portal plan-review system, this session's conversation, code-level TODOs.
 
 ---
+
+## ⬜ OVERPAYMENT RENDERS AS A NEGATIVE AMOUNT DUE
+
+When recorded payments exceed the invoice total, the invoice detail page shows a negative
+**Amount Due** (seen at -$728.75 on a deliberately overpaid test invoice) rather than a credit
+or an overpaid state.
+
+Unclear whether that is intended. It is arithmetically honest (total minus paid) but reads
+oddly to a contractor, and there is no concept of a credit balance anywhere.
+
+Surfaced 2026-09-18 while testing partial invoices. Not caused by that work. Nobody has hit it
+with real money; the only invoice in that state is throwaway test data.
+
+---
+
+## ⬜ APP AND PORTAL DISAGREE ON LABOR COST FOR MULTI-WORKER INVOICES
+
+Both surfaces compute invoice profitability, and since 2026-09-18 they agree on everything
+except one input.
+
+The portal calls its labor cost helper with **empty labor entries and an empty team list**
+(`dashboard/invoices/[id]/page.tsx`: `calculateLaborCost([], laborBilled, [], rate, costRate)`),
+so it always falls back to the flat default cost ratio. The app passes the invoice's real labor
+entries and the team roster, so it uses **per-worker cost rates**.
+
+On a Premium job where workers carry different cost rates, the same invoice reports a different
+labor cost, and therefore a different margin, depending on which screen you look at.
+
+Verified identical on every other input (revenue, materials, and the partial-invoice scaling)
+across five job shapes. This is the only remaining divergence.
+
+Only bites multi-worker Premium jobs. Fix is to pass the labor entries and team members through
+on the portal side, matching the app.
+
+---
+
 
 ## ⬜ FOUNDER SPOT COUNTER — disabled 2026-09-13, wire it later
 
