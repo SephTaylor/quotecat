@@ -74,7 +74,7 @@ a change order was a diff on a quote. **Accept them, display them, never produce
 
 ---
 
-## 4. Numbering: two fields, one of them undecided
+## 4. Numbering: a counter and a printed number
 
 `number` is a plain integer counter, scoped to the parent. The first modification to a contract
 is 1 regardless of what other contracts exist. Nested change orders count within their own
