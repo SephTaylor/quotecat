@@ -24,9 +24,14 @@ import {
 function dbRowToChangeOrder(row: ChangeOrderDB): ChangeOrder {
   return {
     id: row.id,
+    contractId: row.contractId,
     quoteId: row.quoteId,
     quoteNumber: row.quoteNumber,
     number: row.number,
+    parentChangeOrderId: row.parentChangeOrderId,
+    displayNumber: row.displayNumber,
+    description: row.description,
+    completedAt: row.completedAt,
     items: JSON.parse(row.items || "[]"),
     laborBefore: row.laborBefore,
     laborAfter: row.laborAfter,
@@ -48,9 +53,14 @@ function dbRowToChangeOrder(row: ChangeOrderDB): ChangeOrder {
 function changeOrderToDBRow(co: ChangeOrder): ChangeOrderDB {
   return {
     id: co.id,
+    contractId: co.contractId,
     quoteId: co.quoteId,
     quoteNumber: co.quoteNumber,
     number: co.number,
+    parentChangeOrderId: co.parentChangeOrderId,
+    displayNumber: co.displayNumber,
+    description: co.description,
+    completedAt: co.completedAt,
     items: JSON.stringify(co.items || []),
     laborBefore: co.laborBefore,
     laborAfter: co.laborAfter,
@@ -102,10 +112,12 @@ export async function getChangeOrderById(
 /**
  * Get the next CO number for a quote
  */
-export async function getNextChangeOrderNumber(
-  quoteId: string
-): Promise<number> {
-  return getNextChangeOrderNumberDB(quoteId);
+export async function getNextChangeOrderNumber(parent: {
+  contractId?: string;
+  quoteId?: string;
+  parentChangeOrderId?: string;
+}): Promise<number> {
+  return getNextChangeOrderNumberDB(parent);
 }
 
 /**
@@ -128,7 +140,13 @@ export async function createChangeOrder(
   const now = new Date().toISOString();
 
   // Auto-assign the next CO number
-  const nextNumber = getNextChangeOrderNumberDB(changeOrder.quoteId);
+  // Scoped to this change order's own parent: the contract it modifies, or
+  // the change order it modifies, or a legacy quote.
+  const nextNumber = getNextChangeOrderNumberDB({
+    contractId: changeOrder.contractId,
+    quoteId: changeOrder.quoteId,
+    parentChangeOrderId: changeOrder.parentChangeOrderId,
+  });
 
   const coWithNumber: ChangeOrder = {
     ...changeOrder,

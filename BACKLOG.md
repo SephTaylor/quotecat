@@ -7,6 +7,27 @@
 
 ---
 
+## ⬜ ASK MIKE: WHICH NUMBERING SCHEME DID HE MEAN?
+
+Blocks `display_number` on both surfaces. The counter is built; the printed string is not, on
+purpose.
+
+**His words**, on the very first section he ever reviewed: *"first change order number could
+be 1000.1, if there is a second change order it could be change order number 1000.1.2 third
+could be 1000.1.2.3."* That describes three **sequential** change orders on one contract.
+
+**The plan he later approved** shows the same strings as **nesting depth**: 1000.1 is the first
+change order, 1000.1.2 is a change to that change order, 1000.1.2.3 is a change to that. He
+marked it "Excellent."
+
+He agreed to both, months apart, almost certainly without noticing they differ. Three change
+orders on contract 1000 read either `1000.1, 1000.1.2, 1000.1.2.3` or `1000.1, 1000.2, 1000.3`
+depending on which he meant. It prints on the document and doubles as his purchase order
+reference, and he tracks profit per change order off it, so it is not cosmetic.
+
+One question, and the answer unblocks numbering everywhere.
+
+
 ## ⬜ LEGACY ASYNCSTORAGE DATA IS STILL ON DEVICES
 
 Quotes, invoices, clients and (as of 2026-09-18) change orders all moved to SQLite. Products,

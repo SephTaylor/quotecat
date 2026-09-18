@@ -278,7 +278,29 @@ export type InvoicePayment = {
 /**
  * Change Order status for tracking approval
  */
-export type ChangeOrderStatus = "pending" | "approved" | "cancelled";
+/**
+ * A change order is a modification to a signed contract, so it moves through
+ * the SAME lifecycle a contract does. Kept deliberately identical to
+ * ContractStatus below: the two documents sign the same way, and any divergence
+ * here would show up as mobile and the portal disagreeing about what state a
+ * change order is in.
+ *
+ * The last three are legacy. Change orders used to be a diff on a quote, and
+ * pre-January rows on a long-lived device still carry these. They are preserved
+ * rather than rewritten, per the January decision to keep that history.
+ */
+export type ChangeOrderStatus =
+  | "draft"
+  | "sent"
+  | "viewed"
+  | "signed"
+  | "completed"
+  | "declined"
+  | "changes_requested"
+  | "expired"
+  | "pending"
+  | "approved"
+  | "cancelled";
 
 /**
  * Status metadata for Change Order UI display
@@ -287,6 +309,47 @@ export const ChangeOrderStatusMeta: Record<
   ChangeOrderStatus,
   { label: string; color: string; description: string }
 > = {
+  draft: {
+    label: "Draft",
+    color: "#8E8E93",
+    description: "Building the change order",
+  },
+  sent: {
+    label: "Sent",
+    color: "#FF9500",
+    description: "Awaiting client signature",
+  },
+  viewed: {
+    label: "Viewed",
+    color: "#5856D6",
+    description: "Client has viewed it",
+  },
+  signed: {
+    label: "Signed",
+    color: "#34C759",
+    description: "Signed, work authorized",
+  },
+  completed: {
+    label: "Completed",
+    color: "#5856D6",
+    description: "Work finished, ready to invoice",
+  },
+  declined: {
+    label: "Declined",
+    color: "#FF3B30",
+    description: "Client declined to sign",
+  },
+  changes_requested: {
+    label: "Changes Requested",
+    color: "#FF9500",
+    description: "Client requested changes before signing",
+  },
+  expired: {
+    label: "Expired",
+    color: "#8E8E93",
+    description: "Expired without signature",
+  },
+  // Legacy, from when a change order was a diff on a quote.
   pending: {
     label: "Pending",
     color: "#FF9500",
@@ -323,9 +386,32 @@ export type ChangeOrderItem = {
  */
 export type ChangeOrder = {
   id: ID;
-  quoteId: ID;
+
+  /**
+   * Parent contract. A change order modifies a signed contract: the quote did
+   * its job and became history, the contract is the authoritative instrument,
+   * and this is the mod issued against it.
+   */
+  contractId?: ID;
+
+  /** Legacy parent. Pre-January rows hang off a quote; new ones never do. */
+  quoteId?: ID;
   quoteNumber?: string; // Quote's number for display (e.g., "Q-001")
-  number: number; // CO #1, #2, #3 within this quote
+
+  /** Per-parent counter. `displayNumber` carries the number people read. */
+  number: number;
+
+  /** Set when this modifies another modification. Uncapped depth. */
+  parentChangeOrderId?: ID;
+
+  /** Mike's scheme: contract 1000 gives "1000.1", then "1000.1.2". */
+  displayNumber?: string;
+
+  /** What work this covers. `note` below stays "reason for change". */
+  description?: string;
+
+  /** Set when the contractor taps Complete. Drives bill-in-full-when-complete. */
+  completedAt?: string;
 
   // The diff
   items: ChangeOrderItem[];

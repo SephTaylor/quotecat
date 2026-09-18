@@ -62,7 +62,11 @@ export function useChangeOrders(quoteId: string): UseChangeOrdersReturn {
 
   const create = useCallback(
     async (coData: Omit<ChangeOrder, "number">): Promise<ChangeOrder> => {
-      const number = await getNextChangeOrderNumber(quoteId);
+      const number = await getNextChangeOrderNumber({
+        contractId: coData.contractId,
+        quoteId: coData.quoteId ?? quoteId,
+        parentChangeOrderId: coData.parentChangeOrderId,
+      });
       const co: ChangeOrder = {
         ...coData,
         number,

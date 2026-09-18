@@ -25,7 +25,7 @@ function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
 let db: SQLite.SQLiteDatabase | null = null;
 
 // Schema version for migrations
-const SCHEMA_VERSION = 21;
+const SCHEMA_VERSION = 22;
 
 /**
  * Get or create the database instance
@@ -780,6 +780,48 @@ function runMigrations(database: SQLite.SQLiteDatabase, fromVersion: number): vo
     }
 
     console.log(`📦 Added payment_terms to quotes`);
+  }
+
+  // v22: change orders become modifications to a signed contract.
+  // Mirrors Supabase migration 038 exactly. These two schemas MUST stay in
+  // step: the sync layer maps between them field by field, so a column that
+  // exists on one side and not the other is silently dropped in transit.
+  if (fromVersion < 22) {
+    const columns = database.getAllSync<{ name: string }>(
+      "PRAGMA table_info(change_orders)"
+    );
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    // Parent: new change orders hang off a contract. quote_id stays for
+    // pre-January rows. SQLite cannot drop NOT NULL in place, but the column
+    // was created nullable-in-practice here, so nothing to relax.
+    if (!columnNames.has("contract_id")) {
+      database.execSync(`ALTER TABLE change_orders ADD COLUMN contract_id TEXT;`);
+    }
+    // Nesting: 1000.1 -> 1000.1.2, uncapped, per Mike's scheme.
+    if (!columnNames.has("parent_change_order_id")) {
+      database.execSync(`ALTER TABLE change_orders ADD COLUMN parent_change_order_id TEXT;`);
+    }
+    if (!columnNames.has("display_number")) {
+      database.execSync(`ALTER TABLE change_orders ADD COLUMN display_number TEXT;`);
+    }
+    // Its own scope text; `note` remains "reason for change".
+    if (!columnNames.has("description")) {
+      database.execSync(`ALTER TABLE change_orders ADD COLUMN description TEXT;`);
+    }
+    // Mike's Complete button.
+    if (!columnNames.has("completed_at")) {
+      database.execSync(`ALTER TABLE change_orders ADD COLUMN completed_at TEXT;`);
+    }
+
+    database.execSync(
+      `CREATE INDEX IF NOT EXISTS idx_change_orders_contract_id ON change_orders(contract_id);`
+    );
+    database.execSync(
+      `CREATE INDEX IF NOT EXISTS idx_change_orders_parent ON change_orders(parent_change_order_id);`
+    );
+
+    console.log(`📦 Change orders became contract documents`);
   }
 
   // Update version
@@ -2793,9 +2835,20 @@ export function clearAssembliesDB(): void {
  */
 export type ChangeOrderDB = {
   id: string;
-  quoteId: string;
+  /** Parent contract. The authoritative instrument a change order modifies. */
+  contractId?: string;
+  /** Legacy parent. Pre-January rows hang off a quote; new ones do not. */
+  quoteId?: string;
   quoteNumber?: string;
+  /** Per-parent counter. `displayNumber` carries Mike's dotted scheme. */
   number: number;
+  /** Another change order, when this one modifies a modification. */
+  parentChangeOrderId?: string;
+  /** "1000.1", "1000.1.2". Anchored on the contract number, uncapped. */
+  displayNumber?: string;
+  /** What work this modification covers. `note` stays "reason for change". */
+  description?: string;
+  completedAt?: string;
   items: string; // JSON string
   laborBefore: number;
   laborAfter: number;
@@ -2817,9 +2870,14 @@ export type ChangeOrderDB = {
 function rowToChangeOrder(row: any): ChangeOrderDB {
   return {
     id: row.id,
-    quoteId: row.quote_id,
+    contractId: row.contract_id || undefined,
+    quoteId: row.quote_id || undefined,
     quoteNumber: row.quote_number || undefined,
     number: row.number || 1,
+    parentChangeOrderId: row.parent_change_order_id || undefined,
+    displayNumber: row.display_number || undefined,
+    description: row.description || undefined,
+    completedAt: row.completed_at || undefined,
     items: row.items || "[]",
     laborBefore: row.labor_before || 0,
     laborAfter: row.labor_after || 0,
@@ -2896,16 +2954,23 @@ export function saveChangeOrderDB(changeOrder: ChangeOrderDB): void {
 
     database.runSync(
       `INSERT OR REPLACE INTO change_orders (
-        id, quote_id, quote_number, number, items,
+        id, contract_id, quote_id, quote_number, number,
+        parent_change_order_id, display_number, description, completed_at,
+        items,
         labor_before, labor_after, labor_delta,
         net_change, quote_total_before, quote_total_after,
         note, status, created_at, updated_at, synced_at, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         changeOrder.id,
-        changeOrder.quoteId,
+        changeOrder.contractId || null,
+        changeOrder.quoteId || null,
         changeOrder.quoteNumber || null,
         changeOrder.number,
+        changeOrder.parentChangeOrderId || null,
+        changeOrder.displayNumber || null,
+        changeOrder.description || null,
+        changeOrder.completedAt || null,
         changeOrder.items,
         changeOrder.laborBefore,
         changeOrder.laborAfter,
@@ -2954,18 +3019,49 @@ export function deleteChangeOrdersForQuoteDB(quoteId: string): void {
 }
 
 /**
- * Get next change order number for a quote
+ * Next sibling counter under a change order's parent.
+ *
+ * A change order hangs off a contract (new), another change order (nested), or
+ * a quote (pre-January rows). Counting is scoped to whichever parent it has, so
+ * the first modification to a contract is 1 regardless of what other contracts
+ * exist.
+ *
+ * This returns the COUNTER only. The human-facing `display_number` (Mike's
+ * dotted scheme) is deliberately not composed here: his own wording and the
+ * plan he approved describe two different schemes, and that is an open question
+ * rather than something to guess at. See BACKLOG.
  */
-export function getNextChangeOrderNumberDB(quoteId: string): number {
+export function getNextChangeOrderNumberDB(parent: {
+  contractId?: string;
+  quoteId?: string;
+  parentChangeOrderId?: string;
+}): number {
   try {
     const database = getDatabase();
+
+    let where: string;
+    let arg: string;
+    if (parent.parentChangeOrderId) {
+      where = "parent_change_order_id = ?";
+      arg = parent.parentChangeOrderId;
+    } else if (parent.contractId) {
+      where = "contract_id = ? AND parent_change_order_id IS NULL";
+      arg = parent.contractId;
+    } else if (parent.quoteId) {
+      where = "quote_id = ? AND parent_change_order_id IS NULL";
+      arg = parent.quoteId;
+    } else {
+      console.error("getNextChangeOrderNumberDB called with no parent");
+      return 1;
+    }
+
     const result = database.getFirstSync<{ max_num: number | null }>(
-      "SELECT MAX(number) as max_num FROM change_orders WHERE quote_id = ?",
-      [quoteId]
+      `SELECT MAX(number) as max_num FROM change_orders WHERE ${where}`,
+      [arg]
     );
     return (result?.max_num || 0) + 1;
   } catch (error) {
-    console.error(`Failed to get next CO number for quote ${quoteId}:`, error);
+    console.error("Failed to get next change order number:", error);
     return 1;
   }
 }
