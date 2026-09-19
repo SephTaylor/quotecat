@@ -26,43 +26,54 @@ import {
 } from "@/modules/changeOrders";
 import { ChangeOrderDiffView } from "@/modules/changeOrders/ui";
 import { getQuoteById, updateQuote } from "@/lib/quotes";
-import type { Quote } from "@/lib/types";
+import type { Quote, Contract } from "@/lib/types";
 import { generateAndShareChangeOrderPDF, type PDFOptions } from "@/lib/pdf";
 import { loadPreferences } from "@/lib/preferences";
 import { getCompanyLogo } from "@/lib/logo";
 import { getUserState } from "@/lib/user";
+import { getContractById } from "@/lib/contracts";
 
 export default function ChangeOrderDetailScreen() {
-  const params = useLocalSearchParams<{ id?: string; quoteId?: string }>();
+  // Only the change order id is needed. The parent is whatever the change
+  // order itself says it is: a contract for anything raised since change orders
+  // became contract modifications, a quote for nothing at all any more.
+  const params = useLocalSearchParams<{ id?: string }>();
   const coId = params.id;
-  const quoteId = params.quoteId;
   const router = useRouter();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [changeOrder, setChangeOrder] = useState<ChangeOrder | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const loadData = useCallback(async () => {
-    if (!coId || !quoteId) return;
+    if (!coId) return;
 
     setLoading(true);
     try {
-      const [co, q] = await Promise.all([
-        getChangeOrderById(coId),
-        getQuoteById(quoteId),
-      ]);
+      const co = await getChangeOrderById(coId);
       setChangeOrder(co ?? null);
-      setQuote(q ?? null);
+
+      // The parent is loaded for display only. Its absence never blocks the
+      // screen: a change order carries its own items, labor and totals, and a
+      // quote in particular may have been deleted long after the job ran.
+      if (co?.contractId) {
+        setContract((await getContractById(co.contractId)) ?? null);
+        setQuote(null);
+      } else if (co?.quoteId) {
+        setQuote((await getQuoteById(co.quoteId)) ?? null);
+        setContract(null);
+      }
     } catch (error) {
       console.error("Failed to load change order:", error);
     } finally {
       setLoading(false);
     }
-  }, [coId, quoteId]);
+  }, [coId]);
 
   useEffect(() => {
     loadData();
@@ -75,6 +86,9 @@ export default function ChangeOrderDetailScreen() {
   // Signing and sending replace it (Band C2); until then this screen reads.
 
   const handleExportPDF = async () => {
+    // The change order PDF renders against a quote. A contract-parented one
+    // needs its own template, which is not built; the button is hidden in that
+    // case rather than producing a document with the wrong parent on it.
     if (!changeOrder || !quote) return;
 
     setExporting(true);
@@ -106,7 +120,7 @@ export default function ChangeOrderDetailScreen() {
   };
 
   const handleDelete = () => {
-    if (!changeOrder || !quoteId) return;
+    if (!changeOrder) return;
 
     if (changeOrder.status !== "draft") {
       Alert.alert(
@@ -165,7 +179,7 @@ export default function ChangeOrderDetailScreen() {
     );
   }
 
-  if (!changeOrder || !quote) {
+  if (!changeOrder) {
     return (
       <>
         <Stack.Screen
@@ -214,10 +228,13 @@ export default function ChangeOrderDetailScreen() {
     return `${prefix}$${Math.abs(amount).toFixed(2)}`;
   };
 
-  // Format CO number with quote number if available
-  const coDisplayNumber = changeOrder.quoteNumber
-    ? `${changeOrder.quoteNumber}-CO-${changeOrder.number}`
-    : `CO-${changeOrder.number}`;
+  // displayNumber is the number that prints on the document and doubles as a
+  // PO reference ("CTR-001.2"). Only rows predating it fall back to a counter.
+  const coDisplayNumber =
+    changeOrder.displayNumber ||
+    (changeOrder.quoteNumber
+      ? `${changeOrder.quoteNumber}-CO-${changeOrder.number}`
+      : `CO-${changeOrder.number}`);
 
   return (
     <>
@@ -254,7 +271,11 @@ export default function ChangeOrderDetailScreen() {
             </View>
           </View>
 
-          <Text style={styles.quoteName}>{quote.name || "Untitled Quote"}</Text>
+          {/* Whichever parent this modifies. A change order stands on its own,
+              so a missing or deleted parent is not an error state. */}
+          <Text style={styles.quoteName}>
+            {contract?.projectName || quote?.name || "Change order"}
+          </Text>
           <Text style={styles.date}>{formattedDate}</Text>
 
           <View style={styles.netChangeRow}>
@@ -289,7 +310,11 @@ export default function ChangeOrderDetailScreen() {
           </View>
         </View>
 
-        {/* Export */}
+        {/* Export. Hidden for a contract-parented change order: the PDF
+            template renders against a quote, and producing a document with the
+            wrong parent named on it is worse than not offering the button. Its
+            own template is part of the signing work. */}
+        {quote && (
         <View style={styles.section}>
           <Pressable
             style={[styles.exportButton, exporting && styles.exportButtonDisabled]}
@@ -306,6 +331,7 @@ export default function ChangeOrderDetailScreen() {
             )}
           </Pressable>
         </View>
+        )}
 
       </ScrollView>
     </>

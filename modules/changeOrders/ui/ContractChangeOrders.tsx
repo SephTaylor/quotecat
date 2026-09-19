@@ -73,7 +73,7 @@ export function ContractChangeOrders({ contract, theme }: Props) {
   // replace on the quote screen.
   //
   // Flip this in the same commit that lands both screens.
-  const CHANGE_ORDER_SCREENS_EXIST = false;
+  const CHANGE_ORDER_SCREENS_EXIST = true;
   const CREATE_SCREEN_EXISTS = CHANGE_ORDER_SCREENS_EXIST;
 
   const allowed = canAddChangeOrder(contract) && CREATE_SCREEN_EXISTS;
