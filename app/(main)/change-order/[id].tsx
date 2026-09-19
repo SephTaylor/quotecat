@@ -86,10 +86,7 @@ export default function ChangeOrderDetailScreen() {
   // Signing and sending replace it (Band C2); until then this screen reads.
 
   const handleExportPDF = async () => {
-    // The change order PDF renders against a quote. A contract-parented one
-    // needs its own template, which is not built; the button is hidden in that
-    // case rather than producing a document with the wrong parent on it.
-    if (!changeOrder || !quote) return;
+    if (!changeOrder) return;
 
     setExporting(true);
     try {
@@ -108,7 +105,17 @@ export default function ChangeOrderDetailScreen() {
         logoBase64: rawBase64,
       };
 
-      await generateAndShareChangeOrderPDF(changeOrder, quote, options);
+      // Whichever parent this modifies. The template only ever renders a name
+      // and a client, so one document serves a contract mod and a legacy
+      // quote-parented row alike.
+      await generateAndShareChangeOrderPDF(
+        changeOrder,
+        {
+          name: contract?.projectName || quote?.name || "Change Order",
+          clientName: contract?.clientName || quote?.clientName || "",
+        },
+        options
+      );
     } catch (error) {
       Alert.alert(
         "Error",
@@ -310,11 +317,7 @@ export default function ChangeOrderDetailScreen() {
           </View>
         </View>
 
-        {/* Export. Hidden for a contract-parented change order: the PDF
-            template renders against a quote, and producing a document with the
-            wrong parent named on it is worse than not offering the button. Its
-            own template is part of the signing work. */}
-        {quote && (
+        {/* Export */}
         <View style={styles.section}>
           <Pressable
             style={[styles.exportButton, exporting && styles.exportButtonDisabled]}
@@ -331,7 +334,6 @@ export default function ChangeOrderDetailScreen() {
             )}
           </Pressable>
         </View>
-        )}
 
       </ScrollView>
     </>

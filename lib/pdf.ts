@@ -1427,9 +1427,23 @@ export async function generateAndShareMultiTierPDF(
 /**
  * Generate HTML for a change order PDF
  */
+/**
+ * The parent a change order modifies, as far as this document cares.
+ *
+ * Only two fields are ever rendered, so this takes the shape rather than a
+ * whole Quote. A change order now hangs off a signed contract, and a contract
+ * supplies `projectName` and `clientName`; the older quote-parented rows
+ * supply `name` and `clientName`. Typing it this way means one template serves
+ * both instead of a second template drifting away from the first.
+ */
+export type ChangeOrderParent = {
+  name: string;
+  clientName: string;
+};
+
 function generateChangeOrderHTML(
   changeOrder: ChangeOrder,
-  quote: Quote,
+  parent: ChangeOrderParent,
   options: PDFOptions
 ): string {
   const { includeBranding, companyDetails, logoBase64 } = options;
@@ -1540,12 +1554,12 @@ function generateChangeOrderHTML(
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid #333;">
         <div>
           <h1 style="margin: 0 0 8px 0; font-size: 28px; font-weight: 800; color: #000;">
-            Change Order #${changeOrder.number}
+            Change Order ${changeOrder.displayNumber || `#${changeOrder.number}`}
           </h1>
           <div style="font-size: 14px; color: #666; margin-bottom: 4px;">
-            For: ${quote.name || 'Untitled Quote'}
+            For: ${parent.name}
           </div>
-          ${quote.clientName ? `<div style="font-size: 14px; color: #666;">Client: ${quote.clientName}</div>` : ''}
+          ${parent.clientName ? `<div style="font-size: 14px; color: #666;">Client: ${parent.clientName}</div>` : ''}
         </div>
         <div style="text-align: right;">
           <div style="font-size: 14px; color: #666;">${dateString}</div>
@@ -1581,7 +1595,7 @@ function generateChangeOrderHTML(
       <!-- Summary -->
       <div style="background: #1a1a1a; color: white; padding: 24px; border-radius: 8px; margin-top: 32px;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-          <span style="color: #999;">Original Quote Total</span>
+          <span style="color: #999;">Original Total</span>
           <span>$${fmt(changeOrder.quoteTotalBefore)}</span>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #333;">
@@ -1591,7 +1605,7 @@ function generateChangeOrderHTML(
           </span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 18px; font-weight: 700;">New Quote Total</span>
+          <span style="font-size: 18px; font-weight: 700;">New Total</span>
           <span style="font-size: 24px; font-weight: 800; color: #333;">
             $${fmt(changeOrder.quoteTotalAfter)}
           </span>
@@ -1621,12 +1635,12 @@ function generateChangeOrderHTML(
  */
 export async function generateAndShareChangeOrderPDF(
   changeOrder: ChangeOrder,
-  quote: Quote,
+  parent: ChangeOrderParent,
   options: PDFOptions
 ): Promise<void> {
   try {
     // Generate HTML
-    const html = generateChangeOrderHTML(changeOrder, quote, options);
+    const html = generateChangeOrderHTML(changeOrder, parent, options);
 
     // Generate PDF
     const { uri } = await Print.printToFileAsync({ html });
@@ -1641,8 +1655,8 @@ export async function generateAndShareChangeOrderPDF(
 
     // Create descriptive filename
     const sanitize = (str: string) => str.replace(/[^a-z0-9_\-\s]/gi, '_');
-    const projectPart = sanitize(quote.name || 'Quote');
-    const clientPart = quote.clientName ? ` - ${sanitize(quote.clientName)}` : '';
+    const projectPart = sanitize(parent.name || 'Change Order');
+    const clientPart = parent.clientName ? ` - ${sanitize(parent.clientName)}` : '';
     const coPart = `CO${changeOrder.number}`;
     const now = new Date();
     const datePart = now.toISOString().split('T')[0];
