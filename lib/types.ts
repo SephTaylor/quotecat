@@ -480,7 +480,15 @@ export const ContractStatusMeta: Record<
  */
 export type Signature = {
   id: ID;
-  contractId: ID;
+
+  /**
+   * Exactly one parent, enforced by a database constraint (migration 040).
+   * A signature belongs to a contract or to a change order, never both and
+   * never neither: one that belongs to nothing cannot be defended if the
+   * customer disputes it later.
+   */
+  contractId?: ID;
+  changeOrderId?: ID;
 
   // Who signed
   signerType: "contractor" | "client";

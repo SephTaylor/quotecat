@@ -8,9 +8,13 @@
 // document rather than by editing the parent, and its number hangs off the
 // contract's number.
 
-import type { ChangeOrder, Contract, QuoteItem } from "./types";
-import { createChangeOrder } from "@/modules/changeOrders/storageSQLite";
+import type { ChangeOrder, Contract, QuoteItem, Signature } from "./types";
+import {
+  createChangeOrder,
+  updateChangeOrder,
+} from "@/modules/changeOrders/storageSQLite";
 import { calculateMaterialSubtotal } from "./calculations";
+import { supabase } from "./supabase";
 
 /**
  * Whether a contract can take a change order at all.
@@ -140,4 +144,183 @@ export async function createChangeOrderForContract(
   };
 
   return createChangeOrder(draft, { parentNumber });
+}
+
+// ---------------------------------------------------------------------------
+// Signing and sending
+//
+// A change order signs exactly the way a contract signs, because it is an
+// amendment to one: contractor signs, customer receives a link, customer signs.
+// Same signatures table, same two-signature rule, same audit fields. See
+// docs/CHANGE-ORDERS-CONTRACT.md.
+// ---------------------------------------------------------------------------
+
+function mapSignature(row: Record<string, unknown>): Signature {
+  return {
+    id: row.id as string,
+    contractId: (row.contract_id as string) || undefined,
+    changeOrderId: (row.change_order_id as string) || undefined,
+    signerType: row.signer_type as "contractor" | "client",
+    signerName: row.signer_name as string,
+    signerEmail: (row.signer_email as string) || undefined,
+    signatureImage: row.signature_image as string,
+    ipAddress: (row.ip_address as string) || undefined,
+    userAgent: (row.user_agent as string) || undefined,
+    signedAt: row.signed_at as string,
+  };
+}
+
+export async function getSignaturesForChangeOrder(
+  changeOrderId: string
+): Promise<Signature[]> {
+  const { data, error } = await supabase
+    .from("signatures")
+    .select("*")
+    .eq("change_order_id", changeOrderId)
+    .order("signed_at", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load change order signatures:", error);
+    return [];
+  }
+  return (data || []).map(mapSignature);
+}
+
+/**
+ * The contractor signs first.
+ *
+ * Deliberately mirrors contracts: the customer is never shown a document the
+ * contractor has not signed. That rule exists because a client once received a
+ * link to an unsigned contract and the portal refused their signature, so the
+ * link simply looked broken.
+ */
+export async function addChangeOrderContractorSignature(
+  changeOrderId: string,
+  signatureImage: string,
+  signerName: string,
+  signerEmail?: string
+): Promise<Signature | null> {
+  const { data, error } = await supabase
+    .from("signatures")
+    .insert({
+      change_order_id: changeOrderId,
+      signer_type: "contractor",
+      signer_name: signerName,
+      signer_email: signerEmail || null,
+      signature_image: signatureImage,
+      signed_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to add change order signature:", error);
+    return null;
+  }
+  return mapSignature(data);
+}
+
+export async function isChangeOrderFullySigned(
+  changeOrderId: string
+): Promise<boolean> {
+  const sigs = await getSignaturesForChangeOrder(changeOrderId);
+  return (
+    sigs.some((s) => s.signerType === "contractor") &&
+    sigs.some((s) => s.signerType === "client")
+  );
+}
+
+export async function removeChangeOrderSignature(
+  signatureId: string
+): Promise<boolean> {
+  const { error } = await supabase.from("signatures").delete().eq("id", signatureId);
+  if (error) {
+    console.error("Failed to remove change order signature:", error);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Mint a share token so the customer can open this change order.
+ *
+ * Token rather than a bare id, unlike contracts at /c/[id]. The
+ * change_order_shares table was built for this in migration 027 and has sat
+ * unused since: it carries an expiry and a revocation timestamp, so a link sent
+ * to the wrong address can be killed. Contracts cannot do that.
+ *
+ * Reuses a live token if one exists, so re-sending does not invalidate the link
+ * the customer already has.
+ */
+export async function createChangeOrderShareToken(
+  changeOrderId: string
+): Promise<string | null> {
+  const { data: existing } = await supabase
+    .from("change_order_shares")
+    .select("token")
+    .eq("change_order_id", changeOrderId)
+    .is("revoked_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    return existing[0].token as string;
+  }
+
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData?.user?.id;
+  if (!userId) {
+    console.error("Cannot share a change order while signed out");
+    return null;
+  }
+
+  // Long random token. Not guessable, and not derived from the change order id
+  // so a leaked link reveals nothing about the rest of the account.
+  const token = `${Math.random().toString(36).slice(2)}${Math.random()
+    .toString(36)
+    .slice(2)}${Date.now().toString(36)}`;
+
+  const { error } = await supabase.from("change_order_shares").insert({
+    change_order_id: changeOrderId,
+    token,
+    created_by_user_id: userId,
+  });
+
+  if (error) {
+    console.error("Failed to create change order share:", error);
+    return null;
+  }
+  return token;
+}
+
+export function getChangeOrderShareLink(token: string): string {
+  return `https://portal.quotecat.ai/co/${token}`;
+}
+
+/**
+ * Send: mint the link and move the change order to `sent`.
+ *
+ * Refuses if the contractor has not signed. Same guard the portal applies when
+ * the customer arrives, enforced here too so the contractor finds out before
+ * the customer does rather than after.
+ */
+export async function sendChangeOrder(
+  changeOrderId: string
+): Promise<{ link: string } | { error: string }> {
+  const sigs = await getSignaturesForChangeOrder(changeOrderId);
+  if (!sigs.some((s) => s.signerType === "contractor")) {
+    return {
+      error:
+        "Sign the change order first. Your customer cannot sign something you have not agreed to, so the link would look broken to them.",
+    };
+  }
+
+  const token = await createChangeOrderShareToken(changeOrderId);
+  if (!token) {
+    return { error: "Could not create a link to share. Please try again." };
+  }
+
+  await updateChangeOrder({ id: changeOrderId, status: "sent" });
+
+  return { link: getChangeOrderShareLink(token) };
 }
