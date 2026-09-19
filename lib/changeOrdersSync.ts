@@ -10,6 +10,9 @@ import {
   listAllChangeOrdersDB,
   getChangeOrderByIdDB,
   saveChangeOrderDB,
+  hardDeleteChangeOrderDB,
+  getTombstonesDB,
+  deleteTombstoneDB,
   type ChangeOrderDB,
 } from "./database";
 
@@ -324,6 +327,40 @@ export async function downloadChangeOrders(since?: string): Promise<ChangeOrder[
 }
 
 /**
+ * IDs of change orders deleted on another device.
+ *
+ * downloadChangeOrders filters to `deleted_at IS NULL`, so a deletion made
+ * elsewhere simply stops arriving and this device keeps its copy forever. This
+ * is the other half of that. Mirrors getDeletedQuoteIds.
+ */
+export async function getDeletedChangeOrderIds(since?: string): Promise<string[]> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return [];
+
+    let query = supabase
+      .from("change_orders")
+      .select("id")
+      .eq("user_id", userId)
+      .not("deleted_at", "is", null);
+
+    if (since) {
+      query = query.gt("updated_at", since);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Failed to fetch deleted change orders:", error);
+      return [];
+    }
+    return (data || []).map((row: { id: string }) => row.id);
+  } catch (error) {
+    console.error("Fetch deleted change orders error:", error);
+    return [];
+  }
+}
+
+/**
  * Soft delete a change order from cloud
  */
 export async function deleteChangeOrderFromCloud(id: string): Promise<boolean> {
@@ -410,6 +447,31 @@ export async function syncChangeOrders(): Promise<{
 
     let downloaded = 0;
     let uploaded = 0;
+
+    // Step 0a: Push local deletions up. Every other synced entity does this;
+    // change orders did not, so a delete never left the device.
+    const tombstoneIds = getTombstonesDB("changeOrder");
+    if (tombstoneIds.length > 0) {
+      console.log(`🪦 ${tombstoneIds.length} change order tombstone(s) to push`);
+      for (const deletedId of tombstoneIds) {
+        try {
+          await deleteChangeOrderFromCloud(deletedId);
+          deleteTombstoneDB(deletedId, "changeOrder");
+        } catch (error) {
+          // Keep the tombstone and retry next sync.
+          console.warn(`Failed to delete change order ${deletedId} from cloud, will retry:`, error);
+        }
+      }
+    }
+
+    // Step 0b: Pull deletions made on another device. Without this the local
+    // copy survives forever, because the download below only asks for live rows.
+    // hardDelete, not delete: re-tombstoning something we just received would
+    // push it straight back up on the next sync.
+    const remotelyDeleted = await getDeletedChangeOrderIds(lastSyncAt || undefined);
+    for (const deletedId of remotelyDeleted) {
+      hardDeleteChangeOrderDB(deletedId);
+    }
 
     // Step 1: Download cloud change orders
     const cloudCOs = await downloadChangeOrders(lastSyncAt || undefined);

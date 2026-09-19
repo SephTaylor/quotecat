@@ -7,6 +7,25 @@
 
 ---
 
+## ⬜ CLIENTS AND ASSEMBLIES NEVER LEARN ABOUT REMOTE DELETIONS
+
+Delete a client on your phone and your tablet keeps it, forever. Same for assemblies.
+
+Both sync layers download with `.is("deleted_at", null)`, so a row deleted elsewhere simply
+stops arriving and the local copy is never removed. Nothing tells the second device it is
+gone.
+
+Quotes and invoices do this correctly: a second query with `.not("deleted_at", "is", null)`
+fetches the tombstoned ids so they can be removed locally. Change orders had the same gap and
+it was fixed on 2026-09-18; `lib/changeOrdersSync.ts` step 0b is the smallest example to copy.
+
+Both already write tombstones on local delete, so the push-up half works. Only the pull-down
+half is missing.
+
+Found while verifying change order sync parity. Pre-existing, not urgent (a stale client is an
+annoyance, not money), but it is real data divergence between a contractor's devices.
+
+
 ## ⬜ ASK MIKE: WHICH NUMBERING SCHEME DID HE MEAN?
 
 Blocks `display_number` on both surfaces. The counter is built; the printed string is not, on

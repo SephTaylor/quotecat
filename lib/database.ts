@@ -2991,10 +2991,23 @@ export function saveChangeOrderDB(changeOrder: ChangeOrderDB): void {
 /**
  * Delete a change order
  */
+/**
+ * Hard delete a change order with a tombstone for sync.
+ *
+ * Change orders were the only synced entity deleting without one. Without the
+ * tombstone the deletion is local-only: the sync layer never learns to remove
+ * it from the cloud, so a second device keeps showing a change order that no
+ * longer exists. On a signed, billable modification that means a device
+ * showing money the job does not owe.
+ */
 export function deleteChangeOrderDB(id: string): void {
   try {
     const database = getDatabase();
-    database.runSync("DELETE FROM change_orders WHERE id = ?", [id]);
+    // Use transaction for atomicity: tombstone + hard delete
+    database.withTransactionSync(() => {
+      insertTombstoneSync(database, id, 'changeOrder');
+      database.runSync("DELETE FROM change_orders WHERE id = ?", [id]);
+    });
   } catch (error) {
     console.error(`Failed to delete change order ${id}:`, error);
     throw error;
@@ -3066,7 +3079,7 @@ export function getNextChangeOrderNumberDB(parent: {
 // TOMBSTONES (for hard delete + cloud sync)
 // ============================================
 
-export type TombstoneEntityType = 'quote' | 'invoice' | 'client' | 'assembly';
+export type TombstoneEntityType = 'quote' | 'invoice' | 'client' | 'assembly' | 'changeOrder';
 
 /**
  * Insert a tombstone record for a deleted entity
@@ -3169,6 +3182,19 @@ export function hardDeleteQuoteDB(id: string): void {
   } catch (error) {
     console.error(`Failed to hard delete quote ${id}:`, error);
     throw error;
+  }
+}
+
+/**
+ * Hard delete a change order without creating a tombstone
+ * Used when the server indicates it was deleted on another device
+ */
+export function hardDeleteChangeOrderDB(id: string): void {
+  try {
+    const database = getDatabase();
+    database.runSync("DELETE FROM change_orders WHERE id = ?", [id]);
+  } catch (error) {
+    console.error(`Failed to hard delete change order ${id}:`, error);
   }
 }
 
