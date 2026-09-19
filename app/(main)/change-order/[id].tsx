@@ -52,7 +52,7 @@ export default function ChangeOrderDetailScreen() {
     setLoading(true);
     try {
       const [co, q] = await Promise.all([
-        getChangeOrderById(quoteId, coId),
+        getChangeOrderById(coId),
         getQuoteById(quoteId),
       ]);
       setChangeOrder(co ?? null);
@@ -127,7 +127,7 @@ export default function ChangeOrderDetailScreen() {
           onPress: async () => {
             setUpdating(true);
             try {
-              await deleteChangeOrder(quoteId, changeOrder.id);
+              await deleteChangeOrder(changeOrder.id);
               router.back();
             } catch (error) {
               Alert.alert(

@@ -112,15 +112,20 @@ export async function getChangeOrdersForContract(
 /**
  * Get a single change order by ID
  */
+/**
+ * A change order id is unique, so no parent is needed to find one.
+ *
+ * This used to take a quoteId and reject the row if it did not match, which is
+ * a leftover from when a change order was a diff on a quote. A contract-
+ * parented change order has no quoteId at all, so that check rejected every
+ * one of them and the caller saw "not found".
+ */
 export async function getChangeOrderById(
-  quoteId: string,
   changeOrderId: string
 ): Promise<ChangeOrder | undefined> {
   try {
     const row = getChangeOrderByIdDB(changeOrderId);
     if (!row) return undefined;
-    // Verify it belongs to the right quote
-    if (row.quoteId !== quoteId) return undefined;
     return dbRowToChangeOrder(row);
   } catch (error) {
     console.error(`Failed to get change order ${changeOrderId}:`, error);
@@ -209,16 +214,11 @@ export async function createChangeOrder(
  * Update an existing change order
  */
 export async function updateChangeOrder(
-  quoteId: string,
   update: ChangeOrderUpdate
 ): Promise<void> {
   const existing = getChangeOrderByIdDB(update.id);
   if (!existing) {
     throw new Error(`Change order ${update.id} not found`);
-  }
-
-  if (existing.quoteId !== quoteId) {
-    throw new Error(`Change order ${update.id} does not belong to quote ${quoteId}`);
   }
 
   const now = new Date().toISOString();
@@ -246,16 +246,11 @@ export async function updateChangeOrder(
  * Delete a change order (only allowed for pending status)
  */
 export async function deleteChangeOrder(
-  quoteId: string,
   changeOrderId: string
 ): Promise<void> {
   const row = getChangeOrderByIdDB(changeOrderId);
   if (!row) {
     throw new Error(`Change order ${changeOrderId} not found`);
-  }
-
-  if (row.quoteId !== quoteId) {
-    throw new Error(`Change order ${changeOrderId} does not belong to quote ${quoteId}`);
   }
 
   const co = dbRowToChangeOrder(row);

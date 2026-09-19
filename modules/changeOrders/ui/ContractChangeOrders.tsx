@@ -60,7 +60,23 @@ export function ContractChangeOrders({ contract, theme }: Props) {
     }, [refresh])
   );
 
-  const allowed = canAddChangeOrder(contract);
+  // Two screens this section needs do not exist yet for contracts:
+  //
+  //   create  /(forms)/change-order/new   does not exist at all. Routing there
+  //           shows expo-router's unmatched-route error.
+  //   detail  /(main)/change-order/[id]   exists, but is built entirely around
+  //           a quote: it refuses to render without one and its PDF export
+  //           takes a Quote. A contract-parented change order has no quote.
+  //
+  // Until both are built the section stays read-only and inert rather than
+  // offering taps that dead-end, which is the exact failure it was written to
+  // replace on the quote screen.
+  //
+  // Flip this in the same commit that lands both screens.
+  const CHANGE_ORDER_SCREENS_EXIST = false;
+  const CREATE_SCREEN_EXISTS = CHANGE_ORDER_SCREENS_EXIST;
+
+  const allowed = canAddChangeOrder(contract) && CREATE_SCREEN_EXISTS;
   const blockedReason = whyCannotAddChangeOrder(contract);
 
   // Nothing to say on an unsigned contract with no history: the contractor is
@@ -97,8 +113,9 @@ export function ContractChangeOrders({ contract, theme }: Props) {
 
       {changeOrders.length === 0 ? (
         <Text style={styles.empty}>
-          Nothing has changed on this job yet. If your customer asks for
-          something extra, raise it here so it gets signed and billed.
+          {CREATE_SCREEN_EXISTS
+            ? "Nothing has changed on this job yet. If your customer asks for something extra, raise it here so it gets signed and billed."
+            : "Nothing has changed on this job yet."}
         </Text>
       ) : (
         changeOrders.map((co) => (
@@ -106,7 +123,7 @@ export function ContractChangeOrders({ contract, theme }: Props) {
             key={co.id}
             changeOrder={co}
             theme={theme}
-            onPress={() => handleOpen(co)}
+            onPress={CHANGE_ORDER_SCREENS_EXIST ? () => handleOpen(co) : undefined}
           />
         ))
       )}
@@ -119,7 +136,9 @@ export function ContractChangeOrders({ contract, theme }: Props) {
       ) : (
         // Say why rather than silently hiding the button. A contractor who
         // expects to raise one and finds nothing assumes the app is broken.
-        blockedReason && <Text style={styles.blocked}>{blockedReason}</Text>
+        CREATE_SCREEN_EXISTS && blockedReason && (
+          <Text style={styles.blocked}>{blockedReason}</Text>
+        )
       )}
     </View>
   );
