@@ -21,7 +21,6 @@ import { canExportPDF } from "@/lib/features";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { getCachedLogo } from "@/lib/logo";
 import { isSyncAvailable, syncQuotes } from "@/lib/quotesSync";
-import { getActiveChangeOrderCount } from "@/modules/changeOrders";
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import { RefreshEvents, REFRESH_QUOTES_LIST } from "@/lib/refreshEvents";
@@ -82,28 +81,18 @@ export default function QuotesList() {
   const [showFirstQuoteNudge, setShowFirstQuoteNudge] = useState(false);
 
   // Change order counts per quote
-  const [coCounts, setCoCounts] = useState<Record<string, number>>({});
+  // Change orders moved to contracts (2026-09-18), so no change order is
+  // parented to a quote any more and this count is always zero. The per-quote
+  // SQLite loop that used to populate it was removed rather than left running.
+  // The prop chain into QuoteGroup / SwipeableQuoteItem is inert and harmless;
+  // removing it is cleanup, tracked in BACKLOG.
+  const coCounts: Record<string, number> = {};
 
   const load = useCallback(async () => {
     try {
       const data = await listQuotes({ skipCache: true });
       setQuotes(data);
 
-      // Load CO counts for quotes that might have them (approved/completed)
-      const counts: Record<string, number> = {};
-      await Promise.all(
-        data
-          .filter((q) => q.status === "approved" || q.status === "completed")
-          .map(async (q) => {
-            try {
-              const count = await getActiveChangeOrderCount(q.id);
-              if (count > 0) counts[q.id] = count;
-            } catch {
-              // Skip this quote's CO count on error
-            }
-          })
-      );
-      setCoCounts(counts);
 
       // First-quote nudge check — after the list reloads so we know how
       // many quotes exist. Only fire once ever, only for Free tier.

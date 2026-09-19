@@ -44,7 +44,6 @@ import { recordWinAndMaybeRequestReview } from "@/lib/reviewPrompt";
 import { uploadQuote } from "@/lib/quotesSync";
 import { getLocalTeamMembers } from "@/lib/teamMembersSync";
 import type { TeamMember } from "@/lib/types";
-import { ChangeOrderList } from "@/modules/changeOrders/ui";
 import { trackEvent, AnalyticsEvents } from "@/lib/app-analytics";
 
 export default function QuoteReviewScreen() {
@@ -851,19 +850,6 @@ export default function QuoteReviewScreen() {
               <Text style={styles.changeHistoryText}>{quote.changeHistory}</Text>
             </View>
           </View>
-        )}
-
-        {/* Change Orders Section - Pro/Premium only. Pass status so the
-            empty state renders on approved quotes with zero COs — otherwise
-            the whole section disappears and Pro users can't find the
-            feature they're paying for. */}
-        {(isPro || isPremium) && qid && (
-          <ChangeOrderList
-            quoteId={qid}
-            theme={theme}
-            limit={3}
-            quoteStatus={quote?.status}
-          />
         )}
 
         {/* Profitability Setup Prompt - State 1: Neither rate set.

@@ -33,7 +33,6 @@ import { canExportPDF } from "@/lib/features";
 import { presentPaywallAndSync } from "@/lib/revenuecat";
 import { hasSyncCompletedSince, onSyncComplete } from "@/lib/syncState";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { getActiveChangeOrderCount } from "@/modules/changeOrders";
 import { WizardFAB } from "@/components/WizardFAB";
 import { TextInputModal } from "@/components/TextInputModal";
 
@@ -85,7 +84,12 @@ export default function Dashboard() {
   const [isPremium, setIsPremium] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [coCounts, setCoCounts] = useState<Record<string, number>>({});
+  // Change orders moved to contracts (2026-09-18), so no change order is
+  // parented to a quote any more and this count is always zero. The per-quote
+  // SQLite loop that used to populate it was removed rather than left running.
+  // The prop chain into QuoteGroup / SwipeableQuoteItem is inert and harmless;
+  // removing it is cleanup, tracked in BACKLOG.
+  const coCounts: Record<string, number> = {};
   const [toInvoiceStats, setToInvoiceStats] = useState<{ quoteCount: number; contractCount: number; totalValue: number }>({
     quoteCount: 0,
     contractCount: 0,
@@ -165,14 +169,6 @@ export default function Dashboard() {
       const toInvoice = await getToInvoiceStats();
       setToInvoiceStats(toInvoice);
 
-      // Load CO counts SEQUENTIALLY (not in parallel) to reduce memory pressure
-      const counts: Record<string, number> = {};
-      const approvedQuotes = data.filter((q) => q.status === "approved" || q.status === "completed");
-      for (const q of approvedQuotes) {
-        const count = await getActiveChangeOrderCount(q.id);
-        if (count > 0) counts[q.id] = count;
-      }
-      setCoCounts(counts);
     } catch (error) {
       console.error("Dashboard load error:", error);
     } finally {

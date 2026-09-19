@@ -7,6 +7,20 @@
 
 ---
 
+## ⬜ INERT CHANGE ORDER COUNT PROP ON THE QUOTE LIST
+
+`coCounts` threads from the dashboard and quotes tabs into `QuoteGroup` and then into
+`SwipeableQuoteItem`, which renders an "N CO" badge. Change orders moved to contracts on
+2026-09-18, so no change order is parented to a quote and the count is permanently zero.
+
+The expensive half is gone: both tabs used to run a SQLite query per approved quote on every
+load to populate it. That loop was removed. What remains is an always-empty object passed down
+two levels to a badge that never renders.
+
+Harmless, and removing it touches four files for no behavioural change, which is why it was not
+done at the same time. Clean up when one of those files is open for another reason.
+
+
 ## ⬜ CLIENTS AND ASSEMBLIES NEVER LEARN ABOUT REMOTE DELETIONS
 
 Delete a client on your phone and your tablet keeps it, forever. Same for assemblies.
