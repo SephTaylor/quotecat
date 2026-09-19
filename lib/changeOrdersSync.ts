@@ -204,7 +204,7 @@ function cloudToLocal(row: any): ChangeOrder {
     quoteTotalBefore: parseFloat(row.quote_total_before) || 0,
     quoteTotalAfter: parseFloat(row.quote_total_after) || 0,
     note: row.note || undefined,
-    status: row.status || "pending",
+    status: row.status || "draft",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
