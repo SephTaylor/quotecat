@@ -25,27 +25,7 @@ half is missing.
 Found while verifying change order sync parity. Pre-existing, not urgent (a stale client is an
 annoyance, not money), but it is real data divergence between a contractor's devices.
 
-
-## ⬜ ASK MIKE: WHICH NUMBERING SCHEME DID HE MEAN?
-
-Blocks `display_number` on both surfaces. The counter is built; the printed string is not, on
-purpose.
-
-**His words**, on the very first section he ever reviewed: *"first change order number could
-be 1000.1, if there is a second change order it could be change order number 1000.1.2 third
-could be 1000.1.2.3."* That describes three **sequential** change orders on one contract.
-
-**The plan he later approved** shows the same strings as **nesting depth**: 1000.1 is the first
-change order, 1000.1.2 is a change to that change order, 1000.1.2.3 is a change to that. He
-marked it "Excellent."
-
-He agreed to both, months apart, almost certainly without noticing they differ. Three change
-orders on contract 1000 read either `1000.1, 1000.1.2, 1000.1.2.3` or `1000.1, 1000.2, 1000.3`
-depending on which he meant. It prints on the document and doubles as his purchase order
-reference, and he tracks profit per change order off it, so it is not cosmetic.
-
-One question, and the answer unblocks numbering everywhere.
-
+---
 
 ## ⬜ LEGACY ASYNCSTORAGE DATA IS STILL ON DEVICES
 
@@ -65,6 +45,7 @@ pointing at it.
 
 Order: measure what is actually there on a real device, clean it up, then retire the names.
 
+---
 
 ## ⬜ MAKE THE CLAUDE.md PLANNING RULES HARDER TO SKIP
 
@@ -81,6 +62,7 @@ into their own short file that is cheap to read every time.
 
 Parked 2026-09-18 until after the v1.3 release.
 
+---
 
 ## ⬜ ONE-CENT DISPLAY DRIFT BETWEEN THE DASHBOARD AND THE PDF
 
@@ -101,6 +83,7 @@ half-cent totals more likely, since halving an odd-cent job produces one.
 
 Low priority. Fix would be to agree one rounding rule across the formatters.
 
+---
 
 ## ⬜ OVERPAYMENT RENDERS AS A NEGATIVE AMOUNT DUE
 
